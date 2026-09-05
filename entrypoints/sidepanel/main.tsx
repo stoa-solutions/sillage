@@ -1,3 +1,4 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><p>Playlist Recall</p></React.StrictMode>);
+import ReactDOM from "react-dom/client";
+import { App } from "../../src/App";
+import "../../src/style.css";
+ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
