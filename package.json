@@ -9,7 +9,7 @@
     "check": "wxt prepare && tsc --noEmit",
     "test": "vitest run",
     "prepare:model": "node scripts/prepare-model.mjs",
-    "prepare:seed": "node --import tsx scripts/seed-vectors.mjs",
+    "prepare:seed": "node scripts/seed-vectors.mjs",
     "postinstall": "wxt prepare",
     "package:local": "npm run build && node scripts/package-local.mjs"
   },
@@ -29,7 +29,6 @@
     "typescript": "5.9.3",
     "vitest": "4.1.11",
     "fake-indexeddb": "6.2.4",
-    "tsx": "4.20.6",
     "wxt": "0.21.4",
     "vite": "8.2.2"
   },
