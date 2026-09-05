@@ -1,0 +1,11 @@
+node_modules/
+.wxt/
+.output/
+output/
+.superpowers/
+public/models/
+public/ort/
+public/data/
+.cache/
+*.log
+.DS_Store

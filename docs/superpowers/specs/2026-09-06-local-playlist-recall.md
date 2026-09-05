@@ -1,0 +1,11 @@
+# Playlist Recall — extension Chrome locale
+
+Design approved in conversation on 2026-09-06. Build in its own repository, outside CAEX.
+
+The extension opens a French side panel and a full-width library tab. Import the existing normalized playlist JSON or a yt-dlp flat-playlist JSON. Preserve playlist entries separately from video metadata, deduplicate video embeddings, retain missing metadata explicitly, reject malformed imports without changing the saved library. Search combines lexical ranking and multilingual local embeddings using RRF. Duration is a numerical constraint; unknown durations never pass an active duration filter. Results include the original title, channel, thumbnail, duration, playlist position and canonical YouTube URL.
+
+Keep videos, playlists and vectors in IndexedDB. Use a packaged multilingual-e5-small q8 model and packaged ONNX runtime assets. E5 uses query/passsage prefixes (implementation: `query: ` and `passage: `), mean pooling and L2 normalization. Compute in a dedicated Web Worker, never in the extension service worker. Save each successful embedding batch. The UI supports cancel/resume and explicitly distinguishes keyword-only, indexing and semantic-ready states. Closing a panel may interrupt indexing; reopening resumes from saved batches. Importing identical metadata preserves vectors. Changing metadata or model invalidates vectors.
+
+Personal build can include the user's data and precomputed vectors in ignored assets. Do not commit personal playlist data. All inference is on this machine; thumbnails and opening YouTube may use the network. No cloud service, analytics, API secrets, OAuth, automatic YouTube sync, image understanding, audio analysis or watch-history claims in this MVP.
+
+Stack: WXT, React, TypeScript, Manifest V3, IndexedDB, Transformers.js, Vitest. Verify unit behavior, production build, and a real Chromium extension load, including a real semantic query and cold/reopened persistence. Primary acceptance: `jazz romantique` with duration >1h surfaces video `swqpIE45v4c`; test a French paraphrase without literal title terms using real embeddings. Provide an unpacked ready-to-load folder, source and French installation instructions.
