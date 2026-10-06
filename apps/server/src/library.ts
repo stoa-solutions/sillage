@@ -113,6 +113,29 @@ export async function syncPlaylist(db: Database, youtube: YouTube, job: Job) {
         [id, snapshot.title],
       );
       const generation = Number(rows[0].generation);
+      if (generation === 1) {
+        // The old export has no YouTube item IDs. Match occurrences, not positions:
+        // newly added videos can shift every position in an existing playlist.
+        const counts = new Map<string, number>();
+        for (const entry of snapshot.entries)
+          counts.set(entry.videoId, (counts.get(entry.videoId) ?? 0) + 1);
+        await client.query(
+          `WITH imported AS (
+          SELECT key,video_id,row_number() OVER(PARTITION BY video_id ORDER BY position,key) AS occurrence
+          FROM memberships WHERE playlist_id=$1 AND key LIKE 'seed:%'
+        ), current AS (SELECT * FROM jsonb_to_recordset($2::jsonb) AS x(video_id text,occurrences integer))
+        DELETE FROM memberships WHERE key IN (SELECT imported.key FROM imported JOIN current USING(video_id) WHERE imported.occurrence<=current.occurrences)`,
+          [
+            id,
+            JSON.stringify(
+              [...counts].map(([video_id, occurrences]) => ({
+                video_id,
+                occurrences,
+              })),
+            ),
+          ],
+        );
+      }
       for (const entry of snapshot.entries) {
         const placeholder: Video = {
           id: entry.videoId,
@@ -134,10 +157,6 @@ export async function syncPlaylist(db: Database, youtube: YouTube, job: Job) {
             placeholder.thumbnailUrl,
             hash(documentText(placeholder)),
           ],
-        );
-        await client.query(
-          `DELETE FROM memberships WHERE playlist_id=$1 AND video_id=$2 AND position=$3 AND key LIKE 'seed:%'`,
-          [id, entry.videoId, entry.position],
         );
         await client.query(
           `INSERT INTO memberships(key,playlist_id,video_id,position,added_at,seen_generation) VALUES($1,$2,$3,$4,$5,$6)

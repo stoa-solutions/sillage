@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { migrate } from "../src/migrate.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
-import { enqueue, claim, finish } from "../src/queue.ts";
+import { enqueue, claim, finish, schedule } from "../src/queue.ts";
 import { infer } from "../src/inference-client.ts";
 import { indexText, indexImage } from "../src/indexing.ts";
 import { importLibrary, syncPlaylist } from "../src/library.ts";
@@ -272,4 +272,73 @@ it("hides historical failures after a newer successful attempt", async () => {
     headers: { Authorization: `Bearer ${token}` },
   });
   expect((await response.json()).jobs).toEqual([]);
+});
+
+it("migrates moved duplicate entries by occurrence without duplicating the first live snapshot", async () => {
+  await importLibrary(db, {
+    ...fixture,
+    memberships: [
+      ...fixture.memberships,
+      { ...fixture.memberships[0]!, key: "old:2", position: 5 },
+    ],
+  });
+  await db.query("DELETE FROM jobs");
+  await enqueue(db, "sync", "PL1234567890", { playlistId: "PL1234567890" });
+  const job = await claim(db);
+  const youtube = {
+    playlist: async () => ({
+      title: "Music",
+      entries: [
+        {
+          key: "youtube-one",
+          videoId: "abcdefghijk",
+          position: 9,
+          addedAt: null,
+          title: "Blue saxophone",
+          channel: "Jazz",
+        },
+        {
+          key: "youtube-two",
+          videoId: "abcdefghijk",
+          position: 11,
+          addedAt: null,
+          title: "Blue saxophone",
+          channel: "Jazz",
+        },
+      ],
+    }),
+  } as unknown as YouTube;
+  await syncPlaylist(db, youtube, job!);
+  expect(
+    (
+      await db.query(
+        "SELECT key,position FROM memberships WHERE active ORDER BY position",
+      )
+    ).rows,
+  ).toEqual([
+    { key: "youtube-one", position: 9 },
+    { key: "youtube-two", position: 11 },
+  ]);
+});
+it("queues a due playlist once and advances its six-hour schedule", async () => {
+  await importLibrary(db, fixture);
+  await db.query("DELETE FROM jobs");
+  process.env.SYNC_ENABLED = "true";
+  try {
+    await schedule(db);
+    await schedule(db);
+  } finally {
+    process.env.SYNC_ENABLED = "false";
+  }
+  expect(
+    (await db.query("SELECT count(*)::int n FROM jobs WHERE kind='sync'"))
+      .rows[0].n,
+  ).toBe(1);
+  expect(
+    (
+      await db.query(
+        "SELECT next_sync_at>now()+interval '5 hours' AS future FROM playlists",
+      )
+    ).rows[0].future,
+  ).toBe(true);
 });
