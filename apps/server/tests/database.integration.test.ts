@@ -243,3 +243,19 @@ it("requeues failed work once and permits successful recovery", async () => {
       .status,
   ).toBe("done");
 });
+
+it("finds partial lexical matches in a natural-language query when inference is unavailable", async () => {
+  await importLibrary(db, fixture);
+  vi.mocked(infer).mockRejectedValueOnce(new Error("Unavailable"));
+  const response = await app.request("/v1/search", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query: "je cherche une vidéo blue pour ce soir" }),
+  });
+  const data = await response.json();
+  expect(data.results[0].video.id).toBe("abcdefghijk");
+  expect(data.degraded).toContain("mots-clés");
+});

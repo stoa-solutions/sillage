@@ -1,4 +1,4 @@
-import { parseQuery } from "@playlist-recall/core/search";
+import { parseQuery, tokenize } from "@playlist-recall/core/search";
 import type { SearchResult } from "@playlist-recall/core/types";
 import type { Database } from "./db.ts";
 import { infer } from "./inference-client.ts";
@@ -20,6 +20,8 @@ export interface SearchInput {
 const cache = new Map<string, number[]>();
 export async function search(db: Database, input: SearchInput) {
   const parsed = parseQuery(input.query);
+  const lexicalQuery =
+    [...new Set(tokenize(parsed.text))].join(" OR ") || parsed.text;
   const min = Math.max(
     input.minDuration ?? -Infinity,
     parsed.minDuration ?? -Infinity,
@@ -58,7 +60,7 @@ export async function search(db: Database, input: SearchInput) {
       const result = await db.query(
         `SELECT v.id,ts_rank_cd(search_document,websearch_to_tsquery('recall_simple',$${params.length + 1})) AS score
         FROM videos v WHERE ${filter} AND search_document @@ websearch_to_tsquery('recall_simple',$${params.length + 1}) ORDER BY score DESC,v.id LIMIT 200`,
-        [...params, parsed.text],
+        [...params, lexicalQuery],
       );
       lexical.push(...result.rows.map((r) => r.id));
     }
