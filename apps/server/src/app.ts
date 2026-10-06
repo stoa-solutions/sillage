@@ -77,11 +77,11 @@ export function createApp(db: Database) {
     const counts = (
       await db.query(`SELECT count(*)::int AS videos,count(*) FILTER(WHERE title IS NOT NULL)::int AS titled,
       count(*) FILTER(WHERE description<>'')::int AS descriptions,count(*) FILTER(WHERE index_hash=content_hash)::int AS text_indexed,
-      (SELECT count(*)::int FROM images) AS images FROM videos v WHERE EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active)`)
+      (SELECT count(*)::int FROM images i JOIN videos iv ON iv.id=i.video_id WHERE i.source_url=iv.thumbnail_url AND EXISTS(SELECT 1 FROM memberships im WHERE im.video_id=i.video_id AND im.active)) AS images FROM videos v WHERE EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active)`)
     ).rows[0];
     const jobs = (
       await db.query(
-        `SELECT kind,status,count(*)::int AS count FROM jobs WHERE status IN ('pending','running','failed') GROUP BY kind,status`,
+        `SELECT kind,status,count(*)::int AS count FROM jobs j WHERE status IN ('pending','running') OR (status='failed' AND NOT EXISTS(SELECT 1 FROM jobs newer WHERE newer.dedupe_key=j.dedupe_key AND newer.created_at>j.created_at)) GROUP BY kind,status`,
       )
     ).rows;
     return c.json({

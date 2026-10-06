@@ -259,3 +259,17 @@ it("finds partial lexical matches in a natural-language query when inference is 
   expect(data.results[0].video.id).toBe("abcdefghijk");
   expect(data.degraded).toContain("mots-clés");
 });
+
+it("hides historical failures after a newer successful attempt", async () => {
+  await enqueue(db, "sync", "PL1234567890", { playlistId: "PL1234567890" });
+  const failed = await claim(db);
+  await finish(db, { ...failed!, attempts: 5 }, new Error("old"));
+  await db.query("UPDATE jobs SET created_at=now()-interval '1 minute'");
+  await enqueue(db, "sync", "PL1234567890", { playlistId: "PL1234567890" });
+  const current = await claim(db);
+  await finish(db, current!);
+  const response = await app.request("/v1/status", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect((await response.json()).jobs).toEqual([]);
+});
