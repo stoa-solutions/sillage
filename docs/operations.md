@@ -12,7 +12,7 @@ Plafonds : API 192 Mio/0,5 CPU, worker 192 Mio/0,5 CPU, inférence 1 408 Mio/1,5
 
 `DATABASE_URL`, `YOUTUBE_API_KEY`, `SYNC_ENABLED`, `VISION_ENABLED`, `RELEASE_SHA` sont définis dans Dokploy. Ne pas les ajouter au dépôt ou au paquet d’extension. Restreindre la clé Google à YouTube Data API v3 et à l’IP sortante du VPS. Budget local : 8 000 unités/jour, comptées selon la journée YouTube America/Los_Angeles. Une absence de clé est affichée dans l’extension.
 
-Créer un jeton avec `node --import tsx src/token.ts create /tmp/connexion.json` depuis le conteneur API. Copier le fichier dans un emplacement privé puis le retirer du conteneur. Ne jamais afficher son contenu dans les journaux. `token.ts revoke UUID` révoque une installation. Seul un hash du jeton est enregistré en base.
+Créer un jeton avec `node --import tsx src/token.ts create /tmp/connexion.json` depuis le conteneur API. Transférer son contenu vers un fichier privé via la sortie redirigée de `docker exec` puis le retirer du conteneur (`docker cp` ne lit pas ce montage tmpfs sur ce serveur). Ne jamais afficher son contenu dans les journaux. `token.ts revoke UUID` révoque une installation. Seul un hash du jeton est enregistré en base.
 
 ## Déploiement et reprise
 

@@ -97,7 +97,7 @@ export function ConnectedApp({ connection }: { connection: Connection }) {
       clearInterval(timer);
       controller.abort();
     };
-  }, [connection, revision]);
+  }, [connection]);
   useEffect(() => {
     const controller = new AbortController();
     const key = JSON.stringify({

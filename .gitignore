@@ -21,3 +21,5 @@ public/data/
 .env.*
 !.env.example
 .runtime/
+
+.playwright-cli/

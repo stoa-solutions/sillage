@@ -126,7 +126,7 @@ app.post("/:task", async (c) => {
           text: z
             .string()
             .min(1)
-            .max(task === "passages" ? 15000 : 1000),
+            .max(task === "passages" ? 30000 : 1000),
         });
   const data = schema.safeParse(await c.req.json());
   if (!data.success) return c.json({ error: "Invalid input" }, 400);

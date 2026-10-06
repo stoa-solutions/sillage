@@ -103,8 +103,8 @@ export async function indexImage(db: Database, id: string) {
     const bytes = await fetchThumbnail(row.thumbnail_url);
     const digest = hash(bytes);
     const old = await db.query(
-      "SELECT 1 FROM images WHERE video_id=$1 AND source_hash=$2 AND model_key=$3",
-      [id, digest, VISION_KEY],
+      "SELECT 1 FROM images WHERE video_id=$1 AND source_hash=$2 AND model_key=$3 AND source_url=$4",
+      [id, digest, VISION_KEY, row.thumbnail_url],
     );
     if (!old.rowCount) {
       const { vector } = await infer<{ vector: number[] }>("image", {
