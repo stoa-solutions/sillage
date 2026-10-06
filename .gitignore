@@ -1,7 +1,7 @@
 node_modules/
 .wxt/
 .output/
-extension/
+/extension/
 output/
 .superpowers/
 public/models/
@@ -10,3 +10,14 @@ public/data/
 .cache/
 *.log
 .DS_Store
+
+**/node_modules/
+**/.wxt/
+**/.output/
+**/public/models/
+**/public/ort/
+**/public/data/
+.env
+.env.*
+!.env.example
+.runtime/

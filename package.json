@@ -1,38 +1,24 @@
 {
   "name": "playlist-recall",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "dev": "wxt",
-    "build": "wxt build",
-    "check": "wxt prepare && tsc --noEmit",
-    "test": "vitest run",
-    "prepare:model": "node scripts/prepare-model.mjs",
-    "prepare:seed": "node scripts/seed-vectors.mjs",
-    "postinstall": "wxt prepare",
-    "package:local": "npm run build && node scripts/package-local.mjs"
-  },
-  "dependencies": {
-    "@huggingface/transformers": "4.2.0",
-    "idb": "8.0.3",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "lucide-react": "0.577.0"
-  },
-  "devDependencies": {
-    "@types/react": "19.2.0",
-    "@types/react-dom": "19.2.0",
-    "@types/chrome": "0.1.24",
-    "@types/node": "24.0.0",
-    "@wxt-dev/module-react": "1.2.2",
-    "typescript": "5.9.3",
-    "vitest": "4.1.11",
-    "fake-indexeddb": "6.2.4",
-    "wxt": "0.21.4",
-    "vite": "8.2.2"
-  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "engines": {
     "node": ">=24"
+  },
+  "scripts": {
+    "dev": "npm run dev -w @playlist-recall/extension",
+    "build": "npm run build -w @playlist-recall/extension",
+    "check": "npm run check --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "prepare:model": "node scripts/prepare-model.mjs",
+    "prepare:seed": "node scripts/seed-vectors.mjs",
+    "package:local": "npm run build && node scripts/package-local.mjs",
+    "dev:server": "npm run dev -w @playlist-recall/server",
+    "test:integration": "npm run test:integration -w @playlist-recall/server"
   }
 }

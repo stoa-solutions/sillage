@@ -766,7 +766,7 @@ export function App() {
   );
 }
 
-function VideoCard({
+export function VideoCard({
   result,
   showSemantic,
 }: {

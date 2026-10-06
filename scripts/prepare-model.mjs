@@ -6,12 +6,12 @@ import { Readable } from 'node:stream';
 import { pipeline as streamPipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { MODEL_FILE, MODEL_ID, MODEL_REVISION } from '../src/model.ts';
+import { MODEL_FILE, MODEL_ID, MODEL_REVISION } from '../packages/core/src/model.ts';
 
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
-const modelRoot = path.join(projectRoot, 'public', 'models', ...MODEL_ID.split('/'));
+const modelRoot = path.join(projectRoot, 'apps', 'extension', 'public', 'models', ...MODEL_ID.split('/'));
 const ortSource = path.join(projectRoot, 'node_modules', 'onnxruntime-web', 'dist');
-const ortTarget = path.join(projectRoot, 'public', 'ort');
+const ortTarget = path.join(projectRoot, 'apps', 'extension', 'public', 'ort');
 const downloadCache = path.join(projectRoot, '.cache', 'model-downloads', ...MODEL_ID.split('/'));
 const hubRoot = `https://huggingface.co/${MODEL_ID}/resolve/${MODEL_REVISION}/`;
 setDefaultResultOrder('ipv4first');

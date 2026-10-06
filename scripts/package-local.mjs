@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const source = path.join(root, ".output/chrome-mv3");
+const source = path.join(root, "apps/extension/.output/chrome-mv3");
 const target = path.join(root, "extension");
 const temporary = path.join(root, ".output/local-package");
 const required = [

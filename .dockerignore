@@ -1,0 +1,11 @@
+**/node_modules
+.git
+.runtime
+extension
+output
+**/.output
+**/.wxt
+**/public/data
+**/public/models
+**/public/ort
+.env*

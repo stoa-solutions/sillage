@@ -784,3 +784,22 @@ svg {
     scroll-behavior: auto !important;
   }
 }
+
+.modebar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:9px 20px; background:#244737; color:#fff; font-size:11px; flex-wrap:wrap }
+.modebar div { display:flex; gap:8px; flex-wrap:wrap }
+.modebar button { color:inherit; border:1px solid #ffffff45; background:transparent; border-radius:6px; padding:5px 9px; font-size:11px }
+.connection-panel { max-width:760px; padding:24px; margin:20px auto; background:#fff; border-radius:12px }
+.connection-panel p { line-height:1.7; color:#64705f }
+.connection-panel label,.advanced-filters label { display:grid; gap:6px; font-size:12px; margin:12px 0 }
+.connection-panel input,.advanced-filters input,.add-playlist input { border:1px solid #bdccb5; border-radius:7px; padding:10px; min-width:0; background:#fff; color:#27372a }
+.connection-panel input { width:100% }
+.connection-panel .toolbar { flex-wrap:wrap }
+.add-playlist { display:flex; gap:8px; margin-bottom:20px }
+.add-playlist input { flex:1 }
+.server-status { display:flex; flex-wrap:wrap; gap:7px 16px; margin:18px 0; font-size:11px; color:#65775b }
+.sync-details,.advanced-filters { font-size:12px; color:#65775b; margin:12px 0; line-height:1.7 }
+.sync-details summary,.advanced-filters summary { cursor:pointer }
+.sync-details p { overflow-wrap:anywhere }
+.server-reason { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; color:#65775b; font-size:10px; line-height:1.5; margin:7px 0 0 }
+input:focus-visible,summary:focus-visible { outline:3px solid #88b79c; outline-offset:3px }
+@media(max-width:430px) { .modebar { padding:9px 16px } .connection-panel { padding:16px; margin:12px } .advanced-filters input { max-width:180px } .connected .topbar { flex-wrap:wrap } }

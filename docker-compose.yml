@@ -1,0 +1,79 @@
+x-service: &service
+  build:
+    context: .
+    dockerfile: apps/server/Dockerfile
+  image: playlist-recall:${RELEASE_SHA:-local}
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+x-config: &config
+  DATABASE_URL: ${DATABASE_URL:?Database URL is required}
+  INFERENCE_URL: http://inference:3002
+  VISION_ENABLED: ${VISION_ENABLED:-true}
+  SYNC_ENABLED: ${SYNC_ENABLED:-false}
+  RELEASE_SHA: ${RELEASE_SHA:-local}
+services:
+  api:
+    <<: *service
+    environment:
+      <<: *config
+      PORT: 3001
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      ALLOWED_ORIGINS: https://recall.stoa.solutions
+    mem_limit: 192m
+    cpus: 0.5
+    networks: [dokploy-network, data, inference]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  worker:
+    <<: *service
+    command: [node, --import, tsx, src/worker.ts]
+    environment:
+      <<: *config
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      YOUTUBE_DAILY_BUDGET: 8000
+    mem_limit: 192m
+    cpus: 0.5
+    stop_grace_period: 40s
+    networks: [data, inference]
+    depends_on:
+      api:
+        condition: service_healthy
+  inference:
+    <<: *service
+    command: [node, --import, tsx, src/inference.ts]
+    environment:
+      VISION_ENABLED: ${VISION_ENABLED:-true}
+      MODEL_THREADS: 2
+      MODEL_PATH: /models/
+      PORT: 3002
+    volumes:
+      - /srv/playlist-recall/models:/models:ro
+    mem_limit: 1408m
+    cpus: 1.5
+    networks: [inference]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+networks:
+  dokploy-network:
+    external: true
+  data:
+    external: true
+    name: playlist-recall-data
+  inference:
+    internal: true

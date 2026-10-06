@@ -1,0 +1,12 @@
+{
+  "name": "@playlist-recall/core",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./types": "./src/types.ts",
+    "./import": "./src/import.ts",
+    "./search": "./src/search.ts",
+    "./model": "./src/model.ts"
+  }
+}

@@ -2,7 +2,7 @@ import { readFile, rename, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { env, pipeline } from '@huggingface/transformers';
-import { buildDocument, parseImport } from '../src/import.ts';
+import { buildDocument, parseImport } from '../packages/core/src/import.ts';
 import {
   MODEL_DIMENSIONS,
   MODEL_DTYPE,
@@ -11,12 +11,12 @@ import {
   MODEL_REVISION,
   prepareModelInputs,
   validateEmbeddingMatrix,
-} from '../src/model.ts';
+} from '../packages/core/src/model.ts';
 
 const BATCH_SIZE = 16;
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
-const libraryPath = path.join(projectRoot, 'public', 'data', 'library.json');
-const vectorsPath = path.join(projectRoot, 'public', 'data', 'vectors.json');
+const libraryPath = path.join(projectRoot, 'apps', 'extension', 'public', 'data', 'library.json');
+const vectorsPath = path.join(projectRoot, 'apps', 'extension', 'public', 'data', 'vectors.json');
 const temporaryPath = `${vectorsPath}.part`;
 
 const source = JSON.parse(await readFile(libraryPath, 'utf8'));
@@ -27,7 +27,7 @@ const documents = library.videos
 
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
-env.localModelPath = `${path.join(projectRoot, 'public', 'models')}${path.sep}`;
+env.localModelPath = `${path.join(projectRoot, 'apps', 'extension', 'public', 'models')}${path.sep}`;
 
 console.log(`Loading local ${MODEL_ID} q8 model for ${documents.length} videos…`);
 const extractor = await pipeline('feature-extraction', MODEL_ID, {
