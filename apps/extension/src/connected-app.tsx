@@ -8,6 +8,7 @@ import {
   Loader2,
   Image,
   Library,
+  Maximize2,
 } from "lucide-react";
 import { VideoCard } from "./App";
 import type { SearchResult } from "./types";
@@ -291,6 +292,20 @@ export function ConnectedApp({ connection }: { connection: Connection }) {
               }
             >
               <RefreshCw size={15} /> Actualiser
+            </button>
+            <button
+              className="btn icon"
+              aria-label="Ouvrir la bibliothèque dans un onglet"
+              title="Ouvrir la bibliothèque dans un onglet"
+              onClick={() =>
+                window.open(
+                  new URL("library.html", window.location.href).href,
+                  "_blank",
+                  "noopener",
+                )
+              }
+            >
+              <Maximize2 size={15} />
             </button>
           </div>
         </header>
