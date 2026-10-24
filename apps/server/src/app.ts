@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { createDjRoutes, type ApiEnvironment } from "./dj-routes.ts";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
@@ -8,12 +9,10 @@ import { enqueue } from "./queue.ts";
 import { search } from "./search.ts";
 import { importLibrary, videoFromRow } from "./library.ts";
 import { parseImport, exportLibrary } from "@playlist-recall/core/import";
-import { djSpeech, djVoiceConfigured } from "./dj-voice.ts";
-import { djConfig, djInput, djTurn, DjUnavailable } from "./dj.ts";
 import { handleMusicMcp } from "./music-mcp.ts";
 import { djPlayerHtml, djPlayerCss, djPlayerJs } from "./dj-player.ts";
 export function createApp(db: Database) {
-  const app = new Hono();
+  const app = new Hono<ApiEnvironment>();
   app.use(
     "*",
     cors({
@@ -59,7 +58,7 @@ export function createApp(db: Database) {
       await db.query("SELECT 1");
       return c.json({
         ok: true,
-        version: "2.1.0",
+        version: "2.2.0",
         release: process.env.RELEASE_SHA ?? "local",
       });
     } catch {
@@ -92,51 +91,10 @@ export function createApp(db: Database) {
     if (rate.size > 1000)
       for (const [key, value] of rate)
         if (value.minute !== minute) rate.delete(key);
+    c.set("installationId", found.rows[0].id);
     await next();
   });
-  app.get("/v1/dj/status", (c) =>
-    c.json({ configured: djConfig().configured, voice: djVoiceConfigured() }),
-  );
-  const djActive = new Set<string>();
-  app.post("/v1/dj/chat", async (c) => {
-    const input = djInput.parse(await c.req.json());
-    const installation = hash(c.req.header("Authorization")!);
-    if (djActive.has(installation))
-      return c.json({ error: "Le DJ prépare déjà ta sélection." }, 429);
-    if (djActive.size >= 2)
-      return c.json(
-        { error: "Le DJ est occupé. Réessaie dans un instant." },
-        429,
-      );
-    djActive.add(installation);
-    try {
-      return c.json(await djTurn(db, input, c.req.raw.signal));
-    } catch (error) {
-      if (error instanceof DjUnavailable)
-        return c.json({ error: error.message }, error.status);
-      throw error;
-    } finally {
-      djActive.delete(installation);
-    }
-  });
-  app.post("/v1/dj/speech", async (c) => {
-    const { text } = z
-      .object({ text: z.string().trim().min(1).max(600) })
-      .parse(await c.req.json());
-    const installation = hash(c.req.header("Authorization")!);
-    if (djActive.has(installation) || djActive.size >= 2)
-      return c.json({ error: "Le DJ prépare déjà une réponse." }, 429);
-    djActive.add(installation);
-    try {
-      return c.json(await djSpeech(db, text, c.req.raw.signal));
-    } catch (error) {
-      if (error instanceof DjUnavailable)
-        return c.json({ error: error.message }, error.status);
-      throw error;
-    } finally {
-      djActive.delete(installation);
-    }
-  });
+  app.route("/v1/dj", createDjRoutes(db));
   app.all("/v1/mcp", (c) => handleMusicMcp(db, c.req.raw));
   app.get("/v1/status", async (c) => {
     const counts = (

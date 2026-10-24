@@ -1,10 +1,10 @@
-import { djConfig, DjUnavailable, reserveDj } from "./dj.ts";
+import { djConfig, type DjConfig } from "./dj-config.ts";
+import { DjUnavailable, reserveDj } from "./dj.ts";
 import type { Database } from "./db.ts";
-export function djVoiceConfigured() {
+export function djVoiceConfigured(config: DjConfig = djConfig()) {
   return (
-    djConfig().configured &&
-    djConfig().baseUrl ===
-      "https://generativelanguage.googleapis.com/v1beta/openai"
+    config.configured &&
+    config.baseUrl === "https://generativelanguage.googleapis.com/v1beta/openai"
   );
 }
 export function pcmToWav(pcm: Buffer, rate = 24000): Buffer {
@@ -27,11 +27,11 @@ export async function djSpeech(
   db: Database,
   text: string,
   signal?: AbortSignal,
+  config: DjConfig = djConfig(),
 ) {
-  if (!djVoiceConfigured())
+  if (!djVoiceConfigured(config))
     throw new DjUnavailable("La voix du DJ n’est pas configurée.");
   await reserveDj(db);
-  const config = djConfig();
   try {
     const response = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-lite-tts:generateContent",

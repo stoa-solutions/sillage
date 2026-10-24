@@ -27,11 +27,12 @@ services:
       <<: *config
       PORT: 3001
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      DJ_SETTINGS_ENCRYPTION_KEY: ${DJ_SETTINGS_ENCRYPTION_KEY:-}
       DJ_API_KEY: ${DJ_API_KEY:-}
       DJ_BASE_URL: ${DJ_BASE_URL:-https://api.openai.com/v1}
       DJ_MODEL: ${DJ_MODEL:-}
       DJ_DAILY_REQUEST_LIMIT: ${DJ_DAILY_REQUEST_LIMIT:-100}
-      ALLOWED_ORIGINS: https://recall.stoa.solutions
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://recall.stoa.solutions}
     mem_limit: 192m
     cpus: 0.5
     networks: [dokploy-network, data, inference]

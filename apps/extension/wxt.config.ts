@@ -14,10 +14,15 @@ export default defineConfig({
       "Retrouvez vos vidéos YouTube par souvenir, texte ou miniature. Bibliothèque locale et serveur personnel.",
     permissions: ["sidePanel", "unlimitedStorage", "storage"],
     host_permissions: ["https://recall.stoa.solutions/*"],
+    optional_host_permissions: [
+      "https://*/*",
+      "http://localhost/*",
+      "http://127.0.0.1/*",
+    ],
     action: { default_title: "Ouvrir Playlist Recall" },
     content_security_policy: {
       extension_pages:
-        "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; frame-src https://recall.stoa.solutions http://127.0.0.1:3001; connect-src 'self' https://recall.stoa.solutions http://127.0.0.1:3001; img-src 'self' https://i.ytimg.com https://i9.ytimg.com data:;",
+        "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; frame-src https: http://localhost:* http://127.0.0.1:*; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; img-src 'self' https://i.ytimg.com https://i9.ytimg.com data:;",
     },
   },
   vite: () => ({

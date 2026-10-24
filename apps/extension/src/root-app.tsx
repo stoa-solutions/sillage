@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { App } from "./App";
+import { DjSettings } from "./dj-settings";
 import { DjApp } from "./dj-app";
 import { ConnectedApp } from "./connected-app";
 import {
   api,
+  grantServerAccess,
   saveConnection,
   storedConnection,
   restoreConnection,
@@ -48,10 +50,9 @@ export function RootApp() {
     }
     setDj(!dj);
   }
+  const [djRevision, setDjRevision] = useState(0);
   const [settings, setSettings] = useState(false);
-  const [url, setUrl] = useState(
-    connection?.url ?? "https://recall.stoa.solutions",
-  );
+  const [url, setUrl] = useState(connection?.url ?? "");
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -66,6 +67,7 @@ export function RootApp() {
     setError("");
     try {
       const next = validateConnection(value);
+      await grantServerAccess(next);
       await api(next, "status");
       await saveConnection(next);
       setConnection(next);
@@ -98,6 +100,9 @@ export function RootApp() {
               {isLocal ? "Revenir au serveur" : "Utiliser le mode local"}
             </button>
           )}
+          {connection && (
+            <button onClick={() => setSettings(!settings)}>Réglages</button>
+          )}
           {!connection && (
             <button onClick={() => setSettings(!settings)}>
               Connecter mon serveur
@@ -105,6 +110,12 @@ export function RootApp() {
           )}
         </div>
       </div>
+      {settings && connection && (
+        <DjSettings
+          connection={connection}
+          onSaved={() => setDjRevision((value) => value + 1)}
+        />
+      )}
       {settings && !connection && (
         <section className="connection-panel" aria-label="Connexion au serveur">
           <h2>Connecter Playlist Recall</h2>
@@ -122,6 +133,7 @@ export function RootApp() {
               Adresse du serveur
               <input
                 type="url"
+                placeholder="https://music.example.com"
                 required
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
@@ -184,7 +196,7 @@ export function RootApp() {
       {isLocal ? (
         <App />
       ) : dj ? (
-        <DjApp connection={connection!} />
+        <DjApp configRevision={djRevision} connection={connection!} />
       ) : (
         <ConnectedApp connection={connection!} />
       )}

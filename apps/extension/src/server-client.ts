@@ -24,14 +24,6 @@ export function validateConnection(value: unknown): Connection {
   )
     throw new Error("Une adresse HTTPS est requise.");
   if (
-    !["https://recall.stoa.solutions", "http://127.0.0.1:3001"].includes(
-      parsed.origin,
-    )
-  )
-    throw new Error(
-      "Cette extension est configurée pour recall.stoa.solutions.",
-    );
-  if (
     parsed.username ||
     parsed.password ||
     parsed.search ||
@@ -40,6 +32,13 @@ export function validateConnection(value: unknown): Connection {
   )
     throw new Error("Utilisez uniquement l’adresse du serveur.");
   return { url: parsed.origin, token };
+}
+export async function grantServerAccess(connection: Connection): Promise<void> {
+  if (typeof chrome === "undefined" || !chrome.permissions?.request) return;
+  const origins = [`${connection.url}/*`];
+  if (await chrome.permissions.contains({ origins })) return;
+  if (!(await chrome.permissions.request({ origins })))
+    throw new Error("Autorise l’accès à ton serveur pour connecter Recall.");
 }
 export function storedConnection(): Connection | null {
   try {

@@ -455,9 +455,12 @@ it("searches available music through an MCP client and respects exclusions", asy
     });
     expect(JSON.parse((result.content as any)[0].text).tracks).toEqual([]);
     const requested = await excluded.client.callTool({
-      name: "library_search", arguments: { query: "jazz", includeQueued: true },
+      name: "library_search",
+      arguments: { query: "jazz", includeQueued: true },
     });
-    expect(JSON.parse((requested.content as any)[0].text).tracks[0].id).toBe("abcdefghijk");
+    expect(JSON.parse((requested.content as any)[0].text).tracks[0].id).toBe(
+      "abcdefghijk",
+    );
   } finally {
     await excluded.close();
   }
@@ -467,11 +470,21 @@ it("finds long music without an implicit duration cap", async () => {
   const { connectMusicMcp } = await import("../src/music-mcp.ts");
   const mcp = await connectMusicMcp(db);
   try {
-    const result = await mcp.client.callTool({name:"library_search", arguments:{query:"saxoph"}});
-    expect(JSON.parse((result.content as any)[0].text).tracks.map((t:any)=>t.id)).toContain("abcdefghijk");
-    const limited = await mcp.client.callTool({name:"library_search", arguments:{query:"Blue saxophone",maxDurationSeconds:1200}});
+    const result = await mcp.client.callTool({
+      name: "library_search",
+      arguments: { query: "saxoph" },
+    });
+    expect(
+      JSON.parse((result.content as any)[0].text).tracks.map((t: any) => t.id),
+    ).toContain("abcdefghijk");
+    const limited = await mcp.client.callTool({
+      name: "library_search",
+      arguments: { query: "Blue saxophone", maxDurationSeconds: 1200 },
+    });
     expect(JSON.parse((limited.content as any)[0].text).tracks).toEqual([]);
-  } finally { await mcp.close(); }
+  } finally {
+    await mcp.close();
+  }
 });
 it.skipIf(!process.env.DJ_SIMULATION_URL)(
   "runs the DJ over HTTP against a simulated model and rejects fabricated selections",
@@ -521,3 +534,75 @@ it.skipIf(!process.env.DJ_SIMULATION_URL)(
     }
   },
 );
+
+it("stores a personal DJ key encrypted, scopes it to its token and never returns it", async () => {
+  vi.stubEnv("DJ_SETTINGS_ENCRYPTION_KEY", "42".repeat(32));
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+  const secret = "fake-gemini-key-for-integration-test";
+  const save = await app.request("/v1/dj/settings", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ apiKey: secret, model: "gemini-4-argon" }),
+  });
+  expect(save.status).toBe(200);
+  const row = (await db.query("SELECT encrypted_key FROM dj_settings")).rows[0];
+  expect(row.encrypted_key).not.toContain(secret);
+  const status = await app.request("/v1/dj/status", { headers });
+  const body = await status.json();
+  expect(body).toMatchObject({
+    personal: true,
+    configured: true,
+    model: "gemini-4-argon",
+  });
+  expect(JSON.stringify(body)).not.toContain(secret);
+  const { personalDjConfig } = await import("../src/dj-settings.ts");
+  const owner = (
+    await db.query("SELECT id FROM tokens WHERE hash=$1", [hash(token)])
+  ).rows[0].id;
+  expect((await personalDjConfig(db, owner)).key).toBe(secret);
+  const otherId = randomUUID();
+  await db.query("INSERT INTO tokens(id,name,hash) VALUES($1,$2,$3)", [
+    otherId,
+    "other",
+    hash("other-installation-token"),
+  ]);
+  expect((await personalDjConfig(db, otherId)).personal).toBe(false);
+  const update = await app.request("/v1/dj/settings", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ model: "gemini-3.8-flash" }),
+  });
+  expect(update.status).toBe(200);
+  expect(await personalDjConfig(db, owner)).toMatchObject({
+    key: secret,
+    model: "gemini-3.8-flash",
+  });
+  const reset = await app.request("/v1/dj/settings/reset", {
+    method: "POST",
+    headers,
+    body: "{}",
+  });
+  expect(reset.status).toBe(200);
+  expect((await personalDjConfig(db, owner)).personal).toBe(false);
+});
+it("refuses credential storage without a valid encryption key", async () => {
+  vi.stubEnv("DJ_SETTINGS_ENCRYPTION_KEY", "");
+  const response = await app.request("/v1/dj/settings", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      apiKey: "fake-gemini-key-for-integration-test",
+      model: "gemini-4-argon",
+    }),
+  });
+  expect(response.status).toBe(503);
+  expect(
+    (await db.query("SELECT count(*)::int n FROM dj_settings")).rows[0].n,
+  ).toBe(0);
+});

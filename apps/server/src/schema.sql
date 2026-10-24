@@ -62,3 +62,9 @@ CREATE TABLE IF NOT EXISTS sync_runs (
 );
 INSERT INTO schema_migrations(version) VALUES(1) ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS dj_usage (day date PRIMARY KEY, requests integer NOT NULL DEFAULT 0);
+
+CREATE TABLE IF NOT EXISTS dj_settings (
+  token_id uuid PRIMARY KEY REFERENCES tokens(id) ON DELETE CASCADE,
+  encrypted_key text NOT NULL, model text NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);

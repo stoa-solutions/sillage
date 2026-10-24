@@ -10,23 +10,12 @@ import {
   Volume2,
 } from "lucide-react";
 import { api, type Connection } from "./server-client";
-interface Track {
-  id: string;
-  title: string;
-  channel: string | null;
-  durationSeconds: number | null;
-  thumbnailUrl: string;
-  url: string;
-}
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
-interface DjResponse {
-  reply: string;
-  action: "replace" | "append" | "keep";
-  tracks: Track[];
-}
+import type {
+  DjTrack as Track,
+  DjMessage as Message,
+  DjResponse,
+  DjStatus,
+} from "@playlist-recall/core/dj";
 interface Recognition {
   lang: string;
   interimResults: boolean;
@@ -46,7 +35,13 @@ type VoiceWindow = Window & {
   SpeechRecognition?: new () => Recognition;
   webkitSpeechRecognition?: new () => Recognition;
 };
-export function DjApp({ connection }: { connection: Connection }) {
+export function DjApp({
+  connection,
+  configRevision = 0,
+}: {
+  connection: Connection;
+  configRevision?: number;
+}) {
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [prompt, setPrompt] = useState("");
@@ -84,12 +79,7 @@ export function DjApp({ connection }: { connection: Connection }) {
     );
   useEffect(() => {
     const controller = new AbortController();
-    void api<{ configured: boolean; voice: boolean }>(
-      connection,
-      "dj/status",
-      undefined,
-      controller.signal,
-    )
+    void api<DjStatus>(connection, "dj/status", undefined, controller.signal)
       .then((value) => {
         setConfigured(value.configured);
         setServerVoice(value.voice);
@@ -99,7 +89,7 @@ export function DjApp({ connection }: { connection: Connection }) {
           setError("Le DJ ne peut pas joindre le serveur pour le moment.");
       });
     return () => controller.abort();
-  }, [connection]);
+  }, [connection, configRevision]);
   useEffect(() => {
     const receive = (event: MessageEvent) => {
       if (

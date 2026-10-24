@@ -43,18 +43,13 @@ export async function search(db: Database, input: SearchInput) {
   };
   if (Number.isFinite(min)) add("v.duration_seconds>?", min);
   if (Number.isFinite(max)) add("v.duration_seconds<?", max);
-  if (input.excludeIds?.length) add("NOT (v.id=ANY(?::text[]))", input.excludeIds);
-  if (input.availableOnly) conditions.push("v.available AND v.title IS NOT NULL");
+  if (input.excludeIds?.length)
+    add("NOT (v.id=ANY(?::text[]))", input.excludeIds);
+  if (input.availableOnly)
+    conditions.push("v.available AND v.title IS NOT NULL");
   if (input.channel) add("v.channel ILIKE ?", `%${input.channel}%`);
   if (input.publishedAfter) add("v.published_at>=?", input.publishedAfter);
   const filter = conditions.join(" AND ");
-  const candidates = await db.query(
-    `SELECT v.*, (SELECT min(position) FROM memberships m WHERE m.video_id=v.id AND m.active${input.playlistId ? " AND m.playlist_id=$1" : ""}) AS position FROM videos v WHERE ${filter}`,
-    params,
-  );
-  const rows = new Map<string, any>(
-    candidates.rows.map((row) => [row.id, row]),
-  );
   const lexical: string[] = [];
   const semantic: string[] = [];
   const exact = new Set<string>();
@@ -119,6 +114,36 @@ export async function search(db: Database, input: SearchInput) {
     ranking.forEach((id, i) =>
       scores.set(id, (scores.get(id) ?? 0) + 1 / (61 + i)),
     );
+  // Rank identifiers first; fetch descriptions only for the bounded candidate set.
+  // Plain browsing is paginated in SQL instead of loading the entire library.
+  const rankedIds = [...new Set([...lexical, ...semantic, ...exact])];
+  const selectionParams = [...params];
+  let selectionFilter = filter;
+  if (parsed.text) {
+    selectionParams.push(rankedIds);
+    selectionFilter += ` AND v.id=ANY($${selectionParams.length}::text[])`;
+  }
+  const positionSql = `(SELECT min(position) FROM memberships m WHERE m.video_id=v.id AND m.active${input.playlistId ? " AND m.playlist_id=$1" : ""})`;
+  const browseTotal = parsed.text
+    ? null
+    : (
+        await db.query(
+          `SELECT count(*)::int AS total FROM videos v WHERE ${filter}`,
+          params,
+        )
+      ).rows[0].total;
+  let pagination = "";
+  if (!parsed.text) {
+    selectionParams.push(input.limit, input.offset);
+    pagination = ` ORDER BY ${input.sort === "duration" ? "v.duration_seconds DESC NULLS LAST" : "position"},v.id LIMIT $${selectionParams.length - 1} OFFSET $${selectionParams.length}`;
+  }
+  const candidates = await db.query(
+    `SELECT v.*,${positionSql} AS position FROM videos v WHERE ${selectionFilter}${pagination}`,
+    selectionParams,
+  );
+  const rows = new Map<string, any>(
+    candidates.rows.map((row) => [row.id, row]),
+  );
   const ordered = [...rows.values()]
     .filter((v) => !parsed.text || scores.has(v.id) || exact.has(v.id))
     .sort((a, b) => {
@@ -135,7 +160,9 @@ export async function search(db: Database, input: SearchInput) {
         );
       return a.position - b.position || a.id.localeCompare(b.id);
     });
-  const page = ordered.slice(input.offset, input.offset + input.limit);
+  const page = parsed.text
+    ? ordered.slice(input.offset, input.offset + input.limit)
+    : ordered;
   const memberships = page.length
     ? (
         await db.query(
@@ -162,5 +189,10 @@ export async function search(db: Database, input: SearchInput) {
         : (reasons.get(row.id) ??
           (parsed.text ? "Correspondance dans les métadonnées" : "")),
   }));
-  return { results, total: ordered.length, degraded, mode: input.mode };
+  return {
+    results,
+    total: browseTotal ?? ordered.length,
+    degraded,
+    mode: input.mode,
+  };
 }

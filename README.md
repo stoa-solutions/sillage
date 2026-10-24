@@ -25,6 +25,14 @@ Le mode **Textes et souvenirs** combine mots-clés et sens du texte. Le mode **M
 
 **Utiliser le mode local** retrouve la bibliothèque existante de cet ordinateur. Cette copie conserve la date de son dernier import ; elle ne contient pas automatiquement les nouvelles vidéos du serveur. **État des playlists → Copier ma bibliothèque locale vers le serveur** télécharge d’abord une sauvegarde et conserve l’original.
 
+## Configuration personnelle et redistribution
+
+Dans **Réglages → Ton IA musicale**, chaque jeton peut utiliser une clé Gemini personnelle et choisir le modèle. La clé est chiffrée sur le serveur, jamais incluse dans les exports ni renvoyée au client. Un changement de modèle ne demande pas de la ressaisir. Le serveur doit configurer `DJ_SETTINGS_ENCRYPTION_KEY` pour activer cette fonction.
+
+Le client peut se connecter à un serveur HTTPS choisi lors de la première connexion. Chrome demande l’accès uniquement à cette origine. Un serveur correspond toujours à une bibliothèque privée : les jetons de ce serveur partagent cette bibliothèque. Le paquet redistribuable ne constitue pas un service public multiutilisateur.
+
+Voir [l’architecture et la trajectoire Mac](docs/architecture.md) pour les frontières de code, les secrets et les limites actuelles.
+
 ## Mode DJ
 
 Une fois connecté, cliquez sur **Mode DJ**. Depuis le panneau latéral, le DJ s’ouvre dans un onglet pour garder le lecteur et la demande d’autorisation du micro visibles. Décrivez votre mood dans le chat ou avec le micro : le DJ cherche dans votre bibliothèque par MCP et prépare une file de titres. **Me répondre à voix haute** active la voix du DJ. Le micro fonctionne au clic et peut demander une autorisation Chrome. Le chat et les métadonnées utiles à la sélection sont transmis à Gemini ; la clé reste sur le serveur.
