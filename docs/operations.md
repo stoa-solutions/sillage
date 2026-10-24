@@ -32,3 +32,13 @@ Pour un retour arrière, arrêter le worker via Dokploy, redéployer le commit p
 Configurer la sauvegarde native Dokploy de la base dédiée vers la destination privée R2 existante, sous son propre préfixe `playlist-recall/daily`, chaque jour à 02:30 UTC, rétention 30 versions. Déclencher une sauvegarde manuelle et vérifier l’objet distant et une restauration isolée avec PostgreSQL 17/pgvector. Comparer les comptes de playlists, vidéos, appartenances et vecteurs. Ne jamais utiliser la base Stoa comme cible.
 
 Les sauvegardes contiennent les liens non répertoriés et les hash de jetons : garder les objets privés. Les secrets Dokploy et les modèles ne sont pas dans l’export de métadonnées de l’extension. Le guide de déploiement et les modèles épinglés permettent de reconstruire l’application ; la base sauvegardée contient aussi la file et les index.
+
+## Reprise du 24 octobre 2026
+
+Le worker avait disparu alors que l’API et l’inférence étaient saines. Recréer le service `worker` du Compose existant rétablit les traitements ; `restart: unless-stopped` conserve le redémarrage après incident ou reboot. Ne pas se fier à `/health` seul : contrôler aussi le conteneur worker et la progression des tâches.
+
+Les miniatures HTTP 404/410 sont désormais enregistrées comme indisponibles, sans cinq tentatives inutiles. Une vérification reste possible après 24 heures ; les erreurs transitoires restent réessayées. Sans clé YouTube, le worker traite les index mais laisse les synchronisations et enrichissements en attente sans consommer leurs tentatives.
+
+La connexion existante de l’extension est migrée vers `chrome.storage.local`, avec conservation du jeton aux rechargements et mises à jour. Elle ne contient pas la clé YouTube. Le jeton serveur n’expire pas automatiquement ; il reste révocable. Une coupure réseau ne supprime pas la connexion.
+
+Les playlists sont actualisées toutes les six heures lorsque `SYNC_ENABLED=true` et la clé est configurée. L’interface consulte le serveur toutes les dix secondes. Le paquet Chrome chargé depuis `extension/` reste une extension locale : le remplacer puis le recharger dans Chrome met son code à jour ; cela ne constitue pas une distribution automatique via le Chrome Web Store.
