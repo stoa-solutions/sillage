@@ -107,6 +107,8 @@ final class PlayerContainerView: NSView {
     webView.autoresizingMask = [.width, .height]
     webView.frame = bounds
     addSubview(webView)
+    setAccessibilityElement(false)
+    setAccessibilityChildren([webView])
   }
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
