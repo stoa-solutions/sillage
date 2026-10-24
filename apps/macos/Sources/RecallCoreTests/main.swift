@@ -15,12 +15,7 @@ do {
   let tracks = try Catalog.parse(Data(source.utf8))
   try expect(
     tracks.count == 1 && tracks[0].durationSeconds == 1480, "Import or deduplication failed")
-  try expect(
-    Catalog.search("Mac Miller", tracks: tracks).first?.id == "abcdefghijk", "Artist search failed")
   let long = Track(id: "12345678901", title: "Été au café", durationSeconds: 7200)
-  try expect(Catalog.search("ete", tracks: [long]) == [long], "Accent or duration lookup failed")
-  try expect(
-    Catalog.search("ete", tracks: [long], excluded: [long.id]).isEmpty, "Excluded track returned")
   try expectFailure {
     _ = try Catalog.parse(Data(#"{"videos":[{"id":"bad/url","title":"bad"}]}"#.utf8))
   }
@@ -52,7 +47,7 @@ do {
   try store.save(tracks, source: .server)
   try expect(try store.read(.local) == [long], "Server cache overwrote local library")
   try expect(try store.read(.server) == tracks, "Server cache missing")
-  print("14 native behavior checks passed")
+  print("11 native behavior checks passed")
 } catch {
   fputs("Native tests failed: \(error.localizedDescription)\n", stderr)
   exit(1)

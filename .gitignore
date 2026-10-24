@@ -26,3 +26,5 @@ public/data/
 
 apps/macos/.build/
 apps/macos/.swiftpm/
+
+__pycache__/

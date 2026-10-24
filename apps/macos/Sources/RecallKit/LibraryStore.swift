@@ -1,4 +1,3 @@
-import CSQLite
 import Foundation
 
 // Each operation owns its connection. No SQLite handle crosses tasks or sources.
@@ -92,41 +91,54 @@ public struct LibraryStore: Sendable {
       }
     }
   }
+  // Every word must match first. When nothing does, any word matches and FTS5 rank orders
+  // results, so a mood query such as "jazz doux soirée" still finds candidates.
   public func search(
     _ query: String, source: Source, playlist: String? = nil, offset: Int = 0,
     limit: Int = 100, excluded: Set<String> = []
   ) throws -> [Track] {
     let words = query.components(separatedBy: CharacterSet.alphanumerics.inverted).filter {
       !$0.isEmpty
-    }.prefix(20)
-    let match = words.map { "\"" + $0 + "\"*" }.joined(separator: " AND ")
+    }.prefix(20).map { "\"" + $0 + "\"*" }
     return try database { db in
-      var sql = "SELECT v.payload FROM videos v "
-      var args: [String] = []
-      if !match.isEmpty { sql += "JOIN video_search f ON f.source=v.source AND f.id=v.id " }
-      if playlist != nil { sql += "JOIN members m ON m.source=v.source AND m.video=v.id " }
-      sql += "WHERE v.source=? "
-      args.append(source.rawValue)
-      if !match.isEmpty {
-        sql += "AND video_search MATCH ? "
-        args.append(match)
+      func filtered(_ match: String) -> (sql: String, args: [String]) {
+        var sql = "FROM videos v "
+        var args: [String] = []
+        if !match.isEmpty { sql += "JOIN video_search f ON f.source=v.source AND f.id=v.id " }
+        if playlist != nil { sql += "JOIN members m ON m.source=v.source AND m.video=v.id " }
+        sql += "WHERE v.source=? "
+        args.append(source.rawValue)
+        if !match.isEmpty {
+          sql += "AND video_search MATCH ? "
+          args.append(match)
+        }
+        if let playlist {
+          sql += "AND m.playlist=? "
+          args.append(playlist)
+        }
+        if !excluded.isEmpty {
+          let ids = Array(excluded.prefix(100))
+          sql +=
+            "AND v.id NOT IN (" + Array(repeating: "?", count: ids.count).joined(separator: ",")
+            + ") "
+          args += ids
+        }
+        return (sql, args)
       }
-      if let playlist {
-        sql += "AND m.playlist=? "
-        args.append(playlist)
+      var match = words.joined(separator: " AND ")
+      if words.count > 1 {
+        let strict = filtered(match)
+        if try db.rows("SELECT 1 " + strict.sql + "LIMIT 1", strict.args).isEmpty {
+          match = words.joined(separator: " OR ")
+        }
       }
-      if !excluded.isEmpty {
-        let ids = Array(excluded.prefix(100))
-        sql +=
-          "AND v.id NOT IN (" + Array(repeating: "?", count: ids.count).joined(separator: ",")
-          + ") "
-        args += ids
-      }
-      sql +=
-        "ORDER BY " + (playlist != nil ? "m.position" : match.isEmpty ? "v.rowid" : "rank")
-        + " LIMIT ? OFFSET ?"
-      args += [String(min(max(limit, 1), 200)), String(max(offset, 0))]
-      return try decode(db.rows(sql, args))
+      let (from, args) = filtered(match)
+      // Playlist rows keep repeated positions; callers identify rows by position.
+      let order = playlist != nil ? "m.position" : match.isEmpty ? "v.rowid" : "rank"
+      return try decode(
+        db.rows(
+          "SELECT v.payload " + from + "ORDER BY " + order + " LIMIT ? OFFSET ?",
+          args + [String(min(max(limit, 1), 200)), String(max(offset, 0))]))
     }
   }
   public func export(_ source: Source) throws -> Data {
@@ -146,14 +158,7 @@ public struct LibraryStore: Sendable {
           ).map { $0[0] }
           return [
             "playlist": ["id": list[0], "title": list[1], "url": list[2]],
-            "videos": ids.compactMap { indexed[$0] }.map { track -> [String: Any] in
-              var row: [String: Any] = [
-                "id": track.id, "title": track.title, "description": track.description ?? "",
-              ]
-              row["channel"] = track.channel
-              row["duration_seconds"] = track.durationSeconds
-              return row
-            },
+            "videos": ids.compactMap { indexed[$0] }.map(exportRow),
           ]
         }
         let assigned = Set(
@@ -163,15 +168,8 @@ public struct LibraryStore: Sendable {
         let unassigned = tracks.filter { !assigned.contains($0.id) }
         if !unassigned.isEmpty {
           collections.append([
-            "playlist": ["id": "_recall_unassigned", "title": "Autres vidéos"],
-            "videos": unassigned.map { track -> [String: Any] in
-              var row: [String: Any] = [
-                "id": track.id, "title": track.title, "description": track.description ?? "",
-              ]
-              row["channel"] = track.channel
-              row["duration_seconds"] = track.durationSeconds
-              return row
-            },
+            "playlist": ["id": LibraryDocument.unassignedID, "title": "Autres vidéos"],
+            "videos": unassigned.map(exportRow),
           ])
         }
         output = try JSONSerialization.data(
@@ -180,6 +178,14 @@ public struct LibraryStore: Sendable {
       }
       return output
     }
+  }
+  private func exportRow(_ track: Track) -> [String: Any] {
+    var row: [String: Any] = [
+      "id": track.id, "title": track.title, "description": track.description ?? "",
+    ]
+    row["channel"] = track.channel
+    row["duration_seconds"] = track.durationSeconds
+    return row
   }
   private func decode(_ rows: [[String]]) throws -> [Track] {
     try rows.map { try JSONDecoder().decode(Track.self, from: Data($0[0].utf8)) }
@@ -237,60 +243,5 @@ public struct LibraryStore: Sendable {
   private func database<T>(_ operation: (SQLiteConnection) throws -> T) throws -> T {
     let db = try SQLiteConnection(url: databaseURL)
     return try operation(db)
-  }
-}
-private final class SQLiteConnection {
-  private var handle: OpaquePointer?
-  init(url: URL) throws {
-    guard
-      sqlite3_open_v2(
-        url.path, &handle, SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil)
-        == SQLITE_OK
-    else {
-      sqlite3_close(handle)
-      throw RecallError.message("Impossible d’ouvrir la bibliothèque locale.")
-    }
-    sqlite3_busy_timeout(handle, 5000)
-  }
-  deinit { sqlite3_close(handle) }
-  func transaction(_ body: () throws -> Void) throws {
-    try exec("BEGIN IMMEDIATE")
-    do {
-      try body()
-      try exec("COMMIT")
-    } catch {
-      try? exec("ROLLBACK")
-      throw error
-    }
-  }
-  func exec(_ sql: String, _ args: [String] = []) throws { _ = try rows(sql, args) }
-  func rows(_ sql: String, _ args: [String] = []) throws -> [[String]] {
-    if args.isEmpty, sql.contains(";") {
-      guard sqlite3_exec(handle, sql, nil, nil, nil) == SQLITE_OK else {
-        throw RecallError.message("La bibliothèque locale n’a pas pu être préparée.")
-      }
-      return []
-    }
-    var statement: OpaquePointer?
-    guard sqlite3_prepare_v2(handle, sql, -1, &statement, nil) == SQLITE_OK else {
-      throw RecallError.message("Requête de bibliothèque invalide.")
-    }
-    defer { sqlite3_finalize(statement) }
-    let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-    for (index, value) in args.enumerated() {
-      sqlite3_bind_text(statement, Int32(index + 1), value, -1, transient)
-    }
-    var result: [[String]] = []
-    while true {
-      let status = sqlite3_step(statement)
-      if status == SQLITE_DONE { return result }
-      guard status == SQLITE_ROW else {
-        throw RecallError.message("La bibliothèque locale n’a pas pu être enregistrée.")
-      }
-      result.append(
-        (0..<sqlite3_column_count(statement)).map { index in
-          sqlite3_column_text(statement, index).map { String(cString: $0) } ?? ""
-        })
-    }
   }
 }

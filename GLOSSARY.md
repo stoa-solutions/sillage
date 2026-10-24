@@ -5,4 +5,4 @@
 - **Bibliothèque locale** : vidéos et playlists conservées sur ce Mac dans SQLite, indépendantes du serveur privé.
 - **Cache serveur** : copie séparée de la bibliothèque du serveur choisi ; une synchronisation ne peut pas écrire dans la bibliothèque locale.
 - **Import** : acquisition complète d’une playlist ou d’un fichier, puis écriture transactionnelle. Un import incomplet ne remplace pas la playlist existante.
-- **Reprise** : continuation des pages YouTube déjà récupérées, avec le même lien ; aucun secret dans le point de reprise.
+- **Reprise** : continuation des pages YouTube déjà récupérées, avec le même lien, pendant 24 h ; aucun secret dans le point de reprise.

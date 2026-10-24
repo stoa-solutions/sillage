@@ -25,8 +25,12 @@ public struct YouTubePlaylistImporter: Sendable {
   public typealias Fetch = @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
   private let fetch: Fetch
   private let directory: URL
-  public init(directory: URL, fetch: Fetch? = nil) {
+  private let resumeWindow: TimeInterval
+  /// A checkpoint older than `resumeWindow` restarts the import: YouTube page tokens describe
+  /// the playlist as it was, and mixing old and new pages shifts positions.
+  public init(directory: URL, resumeWindow: TimeInterval = 24 * 3600, fetch: Fetch? = nil) {
     self.directory = directory
+    self.resumeWindow = resumeWindow
     self.fetch =
       fetch ?? { request in
         let session = URLSession(
@@ -41,6 +45,7 @@ public struct YouTubePlaylistImporter: Sendable {
   }
   private struct Checkpoint: Codable {
     var title: String
+    var startedAt: Date? = Date()
     var tracks: [Track] = []
     var ids: [String] = []
     var next: String = ""
@@ -66,14 +71,24 @@ public struct YouTubePlaylistImporter: Sendable {
     try FileManager.default.createDirectory(
       at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
     let file = directory.appendingPathComponent(id + ".json")
-    var checkpoint: Checkpoint
-    let resumed = FileManager.default.fileExists(atPath: file.path)
-    if resumed {
+    var saved: Checkpoint?
+    if FileManager.default.fileExists(atPath: file.path) {
       let data = try Data(contentsOf: file)
       guard data.count < 40 * 1024 * 1024 else {
         throw RecallError.message("Import en attente trop volumineux.")
       }
-      checkpoint = try JSONDecoder().decode(Checkpoint.self, from: data)
+      // Unreadable, legacy or expired checkpoints restart from the first page.
+      let decoded = try? JSONDecoder().decode(Checkpoint.self, from: data)
+      if let started = decoded?.startedAt, Date().timeIntervalSince(started) < resumeWindow {
+        saved = decoded
+      } else {
+        try FileManager.default.removeItem(at: file)
+      }
+    }
+    let resumed = saved != nil
+    var checkpoint: Checkpoint
+    if let saved {
+      checkpoint = saved
     } else {
       let info = try await get("playlists", params: ["part": "snippet", "id": id], key: key)
       guard let item = (info["items"] as? [[String: Any]])?.first,
@@ -120,11 +135,11 @@ public struct YouTubePlaylistImporter: Sendable {
       }
       checkpoint.next = page["nextPageToken"] as? String ?? ""
       checkpoint.complete = checkpoint.next.isEmpty
-      let saved = try JSONEncoder().encode(checkpoint)
-      guard saved.count < 40 * 1024 * 1024 else {
+      let encoded = try JSONEncoder().encode(checkpoint)
+      guard encoded.count < 40 * 1024 * 1024 else {
         throw RecallError.message("Playlist trop volumineuse pour cet import (40 Mo maximum).")
       }
-      try saved.write(to: file, options: .atomic)
+      try encoded.write(to: file, options: .atomic)
       try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
       await progress(checkpoint.count)
     }

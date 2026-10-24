@@ -97,6 +97,12 @@ actor Fixture {
       try check(
         try store.search("Mac Miller", source: .local, excluded: [a.id]).map(\.id) == [b.id],
         "DJ exclusion failed")
+      try check(
+        try store.search("jazz doux cafe", source: .local).map(\.id) == [b.id],
+        "Mood query without a full match found nothing")
+      try check(
+        try store.search("cafe self", source: .local, excluded: [b.id]).map(\.id) == [a.id],
+        "Broadened search ignored exclusions")
       try rejects {
         try store.commit(
           LibraryDocument(
@@ -177,11 +183,29 @@ actor Fixture {
         "Cancelled import didn't resume")
       let orphan = Track(id: "orphan00001", title: "Unassigned")
       try store.commit(LibraryDocument(tracks: [orphan], playlists: []), source: .local)
+      let reparsed = try LibraryDocument.parse(store.export(.local))
       try check(
-        try LibraryDocument.parse(store.export(.local)).tracks.contains(where: {
-          $0.id == orphan.id && $0.title == orphan.title
-        }),
+        reparsed.tracks.contains(where: { $0.id == orphan.id && $0.title == orphan.title }),
         "Export lost unassigned video")
+      try check(
+        !reparsed.playlists.contains(where: { $0.id == LibraryDocument.unassignedID }),
+        "Unassigned export bucket became a playlist")
+      let staleFixture = Fixture(failSecond: true)
+      let staleDirectory = root.appendingPathComponent("stale")
+      do {
+        _ = try await YouTubePlaylistImporter(
+          directory: staleDirectory, fetch: { try await staleFixture.fetch($0) }
+        ).load(link: link, key: String(repeating: "k", count: 24))
+        throw RecallError.message("Quota failure expected")
+      } catch {}
+      let restarted = try await YouTubePlaylistImporter(
+        directory: staleDirectory, resumeWindow: 0, fetch: { try await staleFixture.fetch($0) }
+      ).load(link: link, key: String(repeating: "k", count: 24))
+      let staleCalls = await staleFixture.calls
+      try check(
+        !restarted.resumed && restarted.document.playlists[0].videoIDs == [a.id, a.id, b.id]
+          && staleCalls == 6,
+        "Expired checkpoint was resumed")
       // Measured large local import, bounded page retrieval; no network or personal data.
       let bulk = (0..<10_000).map {
         Track(id: String(format: "%011d", $0), title: "Library track \($0)", channel: "Bulk artist")
@@ -196,7 +220,7 @@ actor Fixture {
         try store.search("", source: .server, offset: 100, limit: 100).count == 100,
         "Bounded page failed")
       print(
-        "Library regression scenarios passed: migration, transactions, sources, playlists, FTS, URL validation, quota/resume, export. 10,000 synthetic videos imported in \(String(format:"%.2f",duration)) s."
+        "Library regression scenarios passed: migration, transactions, sources, playlists, FTS, URL validation, quota/resume/expiry, broadened FTS, export. 10,000 synthetic videos imported in \(String(format:"%.2f",duration)) s."
       )
     } catch {
       fputs("Library tests failed: \(error.localizedDescription)\n", stderr)

@@ -2,7 +2,8 @@ import RecallKit
 import SwiftUI
 
 struct SettingsView: View {
-  @EnvironmentObject var model: AppModel
+  @EnvironmentObject var session: Session
+  @EnvironmentObject var library: LibraryModel
   @State private var key = ""
   @State private var youtubeKey = ""
   @State private var serverURL = ""
@@ -10,22 +11,22 @@ struct SettingsView: View {
   @State private var message = ""
   var body: some View {
     Form {
-      if model.loadingCredentials {
+      if session.loadingCredentials {
         Text(
           "Accès au Trousseau en attente de validation macOS. Tes clés existantes seront conservées."
         ).font(.caption)
       }
       Section("Ton IA musicale") {
-        Picker("Modèle", selection: $model.model) {
+        Picker("Modèle", selection: $session.model) {
           Text("Gemini 3.8 Flash · rapide et équilibré").tag("gemini-3.8-flash")
           Text("Gemini 3.5 Flash-Lite · très rapide").tag("gemini-3.5-flash-lite")
           Text("Gemini 4 Argon · raisonnement avancé").tag("gemini-4-argon")
         }
         SecureField(
-          model.hasKey ? "Nouvelle clé Gemini (laisser vide pour conserver)" : "Ta clé API Gemini",
+          session.hasKey ? "Nouvelle clé Gemini (laisser vide pour conserver)" : "Ta clé API Gemini",
           text: $key)
         Text(
-          model.hasKey
+          session.hasKey
             ? "Clé enregistrée dans le Trousseau de ce Mac."
             : "Ajoute ta clé pour utiliser ton projet Google. Sans clé personnelle, le DJ du serveur connecté peut être utilisé."
         ).font(.caption).foregroundStyle(.secondary)
@@ -35,7 +36,7 @@ struct SettingsView: View {
       }
       Section("Import YouTube sur ce Mac") {
         SecureField(
-          model.hasYouTubeKey
+          session.hasYouTubeKey
             ? "Nouvelle clé YouTube (vide pour conserver)" : "Clé YouTube Data API",
           text: $youtubeKey)
         Text(
@@ -46,9 +47,18 @@ struct SettingsView: View {
           destination: URL(string: "https://console.cloud.google.com/apis/credentials")!)
       }
       Section("Bibliothèque") {
-        Toggle("Utiliser mon serveur vectoriel", isOn: $model.useServer)
+        Toggle("Utiliser mon serveur vectoriel", isOn: $session.useServer)
         TextField("Adresse HTTPS du serveur (facultatif)", text: $serverURL)
         SecureField("Jeton personnel (laisser vide pour conserver)", text: $token)
+        if session.hasServer {
+          Button("Oublier ce serveur") {
+            Task {
+              await session.forgetServer()
+              serverURL = ""
+              message = "Serveur retiré de ce Mac. Ta bibliothèque locale est conservée."
+            }
+          }
+        }
         Text(
           "Sur ce Mac, ajoute un lien YouTube dans Bibliothèque ou importe un export JSON. Le serveur vectoriel reste facultatif. Les jetons d’un même serveur partagent sa bibliothèque."
         ).font(.caption).foregroundStyle(.secondary)
@@ -65,12 +75,12 @@ struct SettingsView: View {
       }
       HStack {
         Button("Enregistrer") { Task { await save() } }.buttonStyle(.borderedProminent)
-        if model.hasKey {
+        if session.hasKey {
           Button("Retirer ma clé Gemini") {
             Task {
               do {
                 try await Task.detached { try KeychainStore.remove("gemini") }.value
-                await model.refreshCredentials()
+                await session.refreshCredentials()
                 message = "Clé retirée du Trousseau."
               } catch { message = error.localizedDescription }
             }
@@ -79,7 +89,7 @@ struct SettingsView: View {
       }
       if !message.isEmpty { Text(message).font(.caption).textSelection(.enabled) }
     }.formStyle(.grouped).frame(width: 650, height: 670)
-      .onAppear { serverURL = model.connectedURL }
+      .onAppear { serverURL = session.connectedURL }
   }
   private func save() async {
     do {
@@ -98,7 +108,7 @@ struct SettingsView: View {
         }
         connection = try Connection(
           url: address, token: token.isEmpty ? previous?.token ?? "" : token)
-      } else if model.useServer {
+      } else if session.useServer {
         throw RecallError.message("Renseigne l’adresse du serveur ou désactive le mode serveur.")
       }
       let newKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -120,8 +130,8 @@ struct SettingsView: View {
       key = ""
       youtubeKey = ""
       token = ""
-      await model.refreshCredentials()
-      model.search()
+      await session.refreshCredentials()
+      library.search()
       message = "Réglages enregistrés. Tu n’auras pas à ressaisir ta clé au prochain lancement."
     } catch { message = error.localizedDescription }
   }

@@ -17,9 +17,22 @@ import SwiftUI
 }
 @main struct RecallApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
-  @StateObject private var model: AppModel
+  @StateObject private var session: Session
+  @StateObject private var library: LibraryModel
+  @StateObject private var dj: DJModel
   @State private var didBootstrap = false
-  init() { _model = StateObject(wrappedValue: AppModel()) }
+  init() {
+    let session = Session()
+    let library = LibraryModel(session: session)
+    let dj = DJModel(session: session)
+    session.onSourceChange = { [weak library, weak dj] in
+      dj?.reset()
+      library?.reset()
+    }
+    _session = StateObject(wrappedValue: session)
+    _library = StateObject(wrappedValue: library)
+    _dj = StateObject(wrappedValue: dj)
+  }
   private func bootstrap() async {
     if CommandLine.arguments.contains("--import-configuration-stdin") {
       do {
@@ -48,15 +61,16 @@ import SwiftUI
             UserDefaults.standard.set(selectedModel, forKey: "djModel")
           }
         }.value
-        model.model = UserDefaults.standard.string(forKey: "djModel") ?? "gemini-3.5-flash-lite"
-      } catch { model.error = error.localizedDescription }
+        session.model = UserDefaults.standard.string(forKey: "djModel") ?? "gemini-3.5-flash-lite"
+      } catch { session.error = error.localizedDescription }
     }
-    await model.refreshCredentials()
-    if model.useServer { model.sync() }
+    await session.refreshCredentials()
+    if session.useServer { library.sync() }
   }
   var body: some Scene {
     WindowGroup("Playlist Recall") {
-      MainView().environmentObject(model).preferredColorScheme(.light)
+      MainView().environmentObject(session).environmentObject(library).environmentObject(dj)
+        .preferredColorScheme(.light)
         .frame(minWidth: 1000, minHeight: 700)
         .task {
           if !didBootstrap {
@@ -65,8 +79,8 @@ import SwiftUI
           }
         }
         .onDisappear {
-          model.cancel()
-          model.player.command("pause")
+          dj.cancel()
+          dj.player.command("pause")
         }
     }
     .defaultSize(width: 1180, height: 800)
@@ -76,11 +90,14 @@ import SwiftUI
           .disabled(delegate.updater == nil)
       }
       CommandGroup(replacing: .newItem) {
-        Button("Importer une bibliothèque…") { model.importLibrary() }.keyboardShortcut("o")
-        Button("Exporter la bibliothèque…") { model.exportLibrary() }.keyboardShortcut(
+        Button("Importer une bibliothèque…") { library.importFile() }.keyboardShortcut("o")
+        Button("Exporter la bibliothèque…") { library.export() }.keyboardShortcut(
           "e", modifiers: [.command, .shift])
       }
     }
-    Settings { SettingsView().environmentObject(model).preferredColorScheme(.light) }
+    Settings {
+      SettingsView().environmentObject(session).environmentObject(library)
+        .preferredColorScheme(.light)
+    }
   }
 }

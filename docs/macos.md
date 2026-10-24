@@ -22,16 +22,22 @@ Chaque serveur garde une bibliothèque commune à ses jetons, pas un compte isol
 
 | Module | Rôle |
 | --- | --- |
-| `RecallKit/Models.swift` | Contrats, validation des imports, recherche locale et validation des sélections IA. |
-| `RecallKit/LibraryStore.swift` | SQLite, FTS5, playlists, transactions et sources séparées. |
-| `RecallKit/YouTubePlaylistImporter.swift` | Liens, pages YouTube, quota et reprise sans secrets. |
+| `RecallKit/Models.swift` | Contrats, validation des imports et des sélections IA. |
+| `RecallKit/LibraryStore.swift` | SQLite, FTS5, playlists, transactions et sources séparées. Tous les mots d’abord, puis n’importe lequel si rien ne correspond. |
+| `RecallKit/SQLiteConnection.swift` | Connexion par opération, transactions, erreurs SQLite détaillées. |
+| `RecallKit/YouTubePlaylistImporter.swift` | Liens, pages YouTube, quota et reprise sans secrets, valable 24 h. |
 | `RecallKit/HTTPClient.swift` | API privée et client MCP HTTP authentifié. |
 | `RecallKit/GeminiDJ.swift` | Dialogue avec outils, bornes de recherche et voix. |
 | `RecallMac/KeychainStore.swift` | Secrets natifs. |
 | `RecallAudio/Microphone.swift` | Autorisation, capture, dictée et arrêt. |
 | `RecallMac/Player.swift` | WebKit et messages du lecteur strictement contrôlés. |
-| `RecallMac/AppModel.swift` | État de session, annulation, file et coordination. |
-| `RecallMac/RecallApp.swift` | Cycle de vie, fenêtres et Sparkle. |
+| `RecallMac/Session.swift` | Clés, source active (Mac ou serveur), messages d’erreur et d’information. |
+| `RecallMac/LibraryModel.swift` | Navigation, imports, synchronisation serveur et export. |
+| `RecallMac/DJModel.swift` | Conversation, file de lecture, micro. |
+| `RecallMac/VoiceOutput.swift` | Voix Gemini, voix macOS de secours, atténuation du lecteur. |
+| `RecallMac/RecallApp.swift` | Cycle de vie, fenêtres, Sparkle ; relie les modèles au changement de source. |
+
+Seule `Session` change la source. Ce changement annule les imports, synchronisations et réponses du DJ en cours ; leurs résultats tardifs sont ignorés. Les lignes de résultats et de file sont identifiées par position, car une playlist ou la file peut répéter une vidéo.
 
 Les accès au Trousseau sont lancés hors du thread de l’interface, afin qu’une demande macOS ne bloque pas la fenêtre. Une compilation locale ad hoc peut nécessiter de réautoriser le nouveau binaire à lire les clés existantes. Une identité Developer ID stable sera nécessaire pour rendre la distribution publique plus fluide.
 
@@ -119,7 +125,7 @@ Dans Bibliothèque, choisir « Sur ce Mac ». Pour récupérer les données déj
 3. Choisir la playlist dans le filtre pour retrouver son ordre. Les vidéos privées/supprimées sont ignorées et leur nombre est indiqué. Les playlists privées nécessiteraient OAuth et ne sont pas prises en charge.
 4. En cas de quota, panne ou annulation, réutiliser le même lien pour reprendre. La playlist n’est enregistrée qu’une fois la récupération terminée. Réimporter un lien terminé actualise son contenu sans multiplier les fiches vidéo.
 
-Le stockage est `library.sqlite` dans Application Support/Playlist Recall, avec tables de sources, vidéos, playlists, positions et index FTS5. Les anciens JSON restent présents pour récupération. Les points de reprise se trouvent dans `imports/` et ne contiennent aucune clé. Les exports conservent les collections et leur ordre, dans le format Recall.
+Le stockage est `library.sqlite` dans Application Support/Playlist Recall, avec tables de sources, vidéos, playlists, positions et index FTS5. Les anciens JSON restent présents pour récupération. Les points de reprise se trouvent dans `imports/` et ne contiennent aucune clé. Au-delà de 24 h, l’import repart de la première page : les jetons de page YouTube décrivent la playlist à un instant donné. Le groupe « Autres vidéos » d’un export redevient des vidéos sans playlist à l’import. Les exports conservent les collections et leur ordre, dans le format Recall.
 
 L’écran et le DJ lisent les résultats locaux indexés, avec des pages de 100 résultats pour l’écran. Le compteur total est distinct de la page affichée. Aucun catalogue personnel n’est embarqué dans l’archive universelle. SQLite est celui de macOS : pas d’installation supplémentaire.
 

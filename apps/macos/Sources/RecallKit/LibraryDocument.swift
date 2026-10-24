@@ -14,6 +14,8 @@ public struct LibraryPlaylist: Codable, Identifiable, Sendable, Equatable {
   }
 }
 public struct LibraryDocument: Sendable {
+  /// Export bucket for videos outside every playlist. Its videos import; the bucket does not.
+  public static let unassignedID = "_recall_unassigned"
   public let tracks: [Track]
   public let playlists: [LibraryPlaylist]
   public init(tracks: [Track], playlists: [LibraryPlaylist]) {
@@ -28,10 +30,11 @@ public struct LibraryDocument: Sendable {
     let valid = Set(tracks.map(\.id))
     let collections = object["collections"] as? [[String: Any]] ?? [object]
     var identifiers = Set<String>()
-    let playlists = try collections.enumerated().map { index, row -> LibraryPlaylist in
+    let playlists = try collections.enumerated().compactMap { index, row -> LibraryPlaylist? in
       let raw = row["videos"] as? [[String: Any]] ?? row["entries"] as? [[String: Any]] ?? []
       let metadata = row["playlist"] as? [String: Any] ?? row
       let original = metadata["id"] as? String
+      if original == unassignedID { return nil }
       let digest = SHA256.hash(data: Data((fallbackTitle + String(index)).utf8)).prefix(12).map {
         String(format: "%02x", $0)
       }.joined()

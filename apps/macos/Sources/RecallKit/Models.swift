@@ -97,32 +97,6 @@ public enum Catalog {
         description: String((row["description"] as? String ?? "").prefix(10000)))
     }
   }
-  public static func search(_ query: String, tracks: [Track], excluded: Set<String> = []) -> [Track]
-  {
-    let normalize: (String) -> String = {
-      $0.folding(
-        options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "fr_FR"))
-    }
-    let text = normalize(query)
-    let terms = text.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
-    var ranked: [(track: Track, score: Int)] = []
-    for track in tracks where !excluded.contains(track.id) {
-      let title = normalize(track.title)
-      let artist = normalize(track.channel ?? "")
-      let metadata = normalize(track.description ?? "")
-      var score = title.contains(text) && !text.isEmpty ? 100 : 0
-      if artist.contains(text) && !text.isEmpty { score += 80 }
-      for term in terms {
-        if title.contains(term) { score += 10 }
-        if artist.contains(term) { score += 8 }
-        if metadata.contains(term) { score += 1 }
-      }
-      if terms.isEmpty || score > 0 { ranked.append((track, score)) }
-    }
-    ranked.sort { a, b in a.score == b.score ? a.track.id < b.track.id : a.score > b.score }
-    return ranked.prefix(30).map { $0.track }
-  }
-
   public static func validateSelection(ids: [String], candidates: [String: Track]) throws -> [Track]
   {
     guard ids.count <= 8, ids.allSatisfy({ candidates[$0] != nil }) else {
