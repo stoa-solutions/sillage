@@ -52,7 +52,11 @@ struct MainView: View {
             }.buttonStyle(.plain)
           }.padding(10).background(Color.green.opacity(0.08))
         }
-        if tab == "dj" { DJView(model: model) } else { LibraryView().environmentObject(model) }
+        if tab == "dj" {
+          DJView(model: model)
+        } else {
+          LibraryView(onPlay: { tab = "dj" }).environmentObject(model)
+        }
       }.background(cream)
     }.tint(forest)
   }
@@ -184,6 +188,7 @@ struct DJView: View {
   }
 }
 struct LibraryView: View {
+  let onPlay: () -> Void
   @EnvironmentObject var model: AppModel
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
@@ -213,9 +218,10 @@ struct LibraryView: View {
           Spacer()
           Button {
             model.play(track)
+            onPlay()
           } label: {
             Image(systemName: "play.fill")
-          }
+          }.buttonStyle(.borderless).accessibilityLabel("Lire " + track.title)
         }
       }.scrollContentBackground(.hidden)
       if model.tracks.isEmpty {

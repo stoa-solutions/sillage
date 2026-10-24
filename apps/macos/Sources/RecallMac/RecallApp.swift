@@ -50,7 +50,7 @@ import SwiftUI
   }
   var body: some Scene {
     WindowGroup("Playlist Recall") {
-      MainView().environmentObject(model)
+      MainView().environmentObject(model).preferredColorScheme(.light)
         .frame(minWidth: 1000, minHeight: 700)
         .task {
           if !didBootstrap {
@@ -75,6 +75,6 @@ import SwiftUI
           "e", modifiers: [.command, .shift])
       }
     }
-    Settings { SettingsView().environmentObject(model) }
+    Settings { SettingsView().environmentObject(model).preferredColorScheme(.light) }
   }
 }
