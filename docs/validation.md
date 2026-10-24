@@ -2,7 +2,7 @@
 
 ## Livré et vérifié
 
-- Monorepo privé `SamuelChojnacki/playlist-recall`, branche `codex/server-recall`.
+- Monorepo privé `SamuelChojnacki/playlist-recall`, branche `main` (anciennement `codex/server-recall`).
 - API HTTPS authentifiée, PostgreSQL 17/pgvector dédié, worker et calcul CPU isolé déployés dans Dokploy. Route `/health` relue indépendamment avec le SHA de release. Une requête de bibliothèque sans jeton renvoie 401.
 - 2 792 vidéos et 2 818 appartenances importées depuis l’ancienne bibliothèque ; 2 666 titres avec passages textuels indexés. Le fichier local original est inchangé (empreinte vérifiée), ancien paquet V1 conservé dans `.runtime/before-v2/extension`.
 - Les 13 fichiers des modèles ont la même empreinte avant et après transfert sur le VPS. Les véritables encodeurs E5 et SigLIP produisent respectivement 384 et 768 dimensions.
