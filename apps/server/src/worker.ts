@@ -19,7 +19,7 @@ while (!stopping) {
       await schedule(pool);
       scheduled = Date.now();
     }
-    const job = await claim(pool);
+    const job = await claim(pool, Boolean(process.env.YOUTUBE_API_KEY));
     if (!job) {
       await delay(1000);
       continue;

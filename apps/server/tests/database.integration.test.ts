@@ -7,7 +7,7 @@ import { createApp } from "../src/app.ts";
 import { enqueue, claim, finish, schedule } from "../src/queue.ts";
 import { infer } from "../src/inference-client.ts";
 import { indexText, indexImage } from "../src/indexing.ts";
-import { importLibrary, syncPlaylist } from "../src/library.ts";
+import { enqueueMissing, importLibrary, syncPlaylist } from "../src/library.ts";
 import { YouTube } from "../src/youtube.ts";
 import type { LibraryImport } from "@playlist-recall/core/types";
 vi.mock("../src/inference-client.ts", () => ({ infer: vi.fn() }));
@@ -341,4 +341,37 @@ it("queues a due playlist once and advances its six-hour schedule", async () => 
       )
     ).rows[0].future,
   ).toBe(true);
+});
+
+it("keeps YouTube work pending without consuming retries when the key is absent", async () => {
+  const sync = await enqueue(db, "sync", "waiting", { playlistId: "PL1234567890" });
+  await enqueue(db, "image", "available", { videoId: "abcdefghijk" });
+  const image = await claim(db, false);
+  expect(image?.kind).toBe("image");
+  await finish(db, image!);
+  expect(await claim(db, false)).toBeUndefined();
+  expect((await db.query("SELECT status,attempts FROM jobs WHERE id=$1", [sync.id])).rows[0])
+    .toEqual({ status: "pending", attempts: 0 });
+  expect((await claim(db, true))?.kind).toBe("sync");
+});
+it("records unavailable thumbnails without failing and checks them again after a day", async () => {
+  process.env.VISION_ENABLED = "true";
+  await importLibrary(db, fixture);
+  await db.query("DELETE FROM jobs");
+  vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 404 })));
+  await expect(indexImage(db, "abcdefghijk")).resolves.toBeUndefined();
+  expect(infer).not.toHaveBeenCalled();
+  expect((await db.query("SELECT image_error,image_checked_at FROM videos")).rows[0])
+    .toMatchObject({ image_error: "Miniature indisponible sur YouTube.", image_checked_at: expect.any(Date) });
+  await enqueueMissing(db);
+  expect((await db.query("SELECT count(*)::int n FROM jobs WHERE kind='image'")).rows[0].n).toBe(0);
+  await db.query("UPDATE videos SET image_checked_at=now()-interval '25 hours'");
+  await enqueueMissing(db);
+  expect((await db.query("SELECT count(*)::int n FROM jobs WHERE kind='image'")).rows[0].n).toBe(1);
+});
+it("still retries temporary thumbnail service failures", async () => {
+  process.env.VISION_ENABLED = "true";
+  await importLibrary(db, fixture);
+  vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 503 })));
+  await expect(indexImage(db, "abcdefghijk")).rejects.toThrow("Miniature HTTP 503");
 });

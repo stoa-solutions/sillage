@@ -49,7 +49,30 @@ export function storedConnection(): Connection | null {
     return null;
   }
 }
-export function saveConnection(connection: Connection | null) {
+// Keep the installation connection across extension reloads and updates.
+// Migrate the existing localStorage value without changing its token.
+export async function restoreConnection(): Promise<Connection | null> {
+  const local = storedConnection();
+  if (typeof chrome === "undefined" || !chrome.storage?.local) return local;
+  if (local) {
+    await chrome.storage.local.set({ [KEY]: local });
+    return local;
+  }
+  const saved = await chrome.storage.local.get(KEY);
+  if (!saved[KEY]) return null;
+  try {
+    const connection = validateConnection(saved[KEY]);
+    localStorage.setItem(KEY, JSON.stringify(connection));
+    return connection;
+  } catch {
+    return null;
+  }
+}
+export async function saveConnection(connection: Connection | null) {
+  if (typeof chrome !== "undefined" && chrome.storage?.local) {
+    if (connection) await chrome.storage.local.set({ [KEY]: connection });
+    else await chrome.storage.local.remove(KEY);
+  }
   if (connection) localStorage.setItem(KEY, JSON.stringify(connection));
   else localStorage.removeItem(KEY);
 }

@@ -12,7 +12,7 @@ export default defineConfig({
     },
     description:
       "Retrouvez vos vidéos YouTube par souvenir, texte ou miniature. Bibliothèque locale et serveur personnel.",
-    permissions: ["sidePanel", "unlimitedStorage"],
+    permissions: ["sidePanel", "unlimitedStorage", "storage"],
     host_permissions: ["https://recall.stoa.solutions/*"],
     action: { default_title: "Ouvrir Playlist Recall" },
     content_security_policy: {

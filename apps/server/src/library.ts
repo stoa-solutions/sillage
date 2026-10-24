@@ -70,7 +70,7 @@ export async function importLibrary(db: Database, library: LibraryImport) {
 }
 export async function enqueueMissing(db: Database) {
   const { rows } = await db.query(
-    `SELECT v.id,v.content_hash,v.index_hash,v.title,v.image_checked_at,v.image_hash,i.source_hash,i.model_key AS image_model,EXISTS(SELECT 1 FROM passages p WHERE p.video_id=v.id AND p.model_key=$1) AS text_current
+    `SELECT v.id,v.content_hash,v.index_hash,v.title,v.image_checked_at,v.image_error,v.image_hash,i.source_hash,i.model_key AS image_model,EXISTS(SELECT 1 FROM passages p WHERE p.video_id=v.id AND p.model_key=$1) AS text_current
     FROM videos v LEFT JOIN images i ON i.video_id=v.id WHERE v.available AND EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active)`,
     [TEXT_KEY],
   );
@@ -80,7 +80,7 @@ export async function enqueueMissing(db: Database) {
     if (
       process.env.VISION_ENABLED === "true" &&
       (!v.image_checked_at ||
-        v.image_model !== VISION_KEY ||
+        (!v.image_error && v.image_model !== VISION_KEY) ||
         Date.now() - new Date(v.image_checked_at).getTime() > 86400000)
     )
       await enqueue(db, "image", v.id, { videoId: v.id });

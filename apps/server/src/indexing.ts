@@ -53,6 +53,8 @@ export async function indexText(db: Database, id: string) {
     ]);
   });
 }
+export class ThumbnailUnavailable extends Error {}
+
 export async function fetchThumbnail(
   url: string,
   request: typeof fetch = fetch,
@@ -68,6 +70,8 @@ export async function fetchThumbnail(
     redirect: "error",
     signal: AbortSignal.timeout(20000),
   });
+  if (response.status === 404 || response.status === 410)
+    throw new ThumbnailUnavailable("Miniature indisponible sur YouTube.");
   if (!response.ok) throw new Error(`Miniature HTTP ${response.status}`);
   if (
     !/^image\/(jpeg|png|webp)(;|$)/.test(
@@ -122,6 +126,13 @@ export async function indexImage(db: Database, id: string) {
       [id, digest, row.thumbnail_url],
     );
   } catch (error) {
+    if (error instanceof ThumbnailUnavailable) {
+      await db.query(
+        `UPDATE videos SET image_error=$2,image_checked_at=now() WHERE id=$1 AND thumbnail_url=$3`,
+        [id, error.message, row.thumbnail_url],
+      );
+      return;
+    }
     await db.query(`UPDATE videos SET image_error=$2 WHERE id=$1`, [
       id,
       error instanceof Error ? error.message : "Image indisponible",

@@ -20,16 +20,20 @@ export async function enqueue(
   );
   return rows[0];
 }
-export async function claim(db: Database): Promise<Job | undefined> {
+export async function claim(
+  db: Database,
+  youtubeConfigured = true,
+): Promise<Job | undefined> {
   // Recover a killed process without allowing its late result to finish a new lease.
   const { rows } = await db.query(
     `WITH next AS (
-    SELECT id FROM jobs WHERE (status='pending' AND available_at<=now()) OR (status='running' AND lease_until<now())
+    SELECT id FROM jobs WHERE ((status='pending' AND available_at<=now()) OR (status='running' AND lease_until<now()))
+    AND ($2::boolean OR kind NOT IN ('sync','enrich'))
     ORDER BY CASE kind WHEN 'sync' THEN 0 WHEN 'enrich' THEN 1 WHEN 'text' THEN 2 ELSE 3 END, created_at
     FOR UPDATE SKIP LOCKED LIMIT 1
   ) UPDATE jobs SET status='running', attempts=attempts+1, lease_until=now()+interval '5 minutes', lease_id=$1
     WHERE id=(SELECT id FROM next) RETURNING *`,
-    [randomUUID()],
+    [randomUUID(), youtubeConfigured],
   );
   return rows[0];
 }

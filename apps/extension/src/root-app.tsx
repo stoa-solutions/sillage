@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { App } from "./App";
 import { ConnectedApp } from "./connected-app";
 import {
   api,
   saveConnection,
   storedConnection,
+  restoreConnection,
   validateConnection,
   type Connection,
 } from "./server-client";
@@ -12,6 +13,21 @@ export function RootApp() {
   const [connection, setConnection] = useState<Connection | null>(
     storedConnection,
   );
+  const [restoring, setRestoring] = useState(true);
+  useEffect(() => {
+    let active = true;
+    void restoreConnection()
+      .then((saved) => {
+        if (active) setConnection(saved);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setRestoring(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   const [local, setLocal] = useState(
     () => localStorage.getItem("playlist-recall-mode") === "local",
   );
@@ -34,7 +50,7 @@ export function RootApp() {
     try {
       const next = validateConnection(value);
       await api(next, "status");
-      saveConnection(next);
+      await saveConnection(next);
       setConnection(next);
       mode(false);
       setSettings(false);
@@ -45,6 +61,7 @@ export function RootApp() {
       setBusy(false);
     }
   }
+  if (restoring) return <p role="status">Connexion à votre bibliothèque…</p>;
   return (
     <>
       <div className="modebar">
@@ -112,8 +129,8 @@ export function RootApp() {
                 <button
                   type="button"
                   className="btn"
-                  onClick={() => {
-                    saveConnection(null);
+                  onClick={async () => {
+                    await saveConnection(null);
                     setConnection(null);
                     mode(true);
                     setSettings(false);
