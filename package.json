@@ -19,6 +19,7 @@
     "prepare:seed": "node scripts/seed-vectors.mjs",
     "package:local": "npm run build && node scripts/package-local.mjs",
     "dev:server": "npm run dev -w @playlist-recall/server",
-    "test:integration": "npm run test:integration -w @playlist-recall/server"
+    "test:integration": "npm run test:integration -w @playlist-recall/server",
+    "package:webstore": "npm run build && python3 scripts/package-webstore.py"
   }
 }

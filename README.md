@@ -11,6 +11,12 @@ Extension Chrome avec bibliothèque locale et serveur personnel pour retrouver u
 
 Laissez le dossier `extension` en place : Chrome l'utilise directement. Après une nouvelle compilation, cliquez sur **Actualiser** dans la fiche de l'extension.
 
+## Mises à jour automatiques et publication Google
+
+La version chargée depuis un dossier nécessite un rechargement après modification des fichiers. Les changements du serveur (Gemini, recherche, synchronisation) s’appliquent sans recharger l’extension.
+
+Pour les mises à jour automatiques de l’extension, publier sur le Chrome Web Store puis installer depuis sa fiche Google. `npm run package:webstore` crée une archive dans `.output/`, sans playlists ni vecteurs personnels. Cette commande ne publie rien. Le compte développeur, la fiche, les déclarations de confidentialité et la validation Google restent nécessaires. Chrome distribue ensuite les mises à jour, qui peuvent attendre la fermeture des pages actives de l’extension.
+
 ## Connexion au serveur
 
 Lors de la première connexion seulement, cliquez sur **Connecter mon serveur**, puis **Importer la connexion** et choisissez le fichier privé fourni. Ce fichier contient votre jeton personnel : ne le partagez pas. Vous pouvez ensuite ajouter une playlist publique ou non répertoriée, actualiser et suivre la collecte et l’indexation. La synchronisation automatique passe toutes les six heures lorsqu’elle est activée côté serveur.
