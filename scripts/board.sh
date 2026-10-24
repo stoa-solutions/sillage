@@ -8,21 +8,25 @@ touch "$board"
 # mkdir is atomic: claim and release hold the lock for the whole read-modify-replace.
 locked() {
   tries=0
+  tmp=""
   until mkdir "$lock" 2>/dev/null; do
     tries=$((tries + 1))
     [ "$tries" -lt 50 ] || { echo "Tableau verrouillé ; supprimer $lock s'il est orphelin." >&2; exit 1; }
     sleep 0.1
   done
-  trap 'rmdir "$lock"' EXIT INT TERM
+  trap 'rm -f "$tmp"; rmdir "$lock"' EXIT
+  trap 'exit 130' INT TERM
   tmp=$(mktemp "$board.XXXXXX")
   "$@"
   mv "$tmp" "$board"
 }
 write_claim() {
-  grep -v "	$branch	" "$board" > "$tmp" || true
+  others
   printf '%s\t%s\t%s\t%s\n' "$agent" "$branch" "$zones" "$(date '+%Y-%m-%d %H:%M')" >> "$tmp"
 }
-write_release() { grep -v "	$branch	" "$board" > "$tmp" || true; }
+write_release() { others; }
+# Branch names are compared literally, never as patterns.
+others() { awk -F '\t' -v branch="$branch" '$2 != branch' "$board" > "$tmp"; }
 case "${1:-list}" in
   list)
     if [ -s "$board" ]; then
