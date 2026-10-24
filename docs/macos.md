@@ -94,3 +94,15 @@ Références Apple :
 - https://developer.apple.com/documentation/speech/sfspeechrecognitiontask
 - https://developer.apple.com/documentation/speech/sfspeechaudiobufferrecognitionrequest
 - https://developer.apple.com/documentation/AVFAudio/AVAudioEngine/inputNode
+
+## Plein écran et identité locale (1.0.2)
+
+Le lecteur active désormais `WKPreferences.isElementFullscreenEnabled`. Il est hébergé dans un conteneur NSView avec redimensionnement par masque d’autoresizing : SwiftUI contraint le conteneur, pas directement WKWebView. Cela applique le contournement du défaut de reparentage décrit dans https://www2.webkit.org/show_bug.cgi?id=313802. Le lecteur utilise aussi la hauteur disponible lorsque la fenêtre est agrandie.
+
+L’entrée en plein écran de la fenêtre a été observée dans l’app. Le cycle vidéo plein écran puis retour reste à vérifier après installation de la version finale.
+
+La signature ad hoc identifie une compilation par son hash : un changement de code peut donc redemander l’accès au Trousseau et au micro. Pour les essais sur ce Mac, une identité locale persistante est conservée dans le Trousseau ; seul son identifiant public est enregistré dans `~/.config/playlist-recall/local-signing.json`. Le script de compilation réutilise cette identité lorsque `MAC_SIGNING_IDENTITY` n’est pas fourni. Aucune clé privée n’est incluse dans le dépôt ou le ZIP et aucune confiance racine système n’est ajoutée. La signature locale ne remplace pas Developer ID ni la notarisation pour une distribution publique.
+
+Une autorisation initiale peut rester nécessaire après le changement d’identité. Le choix « Toujours autoriser » dans la fenêtre du Trousseau permet de retenir l’accès à cette identité, sans donner l’accès aux autres apps. Le comportement entre deux versions effectivement signées reste à valider.
+
+Références : https://developer.apple.com/documentation/webkit/wkpreferences/iselementfullscreenenabled et https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements

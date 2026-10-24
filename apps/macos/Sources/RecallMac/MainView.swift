@@ -77,7 +77,7 @@ struct DJView: View {
         Text("À TON RYTHME").font(.system(size: 10, design: .monospaced)).tracking(2)
         Text("Un mood.\nLa bonne musique.").font(.system(size: 40, weight: .medium, design: .serif))
         Text("Parle-moi de ta soirée. On trouve la suite ensemble.").foregroundStyle(.secondary)
-        PlayerView(player: player).frame(minHeight: 250, maxHeight: 310).clipShape(
+        PlayerView(player: player).frame(minHeight: 250, maxHeight: .infinity).clipShape(
           RoundedRectangle(cornerRadius: 16))
         Text(model.current?.title ?? "Prêt quand tu l’es").font(.title3).bold().lineLimit(2)
         Text(model.current?.channel ?? "Une ambiance, un artiste, une sensation…").foregroundStyle(
@@ -105,7 +105,6 @@ struct DJView: View {
             Text(track.title).font(.caption).lineLimit(1)
           }
         }
-        Spacer(minLength: 0)
       }.padding(28).frame(minWidth: 380, idealWidth: 440)
       VStack(spacing: 16) {
         HStack {

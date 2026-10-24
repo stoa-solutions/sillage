@@ -21,7 +21,10 @@ parser.add_argument("--build", default="1")
 args = parser.parse_args()
 if not re.fullmatch(r"\d+\.\d+\.\d+", args.version) or not args.build.isdigit():
     parser.error("Use a three-part version and a numeric build number")
-identity = os.environ.get("MAC_SIGNING_IDENTITY", "-")
+local_config = Path.home() / ".config/playlist-recall/local-signing.json"
+local_identity = json.loads(local_config.read_text()).get("identity") if local_config.exists() else None
+identity = os.environ.get("MAC_SIGNING_IDENTITY") or local_identity or "-"
+local_signing = not os.environ.get("MAC_SIGNING_IDENTITY") and bool(local_identity)
 architectures = ["arm64", "x86_64"] if args.universal else ["arm64" if platform.machine() == "arm64" else "x86_64"]
 for arch in architectures:
     subprocess.run(["swift", "build", "--package-path", str(project), "-c", "release", "--arch", arch], check=True)
@@ -64,7 +67,7 @@ with (contents / "Info.plist").open("wb") as handle:
     plistlib.dump(info, handle)
 entitlements = output / "entitlements.plist"
 values = {"com.apple.security.device.audio-input": True}
-if identity == "-":
+if identity == "-" or local_signing:
     values["com.apple.security.cs.disable-library-validation"] = True
 with entitlements.open("wb") as handle:
     plistlib.dump(values, handle)
@@ -73,7 +76,7 @@ subprocess.run(["codesign", "--verify", "--deep", "--strict", str(bundle)], chec
 notarized = False
 profile = os.environ.get("MAC_NOTARY_PROFILE")
 if profile:
-    if identity == "-":
+    if identity == "-" or local_signing:
         raise SystemExit("Apple notarization requires a Developer ID signing identity")
     submission = output / "notary-submission.zip"
     subprocess.run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", str(bundle), str(submission)], check=True)
@@ -97,7 +100,7 @@ if not args.skip_update_signature:
         shutil.copy2(archive, signing_copy)
         signature = subprocess.check_output([str(tools / "sign_update"), "--account", "recall-macos-updates", "-p", str(signing_copy)], text=True, timeout=120).strip()
         subprocess.run([str(tools / "sign_update"), "--account", "recall-macos-updates", "--verify", str(signing_copy), signature], check=True, timeout=120)
-manifest = {"version": args.version, "build": args.build, "architecture": label, "file": archive.name, "size": archive.stat().st_size, "signature": signature, "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(), "notarized": notarized, "signing": "ad-hoc" if identity == "-" else "Developer ID"}
+manifest = {"version": args.version, "build": args.build, "architecture": label, "file": archive.name, "size": archive.stat().st_size, "signature": signature, "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(), "notarized": notarized, "signing": "ad-hoc" if identity == "-" else "local certificate" if local_signing else "Developer ID"}
 (output / "release.json").write_text(json.dumps(manifest, indent=2) + "\n")
 print(bundle)
 print(archive)

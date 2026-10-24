@@ -16,6 +16,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     let configuration = WKWebViewConfiguration()
     configuration.mediaTypesRequiringUserActionForPlayback = []
     configuration.allowsAirPlayForMediaPlayback = true
+    configuration.preferences.isElementFullscreenEnabled = true
     let bridge = """
       window.addEventListener('message', event => {
         if(event.source === window && event.origin === location.origin && event.data?.source === 'recall-dj-player')
@@ -97,8 +98,22 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     webView.evaluateJavaScript(script, completionHandler: nil)
   }
 }
+// SwiftUI sizes this container, while WebKit remains free to reparent its view for fullscreen.
+// Direct AutoLayout constraints on WKWebView collapse its viewport during that transition.
+final class PlayerContainerView: NSView {
+  init(webView: WKWebView) {
+    super.init(frame: .zero)
+    webView.translatesAutoresizingMaskIntoConstraints = true
+    webView.autoresizingMask = [.width, .height]
+    webView.frame = bounds
+    addSubview(webView)
+  }
+  required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
 struct PlayerView: NSViewRepresentable {
   let player: Player
-  func makeNSView(context: Context) -> WKWebView { player.webView }
-  func updateNSView(_ nsView: WKWebView, context: Context) {}
+  func makeNSView(context: Context) -> PlayerContainerView {
+    PlayerContainerView(webView: player.webView)
+  }
+  func updateNSView(_ nsView: PlayerContainerView, context: Context) {}
 }
