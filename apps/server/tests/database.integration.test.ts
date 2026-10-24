@@ -454,6 +454,10 @@ it("searches available music through an MCP client and respects exclusions", asy
       arguments: { query: "jazz", maxDurationSeconds: 1200 },
     });
     expect(JSON.parse((result.content as any)[0].text).tracks).toEqual([]);
+    const requested = await excluded.client.callTool({
+      name: "library_search", arguments: { query: "jazz", includeQueued: true },
+    });
+    expect(JSON.parse((requested.content as any)[0].text).tracks[0].id).toBe("abcdefghijk");
   } finally {
     await excluded.close();
   }
