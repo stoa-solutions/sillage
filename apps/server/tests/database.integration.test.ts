@@ -458,6 +458,18 @@ it("searches available music through an MCP client and respects exclusions", asy
     await excluded.close();
   }
 });
+it("finds long music without an implicit duration cap", async () => {
+  await importLibrary(db, fixture);
+  const { connectMusicMcp } = await import("../src/music-mcp.ts");
+  await db.query("UPDATE videos SET search_document=NULL");
+  const mcp = await connectMusicMcp(db);
+  try {
+    const result = await mcp.client.callTool({name:"library_search", arguments:{query:"Blue saxophone"}});
+    expect(JSON.parse((result.content as any)[0].text).tracks.map((t:any)=>t.id)).toContain("abcdefghijk");
+    const limited = await mcp.client.callTool({name:"library_search", arguments:{query:"Blue saxophone",maxDurationSeconds:1200}});
+    expect(JSON.parse((limited.content as any)[0].text).tracks).toEqual([]);
+  } finally { await mcp.close(); }
+});
 it.skipIf(!process.env.DJ_SIMULATION_URL)(
   "runs the DJ over HTTP against a simulated model and rejects fabricated selections",
   async () => {

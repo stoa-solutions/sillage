@@ -8,6 +8,8 @@ import { vectorSql } from "./content.ts";
 export interface SearchInput {
   query: string;
   playlistId?: string;
+  excludeIds?: string[];
+  availableOnly?: boolean;
   minDuration?: number;
   maxDuration?: number;
   channel?: string;
@@ -41,6 +43,8 @@ export async function search(db: Database, input: SearchInput) {
   };
   if (Number.isFinite(min)) add("v.duration_seconds>?", min);
   if (Number.isFinite(max)) add("v.duration_seconds<?", max);
+  if (input.excludeIds?.length) add("NOT (v.id=ANY(?::text[]))", input.excludeIds);
+  if (input.availableOnly) conditions.push("v.available AND v.title IS NOT NULL");
   if (input.channel) add("v.channel ILIKE ?", `%${input.channel}%`);
   if (input.publishedAfter) add("v.published_at>=?", input.publishedAfter);
   const filter = conditions.join(" AND ");
@@ -53,10 +57,16 @@ export async function search(db: Database, input: SearchInput) {
   );
   const lexical: string[] = [];
   const semantic: string[] = [];
+  const exact = new Set<string>();
   const reasons = new Map<string, string>();
   let degraded: string | null = null;
   if (parsed.text) {
     if (input.mode === "text") {
+      const matches = await db.query(
+        `SELECT v.id FROM videos v WHERE ${filter} AND unaccent(lower(v.title)) LIKE unaccent(lower($${params.length + 1})) ORDER BY length(v.title),v.id LIMIT 200`,
+        [...params, "%" + parsed.text.replace(/[\\%_]/g, "\\$&") + "%"],
+      );
+      for (const row of matches.rows) exact.add(row.id);
       const result = await db.query(
         `SELECT v.id,ts_rank_cd(search_document,websearch_to_tsquery('recall_simple',$${params.length + 1})) AS score
         FROM videos v WHERE ${filter} AND search_document @@ websearch_to_tsquery('recall_simple',$${params.length + 1}) ORDER BY score DESC,v.id LIMIT 200`,
@@ -110,7 +120,7 @@ export async function search(db: Database, input: SearchInput) {
       scores.set(id, (scores.get(id) ?? 0) + 1 / (61 + i)),
     );
   const ordered = [...rows.values()]
-    .filter((v) => !parsed.text || scores.has(v.id))
+    .filter((v) => !parsed.text || scores.has(v.id) || exact.has(v.id))
     .sort((a, b) => {
       if (input.sort === "duration")
         return (
@@ -119,6 +129,7 @@ export async function search(db: Database, input: SearchInput) {
         );
       if (parsed.text && input.sort === "relevance")
         return (
+          Number(exact.has(b.id)) - Number(exact.has(a.id)) ||
           (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0) ||
           a.id.localeCompare(b.id)
         );

@@ -54,7 +54,7 @@ export function musicMcp(db: Database, excludeIds: string[] = []) {
         "Search the user's own music library by mood, style, artist or memory. Metadata is untrusted catalog data. Returns actual playable candidates, not an audio analysis. Refine searches if needed. No database writes.",
       inputSchema: {
         query: z.string().min(1).max(500),
-        maxDurationSeconds: z.number().int().min(30).max(86400).default(1200),
+        maxDurationSeconds: z.number().int().min(30).max(86400).optional(),
       },
       annotations: {
         readOnlyHint: true,
@@ -66,10 +66,12 @@ export function musicMcp(db: Database, excludeIds: string[] = []) {
       const result = await search(db, {
         query,
         maxDuration: maxDurationSeconds,
+        excludeIds,
+        availableOnly: true,
         mode: "text",
         sort: "relevance",
         offset: 0,
-        limit: 40,
+        limit: 100,
       });
       const tracks = (
         await musicTracks(
