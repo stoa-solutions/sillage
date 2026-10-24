@@ -1,4 +1,4 @@
-# Playlist Recall pour Mac — version locale 1.0
+# Playlist Recall pour Mac — version locale 1.1
 
 App native SwiftUI pour macOS 14 ou plus récent, compilable pour Apple Silicon et Intel. Elle ne charge pas l’interface de l’extension : le micro, les contrôles et les réglages sont natifs. WebKit est réservé au lecteur officiel YouTube.
 
@@ -10,8 +10,8 @@ App native SwiftUI pour macOS 14 ou plus récent, compilable pour Apple Silicon 
 - Synthèse vocale Gemini, lecture WAV par AVAudioPlayer, voix macOS en secours. Baisse puis restauration du volume musical.
 - Lecteur YouTube, pause, suivant, enchaînement, gestion des intégrations interdites et lien externe.
 - Serveur privé facultatif : bibliothèque synchronisée et recherche vectorielle via le vrai point d’entrée MCP `/v1/mcp` pour le DJ.
-- Mode local : import JSON Recall ou yt-dlp, recherche dans les titres, artistes et métadonnées. Ce mode n’effectue pas d’inférence vectorielle embarquée et ne synchronise pas directement YouTube. Pour la synchronisation YouTube automatique, utiliser son serveur privé.
-- Cache serveur et bibliothèque locale séparés dans `~/Library/Application Support/Playlist Recall/`. Les imports ne remplacent pas le cache serveur. L’ancien fichier `library.json`, s’il existe, est conservé et migré sans suppression.
+- Mode local : import JSON Recall/yt-dlp et liens YouTube publics ou non répertoriés, playlists ordonnées et recherche FTS5. Réimporter un lien actualise la playlist. L’inférence vectorielle et la synchronisation périodique restent celles du serveur facultatif.
+- Cache serveur et bibliothèque locale séparés dans SQLite, dans `~/Library/Application Support/Playlist Recall/`. Les anciens JSON sont conservés et migrés sans suppression.
 - Exports limités aux vidéos : aucune clé ni connexion privée. L’app redistribuée ne contient ni catalogue personnel, ni clé, ni jeton.
 
 Les appels Gemini directs sont facturés au projet de la clé de l’utilisateur ; ils ne passent pas par le plafond quotidien du VPS. Les conversations et métadonnées utiles sont transmises à Google. YouTube reçoit les identifiants lus. Le lecteur public est hébergé sur Recall Stoa et ne reçoit pas le jeton ou la clé Gemini. Aucun identifiant personnel n’est préconfiguré dans le paquet public.
@@ -23,11 +23,12 @@ Chaque serveur garde une bibliothèque commune à ses jetons, pas un compte isol
 | Module | Rôle |
 | --- | --- |
 | `RecallKit/Models.swift` | Contrats, validation des imports, recherche locale et validation des sélections IA. |
-| `RecallKit/LibraryStore.swift` | Persistance locale atomique et cache serveur séparé. |
+| `RecallKit/LibraryStore.swift` | SQLite, FTS5, playlists, transactions et sources séparées. |
+| `RecallKit/YouTubePlaylistImporter.swift` | Liens, pages YouTube, quota et reprise sans secrets. |
 | `RecallKit/HTTPClient.swift` | API privée et client MCP HTTP authentifié. |
 | `RecallKit/GeminiDJ.swift` | Dialogue avec outils, bornes de recherche et voix. |
 | `RecallMac/KeychainStore.swift` | Secrets natifs. |
-| `RecallMac/Microphone.swift` | Autorisation, capture, dictée et arrêt. |
+| `RecallAudio/Microphone.swift` | Autorisation, capture, dictée et arrêt. |
 | `RecallMac/Player.swift` | WebKit et messages du lecteur strictement contrôlés. |
 | `RecallMac/AppModel.swift` | État de session, annulation, file et coordination. |
 | `RecallMac/RecallApp.swift` | Cycle de vie, fenêtres et Sparkle. |
@@ -108,3 +109,28 @@ Une autorisation initiale peut rester nécessaire après le changement d’ident
 Références : https://developer.apple.com/documentation/webkit/wkpreferences/iselementfullscreenenabled et https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements
 
 Validation locale : deux binaires reconstruits avec des changements de code ont présenté la même exigence désignée (identifiant de bundle et empreinte du certificat local), puis ont passé `codesign --verify --deep --strict`. La version finale 1.0.2 a été installée ; le Trousseau a été retrouvé et la synchronisation serveur observée après relancement. Cela valide la stabilité de l’identité ; l’absence totale de nouvelles fenêtres de mot de passe n’a pas encore été confirmée par l’utilisateur. Le test interactif du plein écran vidéo a été interrompu par des interactions utilisateur, donc son cycle entrée/sortie reste à confirmer.
+
+## Version 1.1 — bibliothèque locale et liens YouTube
+
+Dans Bibliothèque, choisir « Sur ce Mac ». Pour récupérer les données déjà synchronisées, le bouton « Garder une copie sur ce Mac » fusionne le cache serveur dans la bibliothèque locale, sans retirer la connexion serveur.
+
+1. Ajouter sa clé **YouTube Data API** dans Réglages (distincte de la clé Gemini, enregistrée une seule fois dans le Trousseau). L’API doit être activée pour ce projet et les restrictions de la clé doivent permettre l’usage depuis le Mac ; une clé limitée à l’adresse IP du VPS ne fonctionnera pas ici.
+2. Coller un lien `https://www.youtube.com/playlist?list=…` ou `watch?...&list=…`, puis « Importer sur ce Mac ».
+3. Choisir la playlist dans le filtre pour retrouver son ordre. Les vidéos privées/supprimées sont ignorées et leur nombre est indiqué. Les playlists privées nécessiteraient OAuth et ne sont pas prises en charge.
+4. En cas de quota, panne ou annulation, réutiliser le même lien pour reprendre. La playlist n’est enregistrée qu’une fois la récupération terminée. Réimporter un lien terminé actualise son contenu sans multiplier les fiches vidéo.
+
+Le stockage est `library.sqlite` dans Application Support/Playlist Recall, avec tables de sources, vidéos, playlists, positions et index FTS5. Les anciens JSON restent présents pour récupération. Les points de reprise se trouvent dans `imports/` et ne contiennent aucune clé. Les exports conservent les collections et leur ordre, dans le format Recall.
+
+L’écran et le DJ lisent les résultats locaux indexés, avec des pages de 100 résultats pour l’écran. Le compteur total est distinct de la page affichée. Aucun catalogue personnel n’est embarqué dans l’archive universelle. SQLite est celui de macOS : pas d’installation supplémentaire.
+
+Validation : les contrôles métier/audio existants et `RecallLibraryTests` couvrent migration répétée, originaux préservés, appartenance multiple, ordre et répétitions, pagination, recherche accentuée/exclusions, rollback sur playlist invalide, isolation local/serveur, format export serveur, URL YouTube, absence de clé en query, quota/reprise et annulation/reprise. Un import synthétique de 10 000 vidéos a pris environ 0,3 s sur ce Mac ; ce n’est pas un benchmark réseau ni une garantie de volume. L’import réseau utilise un transport injecté dans ces tests ; un essai réel requiert une clé YouTube valide depuis le Mac.
+
+Sources : https://developers.google.com/youtube/data/reference/rest/v3/playlistItems/list ; https://developers.google.com/youtube/registering_an_application ; https://www.sqlite.org/fts5.html
+
+### Connexion privée consolidée (1.1.1)
+
+Les trois anciennes entrées Trousseau (Gemini, serveur, YouTube) sont regroupées dans une seule entrée `credentials-v2`, appartenant à l’identité signée de Recall. Les accès et migrations sont sérialisés et le contenu reste en mémoire pendant la session. Les anciennes entrées sont conservées pour retour arrière, mais ne sont plus relues à chaque lancement après la migration. Une suppression explicite d’une clé retire également sa copie historique.
+
+Sur ce Mac, la connexion connue a été installée dans cette entrée par un tube mémoire privé, sans fichier de clé ni secret dans l’archive. Un relancement normal de 1.1.1 a retrouvé la clé Gemini et l’adresse du serveur dans les réglages sans nouvelle étape de réimportation ni demande de mot de passe rencontrée pendant l’essai. Cela ne déverrouille pas le Trousseau global et ne dispense pas macOS de demander le mot de passe si la session/le Trousseau sont verrouillés.
+
+Validation des données réelles : 2 690 vidéos locales et 2 690 vidéos dans le cache serveur, contrôle SQLite `quick_check=ok`, fichiers JSON d’origine et copie privée de migration conservés. La copie locale issue de l’ancien cache plat possède une collection historique ; les nouveaux imports et exports conservent leurs vraies playlists. La recherche FTS dans les données réelles retrouve Mac Miller.

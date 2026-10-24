@@ -26,7 +26,7 @@ struct MainView: View {
             maxWidth: .infinity, alignment: .leading)
         }
         Spacer()
-        Text("\(model.tracks.count) vidéos").font(.headline)
+        Text("\(model.libraryCount) vidéos").font(.headline)
         Text(
           model.useServer ? "Recherche vectorielle · ton serveur" : "Bibliothèque locale · ce Mac"
         ).font(.caption).foregroundStyle(.secondary)
@@ -198,10 +198,48 @@ struct LibraryView: View {
       HStack {
         Text("Ta bibliothèque.").font(.largeTitle)
         Spacer()
-        Button("Importer JSON…") { model.importLibrary() }
+        Button("Importer JSON…") { model.importLibrary() }.disabled(model.importing)
         if model.hasServer {
           Button(model.syncing ? "Synchronisation…" : "Synchroniser") { model.sync() }.disabled(
             model.syncing)
+        }
+      }
+      if model.hasServer {
+        Picker("Bibliothèque", selection: $model.useServer) {
+          Text("Sur ce Mac").tag(false)
+          Text("Mon serveur").tag(true)
+        }.pickerStyle(.segmented)
+      }
+      if model.useServer {
+        Button("Garder une copie sur ce Mac") { model.copyServerLocally() }.disabled(
+          model.importing || model.syncing)
+      }
+      HStack {
+        TextField("Coller le lien d’une playlist YouTube…", text: $model.playlistLink)
+          .textFieldStyle(.roundedBorder)
+          .onSubmit { model.importPlaylist() }
+        Button("Importer sur ce Mac") { model.importPlaylist() }.disabled(
+          model.importing || model.playlistLink.isEmpty || model.loadingCredentials)
+      }
+      if model.importing {
+        HStack {
+          ProgressView().controlSize(.small)
+          Text(model.importProgress).font(.caption)
+          Button("Annuler") { model.cancelImport() }
+        }
+      } else if !model.hasYouTubeKey {
+        HStack {
+          Text("Pour importer par lien, ajoute ta clé YouTube une seule fois.").font(.caption)
+            .foregroundStyle(.secondary)
+          SettingsLink { Text("Configurer") }
+        }
+      }
+      if !model.playlists.isEmpty {
+        Picker("Playlist", selection: $model.selectedPlaylist) {
+          Text("Toutes les playlists").tag("")
+          ForEach(model.playlists) { playlist in
+            Text("\(playlist.title) · \(playlist.videoIDs.count)").tag(playlist.id)
+          }
         }
       }
       TextField("Un artiste, un titre, un souvenir…", text: $model.query).textFieldStyle(
@@ -227,9 +265,10 @@ struct LibraryView: View {
           }.buttonStyle(.borderless).accessibilityLabel("Lire " + track.title)
         }
       }.scrollContentBackground(.hidden)
-      if model.tracks.isEmpty {
+      if model.hasMore { Button("Afficher plus") { model.search(more: true) } }
+      if model.libraryCount == 0 {
         Text(
-          "Importe un export Recall ou yt-dlp. Aucune bibliothèque personnelle n’est embarquée dans l’app redistribuée."
+          "Colle une playlist YouTube ou importe un export Recall / yt-dlp. Ta bibliothèque reste sur ce Mac."
         ).foregroundStyle(.secondary)
       }
     }.padding(28)

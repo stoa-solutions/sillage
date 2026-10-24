@@ -1,7 +1,7 @@
-import RecallAudio
 import AVFoundation
 import AppKit
 import Combine
+import RecallAudio
 import RecallKit
 import UniformTypeIdentifiers
 
@@ -11,6 +11,18 @@ final class AppModel: NSObject, ObservableObject, AVAudioPlayerDelegate, AVSpeec
   @Published var tracks: [Track] = []
   @Published var results: [Track] = []
   @Published var query = ""
+  @Published var libraryCount = 0
+  @Published var playlists: [LibraryPlaylist] = []
+  @Published var selectedPlaylist = "" { didSet { search() } }
+  @Published var playlistLink = ""
+  @Published var importing = false
+  @Published var importProgress = ""
+  @Published var hasYouTubeKey = false
+  @Published var hasMore = false
+  private var youtubeKey = ""
+  private var syncTask: Task<Void, Never>?
+  private var importTask: Task<Void, Never>?
+  private var sourceGeneration = UUID()
   @Published var messages: [ChatMessage] = []
   @Published var prompt = ""
   @Published var queue: [Track] = []
@@ -26,6 +38,13 @@ final class AppModel: NSObject, ObservableObject, AVAudioPlayerDelegate, AVSpeec
     didSet {
       UserDefaults.standard.set(useServer, forKey: "useServer")
       if oldValue != useServer {
+        sourceGeneration = UUID()
+        syncTask?.cancel()
+        syncTask = nil
+        syncing = false
+        importTask?.cancel()
+        importing = false
+        selectedPlaylist = ""
         cancel()
         searchTask?.cancel()
         queue = []
@@ -80,100 +99,199 @@ final class AppModel: NSObject, ObservableObject, AVAudioPlayerDelegate, AVSpeec
     loadingCredentials = true
     defer { loadingCredentials = false }
     do {
-      let credentials = try await Task.detached { () -> (String, Connection?) in
-        (try KeychainStore.string("gemini") ?? "", try KeychainStore.connection())
+      let credentials = try await Task.detached { () -> (String, Connection?, String) in
+        (
+          try KeychainStore.string("gemini") ?? "", try KeychainStore.connection(),
+          try KeychainStore.string("youtube") ?? ""
+        )
       }.value
       geminiKey = credentials.0
       connection = credentials.1
       hasKey = !geminiKey.isEmpty
       hasServer = connection != nil
+      youtubeKey = credentials.2
+      hasYouTubeKey = !youtubeKey.isEmpty
     } catch { self.error = error.localizedDescription }
   }
   var connectedURL: String { connection?.url ?? "" }
+  private var source: LibraryStore.Source { useServer ? .server : .local }
   private func loadActiveLibrary() {
     do {
-      tracks = try store.read(useServer ? .server : .local)
+      libraryCount = try store.count(source)
+      playlists = try store.playlists(source)
+      tracks = try store.search("", source: source)
       results = tracks
+      hasMore = tracks.count == 100
     } catch { self.error = error.localizedDescription }
   }
-  func persist() throws {
-    try store.save(tracks, source: useServer ? .server : .local)
-    results = tracks
-  }
   func importLibrary() {
+    guard !importing else { return }
     let panel = NSOpenPanel()
     panel.allowedContentTypes = [.json]
     panel.allowsMultipleSelection = false
     guard panel.runModal() == .OK, let url = panel.url else { return }
-    do {
-      let imported = try Catalog.parse(Data(contentsOf: url))
-      useServer = false
-      var merged = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
-      imported.forEach { merged[$0.id] = $0 }
-      tracks = merged.values.sorted { $0.id < $1.id }
-      try persist()
-      notice = "\(imported.count) vidéos importées dans ta bibliothèque locale."
-    } catch { self.error = error.localizedDescription }
+    useServer = false
+    importing = true
+    importProgress = "Lecture de la bibliothèque…"
+    let generation = sourceGeneration
+    let store = self.store
+    importTask = Task {
+      defer { if sourceGeneration == generation { importing = false } }
+      do {
+        let document = try await Task.detached {
+          try LibraryDocument.parse(
+            Data(contentsOf: url), fallbackTitle: url.deletingPathExtension().lastPathComponent)
+        }.value
+        try Task.checkCancellation()
+        guard sourceGeneration == generation, !useServer else { return }
+        try await Task.detached { try store.commit(document, source: .local) }.value
+        guard sourceGeneration == generation else { return }
+        loadActiveLibrary()
+        notice = "\(document.playlists.count) playlists importées sur ce Mac."
+        search()
+      } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
+    }
+  }
+  func copyServerLocally() {
+    guard !importing else { return }
+    useServer = false
+    importing = true
+    importProgress = "Copie de la bibliothèque…"
+    let generation = sourceGeneration
+    let store = self.store
+    importTask = Task {
+      defer { if sourceGeneration == generation { importing = false } }
+      do {
+        let document = try await Task.detached { try LibraryDocument.parse(store.export(.server)) }
+          .value
+        try Task.checkCancellation()
+        guard sourceGeneration == generation else { return }
+        try await Task.detached { try store.commit(document, source: .local) }.value
+        guard sourceGeneration == generation else { return }
+        loadActiveLibrary()
+        notice = "Ta bibliothèque est copiée sur ce Mac. Le serveur reste disponible."
+        search()
+      } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
+    }
+  }
+  func importPlaylist() {
+    guard !importing else { return }
+    guard hasYouTubeKey else {
+      error = "Ajoute ta clé YouTube dans Réglages pour importer une playlist par lien."
+      return
+    }
+    let link = playlistLink
+    do { _ = try YouTubePlaylistLink.id(from: link) } catch {
+      self.error = error.localizedDescription
+      return
+    }
+    useServer = false
+    importing = true
+    error = ""
+    importProgress = "Connexion à YouTube…"
+    let generation = sourceGeneration
+    let key = youtubeKey
+    let store = self.store
+    let importer = YouTubePlaylistImporter(
+      directory: store.directory.appendingPathComponent("imports"))
+    importTask = Task {
+      defer { if sourceGeneration == generation { importing = false } }
+      do {
+        let result = try await importer.load(link: link, key: key) { [weak self] count in
+          if self?.sourceGeneration == generation {
+            self?.importProgress = "\(count) entrées récupérées…"
+          }
+        }
+        try Task.checkCancellation()
+        guard sourceGeneration == generation, !useServer else { return }
+        try await Task.detached { try store.commit(result.document, source: .local) }.value
+        try? importer.finish(link: link)
+        guard sourceGeneration == generation else { return }
+        loadActiveLibrary()
+        notice =
+          "Playlist importée sur ce Mac : \(result.document.tracks.count) vidéos. \(result.skipped) indisponibles ignorées."
+        playlistLink = ""
+        search()
+      } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
+    }
+  }
+  func cancelImport() {
+    importTask?.cancel()
+    importProgress = "Import interrompu. Recolle le même lien pour reprendre."
   }
   func exportLibrary() {
     let panel = NSSavePanel()
     panel.allowedContentTypes = [.json]
     panel.nameFieldStringValue = "Recall-bibliotheque.json"
     guard panel.runModal() == .OK, let url = panel.url else { return }
-    do {
-      let object: [String: Any] = [
-        "videos": tracks.map { track -> [String: Any] in
-          var row: [String: Any] = [
-            "id": track.id, "title": track.title, "description": track.description ?? "",
-          ]
-          row["channel"] = track.channel
-          row["durationSeconds"] = track.durationSeconds
-          return row
-        }
-      ]
-      try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted]).write(
-        to: url, options: .atomic)
-    } catch { self.error = error.localizedDescription }
-  }
-  func sync() {
-    guard !syncing else { return }
-    useServer = true
-    syncing = true
-    error = ""
+    let source = self.source
+    let store = self.store
     Task {
-      defer { syncing = false }
       do {
-        guard let connection = self.connection else {
-          throw RecallError.message("Configure ton serveur ou importe une bibliothèque JSON.")
-        }
-        let object = try await HTTPClient().server(connection, path: "export")
-        tracks = try Catalog.parse(JSONSerialization.data(withJSONObject: object))
-        try persist()
-        notice = "\(tracks.count) vidéos synchronisées depuis ton serveur."
+        try await Task.detached { try store.export(source).write(to: url, options: .atomic) }.value
       } catch { self.error = error.localizedDescription }
     }
   }
-  func search() {
+  func sync() {
+    guard !syncing, let connection else { return }
+    useServer = true
+    syncing = true
+    error = ""
+    let generation = sourceGeneration
+    let store = self.store
+    syncTask = Task {
+      defer { if sourceGeneration == generation { syncing = false } }
+      do {
+        let object = try await HTTPClient().server(connection, path: "export")
+        let data = try JSONSerialization.data(withJSONObject: object)
+        let document = try await Task.detached { try LibraryDocument.parse(data) }.value
+        try Task.checkCancellation()
+        guard sourceGeneration == generation, useServer else { return }
+        // Destination is captured and explicit. A later mode change cannot write local data.
+        try await Task.detached { try store.commit(document, source: .server, replace: true) }.value
+        guard sourceGeneration == generation, useServer else { return }
+        loadActiveLibrary()
+        notice = "\(libraryCount) vidéos synchronisées depuis ton serveur."
+        search()
+      } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
+    }
+  }
+  func search(more: Bool = false) {
     searchTask?.cancel()
     let value = query
+    let source = self.source
+    let playlist = selectedPlaylist.isEmpty ? nil : selectedPlaylist
+    let generation = sourceGeneration
+    let offset = more ? results.count : 0
+    let store = self.store
+    let connection = self.connection
     searchTask = Task {
-      try? await Task.sleep(nanoseconds: 250_000_000)
-      guard !Task.isCancelled else { return }
       do {
+        try await Task.sleep(nanoseconds: 250_000_000)
         let found: [Track]
-        if useServer, let connection = self.connection {
-          found = try await HTTPClient().search(connection, query: value)
+        if source == .server, let connection, playlist == nil, !value.isEmpty {
+          // Existing server search remains available; local cached browsing is paginated.
+          found = more ? [] : try await HTTPClient().search(connection, query: value)
         } else {
-          found = value.isEmpty ? tracks : Catalog.search(value, tracks: tracks)
+          found = try await Task.detached {
+            try store.search(value, source: source, playlist: playlist, offset: offset)
+          }.value
         }
-        guard !Task.isCancelled else { return }
-        results = found
+        try Task.checkCancellation()
+        guard sourceGeneration == generation else { return }
+        results = more ? results + found : found
+        hasMore = found.count == 100
       } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
     }
   }
   func send(_ text: String? = nil, automatic: Bool = false) {
     let text = (text ?? prompt).trimmingCharacters(in: .whitespacesAndNewlines)
     guard !text.isEmpty, !busy else { return }
+    guard !loadingCredentials else {
+      prompt = text
+      notice = "Connexion en cours. Ta demande reste prête à envoyer."
+      return
+    }
     microphone.stop()
     stopVoice()
     error = ""
@@ -189,7 +307,7 @@ final class AppModel: NSObject, ObservableObject, AVAudioPlayerDelegate, AVSpeec
         let connection = self.connection
         let response: DJResponse
         if !key.isEmpty {
-          let localTracks = tracks
+          let store = self.store
           let server = useServer ? connection : nil
           response = try await GeminiDJ(key: key, model: model).turn(
             message: text, history: history, excluded: excluded
@@ -198,8 +316,10 @@ final class AppModel: NSObject, ObservableObject, AVAudioPlayerDelegate, AVSpeec
               return try await HTTPClient().mcpSearch(
                 server, query: query, includeQueued: includeQueued)
             }
-            return Catalog.search(
-              query, tracks: localTracks, excluded: includeQueued ? [] : excluded)
+            return try await Task.detached {
+              try store.search(
+                query, source: .local, limit: 30, excluded: includeQueued ? [] : excluded)
+            }.value
           }
         } else if useServer, let connection {
           let object = try await HTTPClient().server(
@@ -219,12 +339,12 @@ final class AppModel: NSObject, ObservableObject, AVAudioPlayerDelegate, AVSpeec
         messages = Array(messages.suffix(24))
         if !response.tracks.isEmpty {
           if response.action == "append", position < queue.count {
-            queue = Array(queue.dropFirst(position)) + response.tracks
+            queue.append(contentsOf: response.tracks)
           } else {
             queue = response.tracks
+            position = 0
+            playCurrent()
           }
-          position = 0
-          playCurrent()
         }
         if spoken { speak(response.reply) }
       } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
@@ -270,7 +390,7 @@ final class AppModel: NSObject, ObservableObject, AVAudioPlayerDelegate, AVSpeec
         let data: Data
         if !geminiKey.isEmpty {
           data = try await GeminiDJ(key: geminiKey, model: model).speech(text)
-        } else if let connection = self.connection {
+        } else if useServer, let connection = self.connection {
           let object = try await HTTPClient().server(
             connection, path: "dj/speech", body: ["text": String(text.prefix(600))])
           guard let encoded = object["audio"] as? String, let bytes = Data(base64Encoded: encoded)

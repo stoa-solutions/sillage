@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
   @EnvironmentObject var model: AppModel
   @State private var key = ""
+  @State private var youtubeKey = ""
   @State private var serverURL = ""
   @State private var token = ""
   @State private var message = ""
@@ -32,12 +33,24 @@ struct SettingsView: View {
           "Le chat et les métadonnées sélectionnées sont transmis à Google. Les appels directs utilisent ton quota Google ; la limite du serveur ne s’applique pas à eux."
         ).font(.caption)
       }
+      Section("Import YouTube sur ce Mac") {
+        SecureField(
+          model.hasYouTubeKey
+            ? "Nouvelle clé YouTube (vide pour conserver)" : "Clé YouTube Data API",
+          text: $youtubeKey)
+        Text(
+          "Une seule saisie, conservée dans le Trousseau. Importe les playlists publiques ou non répertoriées. La clé Gemini ne remplace pas une clé autorisée pour YouTube."
+        ).font(.caption).foregroundStyle(.secondary)
+        Link(
+          "Créer une clé YouTube",
+          destination: URL(string: "https://console.cloud.google.com/apis/credentials")!)
+      }
       Section("Bibliothèque") {
         Toggle("Utiliser mon serveur vectoriel", isOn: $model.useServer)
         TextField("Adresse HTTPS du serveur (facultatif)", text: $serverURL)
         SecureField("Jeton personnel (laisser vide pour conserver)", text: $token)
         Text(
-          "Sans serveur, importe une bibliothèque JSON depuis le menu Fichier. Elle reste sur ce Mac. Les jetons d’un même serveur partagent sa bibliothèque."
+          "Sur ce Mac, ajoute un lien YouTube dans Bibliothèque ou importe un export JSON. Le serveur vectoriel reste facultatif. Les jetons d’un même serveur partagent sa bibliothèque."
         ).font(.caption).foregroundStyle(.secondary)
       }
       Section("Micro et voix") {
@@ -92,14 +105,20 @@ struct SettingsView: View {
       guard newKey.isEmpty || (20...256).contains(newKey.count) else {
         throw RecallError.message("La clé Gemini est invalide.")
       }
+      let newYouTubeKey = youtubeKey.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard newYouTubeKey.isEmpty || (20...256).contains(newYouTubeKey.count) else {
+        throw RecallError.message("Clé YouTube invalide.")
+      }
       let savedConnection = connection
       try await Task.detached {
         if let savedConnection {
           try KeychainStore.save(JSONEncoder().encode(savedConnection), account: "server")
         }
         if !newKey.isEmpty { try KeychainStore.save(newKey, account: "gemini") }
+        if !newYouTubeKey.isEmpty { try KeychainStore.save(newYouTubeKey, account: "youtube") }
       }.value
       key = ""
+      youtubeKey = ""
       token = ""
       await model.refreshCredentials()
       model.search()

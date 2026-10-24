@@ -22,6 +22,6 @@
     "test:integration": "npm run test:integration -w @playlist-recall/server",
     "package:webstore": "npm run build && python3 scripts/package-webstore.py",
     "build:macos": "python3 scripts/build-macos.py --universal",
-    "test:macos": "swift run --package-path apps/macos RecallCoreTests && swift run --package-path apps/macos RecallAudioTests"
+    "test:macos": "swift run --package-path apps/macos RecallCoreTests && swift run --package-path apps/macos RecallAudioTests && swift run --package-path apps/macos RecallLibraryTests"
   }
 }

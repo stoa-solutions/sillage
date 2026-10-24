@@ -83,8 +83,8 @@ public enum Catalog {
       else {
         throw RecallError.message("Un identifiant vidéo de l’import est invalide.")
       }
-      guard seen.insert(id).inserted else { return nil }
       guard let title = row["title"] as? String, !title.isEmpty else { return nil }
+      guard seen.insert(id).inserted else { return nil }
       let duration =
         (row["durationSeconds"] ?? row["duration_seconds"] ?? row["duration"]) as? Double
       guard duration == nil || (duration!.isFinite && duration! >= 0) else {
