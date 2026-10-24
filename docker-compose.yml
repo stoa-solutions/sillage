@@ -27,12 +27,22 @@ services:
       <<: *config
       PORT: 3001
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      DJ_API_KEY: ${DJ_API_KEY:-}
+      DJ_BASE_URL: ${DJ_BASE_URL:-https://api.openai.com/v1}
+      DJ_MODEL: ${DJ_MODEL:-}
+      DJ_DAILY_REQUEST_LIMIT: ${DJ_DAILY_REQUEST_LIMIT:-100}
       ALLOWED_ORIGINS: https://recall.stoa.solutions
     mem_limit: 192m
     cpus: 0.5
     networks: [dokploy-network, data, inference]
     healthcheck:
-      test: [CMD, node, -e, "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 20s
       timeout: 5s
       retries: 5
@@ -65,7 +75,13 @@ services:
     cpus: 1.5
     networks: [inference]
     healthcheck:
-      test: [CMD, node, -e, "fetch('http://127.0.0.1:3002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3

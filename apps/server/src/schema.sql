@@ -61,3 +61,4 @@ CREATE TABLE IF NOT EXISTS sync_runs (
   status text NOT NULL DEFAULT 'running', entries integer, error text
 );
 INSERT INTO schema_migrations(version) VALUES(1) ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS dj_usage (day date PRIMARY KEY, requests integer NOT NULL DEFAULT 0);

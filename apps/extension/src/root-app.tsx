@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { App } from "./App";
+import { DjApp } from "./dj-app";
 import { ConnectedApp } from "./connected-app";
 import {
   api,
@@ -31,6 +32,7 @@ export function RootApp() {
   const [local, setLocal] = useState(
     () => localStorage.getItem("playlist-recall-mode") === "local",
   );
+  const [dj, setDj] = useState(false);
   const [settings, setSettings] = useState(false);
   const [url, setUrl] = useState(
     connection?.url ?? "https://recall.stoa.solutions",
@@ -71,17 +73,24 @@ export function RootApp() {
             : "Bibliothèque synchronisée sur votre serveur"}
         </span>
         <div>
+          {connection && !isLocal && (
+            <button onClick={() => setDj(!dj)} aria-pressed={dj}>
+              {dj ? "Revenir à la bibliothèque" : "Mode DJ"}
+            </button>
+          )}
           {connection && (
             <button onClick={() => mode(!local)}>
               {isLocal ? "Revenir au serveur" : "Utiliser le mode local"}
             </button>
           )}
-          <button onClick={() => setSettings(!settings)}>
-            {connection ? "Connexion serveur" : "Connecter mon serveur"}
-          </button>
+          {!connection && (
+            <button onClick={() => setSettings(!settings)}>
+              Connecter mon serveur
+            </button>
+          )}
         </div>
       </div>
-      {settings && (
+      {settings && !connection && (
         <section className="connection-panel" aria-label="Connexion au serveur">
           <h2>Connecter Playlist Recall</h2>
           <p>
@@ -125,20 +134,7 @@ export function RootApp() {
               >
                 Importer la connexion
               </button>
-              {connection && (
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={async () => {
-                    await saveConnection(null);
-                    setConnection(null);
-                    mode(true);
-                    setSettings(false);
-                  }}
-                >
-                  Déconnecter
-                </button>
-              )}
+
               <button
                 type="button"
                 className="btn"
@@ -170,7 +166,13 @@ export function RootApp() {
           )}
         </section>
       )}
-      {isLocal ? <App /> : <ConnectedApp connection={connection!} />}
+      {isLocal ? (
+        <App />
+      ) : dj ? (
+        <DjApp connection={connection!} />
+      ) : (
+        <ConnectedApp connection={connection!} />
+      )}
     </>
   );
 }

@@ -52,7 +52,9 @@ beforeAll(() => migrate(db));
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
-  await db.query("TRUNCATE tokens,playlists,videos,jobs,quota_usage CASCADE");
+  await db.query(
+    "TRUNCATE tokens,playlists,videos,jobs,quota_usage,dj_usage CASCADE",
+  );
   await db.query("INSERT INTO tokens(id,name,hash) VALUES($1,$2,$3)", [
     randomUUID(),
     "test",
@@ -344,34 +346,163 @@ it("queues a due playlist once and advances its six-hour schedule", async () => 
 });
 
 it("keeps YouTube work pending without consuming retries when the key is absent", async () => {
-  const sync = await enqueue(db, "sync", "waiting", { playlistId: "PL1234567890" });
+  const sync = await enqueue(db, "sync", "waiting", {
+    playlistId: "PL1234567890",
+  });
   await enqueue(db, "image", "available", { videoId: "abcdefghijk" });
   const image = await claim(db, false);
   expect(image?.kind).toBe("image");
   await finish(db, image!);
   expect(await claim(db, false)).toBeUndefined();
-  expect((await db.query("SELECT status,attempts FROM jobs WHERE id=$1", [sync.id])).rows[0])
-    .toEqual({ status: "pending", attempts: 0 });
+  expect(
+    (await db.query("SELECT status,attempts FROM jobs WHERE id=$1", [sync.id]))
+      .rows[0],
+  ).toEqual({ status: "pending", attempts: 0 });
   expect((await claim(db, true))?.kind).toBe("sync");
 });
 it("records unavailable thumbnails without failing and checks them again after a day", async () => {
   process.env.VISION_ENABLED = "true";
   await importLibrary(db, fixture);
   await db.query("DELETE FROM jobs");
-  vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 404 })));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(null, { status: 404 })),
+  );
   await expect(indexImage(db, "abcdefghijk")).resolves.toBeUndefined();
   expect(infer).not.toHaveBeenCalled();
-  expect((await db.query("SELECT image_error,image_checked_at FROM videos")).rows[0])
-    .toMatchObject({ image_error: "Miniature indisponible sur YouTube.", image_checked_at: expect.any(Date) });
+  expect(
+    (await db.query("SELECT image_error,image_checked_at FROM videos")).rows[0],
+  ).toMatchObject({
+    image_error: "Miniature indisponible sur YouTube.",
+    image_checked_at: expect.any(Date),
+  });
   await enqueueMissing(db);
-  expect((await db.query("SELECT count(*)::int n FROM jobs WHERE kind='image'")).rows[0].n).toBe(0);
-  await db.query("UPDATE videos SET image_checked_at=now()-interval '25 hours'");
+  expect(
+    (await db.query("SELECT count(*)::int n FROM jobs WHERE kind='image'"))
+      .rows[0].n,
+  ).toBe(0);
+  await db.query(
+    "UPDATE videos SET image_checked_at=now()-interval '25 hours'",
+  );
   await enqueueMissing(db);
-  expect((await db.query("SELECT count(*)::int n FROM jobs WHERE kind='image'")).rows[0].n).toBe(1);
+  expect(
+    (await db.query("SELECT count(*)::int n FROM jobs WHERE kind='image'"))
+      .rows[0].n,
+  ).toBe(1);
 });
 it("still retries temporary thumbnail service failures", async () => {
   process.env.VISION_ENABLED = "true";
   await importLibrary(db, fixture);
-  vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 503 })));
-  await expect(indexImage(db, "abcdefghijk")).rejects.toThrow("Miniature HTTP 503");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(null, { status: 503 })),
+  );
+  await expect(indexImage(db, "abcdefghijk")).rejects.toThrow(
+    "Miniature HTTP 503",
+  );
 });
+
+it("exposes authenticated MCP tools with a real protocol handshake", async () => {
+  expect((await app.request("/v1/mcp", { method: "POST" })).status).toBe(401);
+  const response = await app.request("/v1/mcp", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-03-26",
+        capabilities: {},
+        clientInfo: { name: "integration", version: "1" },
+      },
+    }),
+  });
+  expect(response.status).toBe(200);
+  expect((await response.json()).result.serverInfo.name).toBe(
+    "recall-music-library",
+  );
+});
+it("searches available music through an MCP client and respects exclusions", async () => {
+  const { connectMusicMcp } = await import("../src/music-mcp.ts");
+  await importLibrary(db, fixture);
+  await db.query("UPDATE videos SET title='Jazz du soir',duration_seconds=180");
+  const mcp = await connectMusicMcp(db);
+  try {
+    expect((await mcp.client.listTools()).tools.map((t) => t.name)).toEqual([
+      "library_search",
+      "library_overview",
+    ]);
+    const result = await mcp.client.callTool({
+      name: "library_search",
+      arguments: { query: "jazz", maxDurationSeconds: 1200 },
+    });
+    expect(JSON.parse((result.content as any)[0].text).tracks[0].id).toBe(
+      "abcdefghijk",
+    );
+  } finally {
+    await mcp.close();
+  }
+  const excluded = await connectMusicMcp(db, ["abcdefghijk"]);
+  try {
+    const result = await excluded.client.callTool({
+      name: "library_search",
+      arguments: { query: "jazz", maxDurationSeconds: 1200 },
+    });
+    expect(JSON.parse((result.content as any)[0].text).tracks).toEqual([]);
+  } finally {
+    await excluded.close();
+  }
+});
+it.skipIf(!process.env.DJ_SIMULATION_URL)(
+  "runs the DJ over HTTP against a simulated model and rejects fabricated selections",
+  async () => {
+    await importLibrary(db, fixture);
+    await db.query(
+      "UPDATE videos SET title='Jazz du soir',duration_seconds=180",
+    );
+    const saved = {
+      DJ_API_KEY: process.env.DJ_API_KEY,
+      DJ_MODEL: process.env.DJ_MODEL,
+      DJ_BASE_URL: process.env.DJ_BASE_URL,
+    };
+    Object.assign(process.env, {
+      DJ_API_KEY: "simulation-only",
+      DJ_MODEL: "fixture",
+      DJ_BASE_URL: process.env.DJ_SIMULATION_URL,
+    });
+    try {
+      const send = (message: string) =>
+        app.request("/v1/dj/chat", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ message }),
+        });
+      const response = await send("Du jazz pour ce soir");
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        action: "replace",
+        source: "mcp",
+        tracks: [{ id: "abcdefghijk", title: "Jazz du soir" }],
+      });
+      const hallucination = await send("SIMULATE_HALLUCINATION");
+      expect(hallucination.status).toBe(502);
+      expect((await hallucination.json()).error).toContain("non vérifié");
+      const unavailable = await send("SIMULATE_503");
+      expect(unavailable.status).toBe(502);
+      expect((await unavailable.json()).error).not.toContain("simulation-only");
+    } finally {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  },
+);

@@ -13,11 +13,17 @@ Laissez le dossier `extension` en place : Chrome l'utilise directement. Après u
 
 ## Connexion au serveur
 
-Dans l’extension, cliquez sur **Connecter mon serveur**, puis **Importer la connexion** et choisissez le fichier privé fourni. Ce fichier contient votre jeton personnel : ne le partagez pas. Vous pouvez ensuite ajouter une playlist publique ou non répertoriée, actualiser et suivre la collecte et l’indexation. La synchronisation automatique passe toutes les six heures lorsqu’elle est activée côté serveur.
+Lors de la première connexion seulement, cliquez sur **Connecter mon serveur**, puis **Importer la connexion** et choisissez le fichier privé fourni. Ce fichier contient votre jeton personnel : ne le partagez pas. Vous pouvez ensuite ajouter une playlist publique ou non répertoriée, actualiser et suivre la collecte et l’indexation. La synchronisation automatique passe toutes les six heures lorsqu’elle est activée côté serveur.
 
 Le mode **Textes et souvenirs** combine mots-clés et sens du texte. Le mode **Miniatures** utilise les encodeurs texte et image SigLIP 2 correspondants. Les filtres de durée, chaîne, publication et playlist s’appliquent avant le classement. Les descriptions longues sont découpées en passages E5 avec contexte.
 
 **Utiliser le mode local** retrouve la bibliothèque existante de cet ordinateur. Cette copie conserve la date de son dernier import ; elle ne contient pas automatiquement les nouvelles vidéos du serveur. **État des playlists → Copier ma bibliothèque locale vers le serveur** télécharge d’abord une sauvegarde et conserve l’original.
+
+## Mode DJ
+
+Une fois connecté, cliquez sur **Mode DJ**. Décrivez votre mood dans le chat ou avec le micro : le DJ cherche dans votre bibliothèque par MCP et prépare une file de titres. **Me répondre à voix haute** active la voix du DJ. Le micro fonctionne au clic et peut demander une autorisation Chrome. Le chat et les métadonnées utiles à la sélection sont transmis à Gemini ; la clé reste sur le serveur.
+
+La musique utilise le lecteur officiel YouTube. Certains titres restent indisponibles en intégration ; un lien permet de les ouvrir sur YouTube. Il s’agit d’une sélection qui enchaîne les titres, sans mixage audio ni mesure du tempo. Le bouton **Revenir à la bibliothèque** termine l’écoute du DJ.
 
 ## Rechercher et importer en mode local
 
@@ -47,7 +53,7 @@ Le modèle multilingue E5, ses fichiers ONNX et le runtime WASM sont préparés 
 
 ## Données et confidentialité
 
-Les playlists et vecteurs sont stockés dans IndexedDB, dans le profil Chrome qui a chargé l'extension. Le mode local n’utilise aucun service d’inférence distant. Le mode serveur envoie les recherches et métadonnées à votre VPS, avec un jeton révocable ; les modèles y calculent les vecteurs sur CPU. La clé YouTube reste côté serveur. Aucune API d’IA payante ni télémétrie n’est utilisée. Les miniatures sont chargées depuis `i.ytimg.com` et cliquer un résultat ouvre YouTube. La recherche textuelle et sémantique peut fonctionner hors ligne ; l'affichage des miniatures et la lecture demandent une connexion.
+Les playlists et vecteurs sont stockés dans IndexedDB, dans le profil Chrome qui a chargé l'extension. Le mode local n’utilise aucun service d’inférence distant. Le mode serveur envoie les recherches et métadonnées à votre VPS, avec un jeton révocable ; les modèles y calculent les vecteurs sur CPU. La clé YouTube reste côté serveur. La recherche seule n’utilise pas d’API d’IA payante. Le mode DJ fait appel à Gemini côté serveur, avec un plafond quotidien ; aucune télémétrie applicative n’est ajoutée. Les miniatures sont chargées depuis `i.ytimg.com` et cliquer un résultat ouvre YouTube. La recherche textuelle et sémantique peut fonctionner hors ligne ; l'affichage des miniatures et la lecture demandent une connexion.
 
 La version personnelle empaquetée contient vos métadonnées et vos vecteurs. Ces fichiers sont ignorés par Git. Ne partagez pas ce dossier si vous souhaitez garder votre bibliothèque privée. Désinstaller l'extension peut supprimer sa bibliothèque : exportez une sauvegarde auparavant.
 

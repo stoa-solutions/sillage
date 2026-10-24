@@ -8,6 +8,10 @@ import { enqueue } from "./queue.ts";
 import { search } from "./search.ts";
 import { importLibrary, videoFromRow } from "./library.ts";
 import { parseImport, exportLibrary } from "@playlist-recall/core/import";
+import { djSpeech, djVoiceConfigured } from "./dj-voice.ts";
+import { djConfig, djInput, djTurn, DjUnavailable } from "./dj.ts";
+import { handleMusicMcp } from "./music-mcp.ts";
+import { djPlayerHtml, djPlayerCss, djPlayerJs } from "./dj-player.ts";
 export function createApp(db: Database) {
   const app = new Hono();
   app.use(
@@ -33,12 +37,29 @@ export function createApp(db: Database) {
       onError: (c) => c.json({ error: "Fichier trop volumineux." }, 413),
     }),
   );
+  app.get("/dj/player", (c) => {
+    c.header(
+      "Content-Security-Policy",
+      "default-src 'none'; script-src 'self' https://www.youtube.com https://s.ytimg.com; style-src 'self'; frame-src https://www.youtube.com; connect-src https://www.youtube.com; frame-ancestors chrome-extension: http://localhost:* http://127.0.0.1:*",
+    );
+    c.header("Referrer-Policy", "strict-origin-when-cross-origin");
+    return c.html(djPlayerHtml);
+  });
+  app.get("/dj/player.js", (c) =>
+    c.body(djPlayerJs, 200, {
+      "Content-Type": "text/javascript; charset=utf-8",
+      "Cache-Control": "no-cache",
+    }),
+  );
+  app.get("/dj/player.css", (c) =>
+    c.body(djPlayerCss, 200, { "Content-Type": "text/css; charset=utf-8" }),
+  );
   app.get("/health", async (c) => {
     try {
       await db.query("SELECT 1");
       return c.json({
         ok: true,
-        version: "2.0.0",
+        version: "2.1.0",
         release: process.env.RELEASE_SHA ?? "local",
       });
     } catch {
@@ -73,6 +94,50 @@ export function createApp(db: Database) {
         if (value.minute !== minute) rate.delete(key);
     await next();
   });
+  app.get("/v1/dj/status", (c) =>
+    c.json({ configured: djConfig().configured, voice: djVoiceConfigured() }),
+  );
+  const djActive = new Set<string>();
+  app.post("/v1/dj/chat", async (c) => {
+    const input = djInput.parse(await c.req.json());
+    const installation = hash(c.req.header("Authorization")!);
+    if (djActive.has(installation))
+      return c.json({ error: "Le DJ prépare déjà ta sélection." }, 429);
+    if (djActive.size >= 2)
+      return c.json(
+        { error: "Le DJ est occupé. Réessaie dans un instant." },
+        429,
+      );
+    djActive.add(installation);
+    try {
+      return c.json(await djTurn(db, input, c.req.raw.signal));
+    } catch (error) {
+      if (error instanceof DjUnavailable)
+        return c.json({ error: error.message }, error.status);
+      throw error;
+    } finally {
+      djActive.delete(installation);
+    }
+  });
+  app.post("/v1/dj/speech", async (c) => {
+    const { text } = z
+      .object({ text: z.string().trim().min(1).max(600) })
+      .parse(await c.req.json());
+    const installation = hash(c.req.header("Authorization")!);
+    if (djActive.has(installation) || djActive.size >= 2)
+      return c.json({ error: "Le DJ prépare déjà une réponse." }, 429);
+    djActive.add(installation);
+    try {
+      return c.json(await djSpeech(db, text, c.req.raw.signal));
+    } catch (error) {
+      if (error instanceof DjUnavailable)
+        return c.json({ error: error.message }, error.status);
+      throw error;
+    } finally {
+      djActive.delete(installation);
+    }
+  });
+  app.all("/v1/mcp", (c) => handleMusicMcp(db, c.req.raw));
   app.get("/v1/status", async (c) => {
     const counts = (
       await db.query(`SELECT count(*)::int AS videos,count(*) FILTER(WHERE title IS NOT NULL)::int AS titled,

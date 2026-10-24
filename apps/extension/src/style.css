@@ -785,21 +785,495 @@ svg {
   }
 }
 
-.modebar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:9px 20px; background:#244737; color:#fff; font-size:11px; flex-wrap:wrap }
-.modebar div { display:flex; gap:8px; flex-wrap:wrap }
-.modebar button { color:inherit; border:1px solid #ffffff45; background:transparent; border-radius:6px; padding:5px 9px; font-size:11px }
-.connection-panel { max-width:760px; padding:24px; margin:20px auto; background:#fff; border-radius:12px }
-.connection-panel p { line-height:1.7; color:#64705f }
-.connection-panel label,.advanced-filters label { display:grid; gap:6px; font-size:12px; margin:12px 0 }
-.connection-panel input,.advanced-filters input,.add-playlist input { border:1px solid #bdccb5; border-radius:7px; padding:10px; min-width:0; background:#fff; color:#27372a }
-.connection-panel input { width:100% }
-.connection-panel .toolbar { flex-wrap:wrap }
-.add-playlist { display:flex; gap:8px; margin-bottom:20px }
-.add-playlist input { flex:1 }
-.server-status { display:flex; flex-wrap:wrap; gap:7px 16px; margin:18px 0; font-size:11px; color:#65775b }
-.sync-details,.advanced-filters { font-size:12px; color:#65775b; margin:12px 0; line-height:1.7 }
-.sync-details summary,.advanced-filters summary { cursor:pointer }
-.sync-details p { overflow-wrap:anywhere }
-.server-reason { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; color:#65775b; font-size:10px; line-height:1.5; margin:7px 0 0 }
-input:focus-visible,summary:focus-visible { outline:3px solid #88b79c; outline-offset:3px }
-@media(max-width:430px) { .modebar { padding:9px 16px } .connection-panel { padding:16px; margin:12px } .advanced-filters input { max-width:180px } .connected .topbar { flex-wrap:wrap } }
+.modebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 20px;
+  background: #244737;
+  color: #fff;
+  font-size: 11px;
+  flex-wrap: wrap;
+}
+.modebar div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.modebar button {
+  color: inherit;
+  border: 1px solid #ffffff45;
+  background: transparent;
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 11px;
+}
+.connection-panel {
+  max-width: 760px;
+  padding: 24px;
+  margin: 20px auto;
+  background: #fff;
+  border-radius: 12px;
+}
+.connection-panel p {
+  line-height: 1.7;
+  color: #64705f;
+}
+.connection-panel label,
+.advanced-filters label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  margin: 12px 0;
+}
+.connection-panel input,
+.advanced-filters input,
+.add-playlist input {
+  border: 1px solid #bdccb5;
+  border-radius: 7px;
+  padding: 10px;
+  min-width: 0;
+  background: #fff;
+  color: #27372a;
+}
+.connection-panel input {
+  width: 100%;
+}
+.connection-panel .toolbar {
+  flex-wrap: wrap;
+}
+.add-playlist {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.add-playlist input {
+  flex: 1;
+}
+.server-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 16px;
+  margin: 18px 0;
+  font-size: 11px;
+  color: #65775b;
+}
+.sync-details,
+.advanced-filters {
+  font-size: 12px;
+  color: #65775b;
+  margin: 12px 0;
+  line-height: 1.7;
+}
+.sync-details summary,
+.advanced-filters summary {
+  cursor: pointer;
+}
+.sync-details p {
+  overflow-wrap: anywhere;
+}
+.server-reason {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: #65775b;
+  font-size: 10px;
+  line-height: 1.5;
+  margin: 7px 0 0;
+}
+input:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #88b79c;
+  outline-offset: 3px;
+}
+@media (max-width: 430px) {
+  .modebar {
+    padding: 9px 16px;
+  }
+  .connection-panel {
+    padding: 16px;
+    margin: 12px;
+  }
+  .advanced-filters input {
+    max-width: 180px;
+  }
+  .connected .topbar {
+    flex-wrap: wrap;
+  }
+}
+
+/* DJ keeps the library's cream/forest palette, with a quieter listening stage. */
+.dj-app {
+  max-width: 1440px;
+  margin: auto;
+  padding: 28px 36px 48px;
+}
+.dj-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.dj-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+}
+.dj-connected {
+  font-size: 12px;
+  color: #66756b;
+}
+.dj-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 30px;
+  align-items: start;
+}
+.dj-stage {
+  background: #18372b;
+  color: #f8f7ee;
+  border-radius: 26px;
+  overflow: hidden;
+  padding: 30px;
+}
+.dj-stage-heading h1 {
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+  font-size: clamp(28px, 4vw, 49px);
+  margin: 18px 0;
+}
+.dj-stage-heading > p {
+  color: #b6cbbd;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 28px;
+}
+.dj-player-shell {
+  background: #14251e;
+  border-radius: 15px;
+  overflow: hidden;
+  min-height: 250px;
+}
+.dj-player-shell iframe {
+  display: block;
+  border: 0;
+  width: 100%;
+  height: 330px;
+}
+.dj-now {
+  margin: 27px 0 18px;
+}
+.dj-now > .dj-eyebrow {
+  color: #c7dc98;
+}
+.dj-now h2 {
+  font-size: 19px;
+  line-height: 1.4;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  margin: 12px 0 5px;
+}
+.dj-now p {
+  font-size: 13px;
+  color: #b6cbbd;
+  margin: 0;
+}
+.dj-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 23px 0;
+}
+.dj-round {
+  display: inline-grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  border-radius: 50%;
+  border: 1px solid #d9dfd5;
+  background: transparent;
+  color: inherit;
+  flex-shrink: 0;
+}
+.dj-stage .dj-round {
+  border-color: #456252;
+}
+.dj-stage .dj-round:first-child {
+  background: #e0edb7;
+  color: #18372b;
+  border-color: #e0edb7;
+}
+.dj-youtube {
+  font-size: 11px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  margin-left: auto;
+}
+.dj-toggle,
+.dj-voice-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.dj-toggle {
+  color: #b6cbbd;
+}
+.dj-toggle input,
+.dj-voice-toggle input {
+  accent-color: #517849;
+}
+.dj-conversation {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dj-chat-heading {
+  padding: 8px 0 20px;
+  border-bottom: 1px solid #dce1d7;
+}
+.dj-chat-heading h2 {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0 0 12px;
+  letter-spacing: -0.025em;
+}
+.dj-voice-toggle {
+  color: #5c6f61;
+}
+.dj-chat {
+  min-height: 230px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 20px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.dj-welcome {
+  margin: 20px 0;
+}
+.dj-disc {
+  width: 48px;
+  height: 48px;
+  border: 1px solid #9db19b;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #517849;
+  font-size: 27px;
+  font-family: serif;
+}
+.dj-welcome h3 {
+  font-weight: 500;
+  font-size: 21px;
+  margin: 22px 0 13px;
+}
+.dj-welcome p {
+  font-size: 13px;
+  line-height: 1.9;
+  color: #69796c;
+}
+.dj-message {
+  max-width: 95%;
+  padding: 14px 17px;
+  border-radius: 16px;
+  background: #e9eee2;
+  overflow-wrap: anywhere;
+}
+.dj-message.user {
+  align-self: flex-end;
+  background: #fff;
+  border: 1px solid #dce1d7;
+}
+.dj-message span {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: #5d725e;
+}
+.dj-message p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.dj-thinking {
+  font-size: 12px;
+  color: #60765d;
+}
+.dj-moods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+.dj-moods button {
+  border: 1px solid #d5decd;
+  border-radius: 20px;
+  background: transparent;
+  color: #466141;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 7px 11px;
+}
+.dj-input {
+  border: 1px solid #aebfa4;
+  border-radius: 17px;
+  padding: 13px;
+  background: #fff;
+}
+.dj-input textarea {
+  width: 100%;
+  resize: vertical;
+  max-height: 160px;
+  min-height: 55px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #203c2c;
+  background: transparent;
+  border: 0;
+  outline-offset: 2px;
+}
+.dj-input > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 7px;
+}
+.dj-send {
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  border: 0;
+  border-radius: 50%;
+  background: #234a35;
+  color: #fff;
+}
+.dj-round.listening {
+  color: #8d2d2d;
+  background: #fae8df;
+  border-color: #dfa88e;
+}
+.dj-privacy {
+  font-size: 10px;
+  line-height: 1.6;
+  color: #7a8576;
+  margin: 10px 0 18px;
+}
+.dj-queue h3 {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 500;
+  margin: 16px 0;
+}
+.dj-queue > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 13px;
+  text-align: left;
+  color: #2e4231;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid #e1e5db;
+  padding: 13px 5px;
+}
+.dj-queue > button.current {
+  color: #60863c;
+}
+.dj-queue > button > span:first-child {
+  width: 20px;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+.dj-queue strong {
+  font-size: 12px;
+  line-height: 1.6;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.dj-queue small {
+  display: block;
+  font-size: 11px;
+  color: #7b887b;
+  margin-top: 2px;
+}
+.dj-app button:focus-visible,
+.dj-app textarea:focus-visible {
+  outline: 3px solid #8daa6f;
+  outline-offset: 3px;
+}
+@media (max-width: 850px) {
+  .dj-app {
+    padding: 23px;
+  }
+  .dj-layout {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+  .dj-stage {
+    padding: 24px;
+  }
+  .dj-stage-heading h1 {
+    font-size: 35px;
+  }
+  .dj-player-shell iframe {
+    height: 300px;
+  }
+  .dj-connected {
+    display: none;
+  }
+  .dj-header {
+    margin-bottom: 18px;
+  }
+}
+@media (max-width: 430px) {
+  .dj-app {
+    padding: 15px 12px;
+  }
+  .dj-stage {
+    padding: 21px 17px;
+    border-radius: 20px;
+  }
+  .dj-stage-heading h1 {
+    font-size: 31px;
+  }
+  .dj-player-shell iframe {
+    height: 285px;
+  }
+  .dj-chat {
+    min-height: 160px;
+    max-height: 300px;
+  }
+  .dj-youtube {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 850px) {
+  .dj-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .dj-conversation {
+    order: -1;
+    width: 100%;
+  }
+  .dj-stage {
+    width: 100%;
+  }
+}
