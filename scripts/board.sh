@@ -3,7 +3,26 @@
 # Stored in the common git directory: visible from each worktree, never committed.
 set -eu
 board="$(git rev-parse --git-common-dir)/agents-board.tsv"
+lock="$board.lock"
 touch "$board"
+# mkdir is atomic: claim and release hold the lock for the whole read-modify-replace.
+locked() {
+  tries=0
+  until mkdir "$lock" 2>/dev/null; do
+    tries=$((tries + 1))
+    [ "$tries" -lt 50 ] || { echo "Tableau verrouillé ; supprimer $lock s'il est orphelin." >&2; exit 1; }
+    sleep 0.1
+  done
+  trap 'rmdir "$lock"' EXIT INT TERM
+  tmp=$(mktemp "$board.XXXXXX")
+  "$@"
+  mv "$tmp" "$board"
+}
+write_claim() {
+  grep -v "	$branch	" "$board" > "$tmp" || true
+  printf '%s\t%s\t%s\t%s\n' "$agent" "$branch" "$zones" "$(date '+%Y-%m-%d %H:%M')" >> "$tmp"
+}
+write_release() { grep -v "	$branch	" "$board" > "$tmp" || true; }
 case "${1:-list}" in
   list)
     if [ -s "$board" ]; then
@@ -19,15 +38,14 @@ case "${1:-list}" in
     [ $# -ge 4 ] || { echo "Usage: npm run board -- claim <agent> <branche> <zone>..." >&2; exit 1; }
     agent=$2 branch=$3
     shift 3
-    grep -v "	$branch	" "$board" > "$board.tmp" || true
-    printf '%s\t%s\t%s\t%s\n' "$agent" "$branch" "$*" "$(date '+%Y-%m-%d %H:%M')" >> "$board.tmp"
-    mv "$board.tmp" "$board"
+    zones="$*"
+    locked write_claim
     cat "$board"
     ;;
   release)
     [ $# -eq 2 ] || { echo "Usage: npm run board -- release <branche>" >&2; exit 1; }
-    grep -v "	$2	" "$board" > "$board.tmp" || true
-    mv "$board.tmp" "$board"
+    branch=$2
+    locked write_release
     ;;
   *)
     echo "Usage: npm run board [-- list | claim <agent> <branche> <zone>... | release <branche>]" >&2
