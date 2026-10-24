@@ -28,21 +28,27 @@ import SwiftUI
           guard data.count < 16384,
             let values = try JSONSerialization.jsonObject(with: data) as? [String: String]
           else { throw RecallError.message("Configuration privée invalide.") }
+          var credentials: [String: Data] = [:]
           if let url = values["url"], let token = values["token"] {
-            let connection = try Connection(url: url, token: token)
-            try KeychainStore.save(JSONEncoder().encode(connection), account: "server")
+            credentials["server"] = try JSONEncoder().encode(Connection(url: url, token: token))
           }
+          if let key = values["apiKey"], (20...256).contains(key.count) {
+            credentials["gemini"] = Data(key.utf8)
+          }
+          if let key = values["youtubeKey"], (20...256).contains(key.count) {
+            credentials["youtube"] = Data(key.utf8)
+          }
+          guard !credentials.isEmpty else {
+            throw RecallError.message("Configuration privée vide.")
+          }
+          try KeychainStore.install(credentials)
           if let selectedModel = values["model"],
             ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-4-argon"].contains(selectedModel)
           {
             UserDefaults.standard.set(selectedModel, forKey: "djModel")
           }
-          if let key = values["apiKey"], (20...256).contains(key.count) {
-            try KeychainStore.save(key, account: "gemini")
-          }
         }.value
         model.model = UserDefaults.standard.string(forKey: "djModel") ?? "gemini-3.5-flash-lite"
-        model.useServer = true
       } catch { model.error = error.localizedDescription }
     }
     await model.refreshCredentials()
