@@ -8,10 +8,11 @@ import RecallKit
 final class Session: ObservableObject {
   @Published var error = ""
   @Published var notice = ""
-  @Published private(set) var loadingCredentials = true
+  @Published private(set) var loadingCredentials = false
   @Published private(set) var hasKey = false
   @Published private(set) var hasServer = false
   @Published private(set) var hasYouTubeKey = false
+  @Published var localDJ: Bool { didSet { UserDefaults.standard.set(localDJ, forKey: "localDJ") } }
   @Published var model: String { didSet { UserDefaults.standard.set(model, forKey: "djModel") } }
   @Published var useServer: Bool {
     didSet {
@@ -41,6 +42,7 @@ final class Session: ObservableObject {
       ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
       .appendingPathComponent("Playlist Recall", isDirectory: true)
     store = LibraryStore(directory: directory)
+    localDJ = UserDefaults.standard.object(forKey: "localDJ") as? Bool ?? true
     model = UserDefaults.standard.string(forKey: "djModel") ?? "gemini-3.5-flash-lite"
     useServer = UserDefaults.standard.object(forKey: "useServer") as? Bool ?? false
   }

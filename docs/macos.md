@@ -144,3 +144,17 @@ Sur ce Mac, la connexion connue a été installée dans cette entrée par un tub
 Validation des données réelles : 2 690 vidéos locales et 2 690 vidéos dans le cache serveur, contrôle SQLite `quick_check=ok`, fichiers JSON d’origine et copie privée de migration conservés. La copie locale issue de l’ancien cache plat possède une collection historique ; les nouveaux imports et exports conservent leurs vraies playlists. La recherche FTS dans les données réelles retrouve Mac Miller.
 
 La version et le numéro de build par défaut sont centralisés dans `apps/macos/version.json`. L’export inclut aussi les vidéos encore présentes dans la bibliothèque mais sorties de leurs playlists, dans « Autres vidéos ».
+
+## DJ Apple local et installation 1.2.0
+
+Le mode Apple est activé par défaut. Il exige macOS 26 et Apple Intelligence disponible ; la bibliothèque et Gemini optionnel restent compatibles macOS 14. Aucune requête Gemini ni synthèse vocale distante n’est effectuée en mode Apple. Foundation Models utilise deux schémas dynamiques : extraction de recherche puis sélection parmi un enum d’identifiants réels. Le filtrage d’un artiste/titre précis exige tous les mots dans le titre/chaîne, afin de ne pas substituer Chet Faker à Chet Baker absent. Les résultats restent vérifiés par Catalog.validateSelection. Il ne s’agit pas d’un index sémantique local ni d’une analyse audio. Les ambiances sont limitées par les métadonnées indexées.
+
+Au démarrage en mode local Apple, aucun accès au Trousseau n’est nécessaire. Il est chargé à la demande dans Réglages ou lors d’un import par lien. Les anciennes clés restent conservées. Le micro utilise la reconnaissance Apple et la voix de réponse utilise AVSpeechSynthesizer ; la disponibilité hors ligne de la dictée dépend du Mac et des ressources installées.
+
+Essai réel sur le Mac de développement (macOS 26.5.2) : sélection Mac Miller correcte depuis SQLite en environ 1,5–3 s ; Chet Baker et un artiste fictif absents produisent zéro titre après correction du filtrage. Ce sont des mesures ponctuelles, pas une garantie de latence. Les tests d’import couvrent pages, quota, annulation, reprise et expiration via transport injecté ; un import réel YouTube depuis le Mac reste à vérifier avec une clé YouTube valide.
+
+Construire : `python3 scripts/build-macos.py --universal --dmg --skip-update-signature` pour une archive locale et un disque avec raccourci Applications et notice. Pour publier une mise à jour, omettre `--skip-update-signature` et terminer la signature Sparkle. Le DMG local ne supprime pas les avertissements Gatekeeper : Developer ID et notarisation sont requis pour la distribution publique fluide. Le script embarque uniquement le binaire, Sparkle, l’icône et une notice ; pas de bibliothèque ni de clés personnelles.
+
+L’import officiel des playlists publiques/non répertoriées par lien demande une clé YouTube Data API personnelle, conservée au Trousseau. Il ne faut pas intégrer une clé de serveur dans l’archive redistribuée. L’authentification OAuth Google pour éviter la création manuelle de cette clé est une étape distincte, non livrée ici. Les playlists privées ne sont pas accessibles avec cette méthode.
+
+Références : https://developer.apple.com/documentation/foundationmodels/systemlanguagemodel ; https://developer.apple.com/documentation/foundationmodels/generating-content-and-performing-tasks-with-foundation-models

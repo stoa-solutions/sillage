@@ -72,6 +72,11 @@ struct DJView: View {
                   Text(
                     "Autorise l’accès au Trousseau dans la fenêtre macOS pour retrouver tes clés déjà enregistrées."
                   ).font(.caption)
+                } else if session.localDJ {
+                  Text(
+                    AppleDJ.availability
+                      ?? "DJ Apple prêt · sans clé Gemini. Importe tes playlists dans Bibliothèque."
+                  ).font(.caption)
                 } else if !session.hasKey && !session.hasServer {
                   Text(
                     "Commence dans Réglages : ajoute ta clé Gemini, puis importe ta bibliothèque."
