@@ -45,8 +45,10 @@ Les accès au Trousseau sont lancés hors du thread de l’interface, afin qu’
 
 Prérequis : macOS, outils de ligne de commande Apple avec Swift 5.10 ou ultérieur, Node.js pour les tests de l’API. Sparkle 2.10.0 est épinglé via Swift Package Manager.
 
+Les builds de développement partagent sinon la bibliothèque réelle : lancer les essais avec `RECALL_DATA_DIR=<dossier temporaire>`.
+
 ```sh
-npm run test:macos
+npm run verify:macos
 swift build --package-path apps/macos -c release
 python3 scripts/build-macos.py --universal
 ```

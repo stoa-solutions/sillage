@@ -8,7 +8,7 @@
 
 **Tech Stack:** WXT, React, TypeScript, idb, Transformers.js, Vitest.
 
-**Spec:** `docs/superpowers/specs/2026-09-06-local-playlist-recall.md`
+**Spec:** `docs/history/specs/2026-09-06-local-playlist-recall.md`
 
 ## Global Constraints
 - Local inference and persistence only. No cloud backend, OAuth or secrets.

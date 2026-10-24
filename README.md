@@ -56,7 +56,7 @@ La musique utilise le lecteur officiel YouTube. Certains titres restent indispon
 
 ## Développement
 
-Node.js 24 ou plus récent.
+Node.js 24 ou plus récent. Règles de travail, validation et collaboration entre agents : [`AGENTS.md`](AGENTS.md). Index de la documentation : [`docs/README.md`](docs/README.md). `npm run verify` valide l’ensemble avant intégration dans `main`.
 
 ```sh
 npm ci --legacy-peer-deps

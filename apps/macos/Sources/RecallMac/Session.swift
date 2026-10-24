@@ -33,9 +33,13 @@ final class Session: ObservableObject {
   var connectedURL: String { connection?.url ?? "" }
 
   init() {
-    let directory = FileManager.default.urls(
-      for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent(
-        "Playlist Recall", isDirectory: true)
+    // Development runs set RECALL_DATA_DIR to keep the owner's library untouched.
+    let directory =
+      ProcessInfo.processInfo.environment["RECALL_DATA_DIR"].map {
+        URL(fileURLWithPath: $0, isDirectory: true)
+      }
+      ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+      .appendingPathComponent("Playlist Recall", isDirectory: true)
     store = LibraryStore(directory: directory)
     model = UserDefaults.standard.string(forKey: "djModel") ?? "gemini-3.5-flash-lite"
     useServer = UserDefaults.standard.object(forKey: "useServer") as? Bool ?? false
