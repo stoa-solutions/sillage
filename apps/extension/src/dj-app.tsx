@@ -62,6 +62,7 @@ export function DjApp({ connection }: { connection: Connection }) {
   const [spoken, setSpoken] = useState(false);
   const [continuous, setContinuous] = useState(true);
   const [ready, setReady] = useState(false);
+  const mounted = useRef(true);
   const iframe = useRef<HTMLIFrameElement>(null);
   const recognition = useRef<Recognition | null>(null);
   const request = useRef<AbortController | null>(null);
@@ -139,6 +140,7 @@ export function DjApp({ connection }: { connection: Connection }) {
   }, [ready, current?.id]);
   useEffect(
     () => () => {
+      mounted.current = false;
       request.current?.abort();
       voiceRequest.current?.abort();
       spokenAudio.current?.pause();
@@ -287,6 +289,7 @@ export function DjApp({ connection }: { connection: Connection }) {
         audio: true,
       });
       permission.getTracks().forEach((track) => track.stop());
+      if (!mounted.current) return;
       mic.start();
       setListening(true);
     } catch {
