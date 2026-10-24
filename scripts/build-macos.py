@@ -13,11 +13,12 @@ import tempfile
 
 root = Path(__file__).resolve().parent.parent
 project = root / "apps/macos"
+release_version = json.loads((project / "version.json").read_text())
 parser = argparse.ArgumentParser()
 parser.add_argument("--universal", action="store_true")
 parser.add_argument("--skip-update-signature", action="store_true", help="Local test build only; never publish this archive as an update")
-parser.add_argument("--version", default="1.0.0")
-parser.add_argument("--build", default="1")
+parser.add_argument("--version", default=release_version["version"])
+parser.add_argument("--build", default=release_version["build"])
 args = parser.parse_args()
 if not re.fullmatch(r"\d+\.\d+\.\d+", args.version) or not args.build.isdigit():
     parser.error("Use a three-part version and a numeric build number")

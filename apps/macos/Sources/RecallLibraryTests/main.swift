@@ -175,6 +175,13 @@ actor Fixture {
       try check(
         resumedCancellation.resumed && resumedCancellation.document.tracks.count == 2,
         "Cancelled import didn't resume")
+      let orphan = Track(id: "orphan00001", title: "Unassigned")
+      try store.commit(LibraryDocument(tracks: [orphan], playlists: []), source: .local)
+      try check(
+        try LibraryDocument.parse(store.export(.local)).tracks.contains(where: {
+          $0.id == orphan.id && $0.title == orphan.title
+        }),
+        "Export lost unassigned video")
       // Measured large local import, bounded page retrieval; no network or personal data.
       let bulk = (0..<10_000).map {
         Track(id: String(format: "%011d", $0), title: "Library track \($0)", channel: "Bulk artist")

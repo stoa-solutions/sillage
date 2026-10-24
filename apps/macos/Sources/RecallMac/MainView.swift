@@ -199,7 +199,7 @@ struct LibraryView: View {
         Text("Ta bibliothèque.").font(.largeTitle)
         Spacer()
         Button("Importer JSON…") { model.importLibrary() }.disabled(model.importing)
-        if model.hasServer {
+        if model.hasServer && model.useServer {
           Button(model.syncing ? "Synchronisation…" : "Synchroniser") { model.sync() }.disabled(
             model.syncing)
         }

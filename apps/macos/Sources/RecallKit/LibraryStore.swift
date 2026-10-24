@@ -136,7 +136,7 @@ public struct LibraryStore: Sendable {
         let tracks = try decode(
           db.rows("SELECT payload FROM videos WHERE source=? ORDER BY rowid", [source.rawValue]))
         let indexed = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
-        let collections: [[String: Any]] = try db.rows(
+        var collections: [[String: Any]] = try db.rows(
           "SELECT id,title,coalesce(url,'') FROM playlists WHERE source=? ORDER BY rowid",
           [source.rawValue]
         ).map { list in
@@ -155,6 +155,24 @@ public struct LibraryStore: Sendable {
               return row
             },
           ]
+        }
+        let assigned = Set(
+          try db.rows("SELECT DISTINCT video FROM members WHERE source=?", [source.rawValue]).map {
+            $0[0]
+          })
+        let unassigned = tracks.filter { !assigned.contains($0.id) }
+        if !unassigned.isEmpty {
+          collections.append([
+            "playlist": ["id": "_recall_unassigned", "title": "Autres vidéos"],
+            "videos": unassigned.map { track -> [String: Any] in
+              var row: [String: Any] = [
+                "id": track.id, "title": track.title, "description": track.description ?? "",
+              ]
+              row["channel"] = track.channel
+              row["duration_seconds"] = track.durationSeconds
+              return row
+            },
+          ])
         }
         output = try JSONSerialization.data(
           withJSONObject: ["format": "playlist-recall", "version": 1, "collections": collections],

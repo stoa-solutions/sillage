@@ -110,7 +110,7 @@ Références : https://developer.apple.com/documentation/webkit/wkpreferences/is
 
 Validation locale : deux binaires reconstruits avec des changements de code ont présenté la même exigence désignée (identifiant de bundle et empreinte du certificat local), puis ont passé `codesign --verify --deep --strict`. La version finale 1.0.2 a été installée ; le Trousseau a été retrouvé et la synchronisation serveur observée après relancement. Cela valide la stabilité de l’identité ; l’absence totale de nouvelles fenêtres de mot de passe n’a pas encore été confirmée par l’utilisateur. Le test interactif du plein écran vidéo a été interrompu par des interactions utilisateur, donc son cycle entrée/sortie reste à confirmer.
 
-## Version 1.1 — bibliothèque locale et liens YouTube
+## Version 1.1.2 — bibliothèque locale et liens YouTube
 
 Dans Bibliothèque, choisir « Sur ce Mac ». Pour récupérer les données déjà synchronisées, le bouton « Garder une copie sur ce Mac » fusionne le cache serveur dans la bibliothèque locale, sans retirer la connexion serveur.
 
@@ -134,3 +134,5 @@ Les trois anciennes entrées Trousseau (Gemini, serveur, YouTube) sont regroupé
 Sur ce Mac, la connexion connue a été installée dans cette entrée par un tube mémoire privé, sans fichier de clé ni secret dans l’archive. Un relancement normal de 1.1.1 a retrouvé la clé Gemini et l’adresse du serveur dans les réglages sans nouvelle étape de réimportation ni demande de mot de passe rencontrée pendant l’essai. Cela ne déverrouille pas le Trousseau global et ne dispense pas macOS de demander le mot de passe si la session/le Trousseau sont verrouillés.
 
 Validation des données réelles : 2 690 vidéos locales et 2 690 vidéos dans le cache serveur, contrôle SQLite `quick_check=ok`, fichiers JSON d’origine et copie privée de migration conservés. La copie locale issue de l’ancien cache plat possède une collection historique ; les nouveaux imports et exports conservent leurs vraies playlists. La recherche FTS dans les données réelles retrouve Mac Miller.
+
+La version et le numéro de build par défaut sont centralisés dans `apps/macos/version.json`. L’export inclut aussi les vidéos encore présentes dans la bibliothèque mais sorties de leurs playlists, dans « Autres vidéos ».
