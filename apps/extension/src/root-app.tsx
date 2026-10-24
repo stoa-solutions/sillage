@@ -32,7 +32,22 @@ export function RootApp() {
   const [local, setLocal] = useState(
     () => localStorage.getItem("playlist-recall-mode") === "local",
   );
-  const [dj, setDj] = useState(false);
+  const [dj, setDj] = useState(
+    () => new URLSearchParams(window.location.search).get("mode") === "dj",
+  );
+  function openDj() {
+    if (
+      !dj &&
+      window.location.protocol === "chrome-extension:" &&
+      window.location.pathname.endsWith("/sidepanel.html")
+    ) {
+      void chrome.tabs.create({
+        url: chrome.runtime.getURL("library.html?mode=dj"),
+      });
+      return;
+    }
+    setDj(!dj);
+  }
   const [settings, setSettings] = useState(false);
   const [url, setUrl] = useState(
     connection?.url ?? "https://recall.stoa.solutions",
@@ -74,7 +89,7 @@ export function RootApp() {
         </span>
         <div>
           {connection && !isLocal && (
-            <button onClick={() => setDj(!dj)} aria-pressed={dj}>
+            <button onClick={openDj} aria-pressed={dj}>
               {dj ? "Revenir à la bibliothèque" : "Mode DJ"}
             </button>
           )}

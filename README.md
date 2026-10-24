@@ -21,7 +21,7 @@ Le mode **Textes et souvenirs** combine mots-clés et sens du texte. Le mode **M
 
 ## Mode DJ
 
-Une fois connecté, cliquez sur **Mode DJ**. Décrivez votre mood dans le chat ou avec le micro : le DJ cherche dans votre bibliothèque par MCP et prépare une file de titres. **Me répondre à voix haute** active la voix du DJ. Le micro fonctionne au clic et peut demander une autorisation Chrome. Le chat et les métadonnées utiles à la sélection sont transmis à Gemini ; la clé reste sur le serveur.
+Une fois connecté, cliquez sur **Mode DJ**. Depuis le panneau latéral, le DJ s’ouvre dans un onglet pour garder le lecteur et la demande d’autorisation du micro visibles. Décrivez votre mood dans le chat ou avec le micro : le DJ cherche dans votre bibliothèque par MCP et prépare une file de titres. **Me répondre à voix haute** active la voix du DJ. Le micro fonctionne au clic et peut demander une autorisation Chrome. Le chat et les métadonnées utiles à la sélection sont transmis à Gemini ; la clé reste sur le serveur.
 
 La musique utilise le lecteur officiel YouTube. Certains titres restent indisponibles en intégration ; un lien permet de les ouvrir sur YouTube. Il s’agit d’une sélection qui enchaîne les titres, sans mixage audio ni mesure du tempo. Le bouton **Revenir à la bibliothèque** termine l’écoute du DJ.
 

@@ -253,7 +253,7 @@ export function DjApp({ connection }: { connection: Connection }) {
       );
     }
   };
-  function microphone() {
+  async function microphone() {
     if (listening) {
       recognition.current?.stop();
       return;
@@ -281,6 +281,12 @@ export function DjApp({ connection }: { connection: Connection }) {
       );
     mic.onend = () => setListening(false);
     try {
+      // Request microphone permission from the visible DJ tab, then immediately
+      // release this stream: SpeechRecognition manages its own capture session.
+      const permission = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      permission.getTracks().forEach((track) => track.stop());
       mic.start();
       setListening(true);
     } catch {
@@ -472,7 +478,7 @@ export function DjApp({ connection }: { connection: Connection }) {
                 aria-label={listening ? "Arrêter le micro" : "Parler au DJ"}
                 aria-pressed={listening}
                 disabled={!supportsMic || !configured || busy}
-                onClick={microphone}
+                onClick={() => void microphone()}
               >
                 {listening ? <MicOff size={20} /> : <Mic size={20} />}
               </button>
