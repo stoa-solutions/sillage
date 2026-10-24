@@ -47,7 +47,17 @@ do {
   try store.save(tracks, source: .server)
   try expect(try store.read(.local) == [long], "Server cache overwrote local library")
   try expect(try store.read(.server) == tracks, "Server cache missing")
-  print("11 native behavior checks passed")
+  let baker = Track(id: "baker123456", title: "Chet Baker - Almost Blue")
+  let faker = Track(id: "faker123456", title: "Chet Faker - Gold")
+  try expect(
+    AppleDJ.namedMatches([baker, faker], query: "Chet Baker") == [baker],
+    "Named search confused similar artists")
+  try expect(
+    AppleDJ.namedMatches([faker], query: "Chet Baker").isEmpty, "Missing artist was substituted")
+  try expect(
+    AppleDJ.namedMatches([long], query: "ete cafe") == [long],
+    "Named matching lost accent normalization")
+  print("14 native behavior checks passed")
 } catch {
   fputs("Native tests failed: \(error.localizedDescription)\n", stderr)
   exit(1)

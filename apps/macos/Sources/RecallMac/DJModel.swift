@@ -100,6 +100,17 @@ final class DJModel: ObservableObject {
     if session.useServer && connection == nil {
       throw RecallError.message("Connecte ton serveur dans Réglages ou repasse sur ce Mac.")
     }
+    if session.localDJ {
+      let store = session.store
+      let source = session.source
+      return try await AppleDJ.turn(message: text, history: history, excluded: excluded) {
+        query, includeQueued in
+        try await Task.detached {
+          try store.search(
+            query, source: source, limit: 30, excluded: includeQueued ? [] : excluded)
+        }.value
+      }
+    }
     if !session.geminiKey.isEmpty {
       let store = session.store
       let server = session.useServer ? connection : nil
@@ -130,6 +141,10 @@ final class DJModel: ObservableObject {
     throw RecallError.message("Ajoute ta clé Gemini dans Réglages pour activer ton DJ.")
   }
   private func speak(_ text: String) {
+    if session.localDJ {
+      voice.speakLocally(text)
+      return
+    }
     let key = session.geminiKey
     let model = session.model
     let connection = session.useServer ? session.connection : nil

@@ -4,6 +4,36 @@ import RecallKit
 @main struct Diagnostics {
   static func main() async {
     do {
+      if CommandLine.arguments.contains("--apple") {
+        if let reason = AppleDJ.availability {
+          print("Apple DJ unavailable: \(reason)")
+          return
+        }
+        let store = LibraryStore(
+          directory: FileManager.default.urls(
+            for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent(
+              "Playlist Recall"))
+        let start = Date()
+        let request = CommandLine.arguments.dropFirst(2).joined(separator: " ")
+        let response = try await AppleDJ.turn(
+          message: request.isEmpty ? "Mets-moi du Mac Miller" : request, history: [], excluded: []
+        ) { query, _ in
+          print("Query: \(query)")
+          return try store.search(query, source: .local, limit: 20)
+        }
+        if request.isEmpty {
+          guard !response.tracks.isEmpty,
+            response.tracks.allSatisfy({ $0.title.localizedCaseInsensitiveContains("Mac Miller") })
+          else { throw RecallError.message("Apple did not select Mac Miller tracks") }
+        }
+        print(
+          "Apple DJ: \(response.tracks.count) verified local tracks in \(Date().timeIntervalSince(start))s"
+        )
+        print(response.reply)
+        print(response.tracks.map(\.title).joined(separator: "\n"))
+        return
+      }
+
       guard CommandLine.arguments.count >= 2 else {
         throw RecallError.message("Provide the path to a private test configuration.")
       }

@@ -64,7 +64,7 @@ import SwiftUI
         session.model = UserDefaults.standard.string(forKey: "djModel") ?? "gemini-3.5-flash-lite"
       } catch { session.error = error.localizedDescription }
     }
-    await session.refreshCredentials()
+    if session.useServer || !session.localDJ { await session.refreshCredentials() }
     if session.useServer { library.sync() }
   }
   var body: some Scene {

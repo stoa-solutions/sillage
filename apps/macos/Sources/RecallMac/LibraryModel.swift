@@ -1,5 +1,5 @@
-import Combine
 import AppKit
+import Combine
 import RecallKit
 import UniformTypeIdentifiers
 
@@ -111,6 +111,13 @@ final class LibraryModel: ObservableObject {
     }
   }
   func importPlaylist() {
+    guard !importing else { return }
+    Task {
+      if !session.hasYouTubeKey { await session.refreshCredentials() }
+      startPlaylistImport()
+    }
+  }
+  private func startPlaylistImport() {
     guard !importing else { return }
     guard session.hasYouTubeKey else {
       session.error = "Ajoute ta clé YouTube dans Réglages pour importer une playlist par lien."

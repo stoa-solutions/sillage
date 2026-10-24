@@ -37,6 +37,13 @@ final class VoiceOutput: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
       }
     }
   }
+  func speakLocally(_ text: String) {
+    stop()
+    let utterance = AVSpeechUtterance(string: text)
+    utterance.voice = AVSpeechSynthesisVoice(language: "fr-FR")
+    player.command("duck")
+    synthesizer.speak(utterance)
+  }
   func stop() {
     task?.cancel()
     audio?.stop()

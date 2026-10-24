@@ -17,22 +17,33 @@ struct SettingsView: View {
         ).font(.caption)
       }
       Section("Ton IA musicale") {
-        Picker("Modèle", selection: $session.model) {
-          Text("Gemini 3.8 Flash · rapide et équilibré").tag("gemini-3.8-flash")
-          Text("Gemini 3.5 Flash-Lite · très rapide").tag("gemini-3.5-flash-lite")
-          Text("Gemini 4 Argon · raisonnement avancé").tag("gemini-4-argon")
-        }
-        SecureField(
-          session.hasKey ? "Nouvelle clé Gemini (laisser vide pour conserver)" : "Ta clé API Gemini",
-          text: $key)
+        Toggle("DJ Apple sur ce Mac · sans clé Gemini", isOn: $session.localDJ)
         Text(
-          session.hasKey
-            ? "Clé enregistrée dans le Trousseau de ce Mac."
-            : "Ajoute ta clé pour utiliser ton projet Google. Sans clé personnelle, le DJ du serveur connecté peut être utilisé."
+          AppleDJ.availability
+            ?? "Modèle Apple prêt. Tes demandes et les titres restent sur ce Mac."
         ).font(.caption).foregroundStyle(.secondary)
         Text(
-          "Le chat et les métadonnées sélectionnées sont transmis à Google. Les appels directs utilisent ton quota Google ; la limite du serveur ne s’applique pas à eux."
+          "Désactive ce mode pour utiliser Gemini ou ton serveur. Aucun basculement vers le cloud sans ton choix."
         ).font(.caption)
+        if !session.localDJ {
+          Picker("Modèle", selection: $session.model) {
+            Text("Gemini 3.8 Flash · rapide et équilibré").tag("gemini-3.8-flash")
+            Text("Gemini 3.5 Flash-Lite · très rapide").tag("gemini-3.5-flash-lite")
+            Text("Gemini 4 Argon · raisonnement avancé").tag("gemini-4-argon")
+          }
+          SecureField(
+            session.hasKey
+              ? "Nouvelle clé Gemini (laisser vide pour conserver)" : "Ta clé API Gemini",
+            text: $key)
+          Text(
+            session.hasKey
+              ? "Clé enregistrée dans le Trousseau de ce Mac."
+              : "Ajoute ta clé pour utiliser ton projet Google. Sans clé personnelle, le DJ du serveur connecté peut être utilisé."
+          ).font(.caption).foregroundStyle(.secondary)
+          Text(
+            "Le chat et les métadonnées sélectionnées sont transmis à Google. Les appels directs utilisent ton quota Google ; la limite du serveur ne s’applique pas à eux."
+          ).font(.caption)
+        }
       }
       Section("Import YouTube sur ce Mac") {
         SecureField(
@@ -65,7 +76,7 @@ struct SettingsView: View {
       }
       Section("Micro et voix") {
         Text(
-          "Le micro fonctionne uniquement au clic. La dictée française utilise la reconnaissance Apple, sur l’appareil lorsque disponible, sinon via le service Apple. La voix du DJ utilise Gemini avec une voix macOS en secours."
+          "Le micro fonctionne uniquement au clic. La dictée française utilise la reconnaissance Apple, sur l’appareil lorsque disponible, sinon via le service Apple. Le DJ Apple utilise la voix macOS. En mode Gemini, la voix macOS sert de secours."
         ).font(.caption)
       }
       Section("Mises à jour") {
@@ -89,7 +100,10 @@ struct SettingsView: View {
       }
       if !message.isEmpty { Text(message).font(.caption).textSelection(.enabled) }
     }.formStyle(.grouped).frame(width: 650, height: 670)
-      .onAppear { serverURL = session.connectedURL }
+      .task {
+        await session.refreshCredentials()
+        serverURL = session.connectedURL
+      }
   }
   private func save() async {
     do {

@@ -16,6 +16,7 @@ project = root / "apps/macos"
 release_version = json.loads((project / "version.json").read_text())
 parser = argparse.ArgumentParser()
 parser.add_argument("--universal", action="store_true")
+parser.add_argument("--dmg", action="store_true", help="Also create a drag-to-Applications installation disk")
 parser.add_argument("--skip-update-signature", action="store_true", help="Local test build only; never publish this archive as an update")
 parser.add_argument("--version", default=release_version["version"])
 parser.add_argument("--build", default=release_version["build"])
@@ -51,6 +52,7 @@ if not framework.exists():
     framework = next((project / ".build/artifacts/sparkle").rglob("macos-arm64_x86_64/Sparkle.framework"))
 shutil.copytree(framework, contents / "Frameworks/Sparkle.framework", symlinks=True)
 shutil.copy2(root / "apps/extension/public/icon/128.png", contents / "Resources/Recall.png")
+shutil.copy2(project / "Resources/Installation.txt", contents / "Resources/Installation.txt")
 shutil.copy2(project / ".build/artifacts/sparkle/Sparkle/LICENSE", contents / "Resources/Sparkle-LICENSE.txt")
 info = {
     "CFBundleName": "Playlist Recall", "CFBundleDisplayName": "Playlist Recall", "CFBundleExecutable": "RecallMac",
@@ -102,6 +104,16 @@ if not args.skip_update_signature:
         signature = subprocess.check_output([str(tools / "sign_update"), "--account", "recall-macos-updates", "-p", str(signing_copy)], text=True, timeout=120).strip()
         subprocess.run([str(tools / "sign_update"), "--account", "recall-macos-updates", "--verify", str(signing_copy), signature], check=True, timeout=120)
 manifest = {"version": args.version, "build": args.build, "architecture": label, "file": archive.name, "size": archive.stat().st_size, "signature": signature, "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(), "notarized": notarized, "signing": "ad-hoc" if identity == "-" else "local certificate" if local_signing else "Developer ID"}
+if args.dmg:
+    disk = output / f"Playlist-Recall-{args.version}-{label}.dmg"
+    with tempfile.TemporaryDirectory(prefix="recall-installer-") as temp:
+        stage = Path(temp)
+        shutil.copytree(bundle, stage / bundle.name, symlinks=True)
+        (stage / "Applications").symlink_to("/Applications")
+        shutil.copy2(project / "Resources/Installation.txt", stage / "Lire avant installation.txt")
+        subprocess.run(["hdiutil", "create", "-volname", "Playlist Recall", "-srcfolder", str(stage), "-ov", "-format", "UDZO", str(disk)], check=True)
+    manifest["installer"] = disk.name
+    manifest["installerSha256"] = hashlib.sha256(disk.read_bytes()).hexdigest()
 (output / "release.json").write_text(json.dumps(manifest, indent=2) + "\n")
 print(bundle)
 print(archive)
