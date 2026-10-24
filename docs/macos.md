@@ -75,3 +75,22 @@ Sources : https://sparkle-project.org/documentation/ et https://developer.apple.
 Sur un même petit catalogue réel fourni aux modèles, les réponses ont pris 3,80 s (Argon, raisonnement faible), 2,88 s (3.8 Flash, faible) et 1,57 s (3.5 Flash-Lite). Il s’agit d’un seul échantillon par modèle, pas d’un benchmark statistique.
 
 Avec le client natif, le vrai serveur MCP et la bibliothèque complète, « Self Care » a été retrouvé en 10,34 s avec 3.8 Flash et 2,05 s avec Flash-Lite. Ces mesures incluent des états de cache potentiellement différents ; elles ne permettent pas d’attribuer tout l’écart au modèle. La voix native a renvoyé un WAV valide. La capture du micro et l’écoute réelle dans la fenêtre nécessitent encore la validation des autorisations macOS par l’utilisateur.
+
+## Dictée : revue du 25 octobre 2026 (version locale 1.0.1)
+
+L’ancienne app a reproduit « La dictée s’est interrompue » ; le chat et la lecture de Self Care fonctionnaient dans la même session. La cause précise renvoyée par Apple n’était pas exposée par l’ancien gestionnaire. Les défauts de cycle de vie suivants ont été corrigés :
+
+- Annulation pendant une autorisation en attente : un second clic annule le démarrage, sans créer une deuxième session. Les retours tardifs sont ignorés.
+- Fin de dictée : arrêt de la capture puis `endAudio()` et `finish()`, attente du résultat final (au maximum quatre secondes), un seul envoi au DJ. Annuler n’envoie rien.
+- Moteur recréé à chaque session et validation du taux d’échantillonnage et du nombre de canaux matériels avant installation du tap.
+- Reconnaissance locale Apple non forcée : la disponibilité déclarée ne garantit pas que les ressources françaises locales sont opérationnelles. Le service Apple peut traiter l’audio en ligne.
+- États visibles : préparation, écoute avec texte partiel, finalisation ; bouton Annuler. Limite de 55 secondes et fin après trois secondes sans changement de transcription (heuristique de texte, pas un détecteur de silence audio).
+
+`RecallAudio` isole la dictée de l’interface. `npm run test:macos` inclut cinq régressions de permissions/annulation, en plus des quatorze contrôles métier. Ces tests n’enregistrent pas de son et ne remplacent pas une validation matérielle.
+
+La version universelle a été compilée, vérifiée et installée. Lors du test de la version corrigée, macOS attendait encore la permission ; aucune transcription humaine réussie n’a donc été constatée à ce stade. Essai restant : autoriser Microphone et Reconnaissance vocale pour Recall, dire une demande, vérifier les mots finaux et un seul envoi au DJ, puis répéter après annulation et changement d’entrée audio.
+
+Références Apple :
+- https://developer.apple.com/documentation/speech/sfspeechrecognitiontask
+- https://developer.apple.com/documentation/speech/sfspeechaudiobufferrecognitionrequest
+- https://developer.apple.com/documentation/AVFAudio/AVAudioEngine/inputNode

@@ -1,3 +1,4 @@
+import RecallAudio
 import RecallKit
 import SwiftUI
 
@@ -159,11 +160,12 @@ struct DJView: View {
             if let id = model.messages.last?.id { proxy.scrollTo(id, anchor: .bottom) }
           }
         }
-        if microphone.listening {
-          Text(
-            microphone.transcript.isEmpty
-              ? "Je t’écoute… Clique à nouveau pour terminer." : microphone.transcript
-          ).font(.caption).foregroundStyle(.green)
+        if microphone.active {
+          HStack {
+            if microphone.starting || microphone.finishing { ProgressView().controlSize(.small) }
+            Text(microphone.status).font(.caption).foregroundStyle(.green)
+            Button("Annuler l’écoute") { microphone.stop() }
+          }
         }
         HStack(alignment: .bottom) {
           TextField("Ton mood, un titre, une envie…", text: $model.prompt, axis: .vertical)
@@ -171,8 +173,10 @@ struct DJView: View {
           Button {
             model.toggleMicrophone()
           } label: {
-            Image(systemName: microphone.listening ? "mic.slash.fill" : "mic.fill")
-          }.help("Parler au DJ").disabled(model.busy)
+            Image(systemName: microphone.active ? "mic.slash.fill" : "mic.fill")
+          }.help("Parler au DJ").accessibilityLabel(
+            microphone.active ? "Terminer la dictée" : "Parler au DJ"
+          ).disabled(model.busy || microphone.finishing)
           Button {
             model.send()
           } label: {
