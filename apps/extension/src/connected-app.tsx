@@ -65,6 +65,7 @@ export function ConnectedApp({ connection }: { connection: Connection }) {
   const searchRef = useRef<HTMLInputElement>(null);
   const lastSearch = useRef("");
   const fingerprint = useRef("");
+  const refreshFailed = useRef(false);
   useEffect(() => {
     const controller = new AbortController();
     const refresh = async () => {
@@ -80,6 +81,11 @@ export function ConnectedApp({ connection }: { connection: Connection }) {
         ]);
         setPlaylists(next.playlists);
         setStatus(nextStatus);
+        if (refreshFailed.current) {
+          refreshFailed.current = false;
+          setError("");
+          setRevision((n) => n + 1);
+        }
         const signature = JSON.stringify([
           nextStatus.counts,
           next.playlists.map((p) => p.last_sync_at),
@@ -88,8 +94,10 @@ export function ConnectedApp({ connection }: { connection: Connection }) {
           setRevision((n) => n + 1);
         fingerprint.current = signature;
       } catch (e) {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
+          refreshFailed.current = true;
           setError(e instanceof Error ? e.message : "Serveur indisponible.");
+        }
       }
     };
     void refresh();
