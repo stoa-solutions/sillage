@@ -13,7 +13,7 @@ export const djPlayerJs = String.raw`(() => {
     if(value.autoplay) player.loadVideoById(value.id); else player.cueVideoById(value.id);
   };
   window.addEventListener('message',(event)=>{
-    if(event.source!==parent || !(/^chrome-extension:\/\/[a-p]{32}$/.test(event.origin) || /^http:\/\/(127\.0\.0\.1|localhost):[0-9]+$/.test(event.origin))) return;
+    if(event.source!==parent || !(/^chrome-extension:\/\/[a-p]{32}$/.test(event.origin) || /^http:\/\/(127\.0\.0\.1|localhost):[0-9]+$/.test(event.origin) || (parent===window && event.origin===location.origin))) return;
     const value=event.data;
     if(!value || value.source!=='recall-dj' || !['hello','cue','play','pause','volume','duck','restore'].includes(value.command)) return;
     parentOrigin=event.origin;

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { macosReleases } from "./macos-releases.ts";
 import { createDjRoutes, type ApiEnvironment } from "./dj-routes.ts";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
@@ -36,6 +37,7 @@ export function createApp(db: Database) {
       onError: (c) => c.json({ error: "Fichier trop volumineux." }, 413),
     }),
   );
+  app.route("/macos", macosReleases());
   app.get("/dj/player", (c) => {
     c.header(
       "Content-Security-Policy",
