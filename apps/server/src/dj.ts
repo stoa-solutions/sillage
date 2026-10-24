@@ -99,7 +99,9 @@ export async function djTurn(
           tool_choice: turn < 4 ? "auto" : "none",
           max_completion_tokens:
             config.model === "gemini-4-argon" ? 32768 : 4096,
-          ...(["gemini-4-argon", "gemini-3.8-flash"].includes(config.model ?? "")
+          ...(["gemini-4-argon", "gemini-3.8-flash"].includes(
+            config.model ?? "",
+          )
             ? { reasoning_effort: "low" }
             : {}),
           response_format: { type: "json_object" },

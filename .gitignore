@@ -23,3 +23,6 @@ public/data/
 .runtime/
 
 .playwright-cli/
+
+apps/macos/.build/
+apps/macos/.swiftpm/

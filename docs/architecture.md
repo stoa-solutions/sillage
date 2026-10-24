@@ -39,16 +39,14 @@ La recherche classe les identifiants avant de charger les descriptions : au maxi
 
 Les limites de concurrence et de débit HTTP sont encore propres à chaque processus API. Ajouter plusieurs API exige de les coordonner en base ou via un service partagé. Les limites de candidats et les requêtes vectorielles doivent être mesurées sur une bibliothèque plus grande avant de promettre un volume cible. Aucun benchmark de grande charge n’a encore été réalisé.
 
-## App Mac : cible suivante
+## App Mac native
 
-L’app Mac peut réutiliser les contrats, le client HTTP, l’interface React et le moteur de sélection. Elle n’existe pas encore dans ce dépôt. La première version peut se connecter à un serveur privé ; supprimer ce besoin exige un moteur local et une stratégie d’indexation et de synchronisation embarquée.
+L’app SwiftUI existe dans `apps/macos`. Son noyau `RecallKit` sépare les formats, la recherche, le stockage local, le client HTTP/MCP et Gemini. Le module `RecallMac` contient les adaptateurs Trousseau, micro Apple, WebKit et Sparkle. Voir [le guide Mac](macos.md).
 
-Avant de construire le shell, isoler trois adaptateurs de plateforme :
+Le serveur vectoriel est facultatif : le mode local accepte un import JSON et une recherche dans les métadonnées. Il n’embarque pas d’inférence vectorielle ni de synchronisation YouTube directe. Le serveur existant conserve ces fonctions.
 
-- Stockage de connexion et secrets : Trousseau macOS côté natif, plutôt que stockage web.
-- Micro : capture et transcription natives. La reconnaissance actuelle dépend de Chrome et ne doit pas être présumée disponible dans une WebView macOS.
-- Lecture et liens : tester l’origine du lecteur YouTube, son autorisation d’intégration et l’ouverture externe. Le lecteur hébergé accepte actuellement Chrome et localhost ; une origine desktop demande un contrat explicite.
+Le lecteur public accepte maintenant son propre parent HTTPS lorsqu’il est chargé au premier niveau dans la WebView native. Le pont natif ne traite que les événements de ce lecteur et n’expose aucune fonction de lecture des secrets.
 
-Une app Tauri est une option pour conserver React. Valider ces adaptateurs avant de retenir ce shell : un simple emballage de la page ne prouve pas le micro ou la lecture. La distribution directe nécessite signature Developer ID et notarisation Apple ; les mises à jour demandent aussi un canal signé, un hébergement et une politique de reprise. Aucun certificat, compte développeur ni mécanisme de mise à jour natif n’est configuré aujourd’hui.
+Sparkle est intégré avec une clé publique épinglée et un flux HTTPS. La clé privée de signature reste dans le Trousseau. Aucun certificat Apple Developer ID n’est présent : la version actuelle est locale et la notarisation publique attend cette identité. Le téléchargement et le remplacement automatiques doivent être vérifiés avec une seconde version signée ; la configuration seule ne prouve pas ce scénario.
 
-Sources : https://tauri.app/distribute/ et https://developer.apple.com/developer-id/
+Sources : https://sparkle-project.org/documentation/ et https://developer.apple.com/developer-id/

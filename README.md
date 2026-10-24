@@ -2,6 +2,12 @@
 
 Extension Chrome avec bibliothèque locale et serveur personnel pour retrouver une vidéo à partir d'un souvenir, de mots-clés ou de sa durée. Interface en français, panneau latéral et bibliothèque dans un onglet. La V2 ajoute la synchronisation YouTube, les descriptions complètes, une recherche hybride PostgreSQL/pgvector et une recherche visuelle des miniatures.
 
+## App Mac
+
+Une app native SwiftUI est disponible dans `apps/macos` : chat DJ, micro Apple, voix Gemini, lecture YouTube et clés dans le Trousseau. Elle utilise ton serveur privé ou une bibliothèque JSON locale. Le paquet universel est généré par `npm run build:macos` ; il ne contient aucune connexion personnelle.
+
+Cette première version est destinée aux essais locaux. Sparkle est intégré pour les mises à jour signées ; la distribution publique sans avertissement attend une signature et une notarisation Apple. Voir [le guide Mac](docs/macos.md) pour les fonctions, les limites, la compilation et la publication.
+
 ## Installation locale
 
 1. Ouvrez `chrome://extensions` dans Chrome.
