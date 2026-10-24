@@ -27,6 +27,8 @@ for arch in architectures:
     subprocess.run(["swift", "build", "--package-path", str(project), "-c", "release", "--arch", arch], check=True)
 output = root / ".output/macos"
 output.mkdir(parents=True, exist_ok=True)
+# Never leave metadata describing a previous archive if rebuilding or signing fails.
+(output / "release.json").unlink(missing_ok=True)
 bundle = output / "Playlist Recall.app"
 if bundle.exists():
     shutil.rmtree(bundle)
