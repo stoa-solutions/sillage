@@ -7,6 +7,7 @@ struct DJView: View {
   @AppStorage("djPanelCollapsed") private var panelCollapsed = false
   @State private var panelTab = SessionPanelTab.dj
   @StateObject private var lyrics = LyricsModel()
+  @StateObject private var listened = ListeningHistoryModel()
   let panelOnly: Bool
   let source: DiscoveryScope?
   @ObservedObject var model: DJModel
@@ -197,16 +198,15 @@ struct DJView: View {
   private var sessionPanel: some View {
     VStack(spacing: 0) {
       HStack(spacing: 8) {
-        Picker("Vue de la session", selection: $panelTab) {
-          ForEach(SessionPanelTab.allCases) { tab in Text(tab.rawValue).tag(tab) }
-        }.pickerStyle(.segmented).labelsHidden().neutralSelection()
+        PanelTabBar(selection: $panelTab, queueCount: model.allUpcoming.count)
+        Spacer(minLength: 0)
         Button {
           panelCollapsed = true
         } label: {
-          Image(systemName: "sidebar.right").frame(width: 24, height: 24)
-        }.buttonStyle(.plain).help("Replier le panneau")
+          Image(systemName: "sidebar.right").frame(width: 26, height: 26)
+        }.buttonStyle(.plain).foregroundStyle(.secondary).help("Replier le panneau")
           .accessibilityLabel("Replier le panneau")
-      }.padding(12)
+      }.padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 4)
       switch panelTab {
       case .dj:
         conversation.padding(.horizontal, 16)
@@ -273,153 +273,169 @@ struct DJView: View {
     }.listStyle(.plain).scrollContentBackground(.hidden)
   }
 
+  /// The account's history from the server; refreshed shortly after each play is sent.
   private var historyPanel: some View {
-    List {
-      Section {
-        if model.history.isEmpty {
+    ScrollView {
+      LazyVStack(alignment: .leading, spacing: 0) {
+        ForEach(listenedDays, id: \.title) { day in
+          Text(day.title).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+            .padding(.horizontal, 6).padding(.top, 12).padding(.bottom, 4)
+          ForEach(day.plays) { play in
+            HistoryRow(
+              listened: play, playing: model.current?.id == play.track.id, compact: true,
+              onPlay: { model.play(play.track, source: source ?? model.searchScope) },
+              onEnqueue: { model.enqueue(play.track, source: source ?? model.searchScope) }
+            )
+            .onAppear {
+              if play.id == listened.plays.last?.id { listened.load(session, more: true) }
+            }
+          }
+        }
+      }.padding(.horizontal, 8).padding(.bottom, 12)
+    }
+    .overlay {
+      if listened.plays.isEmpty {
+        if listened.loading {
+          ProgressView()
+        } else if !listened.error.isEmpty {
+          EmptyState(
+            symbol: "exclamationmark.triangle", message: listened.error,
+            action: ("Réessayer", { listened.load(session) }))
+        } else {
           EmptyState(
             symbol: "clock.arrow.circlepath",
-            message: "Les morceaux écoutés, passés ou indisponibles apparaîtront ici.")
+            message: "Tes écoutes apparaîtront ici, enregistrées sur ton compte.")
         }
-        ForEach(model.history.reversed()) { entry in
-          TrackRow(
-            track: entry.track, detail: entry.outcome.rawValue, artworkWidth: 72,
-            onPlay: { model.play(entry.track, source: source ?? model.searchScope) })
-        }
-      } header: {
-        SectionHeader("Cette session")
       }
-    }.listStyle(.plain).scrollContentBackground(.hidden)
+    }
+    .task(id: "\(session.generation)-\(model.history.count)") {
+      // A new play reaches the server a few seconds after it ends.
+      if !listened.plays.isEmpty { try? await Task.sleep(for: .seconds(7)) }
+      guard !Task.isCancelled else { return }
+      listened.load(session)
+    }
+  }
+
+  private var listenedDays: [(title: String, plays: [ListenedTrack])] {
+    ListeningHistoryModel.days(listened.plays)
   }
 
   private var conversation: some View {
     ScrollViewReader { proxy in
       ScrollView {
-        LazyVStack(alignment: .leading, spacing: 12) {
+        LazyVStack(alignment: .leading, spacing: 16) {
           if model.messages.isEmpty { welcome }
           ForEach(model.messages) { message in
             VStack(alignment: .leading, spacing: 10) {
-              MessageRow(message: message)
-              if let results = message.discoveries {
-                ForEach(results) {
-                  DiscoveryTrackRow(item: $0, compact: true, source: source ?? model.searchScope)
+              ChatBubble(message: message)
+              if let results = message.discoveries, !results.isEmpty {
+                VStack(spacing: 6) {
+                  ForEach(results) {
+                    DiscoveryTrackRow(item: $0, compact: true, source: source ?? model.searchScope)
+                  }
                 }
+                .padding(8)
+                .background(
+                  .white.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+                .padding(.leading, 36)
               }
             }.id(message.id)
           }
+          if model.busy && !microphone.active {
+            TypingIndicator(label: "Je cherche la bonne suite…") { model.cancel() }.id("typing")
+          }
         }.padding(.vertical, 16)
-      }.onChange(of: model.messages.count) { _, _ in
+      }
+      .onChange(of: model.messages.count) { _, _ in
         if let id = model.messages.last?.id {
           withAnimation { proxy.scrollTo(id, anchor: .bottom) }
         }
+      }
+      .onChange(of: model.busy) { _, busy in
+        if busy { withAnimation { proxy.scrollTo("typing", anchor: .bottom) } }
       }
     }
   }
 
   private var welcome: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      Text("Qu’est-ce qui te ferait du bien ?").font(.title3.weight(.semibold))
-      Text("Une ambiance, un artiste, une soirée… Le DJ cherche dans tes playlists.")
-        .foregroundStyle(.secondary)
-      ForEach(["Du Mac Miller", "Une soirée jazz douce", "De l’énergie pour avancer"], id: \.self) {
-        text in
-        Button(text) { model.send(text, source: source) }.buttonStyle(
-          GlassButtonStyle(emphasized: true))
+    VStack(alignment: .leading, spacing: 14) {
+      DJAvatar(size: 40)
+      VStack(alignment: .leading, spacing: 4) {
+        Text("Qu’est-ce qui te ferait du bien ?").font(.title3.weight(.semibold))
+        Text("Une ambiance, un artiste, une soirée. Tape / pour les commandes.")
+          .font(.callout).foregroundStyle(.secondary)
+      }
+      VStack(alignment: .leading, spacing: 8) {
+        ForEach(
+          ["Du Mac Miller", "Une soirée jazz douce", "De l’énergie pour avancer"], id: \.self
+        ) { text in
+          Chip(title: text, symbol: "sparkles") { model.send(text, source: source) }
+        }
       }
       if session.loadingCredentials {
         Text("Connexion à ton compte…").font(.caption).foregroundStyle(.secondary)
       } else if !session.hasServer {
-        Text("Connecte ton serveur dans Réglages pour accéder à tes playlists et au DJ.")
+        Text("Connecte ton compte dans Réglages pour accéder à tes playlists et au DJ.")
           .font(.caption).foregroundStyle(.secondary)
       }
-    }
+    }.padding(.top, 8)
   }
 
+  /// One rounded field: the message on top; where to search, the microphone and send below.
   private var composer: some View {
     VStack(alignment: .leading, spacing: 8) {
-      if !panelOnly {
-        Picker("Chercher dans", selection: $model.searchScope) {
-          Text("Mes playlists").tag(DiscoveryScope.library)
-          Text("YouTube").tag(DiscoveryScope.youtube)
-          Text("Partout").tag(DiscoveryScope.all)
-        }.pickerStyle(.segmented).labelsHidden().neutralSelection().help(
-          "Choisis où chercher. « Joue » lance maintenant ; « ajoute à la suite » conserve la lecture."
-        )
+      if model.prompt.hasPrefix("/") {
+        CommandSuggestions(prompt: model.prompt) { model.prompt = $0 }
       }
       if microphone.active {
         HStack(spacing: 8) {
           if microphone.starting || microphone.finishing { ProgressView().controlSize(.small) }
           Text(microphone.status).foregroundStyle(Color.recall)
           Button("Annuler l’écoute") { microphone.stop() }.buttonStyle(.link)
-        }.font(.caption)
-      } else if model.busy {
+        }.font(.caption).padding(.horizontal, 4)
+      } else if !model.busy && !voice.status.isEmpty {
+        Text(voice.status).font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+      }
+      VStack(alignment: .leading, spacing: 6) {
+        TextField("Demande au DJ…", text: $model.prompt, axis: .vertical)
+          .lineLimit(1...5).textFieldStyle(.plain)
+          .onSubmit { model.send(source: source) }
         HStack(spacing: 8) {
-          ProgressView().controlSize(.small)
-          Text("Je cherche la bonne suite…")
-          Button("Annuler") { model.cancel() }.buttonStyle(.link)
-        }.font(.caption)
-      } else if !voice.status.isEmpty {
-        Text(voice.status).font(.caption).foregroundStyle(.secondary)
+          if !panelOnly { ScopeMenu(scope: $model.searchScope) }
+          Spacer(minLength: 0)
+          Button {
+            model.toggleMicrophone(source: source)
+          } label: {
+            Image(systemName: microphone.active ? "mic.fill" : "mic")
+              .foregroundStyle(microphone.active ? Color.recall : .secondary)
+              .frame(width: 28, height: 28).contentShape(Circle())
+          }.buttonStyle(.plain).help("Parler au DJ")
+            .accessibilityLabel(microphone.active ? "Terminer la dictée" : "Parler au DJ")
+            .disabled(microphone.finishing)
+          Button {
+            model.send(source: source)
+          } label: {
+            Image(systemName: "arrow.up").fontWeight(.bold).frame(width: 28, height: 28)
+              .foregroundStyle(canSend ? Color.black : Color.secondary)
+              .background(Circle().fill(canSend ? Color.white : Color.white.opacity(0.08)))
+          }.buttonStyle(.plain).accessibilityLabel("Envoyer").disabled(!canSend)
+            .keyboardShortcut(.return, modifiers: [.command])
+        }
       }
-      if model.prompt.hasPrefix("/") {
-        VStack(alignment: .leading, spacing: 4) {
-          ForEach(
-            DJCommand.suggestions.filter {
-              model.prompt == "/" || $0.command.hasPrefix(model.prompt.lowercased())
-            }, id: \.command
-          ) { item in
-            Button {
-              model.prompt = item.command
-            } label: {
-              HStack {
-                Text(item.command).monospaced()
-                Text(item.label).foregroundStyle(.secondary)
-                Spacer()
-              }
-              .padding(.vertical, 3)
-            }.buttonStyle(.plain)
-          }
-        }.font(.callout).padding(10).glassPanel()
-      }
-      HStack(alignment: .bottom, spacing: 8) {
-        TextField(
-          "Ton envie, un artiste… ou / pour les commandes", text: $model.prompt, axis: .vertical
-        )
-        .lineLimit(1...4).textFieldStyle(.plain).padding(.vertical, 6)
-        .onSubmit { model.send(source: source) }
-        Button {
-          model.toggleMicrophone(source: source)
-        } label: {
-          Image(systemName: microphone.active ? "mic.fill" : "mic").font(.body)
-            .foregroundStyle(microphone.active ? Color.recall : .secondary)
-            .frame(width: 28, height: 28)
-        }.buttonStyle(.plain).help("Parler au DJ")
-          .accessibilityLabel(microphone.active ? "Terminer la dictée" : "Parler au DJ")
-          .disabled(microphone.finishing)
-        Button {
-          model.send(source: source)
-        } label: {
-          Image(systemName: "arrow.up").fontWeight(.semibold).frame(width: 28, height: 28)
-            .foregroundStyle(Color(nsColor: .windowBackgroundColor))
-            .background(Circle().fill(canSend ? Color.recall : Color.secondary.opacity(0.4)))
-        }.buttonStyle(.plain).accessibilityLabel("Envoyer").disabled(!canSend)
-          .keyboardShortcut(.return, modifiers: [.command])
-      }.padding(.leading, 14).padding(.trailing, 6).padding(.vertical, 4)
-        .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 18))
+      .padding(.horizontal, 12).padding(.top, 10).padding(.bottom, 8)
+      .background(
+        RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.white.opacity(0.06))
+          .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(
+              .white.opacity(0.1)))
+      )
     }
   }
 
   private var canSend: Bool {
     !model.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
-}
-
-private enum SessionPanelTab: String, CaseIterable, Identifiable {
-  case dj = "DJ"
-  case queue = "À suivre"
-  case history = "Historique"
-  case lyrics = "Paroles"
-  var id: Self { self }
 }
 
 /// 3:07, or 1:02:45 past an hour: the same clock in the player and the library.
@@ -429,22 +445,4 @@ func clock(_ seconds: Double) -> String {
   return hours > 0
     ? String(format: "%d:%02d:%02d", hours, minutes, rest)
     : String(format: "%d:%02d", minutes, rest)
-}
-
-/// Your messages sit right in a tinted bubble; the DJ answers as plain text.
-private struct MessageRow: View {
-  let message: ChatMessage
-  var body: some View {
-    if message.role == "user" {
-      HStack {
-        Spacer(minLength: 48)
-        Text(message.content).textSelection(.enabled).padding(.horizontal, 12)
-          .padding(.vertical, 8)
-          .background(
-            Color.recall.opacity(0.18), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-      }
-    } else {
-      Text(message.content).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-    }
-  }
 }

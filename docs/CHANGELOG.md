@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- App 1.6.2 : panneau DJ modernisé. Onglets à icônes avec compteur de la file, réponses du DJ avec son avatar, bulles discrètes pour tes messages, indicateur de recherche dans la conversation, suggestions en pastilles, champ de saisie avec source, micro et envoi, commandes « / » en liste. L’onglet Historique montre les écoutes enregistrées sur ton compte, groupées par jour.
+
 - App 1.6.1 : « Écoutes récentes » dans la Bibliothèque affiche l’historique enregistré sur le serveur, groupé par jour (écouté, passé, heure), avec relecture, ajout à la suite et effacement confirmé.
 
 - Historique d’écoute enregistré sur le serveur pour chaque compte (titre, issue, date), sans doublon si un envoi est répété ; base des futures suggestions de Découvrir. Bibliothèque : retirer une playlist depuis son menu ou un clic droit, avec confirmation ; YouTube et les autres comptes ne changent pas.

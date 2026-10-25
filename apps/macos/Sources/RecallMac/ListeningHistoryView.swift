@@ -11,6 +11,27 @@ import SwiftUI
   private var generation: UUID?
   static let pageSize = 50
 
+  /// Plays under « Aujourd’hui », « Hier » or their date, keeping their order.
+  static func days(_ plays: [ListenedTrack]) -> [(title: String, plays: [ListenedTrack])] {
+    let calendar = Calendar.current
+    var groups: [(title: String, plays: [ListenedTrack])] = []
+    for listened in plays {
+      let title =
+        calendar.isDateInToday(listened.playedAt)
+        ? "Aujourd’hui"
+        : calendar.isDateInYesterday(listened.playedAt)
+          ? "Hier"
+          : listened.playedAt.formatted(.dateTime.weekday(.wide).day().month(.wide))
+            .capitalized(with: Locale(identifier: "fr_FR"))
+      if groups.last?.title == title {
+        groups[groups.count - 1].plays.append(listened)
+      } else {
+        groups.append((title, [listened]))
+      }
+    }
+    return groups
+  }
+
   /// From the newest play, or the next page when `more` is set.
   func load(_ session: Session, more: Bool = false) {
     if more && (loading || reachedEnd) { return }
@@ -150,30 +171,16 @@ struct ListeningHistoryView: View {
   }
 
   private var days: [(title: String, plays: [ListenedTrack])] {
-    let calendar = Calendar.current
-    var groups: [(title: String, plays: [ListenedTrack])] = []
-    for listened in model.plays {
-      let title =
-        calendar.isDateInToday(listened.playedAt)
-        ? "Aujourd’hui"
-        : calendar.isDateInYesterday(listened.playedAt)
-          ? "Hier"
-          : listened.playedAt.formatted(.dateTime.weekday(.wide).day().month(.wide))
-            .capitalized(with: Locale(identifier: "fr_FR"))
-      if groups.last?.title == title {
-        groups[groups.count - 1].plays.append(listened)
-      } else {
-        groups.append((title, [listened]))
-      }
-    }
-    return groups
+    ListeningHistoryModel.days(model.plays)
   }
 }
 
-/// A play: artwork, song and artist, how it ended, and the time.
-private struct HistoryRow: View {
+/// A play: artwork, song and artist, how it ended, and the time. Compact puts the last two
+/// under the artist, for the DJ panel.
+struct HistoryRow: View {
   let listened: ListenedTrack
   let playing: Bool
+  var compact = false
   let onPlay: () -> Void
   let onEnqueue: () -> Void
   @State private var hovering = false
@@ -181,7 +188,7 @@ private struct HistoryRow: View {
     let name = TrackTitle(listened.track)
     HStack(spacing: 12) {
       Button(action: onPlay) {
-        Artwork(track: listened.track, showsDuration: false).frame(width: 64)
+        Artwork(track: listened.track, showsDuration: false).frame(width: compact ? 56 : 64)
           .overlay {
             if hovering {
               Image(systemName: "play.fill").foregroundStyle(.white)
@@ -195,17 +202,24 @@ private struct HistoryRow: View {
           .foregroundStyle(playing ? Color.recall : Color.primary)
         Text(name.artist ?? listened.track.channel ?? "YouTube").font(.callout)
           .foregroundStyle(.secondary).lineLimit(1)
+        if compact {
+          Text(
+            "\(outcome) à " + listened.playedAt.formatted(date: .omitted, time: .shortened)
+          ).font(.caption).foregroundStyle(.tertiary)
+        }
       }.frame(maxWidth: .infinity, alignment: .leading)
       HStack(spacing: 2) {
         if hovering {
           IconButton(symbol: "text.badge.plus", help: "Lire ensuite", action: onEnqueue)
         }
       }.frame(width: 28)
-      Text(outcome).font(.caption).foregroundStyle(.secondary).frame(
-        width: 80, alignment: .trailing)
-      Text(listened.playedAt.formatted(date: .omitted, time: .shortened))
-        .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
-        .frame(width: 50, alignment: .trailing)
+      if !compact {
+        Text(outcome).font(.caption).foregroundStyle(.secondary).frame(
+          width: 80, alignment: .trailing)
+        Text(listened.playedAt.formatted(date: .omitted, time: .shortened))
+          .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
+          .frame(width: 50, alignment: .trailing)
+      }
     }
     .padding(.horizontal, 10).padding(.vertical, 6)
     .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(hovering ? 0.07 : 0)))
