@@ -1,7 +1,7 @@
-CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS unaccent;
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
 DO $$ BEGIN
-  IF NOT EXISTS(SELECT 1 FROM pg_ts_config WHERE cfgname='recall_simple') THEN
+  IF NOT EXISTS(SELECT 1 FROM pg_ts_config WHERE cfgname='recall_simple' AND pg_ts_config_is_visible(oid)) THEN
     CREATE TEXT SEARCH CONFIGURATION recall_simple (COPY = pg_catalog.simple);
     ALTER TEXT SEARCH CONFIGURATION recall_simple ALTER MAPPING FOR hword, hword_part, word WITH unaccent, simple;
   END IF;
@@ -118,3 +118,20 @@ CREATE TABLE IF NOT EXISTS lyrics_offsets (
   offset_ms integer NOT NULL, updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY(user_id, video_id)
 );
+
+-- Additive catalog enrichment. Original YouTube fields remain unchanged.
+ALTER TABLE videos ADD COLUMN IF NOT EXISTS music_metadata jsonb;
+ALTER TABLE videos ADD COLUMN IF NOT EXISTS music_search_document tsvector GENERATED ALWAYS AS
+  (to_tsvector('recall_simple',coalesce(music_metadata->>'searchText',''))) STORED;
+CREATE INDEX IF NOT EXISTS videos_music_lexical ON videos USING gin(music_search_document);
+CREATE TABLE IF NOT EXISTS musicbrainz_cache (url text PRIMARY KEY, response jsonb NOT NULL, fetched_at timestamptz NOT NULL DEFAULT now());
+-- Every writer shares the same index revision; YouTube refreshes retain current enrichment.
+CREATE OR REPLACE FUNCTION recall_music_revision() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP='UPDATE' AND (NEW.title,NEW.channel,NEW.duration_seconds) IS DISTINCT FROM (OLD.title,OLD.channel,OLD.duration_seconds) THEN
+    NEW.music_metadata := NULL;
+  END IF;
+  NEW.content_hash := split_part(NEW.content_hash,':',1) || CASE WHEN NEW.music_metadata->>'status'='matched' THEN ':' || md5(NEW.music_metadata::text) ELSE '' END;
+  RETURN NEW;
+END $$;
+CREATE OR REPLACE TRIGGER videos_music_revision BEFORE INSERT OR UPDATE ON videos FOR EACH ROW EXECUTE FUNCTION recall_music_revision();

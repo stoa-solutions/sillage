@@ -23,6 +23,13 @@ export interface SearchInput {
   offset: number;
   limit: number;
 }
+function enrichedLookup(row: any) {
+  return { title: row.title + " " + (row.music_metadata?.status === "matched" ? row.music_metadata.searchText : ""), channel: row.channel };
+}
+function enrichedGenreEvidence(query: string, row: any) {
+  const genres = row.music_metadata?.status === "matched" ? row.music_metadata.genres ?? [] : [];
+  return hasGenreEvidence(query, { ...row, description: (row.description ?? "") + " " + genres.join(" ") });
+}
 const cache = new Map<string, number[]>();
 export async function search(
   db: Database,
@@ -74,7 +81,7 @@ export async function search(
       const precise = !descriptive && lookupTokens(parsed.text).length
         ? await db.query(
           `SELECT v.id FROM videos v WHERE ${filter}
-          AND to_tsvector('recall_simple',coalesce(v.title,'') || ' ' || coalesce(v.channel,'')) @@ plainto_tsquery('recall_simple',$${params.length + 1})
+          AND to_tsvector('recall_simple',coalesce(v.title,'') || ' ' || coalesce(v.channel,'') || ' ' || coalesce(v.music_metadata->>'searchText','')) @@ plainto_tsquery('recall_simple',$${params.length + 1})
           ORDER BY v.id LIMIT 200`, [...params, lookupTokens(parsed.text).join(" ")])
         : { rows: [] };
       direct = precise.rows.length > 0;
@@ -86,7 +93,7 @@ export async function search(
         if (tokens.length && tokens.every(t => t.length >= 4)) {
           const similar = await db.query(
             `SELECT v.id FROM videos v WHERE ${filter}
-             AND unaccent(lower(coalesce(v.title,'') || ' ' || coalesce(v.channel,''))) LIKE ALL($${params.length + 1}::text[])
+             AND unaccent(lower(coalesce(v.title,'') || ' ' || coalesce(v.channel,'') || ' ' || coalesce(v.music_metadata->>'searchText',''))) LIKE ALL($${params.length + 1}::text[])
              ORDER BY v.id LIMIT 200`,
             [...params, tokens.map(t => `%${t}%`)],
           );
@@ -100,11 +107,11 @@ export async function search(
       for (const row of matches.rows) exact.add(row.id);
       if (!descriptive && matches.rows.length) direct = true;
       const result = await db.query(
-        `SELECT v.id,v.title,v.channel,ts_rank_cd(search_document,websearch_to_tsquery('recall_simple',$${params.length + 1})) AS score
-        FROM videos v WHERE ${filter} AND search_document @@ websearch_to_tsquery('recall_simple',$${params.length + 1}) ORDER BY score DESC,v.id LIMIT 200`,
+        `SELECT v.id,v.title,v.channel,v.music_metadata,ts_rank_cd(search_document || music_search_document,websearch_to_tsquery('recall_simple',$${params.length + 1})) AS score
+        FROM videos v WHERE ${filter} AND (search_document @@ websearch_to_tsquery('recall_simple',$${params.length + 1}) OR music_search_document @@ websearch_to_tsquery('recall_simple',$${params.length + 1})) ORDER BY score DESC,v.id LIMIT 200`,
         [...params, lexicalQuery],
       );
-      const corrected = !descriptive ? result.rows.filter(r => matchesLookup(parsed.text, r)) : [];
+      const corrected = !descriptive ? result.rows.filter(r => matchesLookup(parsed.text, enrichedLookup(r))) : [];
       if (!direct && corrected.length) {
         direct = true;
         lexical.push(...corrected.map(r => r.id));
@@ -191,8 +198,8 @@ export async function search(
   const ordered = [...rows.values()]
     .filter((v) => {
       if (!parsed.text || input.mode === "image") return true;
-      if (descriptive) return hasGenreEvidence(parsed.text, v);
-      return matchesLookup(parsed.text, v, input.fuzzy);
+      if (descriptive) return enrichedGenreEvidence(parsed.text, v);
+      return matchesLookup(parsed.text, enrichedLookup(v), input.fuzzy);
     })
     .sort((a, b) => {
       if (input.sort === "duration")

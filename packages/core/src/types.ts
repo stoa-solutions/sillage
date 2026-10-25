@@ -1,4 +1,19 @@
+export interface MusicMetadata {
+  source: "MusicBrainz";
+  status: "matched" | "ambiguous" | "not_found";
+  checkedAt: string;
+  recordingId?: string;
+  confidence?: number;
+  reason?: string;
+  artists: { id: string; name: string; role: "primary" | "featured" }[];
+  albums: { id: string; title: string }[];
+  genres: string[];
+  /** Artist-level genres are context, never asserted as this recording's genres. */
+  artistGenres: string[];
+  searchText: string;
+}
 export interface Video {
+  musicMetadata?: MusicMetadata | null;
   id: string;
   title: string | null;
   channel: string | null;

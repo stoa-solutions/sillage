@@ -165,6 +165,7 @@ struct TrackRow<Actions: View>: View {
           Text(name.artist ?? track.channel ?? "YouTube").font(.callout)
             .foregroundStyle(.secondary).lineLimit(1)
         }
+        if let metadata = track.musicMetadata { MusicMetadataView(metadata: metadata) }
         if let detail, !detail.isEmpty {
           Text(detail).font(.caption).foregroundStyle(detailColor).lineLimit(2)
         }

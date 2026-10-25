@@ -10,6 +10,17 @@ func expectFailure(_ work: () throws -> Void) throws {
   try expect(failed, "Invalid input was accepted")
 }
 do {
+  let metadataJSON =
+    #"{"id":"C7vVkdPEun8","title":"Incapable","musicMetadata":{"source":"MusicBrainz","status":"matched","checkedAt":"2026-10-25","recordingId":"a30b0cec-cb5b-41ce-b0c6-c046a4271fa3","artists":[{"id":"test","name":"Hedges","role":"featured"}],"albums":[{"id":"album","title":"Où les garçons grandissent"}],"genres":[],"artistGenres":["hip hop"]}}"#
+  let musicTrack = try JSONDecoder().decode(Track.self, from: Data(metadataJSON.utf8))
+  try expect(musicTrack.musicMetadata?.featured == "Hedges", "DJ metadata lost featured credit")
+  try expect(
+    musicTrack.musicMetadata?.genres.isEmpty == true,
+    "Artist genre incorrectly promoted to track genre")
+  let musicImport = try Catalog.parse(Data(("{\"videos\":[" + metadataJSON + "]}").utf8))
+  try expect(
+    musicImport.first?.musicMetadata == musicTrack.musicMetadata,
+    "Library lost MusicBrainz metadata")
   let source =
     #"{"collections":[{"videos":[{"id":"abcdefghijk","title":"Self Care","channel":"Mac Miller - Topic","duration_seconds":1480}]},{"videos":[{"id":"abcdefghijk","title":"Self Care"}]}]}"#
   let tracks = try Catalog.parse(Data(source.utf8))

@@ -3,7 +3,7 @@ import type { Video } from "@playlist-recall/core/types";
 export const hash = (text: string | Uint8Array) =>
   createHash("sha256").update(text).digest("hex");
 export function documentText(
-  v: Pick<Video, "title" | "channel" | "tags" | "description">,
+  v: Pick<Video, "title" | "channel" | "tags" | "description" | "musicMetadata">,
 ) {
   if (!v.title) return "";
   const description = v.description
@@ -23,6 +23,7 @@ export function documentText(
     v.channel ? `Channel: ${v.channel}` : "",
     v.tags.length ? `Tags: ${v.tags.join(", ")}` : "",
     description,
+    v.musicMetadata?.status === "matched" ? `MusicBrainz credits, albums and recording genres: ${v.musicMetadata.searchText}` : "",
   ]
     .filter(Boolean)
     .join("\n");

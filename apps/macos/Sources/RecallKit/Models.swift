@@ -2,6 +2,7 @@ import Foundation
 
 public struct Track: Codable, Identifiable, Hashable, Sendable {
   public let id: String
+  public let musicMetadata: MusicMetadata?
   public let title: String
   public let channel: String?
   public let durationSeconds: Double?
@@ -12,8 +13,10 @@ public struct Track: Codable, Identifiable, Hashable, Sendable {
   public var url: URL { URL(string: "https://www.youtube.com/watch?v=\(id)")! }
   public init(
     id: String, title: String, channel: String? = nil, durationSeconds: Double? = nil,
-    description: String? = nil, metadataUnavailable: Bool? = nil, channelAvatarURL: URL? = nil
+    description: String? = nil, metadataUnavailable: Bool? = nil, channelAvatarURL: URL? = nil,
+    musicMetadata: MusicMetadata? = nil
   ) {
+    self.musicMetadata = musicMetadata
     self.id = id
     self.title = title
     self.channel = channel
@@ -128,7 +131,11 @@ public enum Catalog {
         description: String((row["description"] as? String ?? "").prefix(10000)),
         metadataUnavailable: missingTitle || row["metadataUnavailable"] as? Bool == true
           ? true : nil,
-        channelAvatarURL: (row["channelAvatarUrl"] as? String).flatMap(googleImage))
+        channelAvatarURL: (row["channelAvatarUrl"] as? String).flatMap(googleImage),
+        musicMetadata: (row["musicMetadata"] as? [String: Any]).flatMap { value in
+          guard let data = try? JSONSerialization.data(withJSONObject: value) else { return nil }
+          return try? JSONDecoder().decode(MusicMetadata.self, from: data)
+        })
     }
   }
 }

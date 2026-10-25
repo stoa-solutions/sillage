@@ -1,3 +1,4 @@
+import { scheduleMusicEnrichment, enrichMusic } from "./musicbrainz/enrichment.ts";
 import { pool } from "./db.ts";
 import { claim, finish, schedule } from "./queue.ts";
 import { syncPlaylist, enrichVideos } from "./library.ts";
@@ -17,6 +18,7 @@ while (!stopping) {
   try {
     if (Date.now() - scheduled > 60000) {
       await schedule(pool);
+      await scheduleMusicEnrichment(pool);
       scheduled = Date.now();
     }
     const job = await claim(pool, Boolean(process.env.YOUTUBE_API_KEY));
@@ -38,6 +40,7 @@ while (!stopping) {
       if (job.kind === "sync") await syncPlaylist(pool, youtube, job);
       else if (job.kind === "enrich")
         await enrichVideos(pool, youtube, job.payload.ids!.split(","));
+      else if (job.kind === "musicbrainz") await enrichMusic(pool, job);
       else if (job.kind === "text") await indexText(pool, job.payload.videoId!);
       else if (job.kind === "image")
         await indexImage(pool, job.payload.videoId!);

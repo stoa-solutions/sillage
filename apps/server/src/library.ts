@@ -38,6 +38,7 @@ export async function upsertVideo(
 export function videoFromRow(row: any): Video {
   return {
     id: row.id,
+    musicMetadata: row.music_metadata ?? null,
     title: row.title,
     channel: row.channel,
     durationSeconds: row.duration_seconds,

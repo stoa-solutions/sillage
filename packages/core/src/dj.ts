@@ -1,3 +1,4 @@
+import type { MusicMetadata } from "./types.ts";
 // Wire contracts shared by the API and clients. No credentials or runtime APIs.
 export const DJ_MODELS = [
   "gemini-4-argon",
@@ -6,6 +7,7 @@ export const DJ_MODELS = [
 ] as const;
 export type DjModel = (typeof DJ_MODELS)[number];
 export interface DjTrack {
+  musicMetadata?: MusicMetadata | null;
   id: string;
   title: string;
   channel: string | null;

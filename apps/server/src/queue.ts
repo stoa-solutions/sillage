@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Database } from "./db.ts";
 export interface Job {
   id: string;
-  kind: "sync" | "enrich" | "text" | "image";
+  kind: "sync" | "enrich" | "text" | "image" | "musicbrainz";
   payload: Record<string, string>;
   attempts: number;
   lease_id: string;
