@@ -19,11 +19,16 @@ import SwiftUI
     store = AppearanceStore(directory: root.appendingPathComponent("Appearance", isDirectory: true))
     preferences = store.load()
     personalImage = NSImage(contentsOf: store.imageURL)
-    // SwiftPM's generated accessor checks the app root; installed resources live in Contents/Resources.
-    let resources =
-      Bundle.main.url(forResource: "PlaylistRecallMac_RecallMac", withExtension: "bundle")
-      .flatMap(Bundle.init(url:)) ?? Bundle.module
-    stoaImage = resources.url(
+    // Avoid Bundle.module's fatalError when a resource bundle is missing from an installation.
+    // SwiftPM development builds keep the bundle next to the executable.
+    let bundleName = "PlaylistRecallMac_RecallMac.bundle"
+    let candidates = [
+      Bundle.main.resourceURL?.appendingPathComponent(bundleName),
+      Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent(bundleName),
+      Bundle.main.bundleURL.appendingPathComponent(bundleName),
+    ]
+    let resources = candidates.compactMap { $0 }.compactMap { Bundle(url: $0) }.first
+    stoaImage = resources?.url(
       forResource: "stoa-passage", withExtension: "webp", subdirectory: "Resources"
     ).flatMap(NSImage.init(contentsOf:))
   }
