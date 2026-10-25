@@ -57,9 +57,17 @@ struct DJView: View {
 
   /// Same glass as Studio: the player on one panel, the session on another.
   private var compact: some View {
+    GeometryReader { geometry in
+      compactContent(videoHeight: min(315, geometry.size.height * 0.32))
+    }
+  }
+
+  /// Reserve room for the conversation at the minimum window height; the video yields first.
+  private func compactContent(videoHeight: CGFloat) -> some View {
     VStack(spacing: 12) {
       VStack(alignment: .leading, spacing: 12) {
         VideoSurface(player: player).aspectRatio(16 / 9, contentMode: .fit)
+          .frame(maxHeight: panelCollapsed ? 315 : videoHeight)
           .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
           .frame(maxWidth: .infinity).overlay {
             if model.current == nil {
@@ -79,7 +87,7 @@ struct DJView: View {
         }
         Spacer(minLength: 0)
       } else {
-        sessionPanel.glassPanel()
+        sessionPanel.glassPanel().frame(minHeight: 200)
       }
     }.padding(12).frame(maxWidth: 600).frame(maxWidth: .infinity)
   }
