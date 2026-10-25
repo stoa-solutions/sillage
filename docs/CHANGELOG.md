@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- App Mac 1.4.8 (23) : direction musicale séparée du chat, six demandes récentes conservées, historique réel et file ordonnée transmis au DJ. La dernière demande a priorité et peut interrompre une recherche en cours. Une suite vide ou répétée déclenche au maximum une recherche différente, ouverte à des artistes proches si les contraintes le permettent, puis attend une relance explicite. Les identifiants déjà rencontrés restent exclus des suites automatiques toute la session, même après les 200 entrées d’historique visibles ; rejouer un titre explicitement reste possible. Les annonces ne citent plus les titres éliminés comme répétitions.
+
 - App Mac 1.4.7 (22) : panneau Compact/Studio repliable, onglets DJ / À suivre / Historique, file complète réordonnable par flèches sans changer le titre en cours. Lecture immédiate d’un titre futur sans perdre les autres ; historique de session des titres terminés, passés, remplacés et indisponibles.
 - Suivant reste disponible pendant une recherche : la demande attend la réponse si la file est vide. La suite est recherchée une fois dans les trente dernières secondes du dernier titre ; une réponse vide ou une erreur propose de réessayer. Les clips indisponibles sont passés avec une limite de trois échecs consécutifs. La relance transmet l’envie précédente dans le contexte, sans la faire interpréter comme une nouvelle liste de titres. Annulation et changement de compte ignorent les réponses tardives ; préchargement du clip et de la voix actualisé après réordonnancement.
 

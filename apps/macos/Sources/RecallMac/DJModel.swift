@@ -28,14 +28,14 @@ final class DJModel: ObservableObject {
   }
   private var requestID = UUID()
   private var automaticRequest = false
-  private var prefetchedPosition: Int?
+  private var composition = DJComposition()
   private var unavailableCount = 0
   let player = Player()
   let microphone = Microphone()
   private let session: Session
   lazy var voice = VoiceOutput(player: player)
   private var work: Task<Void, Never>?
-  private var lastRequest = ""
+
   var current: Track? { queue.indices.contains(position) ? queue[position] : nil }
   var upcoming: [QueueEntry] {
     queue.indices.dropFirst(position + 1).prefix(3).map { QueueEntry(id: $0, track: queue[$0]) }
@@ -53,7 +53,7 @@ final class DJModel: ObservableObject {
     player.onEnded = { [weak self] in
       guard let self else { return }
       playback.markEnded()
-      if continuous { next() }
+      if continuous { next(userInitiated: false) }
     }
     player.onUnavailable = { [weak self] in
       guard let self else { return }
@@ -85,24 +85,25 @@ final class DJModel: ObservableObject {
     playback.reset()
     messages = []
     prompt = ""
-    lastRequest = ""
     continuationNotice = ""
-    prefetchedPosition = nil
+    composition.reset()
     player.reset()
   }
   func send(_ text: String? = nil, automatic: Bool = false) {
     let text = (text ?? prompt).trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !text.isEmpty, !busy else { return }
+    guard !text.isEmpty else { return }
+    if automatic && busy { return }
     guard !session.loadingCredentials else {
       prompt = text
       session.notice = "Connexion en cours. Ta demande reste prête à envoyer."
       return
     }
+    if !automatic && busy { cancel() }
     microphone.stop()
     if !automatic {
       voice.stop()
       voice.clearPreparation()
-      prefetchedPosition = nil
+      composition.direct(text)
       unavailableCount = 0
     }
     continuationNotice = ""
@@ -114,10 +115,8 @@ final class DJModel: ObservableObject {
     if !automatic { prompt = "" }
     let history = messages
     if !automatic {
-      lastRequest = text
       messages.append(ChatMessage(role: "user", content: text))
     }
-    let excluded = Set((historyTracks + queue).suffix(100).map(\.id))
     work = Task {
       defer {
         if requestID == id {
@@ -127,14 +126,16 @@ final class DJModel: ObservableObject {
         }
       }
       do {
-        let response = try await respond(
-          to: text, history: history, excluded: excluded, automatic: automatic)
+        var response = try await respond(
+          to: text, history: history, automatic: automatic)
         try Task.checkCancellation()
         guard requestID == id else { return }
+        if automatic { response = playback.freshContinuation(response) }
         messages.append(ChatMessage(role: "assistant", content: response.reply))
         messages = Array(messages.suffix(24))
         let oldCount = queue.count
         let changed = playback.apply(response, automatic: automatic)
+        if automatic { composition.finish(added: queue.count > oldCount || changed) }
         if changed {
           playCurrent()
         } else {
@@ -151,6 +152,7 @@ final class DJModel: ObservableObject {
         if spoken && (!automatic || changed) { speak(response.reply) }
       } catch {
         if !Task.isCancelled && requestID == id {
+          if automatic { composition.finish(added: false) }
           session.error = error.localizedDescription
           continuationNotice = "La recherche n’a pas abouti. Tu peux réessayer."
         }
@@ -159,7 +161,7 @@ final class DJModel: ObservableObject {
   }
   /// Google accounts use their own encrypted server credential and scoped catalog.
   private func respond(
-    to text: String, history: [ChatMessage], excluded: Set<String>, automatic: Bool
+    to text: String, history: [ChatMessage], automatic: Bool
   )
     async throws -> DJResponse
   {
@@ -167,11 +169,13 @@ final class DJModel: ObservableObject {
       throw RecallError.message(
         "Connecte ton serveur dans Réglages pour retrouver ta bibliothèque.")
     }
-    let request =
-      automatic
-      ? DJRequest.continuation(context: text, history: history, queued: excluded)
-      : DJRequest(message: text, history: history, queued: excluded)
-    return try await ServerDJ(connection: connection).turn(request)
+    let dj = ServerDJ(connection: connection)
+    if automatic {
+      return try await composition.continueSession(history: history, queue: playback) {
+        try await dj.turn($0)
+      }
+    }
+    return try await dj.turn(composition.userRequest(text, history: history, queue: playback))
   }
   private func speak(_ text: String) {
     if !session.cloudVoice {
@@ -213,13 +217,12 @@ final class DJModel: ObservableObject {
     voice.prepare(
       "On continue avec \(track.title).", context: connection.token, using: synthesis(connection))
   }
-  private var historyTracks: [Track] { playback.history.map(\.track) }
 
   func cancel() {
     requestID = UUID()
     work?.cancel()
     work = nil
-    prefetchedPosition = position
+    composition.cancel()
     busy = false
     automaticRequest = false
     if waitingForNext { continuationNotice = "Recherche annulée. Réessaie quand tu veux." }
@@ -230,7 +233,7 @@ final class DJModel: ObservableObject {
   }
   func play(_ track: Track) {
     cancel()
-    lastRequest = "Des morceaux dans l’esprit de \(track.title), \(track.channel ?? "")."
+    composition.direct("Des morceaux dans l’esprit de \(track.title), \(track.channel ?? "").")
     playback.replace([track])
     unavailableCount = 0
     playCurrent()
@@ -238,7 +241,6 @@ final class DJModel: ObservableObject {
   private func playCurrent() {
     continuationNotice = ""
     waitingForNext = false
-    prefetchedPosition = nil
     if let current {
       player.cue(current)
       player.prepareNext(upcoming.first?.track)
@@ -254,24 +256,32 @@ final class DJModel: ObservableObject {
     } else {
       player.command("pause")
       waitingForNext = true
-      if !busy { requestContinuation() }
+      if !busy { requestContinuation(retry: userInitiated) }
     }
   }
   func retryContinuation() {
     guard !busy else { return }
     waitingForNext = playback.ended
-    requestContinuation()
+    requestContinuation(retry: true)
   }
-  private func requestContinuation() {
-    let context = lastRequest.isEmpty ? (current?.title ?? "la même ambiance") : lastRequest
-    send(context, automatic: true)
+  private func requestContinuation(retry: Bool = false) {
+    guard let tail = queue.last?.id else { return }
+    guard composition.begin(tail: tail, retry: retry) else {
+      waitingForNext = false
+      if allUpcoming.isEmpty {
+        continuationNotice =
+          "La suite disponible est épuisée. Donne une nouvelle direction au DJ ou réessaie."
+      }
+      return
+    }
+    send("Préparer la suite", automatic: true)
   }
   private func prepareContinuation() {
-    guard continuous, player.playing, !busy, current != nil, allUpcoming.isEmpty,
+    guard continuous, player.playing, !busy, current != nil, allUpcoming.count <= 1,
       player.duration > 0, player.duration - player.elapsed > 0,
-      player.duration - player.elapsed <= 30, prefetchedPosition != position
+      player.duration - player.elapsed <= 30
     else { return }
-    prefetchedPosition = position
+    guard !composition.needsDirection else { return }
     requestContinuation()
   }
   func continuousChanged() {
@@ -287,6 +297,7 @@ final class DJModel: ObservableObject {
     guard index > position, queue.indices.contains(index) else { return }
     cancel()
     guard playback.playUpcoming(at: index) else { return }
+    composition.resume()
     voice.stop()
     voice.clearPreparation()
     unavailableCount = 0
@@ -301,6 +312,7 @@ final class DJModel: ObservableObject {
     speak(announcement)
   }
   func toggleMicrophone() {
+    if busy { cancel() }
     voice.stop()
     player.command("pause")
     Task { await microphone.toggle() }

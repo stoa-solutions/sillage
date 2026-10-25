@@ -331,7 +331,6 @@ struct DJView: View {
       ForEach(["Du Mac Miller", "Une soirée jazz douce", "De l’énergie pour avancer"], id: \.self) {
         text in
         Button(text) { model.send(text) }.buttonStyle(.bordered).buttonBorderShape(.capsule)
-          .disabled(model.busy)
       }
       if session.loadingCredentials {
         Text("Connexion à ton compte…").font(.caption).foregroundStyle(.secondary)
@@ -371,7 +370,7 @@ struct DJView: View {
             .frame(width: 28, height: 28)
         }.buttonStyle(.plain).help("Parler au DJ")
           .accessibilityLabel(microphone.active ? "Terminer la dictée" : "Parler au DJ")
-          .disabled(model.busy || microphone.finishing)
+          .disabled(microphone.finishing)
         Button {
           model.send()
         } label: {
@@ -386,7 +385,7 @@ struct DJView: View {
   }
 
   private var canSend: Bool {
-    !model.busy && !model.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    !model.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
 }
 

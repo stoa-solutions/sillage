@@ -223,3 +223,12 @@ du cache vers 800 Mio en conservant les deux clips en usage. Le cache se trouve 
 `~/Library/Caches/Playlist Recall/Studio`, ou sous `RECALL_DATA_DIR` pour les essais.
 Cette option crée seulement un cache vidéo : les playlists et clés restent côté serveur.
 La distribution publique et les mises à jour automatiques ne sont pas publiées.
+
+
+## Composition continue (1.4.8)
+
+`DJComposition` conserve la direction musicale séparément des annonces affichées : les six dernières demandes, le titre en cours, les huit dernières issues de lecture et l’ordre des huit titres suivants constituent le contexte. La dernière demande prime en cas de conflit. Les métadonnées sont transmises comme données, pas comme instructions. Le chat visible reste borné à 24 messages, l’historique affiché à 200 entrées ; tout est en mémoire et réinitialisé au changement de compte.
+
+`PlaybackQueue` garde aussi les identifiants rencontrés pendant toute la session, sans les oublier lorsque l’historique visible se réduit. Les réponses automatiques sont filtrées avant application et annonce ; les demandes explicites peuvent rejouer un titre. Les exclusions réseau privilégient la file actuelle puis les titres les plus récents, dans la limite de 100 identifiants du serveur. Le contrôle local couvre les identifiants plus anciens. Il ne reconnaît pas encore les rééditions du même enregistrement ayant des identifiants YouTube différents.
+
+Chaque cycle de composition tente une sélection, puis au maximum une recherche élargie si rien de nouveau n’est accepté. L’élargissement respecte les restrictions explicites, mais peut découvrir des artistes proches au lieu de rester enfermé sur un artiste épuisé. Une erreur réseau n’est pas relancée automatiquement. Après un cycle vide ou annulé, les événements de progression et de fin ne relancent plus la recherche ; une nouvelle demande ou une relance manuelle la débloque. La suite est préparée dans les trente dernières secondes lorsqu’il reste au maximum un titre. Une nouvelle demande peut interrompre la préparation et invalide sa réponse tardive.

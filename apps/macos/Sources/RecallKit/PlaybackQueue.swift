@@ -19,7 +19,30 @@ public struct PlaybackQueue: Sendable {
   public private(set) var position = 0
   public private(set) var ended = false
   public private(set) var history: [PlaybackHistoryEntry] = []
+  // The display history is bounded, but an automatic DJ must not replay an old ID after 200 songs.
+  private var encounteredIDs: Set<String> = []
   private var recorded = false
+  public var excludedIDs: Set<String> {
+    let ordered = Array(tracks.dropFirst(position).map(\.id)) + history.reversed().map(\.track.id)
+    var seen: Set<String> = []
+    return Set(ordered.filter { seen.insert($0).inserted }.prefix(100))
+  }
+  public func freshContinuation(_ response: DJResponse) -> DJResponse {
+    guard response.action != "keep", !response.tracks.isEmpty else {
+      return DJResponse(
+        reply: "Je n’ai pas trouvé de nouvelle suite compatible avec ta demande.", action: "keep",
+        tracks: [])
+    }
+    var seen = encounteredIDs.union(tracks.map(\.id))
+    let fresh = response.tracks.filter { seen.insert($0.id).inserted }
+    guard fresh.count != response.tracks.count else { return response }
+    // Never announce tracks the queue rejected as repetitions.
+    let reply =
+      fresh.isEmpty
+      ? "Cette sélection ne contient aucun nouveau morceau pour cette session."
+      : "Je poursuis avec " + fresh.prefix(3).map(\.title).joined(separator: ", ") + "."
+    return DJResponse(reply: reply, action: fresh.isEmpty ? "keep" : "append", tracks: fresh)
+  }
   public init() {}
   public mutating func markEnded() {
     record(.finished)
@@ -29,6 +52,7 @@ public struct PlaybackQueue: Sendable {
   public mutating func replace(_ tracks: [Track]) {
     record(.replaced)
     self.tracks = tracks
+    if let first = tracks.first { encounteredIDs.insert(first.id) }
     position = 0
     ended = false
     recorded = false
@@ -54,6 +78,7 @@ public struct PlaybackQueue: Sendable {
     guard position + 1 < tracks.count else { return false }
     record(.skipped)
     position += 1
+    encounteredIDs.insert(tracks[position].id)
     ended = false
     recorded = false
     return true
@@ -79,11 +104,7 @@ public struct PlaybackQueue: Sendable {
   public mutating func apply(_ response: DJResponse, automatic: Bool = false) -> Bool {
     guard !response.tracks.isEmpty, response.action != "keep" else { return false }
     if automatic || response.action == "append", position < tracks.count {
-      // Continuations must not refill the queue with the same unavailable/played songs.
-      let known = Set(tracks.map(\.id) + history.map(\.track.id))
-      var seen = known
-      let additions =
-        automatic ? response.tracks.filter { seen.insert($0.id).inserted } : response.tracks
+      let additions = automatic ? freshContinuation(response).tracks : response.tracks
       tracks.append(contentsOf: additions)
       return ended ? advance() : false
     }
