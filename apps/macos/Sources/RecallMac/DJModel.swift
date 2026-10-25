@@ -127,7 +127,8 @@ final class DJModel: ObservableObject {
         }
       }
       do {
-        let response = try await respond(to: text, history: history, excluded: excluded)
+        let response = try await respond(
+          to: text, history: history, excluded: excluded, automatic: automatic)
         try Task.checkCancellation()
         guard requestID == id else { return }
         messages.append(ChatMessage(role: "assistant", content: response.reply))
@@ -157,14 +158,19 @@ final class DJModel: ObservableObject {
     }
   }
   /// Google accounts use their own encrypted server credential and scoped catalog.
-  private func respond(to text: String, history: [ChatMessage], excluded: Set<String>)
+  private func respond(
+    to text: String, history: [ChatMessage], excluded: Set<String>, automatic: Bool
+  )
     async throws -> DJResponse
   {
     guard let connection = session.connection else {
       throw RecallError.message(
         "Connecte ton serveur dans Réglages pour retrouver ta bibliothèque.")
     }
-    let request = DJRequest(message: text, history: history, queued: excluded)
+    let request =
+      automatic
+      ? DJRequest.continuation(context: text, history: history, queued: excluded)
+      : DJRequest(message: text, history: history, queued: excluded)
     return try await ServerDJ(connection: connection).turn(request)
   }
   private func speak(_ text: String) {
@@ -258,9 +264,7 @@ final class DJModel: ObservableObject {
   }
   private func requestContinuation() {
     let context = lastRequest.isEmpty ? (current?.title ?? "la même ambiance") : lastRequest
-    send(
-      "Continue ma demande : \(context). Cherche de nouveaux vrais morceaux dans la bibliothèque, sans répétition. Si la recherche ne donne rien, essaie une formulation plus courte de la même ambiance ou du même artiste, sans inventer de titre ni remplacer un titre précis absent. Ajoute-les à la file. Exclue les type beats et hommages sauf demande explicite.",
-      automatic: true)
+    send(context, automatic: true)
   }
   private func prepareContinuation() {
     guard continuous, player.playing, !busy, current != nil, allUpcoming.isEmpty,

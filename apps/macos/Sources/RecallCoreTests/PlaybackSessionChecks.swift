@@ -68,5 +68,13 @@ func playbackSessionChecks() throws {
     queue.advance() && queue.tracks[queue.position] == b,
     "Prefetched continuation failed at natural end")
   queue.reset()
-  print("20 playback session checks passed (pending Next, refill, order, history, account reset)")
+  let intent = "Joue Masego Navajo puis FKJ Masego Tadow puis Michael Bublé Feeling Good"
+  let continuation = DJRequest.continuation(context: intent, history: [], queued: [a.id])
+  try expect(
+    !continuation.message.contains(intent) && !continuation.message.contains("puis"),
+    "A continuation leaked an ordered title list into the new command")
+  try expect(
+    continuation.history.last?.content.contains(intent) == true && continuation.queued == [a.id],
+    "Continuation lost the user's musical intent or exclusions")
+  print("22 playback session checks passed (pending Next, refill, order, history, account reset)")
 }
