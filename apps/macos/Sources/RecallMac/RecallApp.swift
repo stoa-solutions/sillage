@@ -45,16 +45,10 @@ import SwiftUI
           if let url = values["url"], let token = values["token"] {
             credentials["server"] = try JSONEncoder().encode(Connection(url: url, token: token))
           }
-          if let key = values["apiKey"], (20...256).contains(key.count) {
-            credentials["gemini"] = Data(key.utf8)
-          }
-          if let key = values["youtubeKey"], (20...256).contains(key.count) {
-            credentials["youtube"] = Data(key.utf8)
-          }
           guard !credentials.isEmpty else {
             throw RecallError.message("Configuration privée vide.")
           }
-          try KeychainStore.install(credentials)
+          try SessionStore.install(credentials)
           if let selectedModel = values["model"],
             ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-4-argon"].contains(selectedModel)
           {
@@ -66,23 +60,24 @@ import SwiftUI
     }
     await session.refreshCredentials()
     if CommandLine.arguments.contains("--verify-quality") {
-      let report = FileManager.default.temporaryDirectory.appendingPathComponent("recall-quality-verification.json")
+      let report = FileManager.default.temporaryDirectory.appendingPathComponent(
+        "recall-quality-verification.json")
       do {
         let started = Date()
-        guard let connection = session.connection, !session.geminiKey.isEmpty else {
+        guard let connection = session.connection, session.hasKey else {
           throw RecallError.message("Clé ou connexion existante absente")
         }
-        let response = try await LocalDJ(
-          model: GeminiDJ(key: session.geminiKey, model: session.model),
-          library: ServerLibrarySearch(connection: connection)
-        ).turn(
+        let response = try await ServerDJ(connection: connection).turn(
           DJRequest(
             message: "Mets-moi trois vrais titres de Mac Miller, sans type beats ni hommages.",
             history: [], queued: []))
         guard !response.tracks.isEmpty, response.tracks.allSatisfy({ !Catalog.isImitation($0) })
         else { throw RecallError.message("Sélection musicale incorrecte") }
-        let audio = try await GeminiDJ(key: session.geminiKey, model: session.model).speech(
-          "Salut Samuel. Ton DJ et sa voix sont de retour. On reprend la musique.")
+        let speech = try await HTTPClient().server(
+          connection, path: "dj/speech",
+          body: ["text": "Salut Samuel. Ton DJ et sa voix sont de retour. On reprend la musique."])
+        guard let encoded = speech["audio"] as? String, let audio = Data(base64Encoded: encoded)
+        else { throw RecallError.message("Voix invalide") }
         guard audio.starts(with: Data("RIFF".utf8)) else {
           throw RecallError.message("Voix invalide")
         }

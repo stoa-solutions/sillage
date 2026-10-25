@@ -102,12 +102,6 @@ final class DJModel: ObservableObject {
         "Connecte ton serveur dans Réglages pour retrouver ta bibliothèque.")
     }
     let request = DJRequest(message: text, history: history, queued: excluded)
-    if !session.googleAccount, !session.geminiKey.isEmpty {
-      return try await LocalDJ(
-        model: GeminiDJ(key: session.geminiKey, model: session.model),
-        library: ServerLibrarySearch(connection: connection)
-      ).turn(request)
-    }
     return try await ServerDJ(connection: connection).turn(request)
   }
   private func speak(_ text: String) {
@@ -115,11 +109,8 @@ final class DJModel: ObservableObject {
       voice.speakLocally(text)
       return
     }
-    let key = session.geminiKey
-    let model = session.model
     let connection = session.connection
     voice.speak(text) { text in
-      if !key.isEmpty { return try await GeminiDJ(key: key, model: model).speech(text) }
       guard let connection else { throw RecallError.message("Voix indisponible.") }
       let object = try await HTTPClient().server(
         connection, path: "dj/speech", body: ["text": String(text.prefix(600))])

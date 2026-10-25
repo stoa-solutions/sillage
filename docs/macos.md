@@ -1,4 +1,6 @@
-# Playlist Recall pour Mac — version locale 1.1
+# Playlist Recall pour Mac
+
+État actuel : comptes et données sur serveur, session persistante sans Trousseau (1.4.1). Les sections ci-dessous conservent l’historique des versions ; la dernière section décrit le stockage actuel.
 
 App native SwiftUI pour macOS 14 ou plus récent, compilable pour Apple Silicon et Intel. Elle ne charge pas l’interface de l’extension : le micro, les contrôles et les réglages sont natifs. WebKit est réservé au lecteur officiel YouTube.
 
@@ -195,3 +197,10 @@ Sur le Mac de développement, les 2813 vidéos des anciennes copies locales et l
 
 
 Vérification après installation de 1.3.0 : l’interface affiche 2823 vidéos depuis le serveur et n’affiche plus le choix « Sur ce Mac ». Le dossier de bibliothèque locale n’est pas recréé après le chargement. Les réglages existants Gemini/voix sont conservés. La commande `RecallDiagnostics --server-sync <connexion privée> <lien>` permet de retester un import en production sans produire d’export ni de SQLite local.
+
+
+## Connexion sans Trousseau (1.4.1)
+
+Recall ne lit, ne migre et ne supprime plus aucun élément du Trousseau. Les anciennes entrées restent intactes. Seuls les jetons de session Recall révocables sont conservés dans `~/Library/Application Support/Playlist Recall/Session/session.json` (dossier 0700, fichier 0600, écriture atomique et verrou interprocessus, exclusion de sauvegarde). Ce fichier n’est pas chiffré et reste lisible par les applications de la même session macOS ; ce choix explicite privilégie l’absence de demandes de mot de passe. Aucune clé Gemini ou YouTube n’y est enregistrée. Bibliothèque, sélection et voix Gemini passent exclusivement par le serveur ; chaque compte Google utilise sa propre clé chiffrée côté serveur.
+
+Aucune récupération automatique depuis le Trousseau : l’ancienne connexion peut être réimportée depuis son fichier privé existant, ou remplacée par la connexion Google. Une déconnexion retire le jeton local et révoque la session serveur. Google peut demander sa propre authentification lors d’une nouvelle connexion ; Recall ne peut pas supprimer les contrôles de Google. `RECALL_DATA_DIR` isole aussi le fichier de session pendant les tests. Le paquet distribué ne contient aucune session.

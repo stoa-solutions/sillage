@@ -24,7 +24,6 @@ final class Session: ObservableObject {
   private var refreshAttempt = UUID()
   private(set) var generation = UUID()
   var onConnectionChange: (() -> Void)?
-  private(set) var geminiKey = ""
   private(set) var connection: Connection?
   var connectedURL: String { connection?.url ?? "" }
 
@@ -38,23 +37,22 @@ final class Session: ObservableObject {
     loadingCredentials = true
     defer { if refreshAttempt == attempt { loadingCredentials = false } }
     do {
-      let credentials = try await Task.detached { () -> (String, Connection?, Connection?) in
+      let credentials = try await Task.detached { () -> (Connection?, Connection?) in
         (
-          try KeychainStore.string("gemini") ?? "", try KeychainStore.connection(),
-          try KeychainStore.read("legacy-server").map {
+          try SessionStore.connection(),
+          try SessionStore.read("legacy-server").map {
             try JSONDecoder().decode(Connection.self, from: $0)
           }
         )
       }.value
       guard refreshAttempt == attempt else { return }
-      geminiKey = ""  // Only the legacy account may use the previous device key.
       let changed =
-        connection?.url != credentials.1?.url || connection?.token != credentials.1?.token
-      connection = credentials.1
+        connection?.url != credentials.0?.url || connection?.token != credentials.0?.token
+      connection = credentials.0
       hasKey = false
       accountEmail = ""
       googleAccount = false
-      legacyConnection = credentials.2
+      legacyConnection = credentials.1
       canClaimLibrary = legacyConnection != nil
       hasServer = connection != nil
       if changed {
@@ -66,16 +64,19 @@ final class Session: ObservableObject {
       if let connection {
         do {
           let profile = try await HTTPClient().server(connection, path: "me")
-          guard refreshAttempt == attempt, self.connection?.token == connection.token else { return }
+          guard refreshAttempt == attempt, self.connection?.token == connection.token else {
+            return
+          }
           guard let isGoogle = profile["google"] as? Bool else {
             throw RecallError.message("Réponse de compte invalide.")
           }
           googleAccount = isGoogle
           accountEmail = profile["email"] as? String ?? ""
-          if !googleAccount { geminiKey = credentials.0 }
           let settings = try await HTTPClient().server(connection, path: "dj/status")
-          guard refreshAttempt == attempt, self.connection?.token == connection.token else { return }
-          hasKey = settings["personal"] as? Bool == true || !geminiKey.isEmpty
+          guard refreshAttempt == attempt, self.connection?.token == connection.token else {
+            return
+          }
+          hasKey = settings["configured"] as? Bool == true
           if googleAccount, let selected = settings["model"] as? String, hasKey { model = selected }
         } catch {
           self.error = "Impossible de vérifier le compte. Réessaie ou reconnecte-toi dans Réglages."
@@ -103,7 +104,7 @@ final class Session: ObservableObject {
       guard data.count < 16384 else { throw RecallError.message("Fichier de connexion invalide.") }
       let raw = try JSONDecoder().decode(Connection.self, from: data)
       let value = try Connection(url: raw.url, token: raw.token)
-      try KeychainStore.save(JSONEncoder().encode(value), account: "server")
+      try SessionStore.save(JSONEncoder().encode(value), account: "server")
       return value
     }.value
     await refreshCredentials()
@@ -119,9 +120,9 @@ final class Session: ObservableObject {
       let value = try await signIn.connect(server: "https://recall.stoa.solutions")
       try await Task.detached {
         if wasLegacy, let previous {
-          try KeychainStore.save(JSONEncoder().encode(previous), account: "legacy-server")
+          try SessionStore.save(JSONEncoder().encode(previous), account: "legacy-server")
         }
-        try KeychainStore.save(JSONEncoder().encode(value), account: "server")
+        try SessionStore.save(JSONEncoder().encode(value), account: "server")
       }.value
       if wasLegacy, let previous {
         legacyConnection = previous
@@ -136,7 +137,7 @@ final class Session: ObservableObject {
     do {
       _ = try await HTTPClient().server(
         connection, path: "account/claim-library", body: ["legacyToken": legacyConnection.token])
-      try await Task.detached { try KeychainStore.remove("legacy-server") }.value
+      try await Task.detached { try SessionStore.remove("legacy-server") }.value
       self.legacyConnection = nil
       canClaimLibrary = false
       generation = UUID()
@@ -160,7 +161,6 @@ final class Session: ObservableObject {
     // Clear all visible private state immediately, even if revocation needs a retry.
     generation = UUID()
     connection = nil
-    geminiKey = ""
     hasServer = false
     hasKey = false
     googleAccount = false
@@ -172,10 +172,16 @@ final class Session: ObservableObject {
     onConnectionChange?()
     do {
       if let previous { _ = try await HTTPClient().server(previous, path: "logout", body: [:]) }
-      try await Task.detached { try KeychainStore.remove("server") }.value
+      try await Task.detached {
+        try SessionStore.remove("server")
+        try SessionStore.remove("legacy-server")
+      }.value
       showOnboarding = true
     } catch {
-      try? await Task.detached { try KeychainStore.remove("server") }.value
+      try? await Task.detached {
+        try SessionStore.remove("server")
+        try SessionStore.remove("legacy-server")
+      }.value
       self.error = "Déconnecté de ce Mac. La révocation serveur n’a pas pu être confirmée."
     }
   }

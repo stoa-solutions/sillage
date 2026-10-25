@@ -81,7 +81,38 @@ do {
   try expect(
     untitled.count == 1 && untitled[0].metadataUnavailable == true,
     "Untitled YouTube entries were silently lost")
-  print("19 native behavior checks passed")
+  let sessionDirectory = directory.appendingPathComponent("session-test")
+  let sessions = CredentialFile(directory: sessionDirectory)
+  let token = Data("test-session-not-a-real-token".utf8)
+  try expect(try sessions.read("server") == nil, "Fresh session is not empty")
+  try sessions.save(token, account: "server")
+  try expect(
+    try CredentialFile(directory: sessionDirectory).read("server") == token,
+    "Session lost after restart")
+  let file = sessionDirectory.appendingPathComponent("session.json")
+  let permissions = try FileManager.default.attributesOfItem(atPath: file.path)
+  let directoryPermissions = try FileManager.default.attributesOfItem(atPath: sessionDirectory.path)
+  try expect(
+    (permissions[.posixPermissions] as? NSNumber)?.intValue == 0o600, "Session is not private")
+  try expect(
+    (directoryPermissions[.posixPermissions] as? NSNumber)?.intValue == 0o700,
+    "Session directory is not private")
+  try expectFailure { try sessions.save(token, account: "gemini") }
+  try sessions.install(["legacy-server": token])
+  try expect(try sessions.read("server") == token, "Import overwrote existing session")
+  try sessions.save(nil, account: "server")
+  try expect(
+    try CredentialFile(directory: sessionDirectory).read("server") == nil,
+    "Logout failed to persist")
+  try Data("invalid".utf8).write(to: file)
+  try expectFailure { _ = try sessions.read("server") }
+  try FileManager.default.removeItem(at: file)
+  let target = directory.appendingPathComponent("do-not-follow")
+  try Data("untouched".utf8).write(to: target)
+  try FileManager.default.createSymbolicLink(at: file, withDestinationURL: target)
+  try expectFailure { try sessions.save(token, account: "server") }
+  try expect(try String(contentsOf: target) == "untouched", "Session followed a symlink")
+  print("29 native behavior checks passed")
 } catch {
   fputs("Native tests failed: \(error.localizedDescription)\n", stderr)
   exit(1)
