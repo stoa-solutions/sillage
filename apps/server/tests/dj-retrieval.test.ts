@@ -98,3 +98,12 @@ it("retries one short queue selection and rejects IDs already played even if the
 it("accepts an empty native playback snapshot before the first track", () => {
   expect(djInput.parse({ message: "du jazz", playbackContext: { direction: "" } }).playbackContext?.current).toBeUndefined();
 });
+it("keeps a verified partial selection when the provider keeps searching instead of concluding", async () => {
+  const reply = { content: JSON.stringify({ reply: "Un titre", action: "append", trackIds: [track.id] }) };
+  const bodies = provider([tool, reply, tool, tool, tool]);
+  const result = await djTurn(db, djInput.parse({ scope: "all", message: "Prépare 5 nouveaux morceaux à suivre" }), undefined, config, "alice");
+  expect(result).toMatchObject({ action: "append", tracks: [track] });
+  expect(result.reply).toContain("sur les 5 demandés");
+  expect(bodies).toHaveLength(5);
+  expect(bodies[4].tools).toBeUndefined();
+});

@@ -110,6 +110,7 @@ export async function djTurn(
   const targetCount = intent === "append" ? Number(countMatch?.[1] ?? 5) : undefined;
   const avoidRepeats = intent === "append" || relative;
   let expandedSelection = false;
+  let partialIds: string[] = [];
   const playback = input.playbackContext;
   const grounded = relative && playback?.current;
 
@@ -208,8 +209,8 @@ export async function djTurn(
         body: JSON.stringify({
           model: config.model,
           messages,
-          tools,
-          tool_choice: turn === 0 ? "required" : turn < 4 ? "auto" : "none",
+          // The final round has no tools: it must conclude from the gathered evidence.
+          ...(turn < 4 ? { tools, tool_choice: turn === 0 ? "required" : "auto" } : {}),
           max_completion_tokens:
             config.model === "gemini-4-argon" ? 32768 : 4096,
           ...(["gemini-4-argon", "gemini-3.8-flash"].includes(
@@ -237,6 +238,7 @@ export async function djTurn(
         );
       const calls = message.tool_calls;
       if (Array.isArray(calls) && calls.length) {
+        if (turn === 4) break;
         if (calls.length > 4 || toolCalls + calls.length > 8)
           throw new DjUnavailable(
             "Le DJ n’a pas trouvé sa sélection cette fois. Précise l’ambiance.",
@@ -350,6 +352,7 @@ export async function djTurn(
       const action = playbackAction(intent, output.action);
       const ids = action === "keep" ? [] : [...new Set(output.trackIds)]
         .filter(id => !avoidRepeats || !input.excludeIds.includes(id));
+      if (action === "append" && ids.length > partialIds.length) partialIds = ids;
       // A provider can override an MCP exclusion; the executable selection cannot.
       if (targetCount && action !== "keep" && ids.length < targetCount && !expandedSelection && turn < 3 && toolCalls <= 6) {
         expandedSelection = true;
@@ -372,10 +375,14 @@ export async function djTurn(
         source: "mcp" as const,
       };
     }
-    throw new DjUnavailable(
-      "Le DJ n’a pas terminé sa sélection. Réessaie.",
-      502,
-    );
+    // Never throw away an already validated partial selection while looking for more.
+    const tracks = externalSearch
+      ? partialIds.slice(0, targetCount ?? 8).map(id => candidates.get(id)!)
+      : await musicTracks(db, partialIds.slice(0, targetCount ?? 8), userId);
+    return { action: tracks.length ? "append" as const : "keep" as const, tracks,
+      reply: tracks.length ? selectionReply("append", tracks, targetCount)
+        : "Je n’ai pas trouvé de nouvelle sélection compatible dans les sources choisies. Ta file est conservée ; tu peux préciser ton envie ou élargir la recherche.",
+      source: "mcp" as const };
   } catch (error) {
     if (error instanceof DjUnavailable) throw error;
     throw new DjUnavailable(

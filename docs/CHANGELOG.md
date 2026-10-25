@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- DJ : dernier tour sans outil pour conclure la composition ; une sélection partielle vérifiée est conservée si le modèle continue à chercher au-delà de la limite.
+
 - Composition : préparation manuelle et automatique sans rejouer les titres déjà écoutés/en file, y compris un même artiste/titre sous une autre vidéo. Cinq titres visés par défaut, une seule recherche complémentaire si la sélection est trop courte ; manque de résultats signalé. Menu `/`, commandes `/suite 1…8`, `/suivant`, `/pause`, `/reprendre`, `/aide`, `/prompt` (règles de base en lecture seule).
 
 - DJ : « prépare-moi des à suivre » conserve la lecture. Les demandes « même style / comme ça » reçoivent le morceau et l’artiste réellement en cours dans un contexte séparé ; les anciennes annonces ne servent plus de référence. Les annonces de sélection décrivent l’action validée et les titres retenus.
