@@ -160,7 +160,9 @@ public final class PlaybackEngine: ObservableObject {
       active = .youtube
       youtube.setVolume(level)
       let autoplay = wantsPlayback
-      Task { [youtube] in try? await youtube.load(.youtube(track.id), at: resume, autoplay: autoplay) }
+      Task { [youtube] in
+        try? await youtube.load(.youtube(track.id), at: resume, autoplay: autoplay)
+      }
     }
     preparingClip = false
     if downloads { prepareClip(for: track, generation: generation) }
@@ -264,14 +266,17 @@ public final class PlaybackEngine: ObservableObject {
       failure = "Lecture locale indisponible. Retour au lecteur YouTube."
       youtube.setVolume(level)
       let autoplay = wantsPlayback
-      Task { [youtube] in try? await youtube.load(.youtube(track.id), at: resume, autoplay: autoplay) }
+      Task { [youtube] in
+        try? await youtube.load(.youtube(track.id), at: resume, autoplay: autoplay)
+      }
       return
     case .playing(let value):
-      playing = value
+      if playing != value { playing = value }
       clock.setPlaying(value)
     case .progress(let seconds, let length):
-      elapsed = seconds
-      if length > 0 { duration = length }
+      // Keep the precise clock for lyrics/seeks; refresh ordinary controls at most 4 Hz.
+      if abs(seconds - elapsed) >= 0.25 || !playing { elapsed = seconds }
+      if length > 0, abs(length - duration) > 0.01 { duration = length }
       clock.sample(seconds, playing: playing)
     case .ended, .unavailable:
       playing = false

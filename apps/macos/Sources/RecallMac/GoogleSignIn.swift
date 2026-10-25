@@ -25,13 +25,15 @@ final class GoogleSignIn {
     pending.resume(returning: code)
     NSApp.activate(ignoringOtherApps: true)
   }
-  func cancel() {
+  func cancel() { finishWithError("Connexion annulée. Tu peux réessayer.") }
+
+  private func finishWithError(_ message: String) {
     attempt = nil
     let pending = continuation
     continuation = nil
     callback = nil
     timeout?.cancel()
-    pending?.resume(throwing: RecallError.message("Connexion annulée. Tu peux réessayer."))
+    pending?.resume(throwing: RecallError.message(message))
   }
   func connect(server: String) async throws -> Connection {
     guard attempt == nil else { throw RecallError.message("Une connexion est déjà en cours.") }
@@ -43,6 +45,20 @@ final class GoogleSignIn {
     guard status["google"] as? Bool == true else {
       throw RecallError.message("La connexion Google attend sa configuration sur le serveur.")
     }
+    // A QA copy or an old app bundle may have registered the same callback scheme.
+    // Bind the return to the app that actually started this login, before leaving for Google.
+    guard Bundle.main.bundleIdentifier == "solutions.stoa.playlist-recall" else {
+      throw RecallError.message(
+        "Cet aperçu ne permet pas la connexion. Ouvre Playlist Recall dans Applications.")
+    }
+    let callbackURL = URL(string: "playlist-recall://auth")!
+    if NSWorkspace.shared.urlForApplication(toOpen: callbackURL)?.standardizedFileURL
+      != Bundle.main.bundleURL.standardizedFileURL
+    {
+      try await NSWorkspace.shared.setDefaultApplication(
+        at: Bundle.main.bundleURL, toOpenURLsWithScheme: "playlist-recall")
+    }
+    guard attempt == id else { throw RecallError.message("Connexion annulée.") }
     let verifier = try random()
     let state = try random()
     let challenge = Data(SHA256.hash(data: Data(verifier.utf8))).base64EncodedString()
@@ -69,7 +85,8 @@ final class GoogleSignIn {
       }
       timeout = Task { [weak self] in
         do { try await Task.sleep(nanoseconds: 600_000_000_000) } catch { return }
-        self?.cancel()
+        guard self?.attempt == id else { return }
+        self?.finishWithError("La connexion Google a expiré. Recommence depuis Recall.")
       }
     }
     let result = try await HTTPClient().json(

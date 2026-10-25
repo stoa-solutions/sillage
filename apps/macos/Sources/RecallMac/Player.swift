@@ -104,8 +104,7 @@ final class StudioClips: ClipSource {
 
 /// The official YouTube player in a WebKit page, bridged by strictly checked messages.
 @MainActor
-final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKScriptMessageHandler
-{
+final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKScriptMessageHandler {
   var onSignal: ((PlaybackSignal) -> Void)?
   var onFailure: ((String) -> Void)?
   let webView: WKWebView
@@ -152,13 +151,20 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
       WKUserScript(source: layout, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
     webView = WKWebView(frame: .zero, configuration: configuration)
     super.init()
-    configuration.userContentController.add(self, name: "player")
+    configuration.userContentController.add(WeakPlayerMessageHandler(self), name: "player")
     webView.navigationDelegate = self
+  }
+
+  private var pageLoaded = false
+  private func loadPageIfNeeded() {
+    guard !pageLoaded else { return }
+    pageLoaded = true
     webView.load(URLRequest(url: URL(string: Self.origin + "/dj/player")!))
   }
 
   func load(_ source: PlaybackSource, at start: Double, autoplay: Bool) async throws {
     guard case .youtube(let id) = source else { return }
+    loadPageIfNeeded()
     currentID = id
     canEnd = false
     seeking = nil
@@ -209,7 +215,8 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
       guard value["id"] as? String == currentID, let time = value["elapsed"] as? Double,
         time.isFinite
       else { return }
-      if let seek = seeking, abs(time - seek.target) > 1, Date().timeIntervalSince(seek.started) < 2 {
+      if let seek = seeking, abs(time - seek.target) > 1, Date().timeIntervalSince(seek.started) < 2
+      {
         return
       }
       seeking = nil
@@ -262,6 +269,7 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
     decisionHandler(.allow)
   }
   private func send(_ name: String, _ extra: [String: Any] = [:]) {
+    guard pageLoaded else { return }
     var value = extra
     value["source"] = "recall-dj"
     value["command"] = name
@@ -269,6 +277,18 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
     let script =
       "window.postMessage(" + String(decoding: data, as: UTF8.self) + ", location.origin)"
     webView.evaluateJavaScript(script, completionHandler: nil)
+  }
+}
+
+/// WebKit retains its message handlers. A weak forwarding target lets the whole player go.
+@MainActor
+private final class WeakPlayerMessageHandler: NSObject, WKScriptMessageHandler {
+  weak var target: YouTubePlayer?
+  init(_ target: YouTubePlayer) { self.target = target }
+  func userContentController(
+    _ controller: WKUserContentController, didReceive message: WKScriptMessage
+  ) {
+    target?.userContentController(controller, didReceive: message)
   }
 }
 

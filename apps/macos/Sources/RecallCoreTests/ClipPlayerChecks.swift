@@ -6,10 +6,18 @@ private func silentWAV() throws -> URL {
   let rate: UInt32 = 8000
   let samples = Data(count: Int(rate) * 2)
   var data = Data("RIFF".utf8)
-  func le<T: FixedWidthInteger>(_ value: T) { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
+  func le<T: FixedWidthInteger>(_ value: T) {
+    withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) }
+  }
   le(UInt32(36 + samples.count))
   data.append(contentsOf: Array("WAVEfmt ".utf8))
-  le(UInt32(16)); le(UInt16(1)); le(UInt16(1)); le(rate); le(rate * 2); le(UInt16(2)); le(UInt16(16))
+  le(UInt32(16))
+  le(UInt16(1))
+  le(UInt16(1))
+  le(rate)
+  le(rate * 2)
+  le(UInt16(2))
+  le(UInt16(16))
   data.append(contentsOf: Array("data".utf8))
   le(UInt32(samples.count))
   data.append(samples)
@@ -24,6 +32,13 @@ func clipPlayerChecks() async throws {
   let file = try silentWAV()
   defer { try? FileManager.default.removeItem(at: file) }
 
+  // Releasing a player must release its observation owner too, across repeated sessions.
+  for _ in 0..<20 {
+    var temporary: ClipPlayer? = ClipPlayer()
+    weak var released = temporary
+    temporary = nil
+    try expect(released == nil, "Clip player retained after its owner released it")
+  }
   let clip = ClipPlayer()
   try await clip.load(.file(file), at: 0.5, autoplay: false)
   try expect(abs(clip.position - 0.5) < 0.05, "A loaded clip did not start at the requested time")

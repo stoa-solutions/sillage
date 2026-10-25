@@ -85,6 +85,13 @@ struct SettingsView: View {
       if session.googleAccount {
         Label(session.accountEmail, systemImage: "person.crop.circle.fill")
           .help("Seules tes playlists et ta clé Gemini sont accessibles depuis ce compte.")
+        Button(session.signingIn ? "Connexion en cours…" : "Reconnecter Google") {
+          Task { await session.connectGoogle() }
+        }.disabled(busy || session.signingIn)
+        if session.signingIn {
+          Text("Termine la connexion dans ton navigateur.").font(.caption)
+          Button("Annuler") { session.cancelGoogleSignIn() }
+        }
         Button("Me déconnecter") {
           key = ""
           message = ""

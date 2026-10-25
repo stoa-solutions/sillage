@@ -359,8 +359,12 @@ it("binds Google callback to browser state and app PKCE; grants are single-use a
     "/auth/google/callback?code=valid&state=" + flow.state,
     { headers: { Cookie: flow.cookie } },
   );
-  expect(callback.status).toBe(302);
-  const location = new URL(callback.headers.get("location")!);
+  expect(callback.status).toBe(200);
+  expect(callback.headers.get("cache-control")).toBe("no-store");
+  expect(callback.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+  const html = await callback.text();
+  expect(html).toContain("Ouvrir Playlist Recall");
+  const location = new URL(html.match(/id="return" href="([^"]+)"/)![1].replaceAll("&amp;", "&"));
   expect(location.searchParams.get("state")).toBe(flow.appState);
   expect(location.searchParams.has("token")).toBe(false);
   const code = location.searchParams.get("code")!;
@@ -505,9 +509,8 @@ it("creates a genuinely empty account for a new Google subject, with no inherite
     "/auth/google/callback?code=new-user&state=" + flow.state,
     { headers: { Cookie: flow.cookie } },
   );
-  const code = new URL(callback.headers.get("location")!).searchParams.get(
-    "code",
-  );
+  const html = await callback.text();
+  const code = new URL(html.match(/id="return" href="([^"]+)"/)![1].replaceAll("&amp;", "&")).searchParams.get("code");
   const token = (
     await (
       await req("/auth/exchange", "", { code, verifier: flow.verifier })

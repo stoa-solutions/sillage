@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import RecallKit
 
@@ -63,7 +64,9 @@ func playbackEngineChecks() async throws {
   let other = Track(id: "bbbbbbbbbbb", title: "B")
 
   // Music starts at once on YouTube, then the clip takes over at the same instant.
-  var youtube = FakePlayer(), clip = FakePlayer(), clips = FakeClips()
+  var youtube = FakePlayer()
+  var clip = FakePlayer()
+  var clips = FakeClips()
   var engine = PlaybackEngine(
     youtube: youtube, clip: clip, clips: clips, volume: 0.8, fadeDuration: 0, fadeSteps: 3)
   var heard: [PlaybackSignal] = []
@@ -90,8 +93,28 @@ func playbackEngineChecks() async throws {
     engine.elapsed == 13 && heard.last == .progress(elapsed: 13, duration: 200),
     "Signals from the silent player leaked to the session")
 
+  // High-frequency media samples must not redraw ordinary controls at the same rate.
+  // Session effects still receive every sample and the interpolation clock keeps precision.
+  var timeUpdates = 0
+  var durationUpdates = 0
+  let timeWatch = engine.$elapsed.dropFirst().sink { _ in timeUpdates += 1 }
+  let durationWatch = engine.$duration.dropFirst().sink { _ in durationUpdates += 1 }
+  heard = []
+  for step in 1...10 {
+    clip.onSignal?(.progress(elapsed: 13 + Double(step) / 10, duration: 200))
+  }
+  try expect(timeUpdates <= 4 && durationUpdates == 0, "Progress invalidated controls too often")
+  try expect(heard.count == 10, "Throttling dropped session preparation signals")
+  try expect(abs(engine.position(at: Date()) - 14) < 0.1, "Precise playback clock lost samples")
+  engine.seek(42.125)
+  try expect(engine.elapsed == 42.125, "Explicit seek was delayed by display throttling")
+  timeWatch.cancel()
+  durationWatch.cancel()
+
   // Paused when the clip arrives: switch silently, stay paused.
-  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  youtube = FakePlayer()
+  clip = FakePlayer()
+  clips = FakeClips()
   engine = PlaybackEngine(youtube: youtube, clip: clip, clips: clips, fadeDuration: 0)
   engine.cue(song)
   try await settle { clips.waiting[song.id] != nil }
@@ -101,7 +124,9 @@ func playbackEngineChecks() async throws {
   try expect(!clip.playing && !youtube.playing, "A paused song started playing at the handover")
 
   // No clip: YouTube keeps playing, the session hears nothing unusual.
-  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  youtube = FakePlayer()
+  clip = FakePlayer()
+  clips = FakeClips()
   engine = PlaybackEngine(youtube: youtube, clip: clip, clips: clips, fadeDuration: 0)
   heard = []
   engine.onSignal = { heard.append($0) }
@@ -112,7 +137,9 @@ func playbackEngineChecks() async throws {
   try expect(engine.active == .youtube && heard.isEmpty, "A missing clip disturbed playback")
 
   // YouTube refuses to embed, but the clip comes: no skip.
-  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  youtube = FakePlayer()
+  clip = FakePlayer()
+  clips = FakeClips()
   engine = PlaybackEngine(youtube: youtube, clip: clip, clips: clips, fadeDuration: 0)
   heard = []
   engine.onSignal = { heard.append($0) }
@@ -125,7 +152,9 @@ func playbackEngineChecks() async throws {
   try expect(clip.playing && heard.isEmpty, "The clip did not rescue the refused embed")
 
   // Both refuse: now the session hears "unavailable".
-  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  youtube = FakePlayer()
+  clip = FakePlayer()
+  clips = FakeClips()
   engine = PlaybackEngine(youtube: youtube, clip: clip, clips: clips, fadeDuration: 0)
   heard = []
   engine.onSignal = { heard.append($0) }
@@ -136,7 +165,9 @@ func playbackEngineChecks() async throws {
   try await settle { heard == [.unavailable] }
 
   // A clip failing mid-song falls back to YouTube at the same instant.
-  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  youtube = FakePlayer()
+  clip = FakePlayer()
+  clips = FakeClips()
   engine = PlaybackEngine(youtube: youtube, clip: clip, clips: clips, fadeDuration: 0)
   engine.cue(song)
   try await settle { clips.waiting[song.id] != nil }
@@ -150,7 +181,9 @@ func playbackEngineChecks() async throws {
     "A failing clip did not hand back to YouTube at its position")
 
   // A new song cancels a clip still preparing for the previous one.
-  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  youtube = FakePlayer()
+  clip = FakePlayer()
+  clips = FakeClips()
   engine = PlaybackEngine(youtube: youtube, clip: clip, clips: clips, fadeDuration: 0)
   engine.cue(song)
   try await settle { clips.waiting[song.id] != nil }
@@ -161,7 +194,9 @@ func playbackEngineChecks() async throws {
   try expect(engine.active == .youtube && clip.loaded.isEmpty, "A stale clip replaced the new song")
 
   // YouTube only: nothing is downloaded or prepared.
-  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  youtube = FakePlayer()
+  clip = FakePlayer()
+  clips = FakeClips()
   engine = PlaybackEngine(youtube: youtube, clip: clip, clips: clips, downloads: false)
   engine.cue(song)
   engine.prepare([other])
@@ -171,7 +206,9 @@ func playbackEngineChecks() async throws {
     "YouTube-only mode still downloaded clips")
 
   // Upcoming tracks are prepared ahead, current first; the voice ducks the sounding player.
-  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  youtube = FakePlayer()
+  clip = FakePlayer()
+  clips = FakeClips()
   engine = PlaybackEngine(youtube: youtube, clip: clip, clips: clips, volume: 1, fadeDuration: 0)
   engine.cue(song)
   engine.prepare([other])
@@ -182,7 +219,9 @@ func playbackEngineChecks() async throws {
   try expect(youtube.volume == 1, "The music was not restored after the voice")
 
   // A real crossfade interrupted by a quality change ends cleanly on YouTube.
-  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  youtube = FakePlayer()
+  clip = FakePlayer()
+  clips = FakeClips()
   engine = PlaybackEngine(
     youtube: youtube, clip: clip, clips: clips, volume: 0.6, fadeDuration: 0.2, fadeSteps: 4)
   engine.cue(song)
@@ -200,7 +239,9 @@ func playbackEngineChecks() async throws {
   try expect(abs(youtube.volume - 0.4) < 0.001, "Volume stopped applying after an interrupted fade")
 
   // Pausing during the crossfade silences both players.
-  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  youtube = FakePlayer()
+  clip = FakePlayer()
+  clips = FakeClips()
   engine = PlaybackEngine(
     youtube: youtube, clip: clip, clips: clips, fadeDuration: 0.2, fadeSteps: 4)
   engine.cue(song)
@@ -213,7 +254,9 @@ func playbackEngineChecks() async throws {
   try await settle { !engine.fading }
 
   // Next while the clip is still loading: the old load never takes over the new song.
-  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  youtube = FakePlayer()
+  clip = FakePlayer()
+  clips = FakeClips()
   clip.holdLoads = true
   engine = PlaybackEngine(youtube: youtube, clip: clip, clips: clips, fadeDuration: 0)
   engine.cue(song)
@@ -227,5 +270,7 @@ func playbackEngineChecks() async throws {
     engine.active == .youtube && engine.track?.id == other.id && !clip.playing,
     "A clip still loading for the previous song took over the new one")
 
-  print("Playback engine checks passed: instant start, crossfade handover, pause, fallbacks, stale clips, YouTube only, interrupted fades, Next during load")
+  print(
+    "Playback engine checks passed: instant start, crossfade handover, pause, fallbacks, stale clips, YouTube only, interrupted fades, Next during load"
+  )
 }

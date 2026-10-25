@@ -54,6 +54,13 @@ public final class ClipPlayer: PlaybackBackend {
     }
   }
 
+  deinit {
+    if let timeObserver { player.removeTimeObserver(timeObserver) }
+    if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+    itemObservation?.invalidate()
+    statusObservation?.invalidate()
+  }
+
   public func load(_ source: PlaybackSource, at start: Double, autoplay: Bool) async throws {
     guard case .file(let url) = source else { return }
     finishLoad(throwing: CancellationError())
@@ -61,7 +68,8 @@ public final class ClipPlayer: PlaybackBackend {
     let id = UUID()
     player.replaceCurrentItem(with: item)
     try await withTaskCancellationHandler {
-      try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+      try await withCheckedThrowingContinuation {
+        (continuation: CheckedContinuation<Void, Error>) in
         pendingLoad = (id, continuation)
         itemObservation = item.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
           Task { @MainActor in self?.statusChanged(item, load: id) }

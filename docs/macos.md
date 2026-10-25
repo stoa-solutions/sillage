@@ -245,3 +245,12 @@ La destination Découvrir partage DiscoveryModel avec les cartes de découverte 
 Ajouter enregistre dans une collection privée Mes découvertes sur le serveur, sans modifier YouTube ni démarrer la lecture. Écouter lance le titre et remplace la file, comme une lecture explicite depuis Bibliothèque ; À suivre ajoute sans interrompre. Les résultats de découverte du chat sont des données structurées vérifiées par le serveur, jamais des liens inventés. La continuation automatique reste dans la bibliothèque. La liste personnelle est exclue de la synchronisation des playlists YouTube.
 
 La vérification Gemini utilise un court appel réel avant enregistrement. Le test volontaire DJ et voix peut tester une nouvelle clé sans la sauvegarder ; une clé refusée ne remplace donc pas la précédente. Les quotas Google s’appliquent aux tests.
+
+
+### Performances et essais de connexion
+
+L’horloge du lecteur reçoit chaque échantillon natif ; les contrôles ordinaires sont actualisés au plus quatre fois par seconde. Les paroles utilisent l’horloge interpolée. Les événements de progression continuent de traverser la session d’écoute pour préparer voix et suite, mais ne publient pas le chat/l’historique en l’absence d’un effet. Les réglages AppKit de fenêtre ne sont réappliqués que si leur valeur change.
+
+Le lecteur YouTube charge sa page au premier titre. Son gestionnaire de messages est un relais faible ; les observateurs AVPlayer sont retirés à la destruction. Les tests couvrent précision de seek, limitation des notifications, conservation des signaux et libération répétée du lecteur natif.
+
+Une copie d’aperçu utilise un identifiant distinct et RECALL_DATA_DIR, **sans CFBundleURLTypes** : elle ne doit jamais enregistrer le schéma playlist-recall ni lancer une vraie connexion. GoogleSignIn refuse une connexion depuis un autre identifiant. La vraie app rattache le schéma de retour à son propre bundle au début d’une connexion. Réglages → Compte → Reconnecter Google conserve l’ancienne session tant que la nouvelle n’est pas validée. Le navigateur affiche une page de retour avec bouton explicite ; le code reste à usage unique et protégé par PKCE.

@@ -14,7 +14,8 @@ struct QueueEntry: Identifiable {
 /// live in `ListeningSession`, tested on their own; this model only connects them to the Mac.
 @MainActor
 final class DJModel: ObservableObject {
-  @Published private(set) var listening = ListeningSession()
+  private(set) var listening = ListeningSession()
+  let listeningChanges = PassthroughSubject<ListeningSession, Never>()
   @Published var prompt = ""
   @Published var showingRules = false
   @Published private(set) var rulesText = ""
@@ -85,7 +86,9 @@ final class DJModel: ObservableObject {
     voice.stop()
     voice.clearPreparation()
     player.engine.reset()
+    objectWillChange.send()
     listening = ListeningSession()
+    listeningChanges.send(listening)
     prompt = ""
     searchScope = .library
     dispatch(.accountReady(!session.loadingCredentials && session.hasServer))
@@ -159,7 +162,15 @@ final class DJModel: ObservableObject {
   // MARK: - Effects
 
   private func dispatch(_ event: ListeningSession.Event) {
-    let effects = listening.handle(event)
+    var next = listening
+    let effects = next.handle(event)
+    // Progress still drives preparation and continuation precisely. Only meaningful session
+    // changes invalidate the chat/history; the player's clock owns the time display.
+    let notify: Bool
+    if case .playback(.progress) = event { notify = !effects.isEmpty } else { notify = true }
+    if notify { objectWillChange.send() }
+    listening = next
+    if notify { listeningChanges.send(next) }
     for effect in effects { run(effect) }
   }
 

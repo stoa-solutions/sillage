@@ -160,8 +160,13 @@ private struct WindowAppearance: NSViewRepresentable {
     let studio = player.studio
     DispatchQueue.main.async {
       guard let window = view.window else { return }
-      window.appearance = NSAppearance(named: .darkAqua)
-      window.contentMinSize.width = studio || discovery ? 900 : 600
+      if window.appearance?.name != .darkAqua {
+        window.appearance = NSAppearance(named: .darkAqua)
+      }
+      let minimumWidth: CGFloat = studio || discovery ? 900 : 600
+      if window.contentMinSize.width != minimumWidth {
+        window.contentMinSize.width = minimumWidth
+      }
       guard window.frame.width < window.contentMinSize.width,
         !window.styleMask.contains(.fullScreen)
       else { return }

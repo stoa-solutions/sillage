@@ -17,7 +17,7 @@ import RecallKit
     self.session = session
     self.uploaded = uploaded
     // Only history changes matter, not every chat or status update of the session.
-    watch = dj.$listening.map(\.queue.history)
+    watch = dj.listeningChanges.map(\.queue.history)
       .removeDuplicates { $0.map(\.id) == $1.map(\.id) }
       .sink { [weak self] history in
         self?.outbox.observe(history)

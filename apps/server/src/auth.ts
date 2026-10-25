@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { OAuth2Client } from "google-auth-library";
 import { z } from "zod";
+import { googleReturnPage } from "./auth-return.ts";
 import { hash } from "./content.ts";
 import { transaction, type Database } from "./db.ts";
 
@@ -141,10 +142,12 @@ export function authRoutes(db: Database, provider = googleProvider()) {
           [hash(grant), user.rows[0].id, flow.challenge],
         );
       });
-      return c.redirect(
-        "playlist-recall://auth?" +
-          new URLSearchParams({ code: grant, state: flow.app_state }),
-      );
+      const nonce = opaque();
+      c.header("Content-Security-Policy", `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`);
+      return c.html(googleReturnPage(
+        "playlist-recall://auth?" + new URLSearchParams({ code: grant, state: flow.app_state }),
+        nonce,
+      ));
     } catch {
       return c.text(
         "Google n’a pas pu confirmer cette connexion. Réessaie depuis Recall.",

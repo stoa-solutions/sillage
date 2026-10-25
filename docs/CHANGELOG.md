@@ -2,6 +2,9 @@
 
 ## Non publié
 
+- Mac : réduit les rafraîchissements de lecture sans dégrader l’horloge des paroles ; nettoyage des observateurs et du pont WebKit, chargement YouTube différé jusqu’au premier titre.
+- Connexion Google : retour vers l’app qui a démarré la connexion, reconnexion sans déconnexion préalable et page de retour explicite dans le navigateur avec bouton de reprise.
+
 - App 1.6.2 : panneau DJ modernisé. Onglets à icônes avec compteur de la file, réponses du DJ avec son avatar, bulles discrètes pour tes messages, indicateur de recherche dans la conversation, suggestions en pastilles, champ de saisie avec source, micro et envoi, commandes « / » en liste. L’onglet Historique montre les écoutes enregistrées sur ton compte, groupées par jour.
 
 - App 1.6.1 : « Écoutes récentes » dans la Bibliothèque affiche l’historique enregistré sur le serveur, groupé par jour (écouté, passé, heure), avec relecture, ajout à la suite et effacement confirmé.
