@@ -28,6 +28,18 @@ const catalog = [
   },
 ];
 describe("music retrieval", () => {
+  it("puts individual recordings ahead of unrequested mixes", () => {
+    const mix = {
+      title: "Mac Miller but he's relaxed | Lofi Hip Hop Mix",
+      channel: "Relaxed Radio",
+    };
+    expect(musicMatchRank("Mac Miller", catalog[4])).toBeGreaterThan(
+      musicMatchRank("Mac Miller", mix),
+    );
+    expect(musicMatchRank("Mac Miller mix", mix)).toBeGreaterThan(
+      musicMatchRank("Mac Miller mix", catalog[4]),
+    );
+  });
   it("ranks the requested artist and title above another song by that artist", () => {
     const sorted = [...catalog].sort(
       (a, b) =>

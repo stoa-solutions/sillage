@@ -4,7 +4,7 @@
 
 ### Correctif recherche et demandes DJ précises
 
-- Les correspondances artiste + titre et les morceaux de l’artiste passent avant les type beats, reprises et versions alternatives non demandées.
+- Les correspondances artiste + titre et les morceaux de l’artiste passent avant les type beats, mixes, reprises et versions alternatives non demandées.
 - Les titres explicitement identifiés sont joués seuls, dans l’ordre demandé, sans compléter la file avec des suggestions ; une référence manquante conserve la file et demande une précision.
 - Le plafond quotidien Recall est distingué du quota Google ; un plafond par compte et une dérogation temporaire avec expiration peuvent être définis sans modifier les autres comptes.
 

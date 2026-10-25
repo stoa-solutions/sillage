@@ -40,6 +40,7 @@ export function versionPenalty(query: string, title: string): number {
   for (const [pattern, cost] of [
     [/\b(type beat|karaoke|cover|tribute|reaction|tutorial)\b/, 35],
     [/\b(live|concert|colors show)\b/, 8],
+    [/\b(mix|playlist|compilation|full album|full ep)\b/, 12],
     [/\b(remix|slowed|sped up)\b/, 6],
   ] as const) {
     if (pattern.test(t) && !pattern.test(q)) penalty += cost;
