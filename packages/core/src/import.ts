@@ -1,6 +1,10 @@
 import type { LibraryImport, Video } from "./types";
+import { sha256Hex } from "./hash";
 
 const MAX_ENTRIES = 50_000;
+const MAX_PLAYLISTS = 100;
+/** Export bucket for videos outside every playlist. Its videos import; the bucket does not. */
+export const UNASSIGNED_ID = "_recall_unassigned";
 const object = (value: unknown): Record<string, unknown> => {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("Le fichier ne contient pas une playlist JSON valide.");
@@ -11,41 +15,69 @@ const text = (value: unknown, limit = 1000): string | null =>
     ? value.trim().slice(0, limit)
     : null;
 
-export function parseImport(input: unknown): LibraryImport {
+/**
+ * Reads a Recall export, a single normalized playlist or a yt-dlp flat playlist.
+ * Reference cases, with their expected result, live in packages/core/fixtures/format.
+ */
+export function parseImport(
+  input: unknown,
+  fallbackTitle = "Import JSON",
+): LibraryImport {
   const source = object(input);
-  if (
-    source.format === "playlist-recall" &&
-    Array.isArray(source.collections)
-  ) {
-    if (!source.collections.length || source.collections.length > 100)
+  if (Array.isArray(source.collections)) {
+    const playlists = source.collections.filter(
+      (c) => !isUnassigned(c),
+    ).length;
+    if (!source.collections.length || playlists > MAX_PLAYLISTS)
       throw new Error("La sauvegarde doit contenir entre 1 et 100 playlists.");
-    const parts = source.collections.map(parseSingle);
+    const parts = source.collections.map((c, i) =>
+      parseSingle(c, i, fallbackTitle),
+    );
     if (parts.reduce((n, p) => n + p.memberships.length, 0) > MAX_ENTRIES)
       throw new Error("Maximum 50 000 entrées par import.");
-    if (
-      new Set(parts.flatMap((p) => p.playlists.map((p) => p.id))).size !==
-      parts.length
-    )
+    const ids = parts.flatMap((p) => p.playlists.map((p) => p.id));
+    if (new Set(ids).size !== ids.length)
       throw new Error("Identifiants de playlist répétés dans la sauvegarde.");
     return {
       playlists: parts.flatMap((p) => p.playlists),
       memberships: parts.flatMap((p) => p.memberships),
       videos: [
-        ...new Map(
-          parts.flatMap((p) => p.videos).map((v) => [v.id, v]),
-        ).values(),
+        ...parts
+          .flatMap((p) => p.videos)
+          .reduce((all, v) => {
+            const old = all.get(v.id);
+            if (!old || (!old.title && v.title)) all.set(v.id, v);
+            return all;
+          }, new Map<string, Video>())
+          .values(),
       ],
     };
   }
-  return parseSingle(source);
+  return parseSingle(source, 0, fallbackTitle);
 }
 
-function parseSingle(input: unknown): LibraryImport {
+const isUnassigned = (value: unknown) =>
+  !!value &&
+  typeof value === "object" &&
+  (value as { playlist?: { id?: unknown } }).playlist?.id === UNASSIGNED_ID;
+
+function parseSingle(
+  input: unknown,
+  index: number,
+  fallbackTitle: string,
+): LibraryImport {
   const source = object(input);
   const normalized = "videos" in source;
-  const playlist = normalized ? object(source.playlist) : source;
-  const id = text(playlist.id, 160);
-  if (!id || !/^[a-zA-Z0-9_-]+$/.test(id))
+  const playlist = normalized
+    ? source.playlist == null
+      ? {}
+      : object(source.playlist)
+    : source;
+  // A file without playlist ID gets the same stable ID on every import, so it replaces itself.
+  const id =
+    text(playlist.id, 160) ??
+    "file_" + sha256Hex(fallbackTitle + String(index)).slice(0, 24);
+  if (!/^[a-zA-Z0-9_-]+$/.test(id))
     throw new Error("Identifiant de playlist absent ou invalide.");
   const entries = normalized ? source.videos : source.entries;
   if (!Array.isArray(entries) || entries.length > MAX_ENTRIES)
@@ -88,7 +120,7 @@ function parseSingle(input: unknown): LibraryImport {
           : null,
     };
     const old = videos.get(videoId);
-    if (!old || video.title) videos.set(videoId, video);
+    if (!old || (!old.title && video.title)) videos.set(videoId, video);
     const suppliedPosition = normalized ? row.position : row.playlist_index;
     if (
       suppliedPosition != null &&
@@ -105,11 +137,13 @@ function parseSingle(input: unknown): LibraryImport {
         typeof suppliedPosition === "number" ? suppliedPosition : index + 1,
     };
   });
+  if (id === UNASSIGNED_ID)
+    return { playlists: [], videos: [...videos.values()], memberships: [] };
   return {
     playlists: [
       {
         id,
-        title: text(playlist.title, 500) ?? "Playlist sans titre",
+        title: text(playlist.title, 500) ?? fallbackTitle,
         sourceUrl: `https://www.youtube.com/playlist?list=${encodeURIComponent(id)}`,
         importedAt: new Date().toISOString(),
       },
@@ -147,27 +181,37 @@ export function buildDocument(video: Video): string {
 
 export function exportLibrary(library: LibraryImport): unknown {
   const videos = new Map(library.videos.map((v) => [v.id, v]));
+  const row = (v: Video, position?: number) => ({
+    id: v.id,
+    title: v.title,
+    channel: v.channel,
+    duration_seconds: v.durationSeconds,
+    description: v.description,
+    tags: v.tags,
+    upload_date: v.publishedAt,
+    ...(position === undefined ? {} : { position }),
+  });
+  const assigned = new Set(library.memberships.map((m) => m.videoId));
+  const unassigned = library.videos.filter((v) => !assigned.has(v.id));
   return {
     format: "playlist-recall",
     version: 1,
-    collections: library.playlists.map((playlist) => ({
-      playlist: { id: playlist.id, title: playlist.title },
-      videos: library.memberships
-        .filter((m) => m.playlistId === playlist.id)
-        .sort((a, b) => a.position - b.position)
-        .map((m) => {
-          const v = videos.get(m.videoId)!;
-          return {
-            id: v.id,
-            title: v.title,
-            channel: v.channel,
-            duration_seconds: v.durationSeconds,
-            description: v.description,
-            tags: v.tags,
-            upload_date: v.publishedAt,
-            position: m.position,
-          };
-        }),
-    })),
+    collections: [
+      ...library.playlists.map((playlist) => ({
+        playlist: { id: playlist.id, title: playlist.title },
+        videos: library.memberships
+          .filter((m) => m.playlistId === playlist.id)
+          .sort((a, b) => a.position - b.position)
+          .map((m) => row(videos.get(m.videoId)!, m.position)),
+      })),
+      ...(unassigned.length
+        ? [
+            {
+              playlist: { id: UNASSIGNED_ID, title: "Autres vidéos" },
+              videos: unassigned.map((v) => row(v)),
+            },
+          ]
+        : []),
+    ],
   };
 }

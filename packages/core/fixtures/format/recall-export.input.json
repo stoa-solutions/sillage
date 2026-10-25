@@ -1,0 +1,83 @@
+{
+  "format": "playlist-recall",
+  "version": 1,
+  "collections": [
+    {
+      "playlist": {
+        "id": "PLjazz",
+        "title": "Jazz du soir"
+      },
+      "videos": [
+        {
+          "id": "aaaaaaaaaaa",
+          "title": "Autumn Leaves",
+          "channel": "Trio",
+          "duration_seconds": 300,
+          "description": "Live",
+          "tags": [
+            "jazz",
+            "live"
+          ],
+          "upload_date": "20190101",
+          "position": 2
+        },
+        {
+          "id": "bbbbbbbbbbb",
+          "title": "Moanin'",
+          "channel": "Art Blakey",
+          "duration_seconds": 580,
+          "description": "",
+          "tags": [],
+          "upload_date": null,
+          "position": 1
+        },
+        {
+          "id": "aaaaaaaaaaa",
+          "title": "Autumn Leaves",
+          "channel": "Trio",
+          "duration_seconds": 300,
+          "description": "Live",
+          "tags": [
+            "jazz",
+            "live"
+          ],
+          "upload_date": "20190101",
+          "position": 3
+        }
+      ]
+    },
+    {
+      "playlist": {
+        "id": "PLmix",
+        "title": "Mix"
+      },
+      "videos": [
+        {
+          "id": "bbbbbbbbbbb",
+          "title": "Moanin'",
+          "channel": "Art Blakey",
+          "duration_seconds": 580,
+          "position": 1
+        }
+      ]
+    },
+    {
+      "playlist": {
+        "id": "_recall_unassigned",
+        "title": "Autres vidéos"
+      },
+      "videos": [
+        {
+          "id": "ccccccccccc",
+          "title": "Solo",
+          "channel": null,
+          "duration_seconds": null,
+          "description": "",
+          "tags": [
+            "piano"
+          ]
+        }
+      ]
+    }
+  ]
+}

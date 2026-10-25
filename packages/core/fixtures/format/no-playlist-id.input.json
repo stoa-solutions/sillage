@@ -1,0 +1,16 @@
+{
+  "playlist": {
+    "title": "Ma sélection"
+  },
+  "videos": [
+    {
+      "id": "fffffffffff",
+      "title": "Song",
+      "upload_date": "2021-05-04",
+      "tags": [
+        "a",
+        "b"
+      ]
+    }
+  ]
+}
