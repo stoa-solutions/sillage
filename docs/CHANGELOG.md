@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Découvrir : recherche YouTube limitée à la musique ; aperçu de trois résultats privés pour garder les découvertes visibles en mode Partout.
+
 - Découvrir : recherche groupée dans les playlists du compte et sur YouTube, pagination YouTube, cartes dans le chat et ajout explicite dans Mes découvertes. Recherche et ajout partagent les mêmes services, sans modifier la file tant qu’aucune action de lecture n’est choisie.
 - Clé Gemini : vérification avant remplacement et test du DJ et de la voix depuis Réglages, sans enregistrer la clé testée. Le karaoké et l’onglet Paroles sont conservés dans l’app 1.5.0.
 

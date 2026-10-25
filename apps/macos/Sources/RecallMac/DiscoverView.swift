@@ -6,6 +6,11 @@ struct DiscoverView: View {
   @EnvironmentObject var library: LibraryModel
   @EnvironmentObject var session: Session
   @EnvironmentObject var dj: DJModel
+  @State private var showAllLibrary = false
+  private var visibleLibrary: [Track] {
+    discovery.scope == .all && !showAllLibrary
+      ? Array(discovery.libraryTracks.prefix(3)) : discovery.libraryTracks
+  }
   var body: some View {
     VStack(spacing: 12) {
       HStack(spacing: 16) {
@@ -51,9 +56,12 @@ struct DiscoverView: View {
               if discovery.searched && discovery.scope != .youtube {
                 resultHeading("Dans tes playlists (\(discovery.libraryTotal))")
                 if !discovery.libraryError.isEmpty { error(discovery.libraryError) }
-                ForEach(discovery.libraryTracks) { track in
+                ForEach(visibleLibrary) { track in
                   LibraryDiscoveryRow(track: track)
                   Divider()
+                }
+                if visibleLibrary.count < discovery.libraryTracks.count {
+                  Button("Voir les autres résultats de mes playlists") { showAllLibrary = true }
                 }
                 if discovery.libraryTracks.isEmpty && !discovery.searching
                   && discovery.libraryError.isEmpty
@@ -117,6 +125,7 @@ struct DiscoverView: View {
         }
       }.clipped().ignoresSafeArea().allowsHitTesting(false)
     }.environment(\.colorScheme, .dark)
+      .onChange(of: discovery.submittedQuery) { _, _ in showAllLibrary = false }
       .onChange(of: discovery.scope) { _, _ in if discovery.searched { discovery.search() } }
       .onChange(of: discovery.playlistID) { _, _ in
         if discovery.searched && discovery.scope != .youtube { discovery.search() }

@@ -49,6 +49,7 @@ export class YouTube {
     const data = await this.get("search", {
       part: "snippet",
       type: "video",
+      videoCategoryId: "10",
       q: query,
       maxResults: "15",
       videoEmbeddable: "true",
