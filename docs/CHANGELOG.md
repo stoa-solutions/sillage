@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- App Mac 1.4.5 (17) : installation locale du design actuel de main (Compact/Studio, volume, Voix du DJ, Enchaîner et photos de chaîne).
+
 - DJ : possibilité administrateur de retirer durablement le plafond Recall pour un compte, sans modifier les limites des autres comptes ni celles du fournisseur IA.
 
 ### Correctif recherche et demandes DJ précises
