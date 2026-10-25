@@ -10,6 +10,10 @@ export function djIntent(message: string): DJIntent {
     return "replace";
   if (/\b(cherche|chercher|recherche|trouve|trouver|montre|propose|decouvre)\b/.test(text))
     return "browse";
+  // A remembered clue asks for candidates, not an arbitrary first match.
+  if (/\b(pochette|miniature|couverture|couleur|dans le titre|dont le titre|souviens|souvenir)\b/.test(text)
+    || /\b(un|une) (morceau|musique|titre|chanson)\b/.test(text) && /\b(feat|featuring|duo)\b/.test(text))
+    return "browse";
   // A bare musical wish ("du jazz", "Mac Miller stp") changes the music.
   // The model can still return keep/empty for discussion or ambiguity.
   return "replace";

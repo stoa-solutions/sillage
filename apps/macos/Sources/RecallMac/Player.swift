@@ -7,12 +7,20 @@ import WebKit
 @MainActor
 final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMessageHandler {
   @Published private(set) var ready = false
-  @Published private(set) var playing = false
+  @Published private(set) var playing = false {
+    didSet { clock.setPlaying(playing) }
+  }
   @Published var failure = ""
   @Published private(set) var studio = UserDefaults.standard.bool(forKey: "studioMode")
   @Published private(set) var studioReady = false
   @Published private(set) var preparingStudio = false
-  @Published private(set) var elapsed: Double = 0
+  @Published private(set) var elapsed: Double = 0 {
+    didSet { clock.sample(elapsed, playing: playing) }
+  }
+  private var clock = PlaybackClock()
+  private var seekRequest: UUID?
+  private var webSeek: (target: Double, started: Date)?
+  func position(at date: Date) -> Double { clock.position(at: date) }
   @Published private(set) var duration: Double = 0
   /// Music volume from 0 to 1, shared by both players; the DJ's voice lowers it temporarily.
   @Published var volume = UserDefaults.standard.object(forKey: "musicVolume") as? Double ?? 1 {
@@ -100,10 +108,10 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
       }
     }
     timeObserver = nativePlayer.addPeriodicTimeObserver(
-      forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main
+      forInterval: CMTime(seconds: 0.1, preferredTimescale: 600), queue: .main
     ) { [weak self] time in
       Task { @MainActor in
-        guard let self, self.studioReady else { return }
+        guard let self, self.studioReady, self.seekRequest == nil else { return }
         self.elapsed = time.seconds.isFinite ? time.seconds : 0
         let length = self.nativePlayer.currentItem?.duration.seconds ?? 0
         self.duration = length.isFinite ? length : 0
@@ -135,6 +143,12 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
         return
       }
       if let time = value["elapsed"] as? Double, time.isFinite {
+        if let seek = webSeek, abs(time - seek.target) > 1,
+          Date().timeIntervalSince(seek.started) < 2
+        {
+          return
+        }
+        webSeek = nil
         // A cued, paused YouTube item reports zero before its requested start is applied.
         if let resume = webResumePosition, time < resume - 2 { return }
         webResumePosition = nil
@@ -192,6 +206,9 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     decisionHandler(.allow)
   }
   func cue(_ track: Track, start: Double = 0, autoplay: Bool = true) {
+    seekRequest = nil
+    webSeek = nil
+    playing = false
     currentTrack = track
     canEnd = false
     failure = ""
@@ -289,16 +306,35 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     }
   }
   func seek(_ seconds: Double) {
-    guard seconds.isFinite else { return }
+    guard seconds.isFinite, let track = currentTrack, !preparingStudio else { return }
+    let target = max(0, duration > 0 ? min(seconds, duration) : seconds)
+    elapsed = target
     if studioReady {
+      let request = UUID()
+      seekRequest = request
+      nativePlayer.currentItem?.cancelPendingSeeks()
       nativePlayer.seek(
-        to: CMTime(seconds: min(max(seconds, 0), duration), preferredTimescale: 600))
-    } else if !preparingStudio, let currentTrack {
-      // The embedded player has no seek command: cue the same video at the new time.
-      cueWeb(currentTrack, start: max(seconds, 0), autoplay: wantsPlayback)
+        to: CMTime(seconds: target, preferredTimescale: 1000),
+        toleranceBefore: .zero, toleranceAfter: .zero
+      ) { [weak self] finished in
+        Task { @MainActor in
+          guard let self, self.seekRequest == request else { return }
+          self.seekRequest = nil
+          let actual = self.nativePlayer.currentTime().seconds
+          if actual.isFinite { self.elapsed = actual }
+          if !finished { self.failure = "Le déplacement n’a pas abouti. Réessaie." }
+        }
+      }
+    } else {
+      webResumePosition = nil
+      webSeek = (target, Date())
+      sendWebCommand("seek", extra: ["id": track.id, "seconds": target])
     }
   }
   func reset() {
+    seekRequest = nil
+    webSeek = nil
+    playing = false
     studioTask?.cancel()
     prefetchTask?.cancel()
     studioCache.cancel()

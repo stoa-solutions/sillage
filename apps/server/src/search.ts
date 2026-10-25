@@ -10,6 +10,7 @@ import { hasGenreEvidence, isDescriptiveQuery, lookupTokens, matchesLookup, genr
 import { musicMatchRank } from "./music-matching.ts";
 export interface SearchInput {
   query: string;
+  fuzzy?: boolean;
   playlistId?: string;
   excludeIds?: string[];
   availableOnly?: boolean;
@@ -78,6 +79,20 @@ export async function search(
         : { rows: [] };
       direct = precise.rows.length > 0;
       for (const row of precise.rows) { exact.add(row.id); lexical.push(row.id); }
+      // Optional recall expansion: a heard name may omit a short prefix/suffix
+      // (Edge / Hedges). Keep exact hits first; do not broaden ordinary lookups.
+      if (input.fuzzy && !descriptive) {
+        const tokens = lookupTokens(parsed.text);
+        if (tokens.length && tokens.every(t => t.length >= 4)) {
+          const similar = await db.query(
+            `SELECT v.id FROM videos v WHERE ${filter}
+             AND unaccent(lower(coalesce(v.title,'') || ' ' || coalesce(v.channel,''))) LIKE ALL($${params.length + 1}::text[])
+             ORDER BY v.id LIMIT 200`,
+            [...params, tokens.map(t => `%${t}%`)],
+          );
+          lexical.push(...similar.rows.map(r => r.id));
+        }
+      }
       const matches = await db.query(
         `SELECT v.id FROM videos v WHERE ${filter} AND unaccent(lower(v.title)) LIKE unaccent(lower($${params.length + 1})) ORDER BY length(v.title),v.id LIMIT 200`,
         [...params, "%" + parsed.text.replace(/[\\%_]/g, "\\$&") + "%"],
@@ -177,7 +192,7 @@ export async function search(
     .filter((v) => {
       if (!parsed.text || input.mode === "image") return true;
       if (descriptive) return hasGenreEvidence(parsed.text, v);
-      return matchesLookup(parsed.text, v);
+      return matchesLookup(parsed.text, v, input.fuzzy);
     })
     .sort((a, b) => {
       if (input.sort === "duration")

@@ -1,21 +1,11 @@
 import RecallKit
 import SwiftUI
 
-/// The player reports its position about twice a second; between reports, time keeps flowing.
-private struct PlaybackClock {
-  var elapsed: Double = 0
-  var at = Date()
-  func now(_ date: Date, playing: Bool) -> Double {
-    playing ? elapsed + min(date.timeIntervalSince(at), 2) : elapsed
-  }
-}
-
 /// Lines with the sung one filled progressively; a click on a line plays from there.
 struct LyricsPanel: View {
   @ObservedObject var model: LyricsModel
   @ObservedObject var player: Player
   let connection: Connection?
-  @State private var clock = PlaybackClock()
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
@@ -25,7 +15,7 @@ struct LyricsPanel: View {
         Divider()
         timingBar(lyrics).padding(12)
       }
-    }.onChange(of: player.elapsed) { _, value in clock = PlaybackClock(elapsed: value, at: Date()) }
+    }
   }
 
   @ViewBuilder private var content: some View {
@@ -56,14 +46,14 @@ struct LyricsPanel: View {
 
   private func synced(_ lyrics: Lyrics) -> some View {
     TimelineView(.animation(minimumInterval: 1 / 30, paused: !player.playing)) { context in
-      let position = lyrics.position(at: clock.now(context.date, playing: player.playing))
+      let position = lyrics.position(at: player.position(at: context.date))
       ScrollViewReader { proxy in
         ScrollView {
           LazyVStack(alignment: .leading, spacing: 14) {
             ForEach(lyrics.lines.indices, id: \.self) { index in
               let state: LineState =
                 index == position.index
-                ? .current(reduceMotion ? 1 : position.progress)
+                ? .current(1)
                 : (position.index ?? -1) > index ? .past : .future
               Button {
                 player.seek(lyrics.start(of: index))
@@ -92,17 +82,17 @@ struct LyricsPanel: View {
       }
       HStack(spacing: 8) {
         Button {
-          model.nudge(by: -500, connection: connection)
+          model.nudge(by: -100, connection: connection)
         } label: {
           Label("Plus tôt", systemImage: "backward")
-        }.help("Afficher les paroles une demi-seconde plus tôt")
+        }.help("Afficher les paroles un dixième de seconde plus tôt")
         Text(offsetLabel(lyrics.offsetMs)).font(.caption.monospacedDigit())
           .foregroundStyle(.secondary).fixedSize()
         Button {
-          model.nudge(by: 500, connection: connection)
+          model.nudge(by: 100, connection: connection)
         } label: {
           Label("Plus tard", systemImage: "forward")
-        }.help("Afficher les paroles une demi-seconde plus tard")
+        }.help("Afficher les paroles un dixième de seconde plus tard")
         Spacer(minLength: 0)
         if lyrics.offsetMs != 0 {
           Button {
@@ -114,7 +104,8 @@ struct LyricsPanel: View {
         }
       }.controlSize(.small).lineLimit(1)
       if let source = lyrics.sourceName {
-        Text("Paroles : \(source)").font(.caption2).foregroundStyle(.tertiary)
+        Text("Paroles : \(source) · synchronisation par ligne").font(.caption2).foregroundStyle(
+          .tertiary)
       }
     }
   }

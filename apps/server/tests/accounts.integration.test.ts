@@ -484,6 +484,19 @@ it("scopes semantic text and image hits before ranking, including explanations",
     expect(response.total).toBe(2);
     expect(JSON.stringify(response)).not.toContain("Bob");
     expect(response.results.every((r: any) => r.semantic)).toBe(true);
+    if (mode === "image") {
+      const mcp = await connectMusicMcp(db, [], alice);
+      try {
+        const result = await mcp.client.callTool({ name: "library_search", arguments: {
+          query: "blue album cover", mode: "image", includeQueued: true,
+        } });
+        const data = JSON.parse((result.content as { text: string }[])[0].text);
+        expect(data.mode).toBe("image");
+        expect(data.tracks.map((t: any) => t.id).sort()).toEqual(["alicevideo1", "shared12345"]);
+        expect(JSON.stringify(data)).not.toContain("bobvideo123");
+        expect(data.tracks.every((t: any) => t.matchReason === "Rapprochement visuel")).toBe(true);
+      } finally { await mcp.close(); }
+    }
   }
 });
 it("creates a genuinely empty account for a new Google subject, with no inherited key or library", async () => {
@@ -629,4 +642,22 @@ it("scopes the public HTTP MCP endpoint to the authenticated user", async () => 
   const result = JSON.stringify(await response.json());
   expect(result).toContain("Alice privée");
   expect(result).not.toContain("Bob privée");
+});
+it("returns a nearby heard featuring name only when requested, within the owning account", async () => {
+  await db.query(`INSERT INTO videos(id,title,channel,thumbnail_url,content_hash) VALUES
+    ('hedges00001','Incapable (feat. HEDGES)','Jewel Usain','https://i.ytimg.com/vi/hedges00001/default.jpg','test'),
+    ('hedges00002','Another song (feat. HEDGES)','Private Bob','https://i.ytimg.com/vi/hedges00002/default.jpg','test')`);
+  await db.query(`INSERT INTO memberships(key,playlist_id,video_id,position,seen_generation) VALUES
+    ('ha','PLalice12345','hedges00001',3,1),('hb','PLbob1234567','hedges00002',3,1)`);
+  const mcp = await connectMusicMcp(db, [], alice);
+  try {
+    for (const [fuzzy, expected] of [[false, []], [true, ['hedges00001']]] as const) {
+      const result = await mcp.client.callTool({ name: 'library_search', arguments: { query: 'Edge', fuzzy } });
+      const data = JSON.parse((result.content as { text: string }[])[0].text);
+      expect(data.tracks.map((t: any) => t.id)).toEqual(expected);
+    }
+    const result = await mcp.client.callTool({ name: 'library_search', arguments: { query: 'Incapable' } });
+    const data = JSON.parse((result.content as { text: string }[])[0].text);
+    expect(data.tracks.map((t: any) => t.id)).toEqual(['hedges00001']);
+  } finally { await mcp.close(); }
 });

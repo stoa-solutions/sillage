@@ -4,7 +4,7 @@ Extension Chrome avec bibliothèque locale et serveur personnel pour retrouver u
 
 ## App Mac
 
-Une app native SwiftUI est disponible dans `apps/macos` : chat DJ, micro Apple, voix Gemini, lecture YouTube et clés dans le Trousseau. Depuis la version 1.3, sa bibliothèque réside uniquement sur ton serveur privé : import YouTube par lien, recherche et pagination à distance, sans base musicale locale. Le paquet universel est généré par `npm run build:macos` ; il ne contient aucune connexion personnelle.
+Une app native SwiftUI est disponible dans `apps/macos` : chat DJ, micro Apple, voix Gemini, lecture YouTube et connexion Google persistante. Depuis la version 1.3, sa bibliothèque réside uniquement sur ton serveur privé : import YouTube par lien, recherche et pagination à distance, sans base musicale locale. Le paquet universel est généré par `npm run build:macos` ; il ne contient aucune connexion personnelle.
 
 Cette première version est destinée aux essais locaux. Sparkle est intégré pour les mises à jour signées ; la distribution publique sans avertissement attend une signature et une notarisation Apple. Voir [le guide Mac](docs/macos.md) pour les fonctions, les limites, la compilation et la publication.
 
@@ -33,9 +33,9 @@ Le mode **Textes et souvenirs** combine mots-clés et sens du texte. Le mode **M
 
 ## Configuration personnelle et redistribution
 
-Dans **Réglages → Ton IA musicale**, chaque jeton peut utiliser une clé Gemini personnelle et choisir le modèle. La clé est chiffrée sur le serveur, jamais incluse dans les exports ni renvoyée au client. Un changement de modèle ne demande pas de la ressaisir. Le serveur doit configurer `DJ_SETTINGS_ENCRYPTION_KEY` pour activer cette fonction.
+Dans **Réglages → Ton IA musicale**, chaque compte peut utiliser une clé Gemini personnelle et choisir le modèle. La clé est chiffrée sur le serveur, jamais incluse dans les exports ni renvoyée au client. Un changement de modèle ne demande pas de la ressaisir. Le serveur doit configurer `DJ_SETTINGS_ENCRYPTION_KEY` pour activer cette fonction.
 
-Le client peut se connecter à un serveur HTTPS choisi lors de la première connexion. Chrome demande l’accès uniquement à cette origine. Un serveur correspond toujours à une bibliothèque privée : les jetons de ce serveur partagent cette bibliothèque. Le paquet redistribuable ne constitue pas un service public multiutilisateur.
+Le client peut se connecter à un serveur HTTPS choisi lors de la première connexion. Chrome demande l’accès uniquement à cette origine. Les comptes Google ont chacun leurs playlists et leur clé Gemini ; le catalogue public et les vecteurs sont mutualisés, avec filtrage par compte. Voir [les comptes](docs/accounts.md).
 
 Voir [l’architecture et la trajectoire Mac](docs/architecture.md) pour les frontières de code, les secrets et les limites actuelles.
 
@@ -55,6 +55,8 @@ La musique utilise le lecteur officiel YouTube. Certains titres restent indispon
 - Les résultats sont des pistes classées, pas des identifications certaines. La recherche sémantique utilise les textes disponibles ; elle n'écoute pas la musique et n'analyse pas les miniatures.
 
 ## Développement
+
+Commencer par [le guide développeur](docs/developing.md) : carte du code, environnement isolé et parcours d’une fonctionnalité.
 
 Node.js 24 ou plus récent. Règles de travail, validation et collaboration entre agents : [`AGENTS.md`](AGENTS.md). Index de la documentation : [`docs/README.md`](docs/README.md). `npm run verify` valide l’ensemble avant intégration dans `main`.
 

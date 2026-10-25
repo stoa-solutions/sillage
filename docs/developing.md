@@ -1,0 +1,42 @@
+# Développer Recall
+
+## Démarrer sans toucher aux données personnelles
+
+Prérequis : Node 24+, Docker pour PostgreSQL de test ; sur Mac, outils Xcode/Swift. Lire AGENTS.md, créer un worktree et réserver les zones avant de modifier. Ne jamais copier les fichiers de connexion ou les clés dans ce worktree.
+
+```sh
+npm ci --legacy-peer-deps
+npm run verify:node
+npm run verify:macos
+```
+
+`verify:macos` compile et lance les contrôles sans capture micro réelle. Les tests ne prouvent pas le fonctionnement audio ou Google dans l’app. Pour une app de développement, définir `RECALL_DATA_DIR` vers un dossier temporaire avant `swift run --package-path apps/macos RecallMac` ; ne pas ouvrir un deuxième client sur les données personnelles par défaut.
+
+Pour les tests SQL, créer un PostgreSQL jetable avec pgvector, définir `TEST_DATABASE_URL` vers une base terminant par `_test`, puis `npm run test:integration`. Ne jamais utiliser la base de production. Voir `.env.example` pour les variables serveur disponibles ; les modèles d’inférence ne sont pas requis par les tests simulés.
+
+## Où faire le changement
+
+| Besoin | Point d’entrée | Logique / validation |
+| --- | --- | --- |
+| Connexion et clé | `Session`, `GoogleSignIn`, `SettingsView` | `accounts.ts`, `auth.ts`, `dj-settings.ts`, tests comptes |
+| Chercher une musique | `DiscoveryModel`, `LibraryModel` | `search.ts`, `search-relevance.ts`, MCP ; filtrage propriétaire obligatoire |
+| Comprendre une demande | `DJModel.send` | commandes locales puis `dj-intent.ts`, `dj-prompt.ts`, `dj.ts` |
+| Ordre et suite | `DJModel` | `PlaybackQueue`, `DJComposition`, tests session/composition |
+| Voix | `VoiceOutput` | `PreparedSpeech`, `dj-voice.ts` ; annuler l’annonce d’un titre sauté |
+| Vidéo et paroles | `Player`, `LyricsPanel` | `PlaybackClock`, `Lyrics`, `LyricsModel`, `dj-player.ts` |
+| Apparence | vues de feature | `DesignSystem`, `Surfaces`, composants communs ; garder les paroles latérales |
+
+Les noms Swift correspondent aux fichiers de `apps/macos/Sources/RecallKit` (règles testables) ou `RecallMac` (intégration/UI). Les modules TypeScript sont dans `apps/server/src`.
+
+## Une fonctionnalité de bout en bout
+
+1. Décrire son effet observable et le comportement en cas d’échec/annulation.
+2. Étendre le contrat à la frontière, avec validation ; conserver les anciennes réponses si un client peut encore les utiliser.
+3. Écrire la règle dans le cœur testable, l’effet réseau dans l’adaptateur et l’affichage dans la vue.
+4. Tester un succès et les risques réels : réponse tardive, changement de compte, requêtes concurrentes ou file vide selon le cas.
+5. Lancer les validations de la zone, puis contrôler le parcours dans l’app avec son vrai lecteur. Distinguer les tests simulés du test réel.
+6. Rebaser, vérifier le commit final, intégrer selon AGENTS.md. Le guide operations.md couvre la production ; une compilation ne vaut pas déploiement.
+
+## Avant de vouloir scaler
+
+Garder API, worker et inférence séparés. Mesurer latence p50/p95, pertinence des dix premiers résultats et coût fournisseur avant de changer d’architecture. Pour plusieurs instances API, déplacer les limites/concurrences en mémoire vers un mécanisme partagé. Les tâches longues restent dans la file PostgreSQL. Aucun objectif de charge n’est encore qualifié.

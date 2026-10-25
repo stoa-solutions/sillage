@@ -1,3 +1,4 @@
+import Foundation
 import RecallKit
 
 func lyricsChecks() throws {
@@ -37,5 +38,21 @@ func lyricsChecks() throws {
   var failed = false
   do { _ = try Lyrics.decode(["status": "bogus"]) } catch { failed = true }
   try expect(failed, "An unknown lyrics status was accepted")
+  var clock = PlaybackClock()
+  let start = Date(timeIntervalSince1970: 1000)
+  clock.sample(42.25, playing: true, at: start)
+  try expect(
+    abs(clock.position(at: start.addingTimeInterval(0.1)) - 42.35) < 0.001,
+    "Opening lyrics must use the player's current time")
+  clock.setPlaying(false, at: start.addingTimeInterval(0.1))
+  try expect(
+    abs(clock.position(at: start.addingTimeInterval(5)) - 42.35) < 0.001,
+    "Paused lyrics must not advance")
+  clock.sample(6.18, playing: false, at: start.addingTimeInterval(6))
+  try expect(lyrics.position(at: clock.position()).index == 0, "Backward seek did not reset lyrics")
+  clock.setPlaying(true, at: start.addingTimeInterval(7))
+  try expect(
+    clock.position(at: start.addingTimeInterval(20)) == 6.68,
+    "A stalled player must not advance the lyrics indefinitely")
   print("Lyrics checks passed: order, interpolation, gaps, corrections, statuses")
 }

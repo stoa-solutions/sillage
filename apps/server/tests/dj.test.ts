@@ -69,6 +69,7 @@ it("accepts player commands only from its trusted parent and restores the origin
   let events: any;
   let tick: () => void = () => {};
   const cues: any[] = [];
+  const seeks: any[] = [];
   const posted: any[] = [];
   const volumes: number[] = [];
   const parent = { postMessage: (...args: any[]) => posted.push(args) };
@@ -91,6 +92,7 @@ it("accepts player commands only from its trusted parent and restores the origin
         constructor(_id: string, options: any) {
           events = options.events;
         }
+        seekTo(seconds: number, ahead: boolean) { seeks.push([seconds, ahead]); }
         getCurrentTime() { return 37; }
         getDuration() { return 240; }
         getVideoData() { return {video_id: "abcdefghijk"}; }
@@ -135,6 +137,11 @@ it("accepts player commands only from its trusted parent and restores the origin
   expect(volumes).toEqual([25, 63]);
   listener({ source: parent, origin, data: {source: "recall-dj", command: "cue", id: "abcdefghijk", autoplay: true, start: 37} });
   expect(cues).toEqual([{videoId: "abcdefghijk", startSeconds: 37}]);
+  for (const [id, seconds] of [["abcdefghijk", 12.65], ["othertrack1", 8], ["abcdefghijk", NaN]]) {
+    listener({ source: parent, origin, data: {source: "recall-dj", command: "seek", id, seconds} });
+  }
+  expect(seeks).toEqual([[12.65, true]]);
+  expect(cues).toHaveLength(1); // Seeking must not reload the video.
   tick();
   expect(posted.at(-1)[0]).toMatchObject({event:"progress",id:"abcdefghijk",elapsed:37,duration:240});
 });

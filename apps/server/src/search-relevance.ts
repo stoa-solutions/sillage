@@ -21,10 +21,10 @@ function nearWord(a: string, b: string): boolean {
   }
   return edits+(a.length-i)+(b.length-j)<=1;
 }
-export function matchesLookup(query: string, track: {title: string; channel?: string | null}): boolean {
+export function matchesLookup(query: string, track: {title: string; channel?: string | null}, fuzzy = false): boolean {
   const tokens = lookupTokens(query);
   const metadata = lookupTokens(track.title + " " + (track.channel ?? ""));
-  return tokens.length > 0 && tokens.every(t => metadata.some(w => nearWord(t,w)));
+  return tokens.length > 0 && tokens.every(t => metadata.some(w => nearWord(t,w) || (fuzzy && t.length >= 4 && w.length - t.length <= 2 && w.includes(t))));
 }
 /** Avoid treating an artist's name as evidence of a requested musical genre. */
 export function genreNameCollision(query: string, track: {title: string; channel?: string | null; description?: string | null}): boolean {

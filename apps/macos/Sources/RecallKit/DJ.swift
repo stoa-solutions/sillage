@@ -49,7 +49,7 @@ public struct ServerDJ: DJ {
 
 /// Only unambiguous transport commands bypass a provider; named songs still use search.
 public enum DJTransportCommand: Sendable {
-  case next
+  case next, pause, resume
   public static func parse(_ text: String) -> Self? {
     let normalized = text.folding(
       options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "fr_FR")
@@ -58,9 +58,25 @@ public enum DJTransportCommand: Sendable {
       separator: " ")
     let command = normalized.replacingOccurrences(of: " s il te plait", with: "")
       .replacingOccurrences(of: " stp", with: "")
-    return [
+    if [
       "next", "suivant", "suivante", "morceau suivant", "titre suivant", "passe au suivant",
       "passe au morceau suivant", "change de morceau", "skip",
-    ].contains(command) ? .next : nil
+      "passe a la suivante", "passe au prochain", "chanson suivante",
+    ].contains(command) {
+      return .next
+    }
+    if [
+      "pause", "mets en pause", "met en pause", "mets la musique en pause", "arrete", "stop",
+      "stoppe la musique",
+    ].contains(command) {
+      return .pause
+    }
+    if [
+      "reprends", "reprend", "reprends la musique", "reprends la lecture", "relance la lecture",
+      "lecture", "play", "resume", "continue la lecture",
+    ].contains(command) {
+      return .resume
+    }
+    return nil
   }
 }

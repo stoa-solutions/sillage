@@ -15,17 +15,21 @@ export const djPlayerJs = String.raw`(() => {
   window.addEventListener('message',(event)=>{
     if(event.source!==parent || !(/^chrome-extension:\/\/[a-p]{32}$/.test(event.origin) || /^http:\/\/(127\.0\.0\.1|localhost):[0-9]+$/.test(event.origin) || (parent===window && event.origin===location.origin))) return;
     const value=event.data;
-    if(!value || value.source!=='recall-dj' || !['hello','cue','play','pause','volume','duck','restore'].includes(value.command)) return;
+    if(!value || value.source!=='recall-dj' || !['hello','cue','play','pause','seek','volume','duck','restore'].includes(value.command)) return;
     parentOrigin=event.origin;
     if(value.command==='hello'){if(ready)emit('ready');return;}
     if(value.command==='cue' && /^[A-Za-z0-9_-]{11}$/.test(value.id)) cue(value);
+    if(ready && value.command==='seek' && value.id===player.getVideoData()?.video_id && Number.isFinite(value.seconds)){
+      player.seekTo(Math.max(0,value.seconds),true);
+      emit('seeked',{id:value.id,request:value.request,elapsed:player.getCurrentTime()});
+    }
     if(ready && value.command==='play') player.playVideo();
     if(ready && value.command==='pause') player.pauseVideo();
     if(ready && value.command==='duck'){if(duckedVolume===null)duckedVolume=player.getVolume();player.setVolume(Math.min(25,duckedVolume));}
     if(ready && value.command==='restore' && duckedVolume!==null){player.setVolume(duckedVolume);duckedVolume=null;}
     if(ready && value.command==='volume' && Number.isFinite(value.value))player.setVolume(Math.max(0,Math.min(100,value.value)));
   });
-  setInterval(()=>{if(ready)emit('progress',{id:player.getVideoData()?.video_id,elapsed:player.getCurrentTime(),duration:player.getDuration()});},500);
+  setInterval(()=>{if(ready)emit('progress',{id:player.getVideoData()?.video_id,elapsed:player.getCurrentTime(),duration:player.getDuration()});},250);
   play.addEventListener('click',()=>{if(ready)player.playVideo();});
   window.onYouTubeIframeAPIReady=()=>{
     player=new YT.Player('player',{width:'100%',height:'250',playerVars:{playsinline:1,origin:location.origin},events:{

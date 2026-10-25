@@ -2,8 +2,9 @@
 
 | Document | Contenu |
 | --- | --- |
+| [developing.md](developing.md) | Démarrer, comprendre les couches et valider une fonctionnalité. |
 | [architecture.md](architecture.md) | Produit, frontières de code, secrets, limites de volume. |
-| [macos.md](macos.md) | App Mac : modules, compilation, signature, mises à jour, bibliothèque locale. |
+| [macos.md](macos.md) | App Mac : modules, compilation, signature, mises à jour, bibliothèque serveur. |
 | [design.md](design.md) | Design de l’app Mac : principes, composants communs, enchaînements. |
 | [operations.md](operations.md) | Déploiement Dokploy, sauvegardes, vérifications après mise en production. |
 | [validation.md](validation.md) / [verification.md](verification.md) | Recettes et vérifications réalisées. |

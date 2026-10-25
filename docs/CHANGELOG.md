@@ -2,6 +2,13 @@
 
 ## Non publié
 
+- Paroles : déplacement précis dans le clip Studio, navigation YouTube sans recharger le titre, horloge partagée avec le lecteur, calage fin par dixième de seconde. Surlignage par ligne sans prétendre à un alignement mot par mot.
+- Développement : guide de démarrage et architecture actualisés (comptes, recherche, DJ, lecteur et limites de montée en charge).
+
+- App 1.5.3 : « pause », « reprends » et « next » dans le chat ou la dictée pilotent directement le lecteur, y compris pendant une recherche ; les demandes de morceaux portant ces mots restent des recherches.
+
+- DJ : recherche avant de demander une précision, propositions vérifiées pour les souvenirs vagues et featurings, recherche visuelle des miniatures disponible via MCP. Les choix ambigus restent des cartes sans interrompre la lecture ; un fragment de titre se recherche en texte.
+
 - Paroles : à la demande de Samuel, aucun texte au centre du clip. Le bouton Paroles ouvre le panneau latéral synchronisé ; le calage et le clic sur une ligne restent disponibles.
 
 - Relecture croisée : paroles et calage isolés après changement de compte, source des suites liée à la dernière direction musicale, annonces vocales nettoyées identiques à leur préparation ; une seule source commune dans Découvrir.

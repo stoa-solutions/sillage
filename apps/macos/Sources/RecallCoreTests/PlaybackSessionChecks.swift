@@ -5,7 +5,14 @@ func playbackSessionChecks() throws {
     try expect(
       DJTransportCommand.parse(text) == .next, "Transport command went through slow search")
   }
+  for text in ["Pause", "mets en pause stp", "Stop !", "arrête"] {
+    try expect(DJTransportCommand.parse(text) == .pause, "Pause must bypass generation")
+  }
+  for text in ["Reprends", "reprends la musique", "Play", "continue la lecture"] {
+    try expect(DJTransportCommand.parse(text) == .resume, "Resume must bypass generation")
+  }
   for text in [
+    "joue Pause de Eddy de Pretto", "continue dans cette ambiance", "ne mets pas en pause",
     "joue Next de The Weeknd", "ajoute le morceau suivant à la file",
     "change de morceau pour du jazz",
   ] {

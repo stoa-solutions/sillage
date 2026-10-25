@@ -104,11 +104,30 @@ final class DJModel: ObservableObject {
       session.notice = "Connexion en cours. Ta demande reste prête à envoyer."
       return
     }
-    if !automatic, DJTransportCommand.parse(text) == .next, current != nil {
+    if !automatic, let command = DJTransportCommand.parse(text) {
       prompt = ""
       microphone.stop()
       messages.append(ChatMessage(role: "user", content: text))
-      next()
+      guard current != nil else {
+        messages.append(
+          ChatMessage(
+            role: "assistant",
+            content: "Aucun morceau en cours. Choisis un titre ou demande une sélection."))
+        return
+      }
+      switch command {
+      case .next: next()
+      case .pause:
+        cancel()
+        player.command("pause")
+        messages.append(ChatMessage(role: "assistant", content: "Musique en pause."))
+      case .resume:
+        cancel()
+        composition.resume()
+        player.command("play")
+        messages.append(ChatMessage(role: "assistant", content: "La lecture reprend."))
+      }
+      messages = Array(messages.suffix(24))
       return
     }
     if !automatic && busy { cancel() }
