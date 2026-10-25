@@ -191,7 +191,13 @@ struct DJView: View {
         Text("Micro au clic. Les réponses du DJ sont des suggestions issues de ta bibliothèque.")
           .font(.system(size: 10)).foregroundStyle(.secondary)
       }.padding(24).frame(minWidth: 320, idealWidth: 360, maxWidth: cinema ? 420 : .infinity)
-        .background(.ultraThinMaterial)
+        .background {
+          if player.studioReady {
+            Color.black.opacity(0.48)
+          } else {
+            Rectangle().fill(.ultraThinMaterial)
+          }
+        }
     }.background {
       if player.studioReady {
         StudioPlayerView(player: player.nativePlayer)

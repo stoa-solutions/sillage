@@ -15,6 +15,7 @@ final class VoiceOutput: NSObject, ObservableObject, AVAudioPlayerDelegate,
   private let synthesizer = AVSpeechSynthesizer()
   private var currentUtterance: AVSpeechUtterance?
   var onFallback: (() -> Void)?
+  var onCloudPlayback: (() -> Void)?
 
   init(player: Player) {
     self.player = player
@@ -34,6 +35,7 @@ final class VoiceOutput: NSObject, ObservableObject, AVAudioPlayerDelegate,
         player.command("duck")
         if !sound.play() { throw RecallError.message("L’audio n’a pas démarré.") }
         status = "Le DJ parle · voix Gemini"
+        onCloudPlayback?()
       } catch {
         guard !Task.isCancelled else { return }
         speakLocally(text)

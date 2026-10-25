@@ -1,5 +1,11 @@
 import Foundation
 
+public struct HTTPServiceError: LocalizedError, Sendable {
+  public let status: Int
+  public let message: String
+  public var errorDescription: String? { message }
+}
+
 public struct HTTPClient: Sendable {
   public init() {}
   private static let session = URLSession(configuration: .ephemeral)
@@ -23,7 +29,7 @@ public struct HTTPClient: Sendable {
         http.statusCode == 429
         ? "Quota atteint ou IA occupée. Vérifie le quota du projet Google."
         : "Le service ne répond pas (\(http.statusCode)). Vérifie les réglages."
-      throw RecallError.message(message)
+      throw HTTPServiceError(status: http.statusCode, message: message)
     }
     guard data.count <= 45 * 1024 * 1024,
       let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]

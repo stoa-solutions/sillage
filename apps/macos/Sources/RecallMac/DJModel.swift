@@ -53,6 +53,11 @@ final class DJModel: ObservableObject {
     voice.onFallback = { [weak self] in
       self?.session.notice = "Voix locale macOS utilisée pour cette réponse."
     }
+    voice.onCloudPlayback = { [weak self] in
+      if self?.session.notice == "Voix locale macOS utilisée pour cette réponse." {
+        self?.session.notice = ""
+      }
+    }
   }
   /// Called when the source changes: the queue came from the previous library.
   func reset() {
@@ -113,8 +118,19 @@ final class DJModel: ObservableObject {
     let connection = session.connection
     voice.speak(text) { text in
       guard let connection else { throw RecallError.message("Voix indisponible.") }
-      let object = try await HTTPClient().server(
-        connection, path: "dj/speech", body: ["text": String(text.prefix(600))])
+      var object: [String: Any] = [:]
+      for attempt in 0..<3 {
+        do {
+          object = try await HTTPClient().server(
+            connection, path: "dj/speech", body: ["text": String(text.prefix(600))])
+          break
+        } catch let error as HTTPServiceError
+          where [429, 503].contains(error.status) && attempt < 2
+        {
+          // A cancelled previous utterance may still hold the server's per-account lease briefly.
+          try await Task.sleep(nanoseconds: UInt64(attempt + 1) * 1_000_000_000)
+        }
+      }
       guard let encoded = object["audio"] as? String, let bytes = Data(base64Encoded: encoded)
       else { throw RecallError.message("Voix indisponible.") }
       return bytes
