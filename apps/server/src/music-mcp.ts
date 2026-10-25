@@ -1,4 +1,5 @@
-import { discoveryFor } from "./discovery.ts";
+import type { SearchFailureReason } from "./search-feedback.ts";
+import { DiscoveryError, discoveryFor } from "./discovery.ts";
 import { LEGACY_USER, ownsPlaylist } from "./accounts.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -290,7 +291,7 @@ export function musicMcp(
           source: "library" | "youtube";
           status: "ok" | "error" | "unsupported";
           note?: string;
-          reason?: "daily_quota" | "rate_or_quota" | "unavailable";
+          reason?: SearchFailureReason;
         }[] = [];
         const jobs: Promise<void>[] = [];
         if (scope !== "youtube")
@@ -307,7 +308,11 @@ export function musicMcp(
                   ...(data.degraded ? { note: data.degraded } : {}),
                 });
               } catch {
-                sources.push({ source: "library", status: "error" });
+                sources.push({
+                  source: "library",
+                  status: "error",
+                  reason: "unavailable",
+                });
               }
             })(),
           );
@@ -338,23 +343,15 @@ export function musicMcp(
                 }
                 sources.push({ source: "youtube", status: "ok" });
               } catch (error) {
-                const limited =
-                  error &&
-                  typeof error === "object" &&
-                  "status" in error &&
-                  error.status === 429;
-                const dailyQuota =
-                  limited &&
-                  "reason" in error &&
-                  error.reason === "daily_quota";
+                const reason =
+                  error instanceof DiscoveryError
+                    ? error.reason
+                    : "unavailable";
+                const dailyQuota = reason === "daily_quota";
                 sources.push({
                   source: "youtube",
                   status: "error",
-                  reason: dailyQuota
-                    ? "daily_quota"
-                    : limited
-                      ? "rate_or_quota"
-                      : "unavailable",
+                  reason,
                   ...(dailyQuota
                     ? {
                         note: "YouTube daily search quota exhausted until Pacific midnight. Other queries cannot restore it. Library search remains available: use one musical clue per query.",

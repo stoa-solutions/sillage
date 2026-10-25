@@ -1,7 +1,7 @@
 /** Safe provider classification: never retain response bodies, project IDs or credentials. */
 export class YouTubeError extends Error {
   constructor(
-    public kind: "daily_quota" | "rate_limit" | "unavailable",
+    public kind: "daily_quota" | "rate_limit" | "access_denied" | "unavailable",
     public status: number,
   ) {
     super(`YouTube ${kind} (HTTP ${status})`);
@@ -46,7 +46,9 @@ export function youtubeError(status: number, body: unknown): YouTubeError {
       ? "daily_quota"
       : status === 429 || reasons.includes("rateLimitExceeded")
         ? "rate_limit"
-        : "unavailable",
+        : status === 401 || status === 403
+          ? "access_denied"
+          : "unavailable",
     status,
   );
 }

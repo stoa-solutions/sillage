@@ -1,3 +1,4 @@
+import { DiscoveryError } from "../src/discovery.ts";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   current,
@@ -10,7 +11,8 @@ import {
 // Only search backends, SQL and the provider's HTTP responses are controlled.
 const boundaries = vi.hoisted(() => ({ search: vi.fn(), youtube: vi.fn() }));
 vi.mock("../src/search.ts", () => ({ search: boundaries.search }));
-vi.mock("../src/discovery.ts", () => ({
+vi.mock("../src/discovery.ts", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../src/discovery.ts")>(),
   discoveryFor: () => ({ search: boundaries.youtube }),
 }));
 import { djInput, djTurn } from "../src/dj.ts";
@@ -188,7 +190,7 @@ it("prepares five fresh Acid Coco successors without replacing the current track
 
 it("keeps verified library selections when YouTube is quota-limited and expansion fails", async () => {
   boundaries.youtube.mockRejectedValue(
-    Object.assign(new Error("private provider quota"), { status: 429 }),
+    new DiscoveryError("private provider quota", 429, "rate_or_quota"),
   );
   boundaries.search.mockResolvedValue({
     results: library.slice(0, 2).map((video) => ({ video })),
@@ -333,10 +335,7 @@ it("bounds an agent that keeps searching after both sources fail", async () => {
 
 it("recovers a broad afro request with a short library query when YouTube's daily quota is exhausted", async () => {
   boundaries.youtube.mockRejectedValue(
-    Object.assign(new Error("private provider details"), {
-      status: 429,
-      reason: "daily_quota",
-    }),
+    new DiscoveryError("private provider details", 429, "daily_quota"),
   );
   boundaries.search
     .mockResolvedValueOnce({ results: [], degraded: null })
@@ -376,7 +375,7 @@ it("recovers a broad afro request with a short library query when YouTube's dail
 
 it("explains daily YouTube exhaustion truthfully when no authorized source has candidates", async () => {
   boundaries.youtube.mockRejectedValue(
-    Object.assign(new Error("private"), { status: 429, reason: "daily_quota" }),
+    new DiscoveryError("private", 429, "daily_quota"),
   );
   boundaries.search.mockResolvedValue({ results: [], degraded: null });
   responses.push(searchCall("afro"), selection([], "keep"));
@@ -391,7 +390,7 @@ it("explains daily YouTube exhaustion truthfully when no authorized source has c
 });
 
 it("reconsiders quota-driven browse without silently converting an ambiguous proposal into playback", async () => {
-  boundaries.youtube.mockRejectedValue(Object.assign(new Error("private"), { status: 429, reason: "daily_quota" }));
+  boundaries.youtube.mockRejectedValue(new DiscoveryError("private", 429, "daily_quota"));
   responses.push(searchCall("afro"), cards([library[0].id]), selection([library[0].id], "replace"));
   const result = await run({ message: "Fais-moi une playlist afro", scope: "all" });
   expect(result.action).toBe("replace");
@@ -401,7 +400,7 @@ it("reconsiders quota-driven browse without silently converting an ambiguous pro
 });
 
 it("keeps a genuinely ambiguous proposal after one reconsideration even with a source quota", async () => {
-  boundaries.youtube.mockRejectedValue(Object.assign(new Error("private"), { status: 429, reason: "daily_quota" }));
+  boundaries.youtube.mockRejectedValue(new DiscoveryError("private", 429, "daily_quota"));
   responses.push(searchCall("feat"), cards([library[0].id]), cards([library[0].id]));
   const result = await run({ message: "Joue le morceau avec le featuring", scope: "all" });
   expect(result.action).toBe("keep");
@@ -411,11 +410,20 @@ it("keeps a genuinely ambiguous proposal after one reconsideration even with a s
 });
 
 it("does not let a later empty filtered search erase earlier candidates during a quota outage", async () => {
-  boundaries.youtube.mockRejectedValue(Object.assign(new Error("private"), { status: 429, reason: "daily_quota" }));
+  boundaries.youtube.mockRejectedValue(new DiscoveryError("private", 429, "daily_quota"));
   responses.push(searchCall("afro"), searchCall("afro", { playlistId: "_library_all" }), selection([], "keep"), selection([library[0].id], "replace"));
   const result = await run({ message: "Fais-moi une playlist de musique afro", scope: "all" });
   expect(result).toMatchObject({ action: "replace", tracks: [{ id: library[0].id }] });
   expect(boundaries.search).toHaveBeenCalledOnce();
   expect(toolEvidence()).toContainEqual(expect.objectContaining({ note: expect.stringContaining("Unknown playlistId") }));
   expect(requests).toHaveLength(4);
+});
+
+
+it("clears a transient source warning after that source recovers in the same turn", async () => {
+  boundaries.youtube.mockRejectedValueOnce(new DiscoveryError("private", 502));
+  responses.push(searchCall("cumbia"), searchCall("cumbia chill"), cards([external[0].id]));
+  const result = await run({ message: "Propose un morceau de cumbia", scope: "all" });
+  expect(result).toMatchObject({ discoveries: [{ video: { id: external[0].id } }] });
+  expect(result.reply).not.toMatch(/indisponible|quota|refuse/);
 });

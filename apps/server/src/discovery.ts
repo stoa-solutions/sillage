@@ -6,7 +6,11 @@ import { ownsPlaylist } from "./accounts.ts";
 import { upsertVideo } from "./library.ts";
 import { documentText, hash } from "./content.ts";
 import { YouTube } from "./youtube.ts";
-import { YouTubeError } from "./youtube-errors.ts";
+import {
+  searchFailureMessage,
+  type SearchFailureReason,
+} from "./search-feedback.ts";
+import { nextYouTubeQuotaReset, YouTubeError } from "./youtube-errors.ts";
 import type { ApiEnvironment } from "./dj-routes.ts";
 
 export const discoveryInput = z.object({
@@ -22,8 +26,8 @@ export class DiscoveryError extends Error {
   constructor(
     message: string,
     public status: 404 | 429 | 502 | 503,
-    public reason:
-      "daily_quota" | "rate_or_quota" | "unavailable" = "unavailable",
+    public reason: SearchFailureReason = "unavailable",
+    public retryAt?: string,
   ) {
     super(message);
   }
@@ -143,29 +147,30 @@ export class Discovery {
 }
 function providerError(error: unknown): DiscoveryError {
   const message = error instanceof Error ? error.message : "";
-  if (
-    (error instanceof YouTubeError && error.kind === "daily_quota") ||
-    /quotaExceeded|Budget|dailyLimit/i.test(message)
-  )
-    return new DiscoveryError(
-      "Le quota quotidien de recherche YouTube est atteint. Tes playlists restent disponibles.",
-      429,
-      "daily_quota",
-    );
-  if (error instanceof YouTubeError && error.kind === "rate_limit")
-    return new DiscoveryError(
-      "YouTube limite temporairement les recherches. Réessaie dans un instant.",
-      429,
-      "rate_or_quota",
-    );
-  if (/Clé YouTube absente/.test(message))
-    return new DiscoveryError(
-      "La recherche YouTube n’est pas configurée sur ce serveur.",
-      503,
-    );
+  const reason: SearchFailureReason = /Budget/.test(message)
+    ? "local_budget"
+    : error instanceof YouTubeError
+      ? error.kind === "rate_limit"
+        ? "rate_or_quota"
+        : error.kind
+      : /quotaExceeded|dailyLimit/i.test(message)
+        ? "daily_quota"
+        : /Clé YouTube absente/.test(message)
+          ? "not_configured"
+          : "unavailable";
+  const now = Date.now();
   return new DiscoveryError(
-    "YouTube ne répond pas pour le moment. Réessaie dans un instant.",
-    502,
+    searchFailureMessage({ source: "youtube", reason }, now) +
+      " Tes playlists restent disponibles.",
+    ["daily_quota", "rate_or_quota", "local_budget"].includes(reason)
+      ? 429
+      : ["not_configured", "access_denied"].includes(reason)
+        ? 503
+        : 502,
+    reason,
+    reason === "daily_quota"
+      ? new Date(nextYouTubeQuotaReset(now)).toISOString()
+      : undefined,
   );
 }
 const services = new WeakMap<Database, Discovery>();
@@ -195,7 +200,15 @@ export function discoveryRoutes(db: Database, service = discoveryFor(db)) {
     if (error instanceof z.ZodError)
       return c.json({ error: "Recherche ou vidéo invalide." }, 400);
     if (error instanceof DiscoveryError)
-      return c.json({ error: error.message }, error.status);
+      return c.json(
+        {
+          error: error.message,
+          source: "youtube",
+          reason: error.reason,
+          ...(error.retryAt ? { retryAt: error.retryAt } : {}),
+        },
+        error.status,
+      );
     return c.json(
       { error: "L’ajout n’a pas abouti. Réessaie sans risque de doublon." },
       500,

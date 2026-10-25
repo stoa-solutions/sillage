@@ -469,7 +469,7 @@ it("reports observed source failures without forwarding private tool diagnostics
     config,
     "alice",
   );
-  expect(result.reply).toContain("source de recherche n’a pas pu fournir");
+  expect(result.reply).toContain("outil de recherche n’a pas répondu correctement");
   expect(JSON.stringify(bodies)).not.toContain("secret-key");
   expect(result.reply).not.toContain("rappeler");
 });

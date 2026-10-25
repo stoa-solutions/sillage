@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Recherche : erreurs explicites dans Découvrir et le chat DJ (source, quota quotidien, débit, configuration ou panne), heure prévue de renouvellement YouTube et distinction avec la clé Gemini personnelle. Les résultats partiels restent utilisables et leur limite est annoncée.
+
 - DJ : distingue le quota quotidien YouTube des pannes temporaires, continue les recherches courtes dans les playlists en mode Partout et explique les résultats partiels. Une sélection partielle reste une demande de lecture ou d’ajout, sans devenir automatiquement des cartes à choisir. Les identifiants de playlists inventés sont signalés comme paramètres invalides, sans effacer les candidats déjà trouvés. Les recherches YouTube épuisées ne sont plus répétées jusqu’au renouvellement du quota ; les imports et métadonnées restent indépendants.
 
 - Qualité du DJ : banc de régression sans interface (intentions, vrai circuit MCP, sources et exclusions), évaluations HTTP du modèle réel avec rapports privés, durées et distinction entre échec comportemental et quota fournisseur.

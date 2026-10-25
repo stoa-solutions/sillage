@@ -1,7 +1,9 @@
+import { DiscoveryError } from "../src/discovery.ts";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ search: vi.fn(), youtube: vi.fn() }));
 vi.mock("../src/search.ts", () => ({ search: mocks.search }));
-vi.mock("../src/discovery.ts", () => ({
+vi.mock("../src/discovery.ts", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../src/discovery.ts")>(),
   discoveryFor: () => ({ search: mocks.youtube }),
 }));
 import { connectMusicMcp } from "../src/music-mcp.ts";
@@ -187,7 +189,7 @@ it("applies an explicitly requested duration to YouTube candidates too", async (
 });
 it("classifies YouTube throttling without leaking its private response", async () => {
   mocks.youtube.mockRejectedValueOnce(
-    Object.assign(new Error("private quota details"), { status: 429 }),
+    new DiscoveryError("private quota details", 429, "rate_or_quota"),
   );
   const result = await query("all");
   expect(result.results).toHaveLength(1);

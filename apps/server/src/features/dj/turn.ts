@@ -1,4 +1,8 @@
 import {
+  searchFailureSummary,
+  type SearchFailure,
+} from "../../search-feedback.ts";
+import {
   readToolEvidence,
   discoveryReply,
   noSelectionReply,
@@ -56,18 +60,20 @@ export async function djTurn(
   let reformulated = false;
   let youtubeDailyQuota = false;
   let clarifiedPartialIntent = false;
-  const withSourceNote = (reply: string) =>
-    youtubeDailyQuota
-      ? `${reply} YouTube a atteint son quota quotidien de recherche ; je m’appuie sur les résultats disponibles.`
+  const failures = new Map<SearchFailure["source"], SearchFailure>();
+  const withSourceNote = (reply: string) => {
+    const note = searchFailureSummary([...failures.values()], Date.now());
+    return note
+      ? `${reply} ${note} Je m’appuie sur les résultats disponibles.`
       : reply;
+  };
   let visualUnsupported = false;
   function emptyReply() {
     return visualUnsupported && !failedSearches
       ? "YouTube ne permet pas de chercher par couleur ou détail de pochette. Choisis Mes playlists ou Partout pour explorer les miniatures de ta bibliothèque. Ta lecture reste inchangée."
       : noSelectionReply(
-          failedSearches,
+          searchFailureSummary([...failures.values()], Date.now()),
           plan.relative ? plan.playback?.current?.title : undefined,
-          youtubeDailyQuota,
         );
   }
   async function partialSelection() {
@@ -119,6 +125,10 @@ export async function djTurn(
         }
         if (evidence.isSearch) searched = true;
         failedSearches += evidence.failedSources;
+        if (evidence.isSearch) failures.delete("search");
+        for (const source of evidence.recoveredSources) failures.delete(source);
+        for (const failure of evidence.failures)
+          failures.set(failure.source, failure);
         youtubeDailyQuota ||= evidence.youtubeDailyQuota;
         visualUnsupported ||= evidence.visualUnsupported;
       } catch (error) {
@@ -126,6 +136,13 @@ export async function djTurn(
         if (isSearch) {
           searched = true;
           failedSearches++;
+          const source =
+            name === "library_search"
+              ? "library"
+              : name === "youtube_search"
+                ? "youtube"
+                : "search";
+          failures.set(source, { source, reason: "unavailable" });
         }
         // Do not pass transport diagnostics or tool instructions to the model.
         text = JSON.stringify({

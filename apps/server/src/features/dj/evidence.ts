@@ -1,3 +1,4 @@
+import type { SearchFailure } from "../../search-feedback.ts";
 import type { DjTrack } from "../../music-mcp.ts";
 
 export interface DiscoveryEvidence {
@@ -157,12 +158,29 @@ export function readToolEvidence(
     )
       throw new Error("invalid tool result");
   }
-  const failedSources =
+  const failures: SearchFailure[] =
     name === "music_search" && Array.isArray(data.sources)
-      ? data.sources.filter(
-          (source: { status?: string }) => source.status === "error",
-        ).length
-      : 0;
+      ? data.sources
+          .filter((source: { status?: string }) => source?.status === "error")
+          .map(
+            (source: { source?: string; reason?: string }): SearchFailure => ({
+              source:
+                source.source === "youtube" || source.source === "library"
+                  ? source.source
+                  : "search",
+              reason: [
+                "daily_quota",
+                "rate_or_quota",
+                "not_configured",
+                "access_denied",
+                "local_budget",
+              ].includes(source.reason ?? "")
+                ? (source.reason as SearchFailure["reason"])
+                : "unavailable",
+            }),
+          )
+      : [];
+  const failedSources = failures.length;
   const youtubeDailyQuota =
     name === "music_search" &&
     Array.isArray(data.sources) &&
@@ -186,6 +204,17 @@ export function readToolEvidence(
     ...context,
     isSearch,
     failedSources,
+    failures,
+    recoveredSources:
+      name === "music_search" && Array.isArray(data.sources)
+        ? data.sources
+            .filter((source: { status?: string }) => source?.status === "ok")
+            .map((source: { source?: string }) => source.source)
+            .filter(
+              (source: unknown): source is "library" | "youtube" =>
+                source === "library" || source === "youtube",
+            )
+        : [],
     visualUnsupported,
     youtubeDailyQuota,
   };
@@ -212,15 +241,9 @@ export function discoveryReply(cards: DiscoveryEvidence[]) {
   return `Je te propose ${cards.length === 1 ? "ce morceau" : `ces ${cards.length} morceaux`}. ${credits ? credits + " " : ""}Choisis celui que tu veux écouter.`;
 }
 
-export function noSelectionReply(
-  failedSearches: number,
-  currentTitle?: string,
-  youtubeDailyQuota = false,
-) {
+export function noSelectionReply(failureSummary = "", currentTitle?: string) {
   const reference = currentTitle ? ` autour de « ${currentTitle} »` : "";
-  if (youtubeDailyQuota)
-    return `YouTube a atteint son quota quotidien de recherche. Je n’ai pas de nouvelle sélection vérifiée${reference} dans les sources choisies. Ta lecture et ta file sont conservées. La recherche YouTube reprendra au renouvellement du quota Google.`;
-  return failedSearches
-    ? `Une source de recherche n’a pas pu fournir de résultat exploitable ; je n’ai pas de nouvelle sélection vérifiée${reference}. Ta lecture et ta file sont conservées. Réessaie la suite dans un instant.`
+  return failureSummary
+    ? `${failureSummary} Je n’ai pas de nouvelle sélection vérifiée${reference}. Ta lecture et ta file sont conservées.`
     : `Je n’ai pas trouvé de nouvelle sélection compatible${reference} dans les sources choisies. Ta lecture et ta file sont conservées. Tu peux élargir la recherche ou demander une autre ambiance.`;
 }
