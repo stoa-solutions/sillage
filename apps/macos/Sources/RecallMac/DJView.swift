@@ -355,7 +355,9 @@ struct DJView: View {
   private var conversation: some View {
     ScrollViewReader { proxy in
       ScrollView {
-        LazyVStack(alignment: .leading, spacing: 16) {
+        // The session keeps at most 24 messages. Eager layout avoids lazy placement
+        // feedback while variable-height discovery cards and replies are inserted.
+        VStack(alignment: .leading, spacing: 16) {
           if model.messages.isEmpty { welcome }
           ForEach(model.messages) { message in
             VStack(alignment: .leading, spacing: 10) {
@@ -375,24 +377,27 @@ struct DJView: View {
             }.id(message.id)
           }
           if model.busy && !microphone.active {
-            TypingIndicator(label: "Je cherche la bonne suite…") { model.cancel() }.id("typing")
+            TypingIndicator(label: "Je cherche la bonne suite…") { model.cancel() }
           }
+          Color.clear.frame(height: 1).id("conversation-bottom").accessibilityHidden(true)
         }.padding(.vertical, 16)
       }
-      .onChange(of: model.messages.count) { _, _ in
-        if let id = model.messages.last?.id {
-          withAnimation { proxy.scrollTo(id, anchor: .bottom) }
-        }
-      }
-      .onChange(of: model.busy) { _, busy in
-        guard busy else { return }
-        // The indicator is inserted by this same update; scroll once it exists.
-        Task {
-          try? await Task.sleep(for: .milliseconds(60))
-          withAnimation { proxy.scrollTo("typing", anchor: .bottom) }
-        }
+      .task(id: conversationScrollKey) {
+        guard !model.messages.isEmpty else { return }
+        // One cancellable scroll after insertion; a new answer supersedes the typing
+        // target. A fixed anchor never asks SwiftUI to estimate an offscreen lazy row.
+        do { try await Task.sleep(for: .milliseconds(30)) } catch { return }
+        guard !Task.isCancelled else { return }
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { proxy.scrollTo("conversation-bottom", anchor: .bottom) }
       }
     }
+  }
+
+  private var conversationScrollKey: String {
+    // Count stays at 24 once history is full; the last ID still changes on every reply.
+    "\(model.messages.last?.id.uuidString ?? "empty"):\(model.busy):\(microphone.active)"
   }
 
   private var welcome: some View {
