@@ -23,6 +23,8 @@ final class LibraryModel: ObservableObject {
   @Published private(set) var importing = false
   @Published private(set) var syncing = false
   @Published private(set) var importProgress = ""
+  @Published private(set) var enrichment: EnrichmentProgress?
+  @Published private(set) var enrichmentError = ""
   private let session: Session
   private var importTask: Task<Void, Never>?
   private var syncTask: Task<Void, Never>?
@@ -49,6 +51,8 @@ final class LibraryModel: ObservableObject {
     syncing = false
     searching = false
     results = []
+    enrichment = nil
+    enrichmentError = ""
     playlists = []
     libraryCount = 0
     totalResults = 0
@@ -58,6 +62,28 @@ final class LibraryModel: ObservableObject {
     playlistLink = ""
     session.notice = ""
     sync()
+  }
+  /// View-scoped polling; cancellation and generation guard prevent cross-account results.
+  func watchEnrichment() async {
+    enrichment = nil
+    enrichmentError = ""
+    guard let connection = session.connection else { return }
+    let generation = session.generation
+    while !Task.isCancelled && session.generation == generation {
+      do {
+        let object = try await HTTPClient().server(connection, path: "library/enrichment")
+        let progress = try EnrichmentProgress.decode(object)
+        try Task.checkCancellation()
+        guard session.generation == generation else { return }
+        enrichment = progress
+        enrichmentError = ""
+      } catch {
+        guard !Task.isCancelled && session.generation == generation else { return }
+        enrichmentError =
+          "Suivi momentanément indisponible. Les derniers compteurs peuvent être anciens."
+      }
+      do { try await Task.sleep(for: .seconds(10)) } catch { return }
+    }
   }
   func goToPage(_ page: Int) {
     guard (1...pageCount).contains(page) else { return }

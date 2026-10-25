@@ -1,3 +1,4 @@
+import { enrichmentProgress } from "./musicbrainz/rollout.ts";
 import { discoveryRoutes } from "./discovery.ts";
 import { accountRoutes } from "./account-routes.ts";
 import { authRoutes, type IdentityProvider } from "./auth.ts";
@@ -130,6 +131,9 @@ export function createApp(
   app.route("/v1/discover", discoveryRoutes(db));
   app.route("/v1/dj", createDjRoutes(db));
   app.all("/v1/mcp", (c) => handleMusicMcp(db, c.req.raw, c.get("userId")));
+  app.get("/v1/library/enrichment", async (c) =>
+    c.json(await enrichmentProgress(db, c.get("userId"))),
+  );
   app.get("/v1/status", async (c) => {
     const counts = (
       await db.query(

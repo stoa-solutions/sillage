@@ -3,6 +3,9 @@ import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate } from "../src/migrate.ts";
 import { upsertVideo, videoFromRow } from "../src/library.ts";
+import { enrichmentProgress } from "../src/musicbrainz/rollout.ts";
+import { createApp } from "../src/app.ts";
+import { hash } from "../src/content.ts";
 import { documentText } from "../src/content.ts";
 import {
   scheduleMusicEnrichment,
@@ -75,6 +78,7 @@ beforeAll(async () => {
 });
 beforeEach(async () => {
   vi.clearAllMocks();
+  vi.stubEnv("MUSICBRAINZ_ACCOUNT_IDS", "");
   vi.stubEnv("MUSICBRAINZ_PILOT_IDS", video.id);
   await db.query(
     "TRUNCATE users,playlists,videos,jobs,musicbrainz_cache CASCADE",
@@ -275,4 +279,145 @@ it("treats a known album as literal even when its name looks conversational", as
     [video.id, "album123456"].sort(),
   );
   expect(infer).not.toHaveBeenCalled();
+});
+
+it("bounds concurrent account rollout scheduling, excludes other owners and stops on opt-out", async () => {
+  vi.stubEnv("MUSICBRAINZ_PILOT_IDS", "");
+  vi.stubEnv("MUSICBRAINZ_ACCOUNT_IDS", alice);
+  for (let i = 0; i < 24; i++) {
+    const id = String(i).padStart(11, "0");
+    await upsertVideo(db, { ...video, id }, true);
+    await db.query(
+      "INSERT INTO memberships(key,playlist_id,video_id,position,seen_generation) VALUES($1,'pilot',$1,1,1)",
+      [id],
+    );
+  }
+  await upsertVideo(db, { ...video, id: "outsider123" }, true);
+  await db.query(
+    "INSERT INTO playlists(id,title,source_url) VALUES('bob','Bob','https://youtube.com')",
+  );
+  await db.query(
+    "INSERT INTO user_playlists(user_id,playlist_id) VALUES($1,'bob')",
+    [bob],
+  );
+  await db.query(
+    "INSERT INTO memberships(key,playlist_id,video_id,position,seen_generation) VALUES('outsider','bob','outsider123',1,1)",
+  );
+  await Promise.all([scheduleMusicEnrichment(db), scheduleMusicEnrichment(db)]);
+  expect((await db.query("SELECT * FROM jobs")).rowCount).toBe(10);
+  expect(
+    (
+      await db.query(
+        "SELECT * FROM jobs WHERE payload->>'videoId'='outsider123'",
+      )
+    ).rowCount,
+  ).toBe(0);
+  const job = (await claim(db))!;
+  await finish(db, job);
+  await scheduleMusicEnrichment(db);
+  expect(
+    (await db.query("SELECT * FROM jobs WHERE status IN ('pending','running')"))
+      .rowCount,
+  ).toBe(10);
+  vi.stubEnv("MUSICBRAINZ_ACCOUNT_IDS", "");
+  const next = (await claim(db))!;
+  await enrichMusic(db, next, provider);
+  expect(get).not.toHaveBeenCalled();
+});
+
+it("does not enrich a video removed from an opted-in account while queued", async () => {
+  vi.stubEnv("MUSICBRAINZ_PILOT_IDS", "");
+  vi.stubEnv("MUSICBRAINZ_ACCOUNT_IDS", alice);
+  await scheduleMusicEnrichment(db);
+  const job = (await claim(db))!;
+  await db.query("DELETE FROM user_playlists WHERE user_id=$1", [alice]);
+  await enrichMusic(db, job, provider);
+  expect(get).not.toHaveBeenCalled();
+  expect((await row()).music_metadata).toBeNull();
+});
+
+it("reports truthful account-scoped progress, including retries and unavailable videos", async () => {
+  vi.stubEnv("MUSICBRAINZ_ACCOUNT_IDS", alice);
+  await run();
+  let progress = await enrichmentProgress(db, alice);
+  expect(progress).toMatchObject({
+    total: 1,
+    processed: 1,
+    matched: 1,
+    ambiguous: 0,
+    not_found: 0,
+    enabled: true,
+  });
+  expect(await enrichmentProgress(db, bob)).toMatchObject({
+    total: 0,
+    processed: 0,
+    enabled: false,
+  });
+  await db.query("UPDATE videos SET music_metadata=NULL WHERE id=$1", [
+    video.id,
+  ]);
+  await scheduleMusicEnrichment(db);
+  const job = (await claim(db))!;
+  // A text reindex may precede MusicBrainz after the successful attribution.
+  if (job.kind !== "musicbrainz") await finish(db, job);
+  const retry = job.kind === "musicbrainz" ? job : (await claim(db))!;
+  await finish(db, retry, new Error("temporary"));
+  progress = await enrichmentProgress(db, alice);
+  expect(progress).toMatchObject({
+    processed: 0,
+    matched: 0,
+    queued: 1,
+    retrying: 1,
+    failed: 0,
+  });
+  await db.query("UPDATE videos SET available=false WHERE id=$1", [video.id]);
+  expect(await enrichmentProgress(db, alice)).toMatchObject({
+    total: 1,
+    processed: 0,
+    unavailable: 1,
+    queued: 0,
+  });
+});
+
+it("authenticates progress and never accepts a different account from the client", async () => {
+  await run();
+  const token = "progress-bob";
+  await db.query(
+    "INSERT INTO tokens(id,name,hash,user_id) VALUES($1,'Bob',$2,$3)",
+    [randomUUID(), hash(token), bob],
+  );
+  const app = createApp(db);
+  expect((await app.request("/v1/library/enrichment")).status).toBe(401);
+  const response = await app.request(`/v1/library/enrichment?userId=${alice}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({
+    total: 0,
+    processed: 0,
+    matched: 0,
+  });
+});
+
+it("keeps exhausted failures on a daily cooldown rather than filling the queue again", async () => {
+  await scheduleMusicEnrichment(db);
+  const job = (await claim(db))!;
+  job.attempts = 5;
+  await finish(db, job, new Error("temporary"));
+  await scheduleMusicEnrichment(db);
+  expect(
+    (await db.query("SELECT * FROM jobs WHERE status='pending'")).rowCount,
+  ).toBe(0);
+  expect(await enrichmentProgress(db, alice)).toMatchObject({
+    processed: 0,
+    failed: 1,
+  });
+  await db.query(
+    "UPDATE jobs SET completed_at=now()-interval '25 hours' WHERE id=$1",
+    [job.id],
+  );
+  await scheduleMusicEnrichment(db);
+  expect(
+    (await db.query("SELECT * FROM jobs WHERE status='pending'")).rowCount,
+  ).toBe(1);
 });

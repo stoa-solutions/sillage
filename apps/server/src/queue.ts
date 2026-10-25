@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Database } from "./db.ts";
+import type { PoolClient } from "pg";
 export interface Job {
   id: string;
   kind: "sync" | "enrich" | "text" | "image" | "musicbrainz";
@@ -8,7 +9,7 @@ export interface Job {
   lease_id: string;
 }
 export async function enqueue(
-  db: Database,
+  db: Database | PoolClient,
   kind: Job["kind"],
   key: string,
   payload: Record<string, string>,

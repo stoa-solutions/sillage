@@ -20,6 +20,7 @@ x-config: &config
   VISION_ENABLED: ${VISION_ENABLED:-true}
   SYNC_ENABLED: ${SYNC_ENABLED:-false}
   RELEASE_SHA: ${RELEASE_SHA:-local}
+  MUSICBRAINZ_ACCOUNT_IDS: ${MUSICBRAINZ_ACCOUNT_IDS:-}
 services:
   api:
     <<: *service

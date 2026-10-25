@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS jobs (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS jobs_active_key ON jobs(dedupe_key) WHERE status IN ('pending','running');
 CREATE INDEX IF NOT EXISTS jobs_due ON jobs(status,available_at);
+-- Bounded account progress polling and rollout lookups must not scan historical jobs per video.
+CREATE INDEX IF NOT EXISTS jobs_musicbrainz_video ON jobs ((payload->>'videoId'),created_at DESC,id DESC) WHERE kind='musicbrainz';
 CREATE TABLE IF NOT EXISTS quota_usage (day date PRIMARY KEY, units integer NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS sync_runs (
   id uuid PRIMARY KEY, playlist_id text NOT NULL REFERENCES playlists(id),

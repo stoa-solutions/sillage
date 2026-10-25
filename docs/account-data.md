@@ -54,11 +54,11 @@ La file de lecture, le chat et l'historique d'écoute de la session Mac ne const
 
 L'API valide le lien, crée/réutilise la playlist publique et l'attache au compte ; elle crée ensuite un job `sync`. Le worker récupère les entrées YouTube, leurs positions et les détails des vidéos. Une synchronisation incomplète ne supprime pas la bibliothèque existante. La synchronisation planifiée est toutes les six heures lorsqu'elle est activée ; les détails des vidéos sont renouvelés quotidiennement.
 
-Les jobs texte et image calculent les index. Le pilote MusicBrainz se greffe **après les détails YouTube**, en arrière-plan, uniquement pour les dix identifiants autorisés. Le scheduler vérifie les tâches chaque minute. Aucun appel MusicBrainz ne ralentit directement une recherche dans l'app.
+Les jobs texte et image calculent les index. Le pilote MusicBrainz se greffe **après les détails YouTube**, en arrière-plan, pour les dix identifiants du pilote ou les bibliothèques des comptes explicitement autorisés, par lots de dix tâches maximum. Le scheduler vérifie les tâches chaque minute. Aucun appel MusicBrainz ne ralentit directement une recherche dans l'app.
 
 MusicBrainz : normalisation titre/artiste, vérification de version et de durée, correspondance unique avant attribution. Les cas ambigus ou exclus restent identifiés comme tels, sans inventer de genre. Albums, artistes invités et styles de l'artiste conservent leur source ; les genres de l'artiste ne deviennent pas automatiquement ceux de tous ses morceaux. Le JSON enrichi change la révision du texte et provoque sa réindexation. Les champs YouTube d'origine sont préservés.
 
-Le pilote n'est pas activé sur toute la bibliothèque. Voir [Enrichissement musical](music-enrichment.md).
+L’extension progressive est activable par compte après validation du pilote. Voir [Enrichissement musical](music-enrichment.md).
 
 ## Frontières de code à conserver
 

@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- MusicBrainz : extension progressive par compte, file bornée à dix tâches et correspondances prudentes conservées. Bibliothèque affiche les morceaux traités, enrichis, ambigus, sans correspondance et les reprises ; suivi actualisé sans interrompre la lecture.
+
 - Apparence : fond Stoa au repos, image personnelle copiée sur ce Mac, voile sombre réglable et aperçu. Réglages organisés en Apparence, DJ et voix, Lecture, Compte ; aucun changement de fond pendant un morceau.
   Si l’image intégrée manque, l’app démarre avec un fond neutre.
 

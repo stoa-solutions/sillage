@@ -1,6 +1,7 @@
 import type { MusicMetadata } from "@playlist-recall/core/types";
 import { hash } from "../content.ts";
-import type { Database } from "../db.ts";
+import { transaction, type Database } from "../db.ts";
+import { enrichmentAccounts, enrichmentBatchSize } from "./rollout.ts";
 import { enqueue, type Job } from "../queue.ts";
 import { MusicBrainzClient } from "./client.ts";
 import {
@@ -12,7 +13,7 @@ import {
   type SourceTrack,
 } from "./matching.ts";
 
-/** No global enable switch in this pilot. Only these explicitly configured video IDs are eligible. */
+/** Pilot IDs remain supported alongside explicit account rollouts. */
 export function pilotIds(): string[] {
   return [
     ...new Set(
@@ -29,19 +30,39 @@ const identity = (r: any): SourceTrack => ({
   durationSeconds: r.duration_seconds,
 });
 const fingerprint = (r: any) => hash(JSON.stringify(identity(r)));
+// Both scheduling and execution re-check membership and account opt-in.
+const eligible = `(v.id=ANY($1::text[]) OR EXISTS(
+  SELECT 1 FROM memberships m JOIN user_playlists up ON up.playlist_id=m.playlist_id
+  WHERE m.video_id=v.id AND m.active AND up.user_id=ANY($2::uuid[])))`;
 export async function scheduleMusicEnrichment(db: Database) {
-  const ids = pilotIds();
-  if (!ids.length) return;
-  const { rows } = await db.query(
-    `SELECT v.* FROM videos v WHERE v.id=ANY($1) AND v.available AND v.enriched_at IS NOT NULL
-    AND v.music_metadata IS NULL AND EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active)
-    AND NOT EXISTS(SELECT 1 FROM jobs j WHERE j.kind='musicbrainz' AND j.payload->>'videoId'=v.id AND j.status='failed' AND j.completed_at>now()-interval '1 day')`,
-    [ids],
-  );
-  for (const row of rows)
-    await enqueue(db, "musicbrainz", `${row.id}:${fingerprint(row)}`, {
-      videoId: row.id,
-    });
+  const ids = pilotIds(),
+    accounts = enrichmentAccounts();
+  if (!ids.length && !accounts.length) return;
+  await transaction(db, async (client) => {
+    // Serialize concurrent schedulers so the shared queue remains bounded, including delayed retries.
+    await client.query("SELECT pg_advisory_xact_lock(740074)");
+    const pending = Number(
+      (
+        await client.query(
+          "SELECT count(*) FROM jobs WHERE kind='musicbrainz' AND status IN ('pending','running')",
+        )
+      ).rows[0].count,
+    );
+    const capacity = Math.max(0, enrichmentBatchSize - pending);
+    if (!capacity) return;
+    const { rows } = await client.query(
+      `SELECT v.* FROM videos v WHERE ${eligible} AND v.available AND v.enriched_at IS NOT NULL
+      AND v.music_metadata IS NULL AND EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active)
+      AND NOT EXISTS(SELECT 1 FROM jobs j WHERE j.kind='musicbrainz' AND j.payload->>'videoId'=v.id
+        AND (j.status IN ('pending','running') OR (j.status='failed' AND j.completed_at>now()-interval '1 day')))
+      ORDER BY v.id LIMIT $3`,
+      [ids, accounts, capacity],
+    );
+    for (const row of rows)
+      await enqueue(client, "musicbrainz", `${row.id}:${fingerprint(row)}`, {
+        videoId: row.id,
+      });
+  });
 }
 export async function enrichMusic(
   db: Database,
@@ -49,11 +70,11 @@ export async function enrichMusic(
   provider = new MusicBrainzClient(db),
 ) {
   const id = job.payload.videoId!;
-  if (!pilotIds().includes(id)) return;
   const row = (
     await db.query(
-      "SELECT * FROM videos WHERE id=$1 AND available AND enriched_at IS NOT NULL",
-      [id],
+      `SELECT v.* FROM videos v WHERE ${eligible} AND v.id=$3 AND v.available AND v.enriched_at IS NOT NULL
+       AND EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active)`,
+      [pilotIds(), enrichmentAccounts(), id],
     )
   ).rows[0];
   if (!row || row.music_metadata) return;

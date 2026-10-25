@@ -30,6 +30,9 @@ struct LibraryView: View {
           Button("Continuer avec Google") { session.showOnboarding = true }
             .buttonStyle(.borderedProminent)
         }
+        if session.hasServer {
+          EnrichmentProgressView(progress: library.enrichment, error: library.enrichmentError)
+        }
         importRow
         ViewThatFits(in: .horizontal) {
           HStack(spacing: 12) {
@@ -79,6 +82,7 @@ struct LibraryView: View {
       }.padding(20).glassPanel()
       NowPlayingBar(model: dj, player: dj.player, openDJ: onPlay)
     }.padding(16)
+      .task(id: session.generation) { await library.watchEnrichment() }
   }
 
   private func play(_ track: Track) {
