@@ -46,7 +46,9 @@ func lyricsAccountChecks() async throws {
   try await waitFor { pending[b.token + next.id] != nil }
   pending.removeValue(forKey: b.token + next.id)?.resume(
     returning:
-      Lyrics(status: .plain, lines: [], text: "B next"))
+      Lyrics(
+        status: .synced,
+        lines: [LyricsLine(startMs: 1000, endMs: 2000, text: "Synthetic line")], text: "B next"))
   try await waitFor { model.lyrics?.text == "B next" }
   let uncached = Track(id: "cdefghijklm", title: "Uncached")
   model.show(uncached, next: nil, connection: b)

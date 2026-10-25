@@ -174,6 +174,7 @@ do {
   try await clipPlayerChecks()
   try lyricsChecks()
   try await lyricsAccountChecks()
+  try await lyricsLifecycleChecks()
   try trackTitleChecks()
   try await djCompositionChecks()
   try await studioCacheChecks()

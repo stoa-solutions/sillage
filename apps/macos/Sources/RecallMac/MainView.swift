@@ -28,6 +28,7 @@ struct MainView: View {
     ) {
       page
     }
+    .frame(minWidth: minimumWidth, minHeight: 640)
     .toolbar {
       ToolbarItem(placement: .principal) {
         Picker("Vue", selection: $section) {
@@ -35,12 +36,18 @@ struct MainView: View {
           Text("Bibliothèque").tag(Destination.library)
           Text("Découvrir").tag(Destination.discover)
         }.pickerStyle(.segmented).fixedSize().neutralSelection().studioChrome(immersion.visible)
-      }.studioBackground(immersion.visible)
-      ToolbarItemGroup(placement: .primaryAction) {
-        DisplayPicker(player: dj.player, wide: section == .discover).studioChrome(immersion.visible)
-        SettingsLink { Image(systemName: "gearshape") }
-          .help("Réglages").accessibilityLabel("Réglages").studioChrome(immersion.visible)
-      }.studioBackground(immersion.visible)
+      }.withoutSystemBackground()
+      ToolbarItem(placement: .primaryAction) {
+        HStack(spacing: 10) {
+          DisplayPicker(player: dj.player, wide: section == .discover)
+          SettingsLink { Image(systemName: "gearshape") }
+            .help("Réglages").accessibilityLabel("Réglages")
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 12).padding(.vertical, 7)
+        .background(.ultraThinMaterial, in: Capsule())
+        .studioChrome(immersion.visible)
+      }.withoutSystemBackground()
     }
     .background(
       StudioActivity(immersion: immersion, visible: immersion.visible, reduceMotion: reduceMotion)
@@ -49,7 +56,7 @@ struct MainView: View {
       reduceMotion ? nil : .easeInOut(duration: immersion.visible ? 0.18 : 0.65),
       value: immersion.visible
     )
-    .background(WindowAppearance(player: dj.player, discovery: section == .discover))
+    .background(WindowAppearance())
     .tint(.recall)
     .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: section)
     .sheet(isPresented: $session.showOnboarding) {
@@ -67,6 +74,10 @@ struct MainView: View {
     .onChange(of: session.showOnboarding) { _, showing in
       if !showing && session.hasServer && library.libraryCount == 0 { section = .library }
     }
+  }
+
+  private var minimumWidth: CGFloat {
+    CGFloat(RecallWindowLayout.minimumWidth(studio: dj.player.studio, reading: section != .dj))
   }
 
   /// Banners on top, then the page; pages fade into each other.
@@ -174,28 +185,15 @@ private struct DisplayPicker: View {
   }
 }
 
-/// The app is dark in both modes; Studio needs at least 900 points of width.
+/// Window appearance only. SwiftUI owns minimum sizes through the root content frame.
 private struct WindowAppearance: NSViewRepresentable {
-  @ObservedObject var player: Player
-  let discovery: Bool
   func makeNSView(context: Context) -> NSView { NSView() }
   func updateNSView(_ view: NSView, context: Context) {
-    let studio = player.studio
     DispatchQueue.main.async {
       guard let window = view.window else { return }
       if window.appearance?.name != .darkAqua {
         window.appearance = NSAppearance(named: .darkAqua)
       }
-      let minimumWidth: CGFloat = studio || discovery ? 900 : 600
-      if window.contentMinSize.width != minimumWidth {
-        window.contentMinSize.width = minimumWidth
-      }
-      guard window.frame.width < window.contentMinSize.width,
-        !window.styleMask.contains(.fullScreen)
-      else { return }
-      var frame = window.frame
-      frame.size.width = window.contentMinSize.width
-      window.setFrame(frame, display: true, animate: true)
     }
   }
 }

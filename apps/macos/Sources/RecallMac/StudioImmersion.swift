@@ -55,11 +55,11 @@ extension View {
 }
 
 extension ToolbarContent {
-  /// macOS draws the shared glass outside the SwiftUI label's opacity.
-  /// Hide that background separately while retaining the toolbar's layout.
-  @ToolbarContentBuilder func studioBackground(_ visible: Bool) -> some ToolbarContent {
+  /// The system glass lives outside the label's opacity and can leave an empty capsule.
+  /// Own the visible background inside the content instead, so it fades as one unit.
+  @ToolbarContentBuilder func withoutSystemBackground() -> some ToolbarContent {
     if #available(macOS 26, *) {
-      sharedBackgroundVisibility(visible ? .automatic : .hidden)
+      sharedBackgroundVisibility(.hidden)
     } else {
       self
     }

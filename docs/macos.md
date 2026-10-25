@@ -38,7 +38,9 @@ Chaque serveur garde une bibliothèque commune à ses jetons, pas un compte isol
 | `RecallMac/LibraryModel.swift` | Pages de la bibliothèque serveur, recherche et import par lien. |
 | `RecallMac/DJModel.swift` / `VoiceOutput.swift` | Exécute la session d’écoute : chaque geste devient un événement, chaque effet une action (lecteur, demande serveur, voix, bannière). Micro ; voix du serveur ou voix macOS de secours. |
 | `RecallMac/Player.swift` | Les deux lecteurs (YouTube dans WebKit, clip dans AVPlayer), le cache Studio comme source de clips, et la surface vidéo où le clip apparaît en fondu par-dessus YouTube. |
-| `RecallKit/Lyrics.swift` / `RecallMac/LyricsView.swift` | Paroles et chronologie (ligne en cours, progression, calage) ; onglet Paroles et karaoké Studio. |
+| `RecallKit/Lyrics.swift` / `LyricsModel.swift` | Validation des paroles, chronologie et calage ; état isolé par compte, requêtes partagées et cache mémoire borné. |
+| `RecallMac/LyricsView.swift` | Un même panneau latéral en Studio et Compact ; texte simple ou suivi par ligne, défilement manuel et retour d’enregistrement du calage. |
+| `RecallKit/RecallWindowLayout.swift` | Largeurs minimales du contenu, appliquées par SwiftUI ; aucune règle de redimensionnement AppKit concurrente. |
 | `RecallMac/RecallApp.swift` | Cycle de vie, fenêtres et Sparkle. |
 
 La bibliothèque réside uniquement sur le serveur (décision [0002](adr/0002-server-only-mac-library.md)). Les lignes de résultats et de file sont identifiées par position, car une playlist ou la file peut répéter une vidéo.
@@ -254,3 +256,20 @@ L’horloge du lecteur reçoit chaque échantillon natif ; les contrôles ordina
 Le lecteur YouTube charge sa page au premier titre. Son gestionnaire de messages est un relais faible ; les observateurs AVPlayer sont retirés à la destruction. Les tests couvrent précision de seek, limitation des notifications, conservation des signaux et libération répétée du lecteur natif.
 
 Une copie d’aperçu utilise un identifiant distinct et RECALL_DATA_DIR, **sans CFBundleURLTypes** : elle ne doit jamais enregistrer le schéma playlist-recall ni lancer une vraie connexion. GoogleSignIn refuse une connexion depuis un autre identifiant. La vraie app rattache le schéma de retour à son propre bundle au début d’une connexion. Réglages → Compte → Reconnecter Google conserve l’ancienne session tant que la nouvelle n’est pas validée. Le navigateur affiche une page de retour avec bouton explicite ; le code reste à usage unique et protégé par PKCE.
+
+## Paroles et contraintes de fenêtre (1.7.3)
+
+Le panneau Paroles reste latéral dans les deux modes. Le texte simple et les lignes synchronisées partagent la même typographie ; le bandeau précise le niveau de synchronisation. Le clic utilise le début exact de la ligne et le calage personnel, avec déplacement AVPlayer à tolérance nulle. Une source synchronisée par ligne ne fournit pas une précision mot par mot. Le suivi se suspend lors du défilement manuel ; « Reprendre le suivi » revient au morceau.
+
+`LyricsModel` partage les requêtes de prélecture et de lecture courante. Son cache mémoire contient au plus 32 titres (expiration après une heure, cinq minutes pour les résultats manquants). Le serveur conserve sa propre politique de cache ; l’expiration mémoire ne force pas une nouvelle recherche LRCLIB. Les corrections sont immédiates puis enregistrées après 800 ms, séparément par titre ; une réponse tardive ne les remplace pas. Un échec d’enregistrement est visible et peut être retenté. Le changement de compte annule les travaux et supprime l’état précédent.
+
+La largeur minimale est portée par le contenu SwiftUI : 600 points en DJ Compact, 900 en Studio, Bibliothèque et Découvrir, hauteur minimale 640. Les contrôles du lecteur gardent leur disposition sur une ou deux rangées. Le fond des commandes de fenêtre est dessiné dans leur contenu et disparaît avec celui-ci ; la vitre native macOS 26 indépendante est désactivée.
+
+Vérifications sans interrompre une app en cours d’utilisation :
+
+```sh
+npm run verify:macos
+python3 apps/macos/Checks/render-lyrics.py /tmp/recall-lyrics-ui
+```
+
+Le second contrôle lie les composants SwiftUI de la build de développement, sans le point d’entrée de l’app. Il génère six rendus (synchronisé, texte simple, manquant ; panneaux de 320 et 380 points) dans des fenêtres hors écran, sans activation, connexion ni capture micro. Les résultats sont des exemples synthétiques ; ils ne prouvent pas la couverture du catalogue LRCLIB ni le comportement des commandes de fenêtre pendant une vraie lecture. Ces derniers restent à vérifier sur la version installée lors d’un prochain essai interactif.

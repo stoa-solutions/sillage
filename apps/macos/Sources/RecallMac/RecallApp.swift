@@ -118,7 +118,6 @@ import SwiftUI
     WindowGroup("Playlist Recall") {
       MainView().environmentObject(session).environmentObject(library).environmentObject(dj)
         .environmentObject(discovery).environmentObject(listened)
-        .frame(minWidth: 600, minHeight: 640)
         .task {
           if !didBootstrap {
             didBootstrap = true
@@ -136,6 +135,7 @@ import SwiftUI
         }
     }
     .defaultSize(width: 600, height: 840)
+    .windowResizability(.contentMinSize)
     .windowToolbarStyle(.unified(showsTitle: false))
     .commands {
       CommandGroup(after: .appInfo) {

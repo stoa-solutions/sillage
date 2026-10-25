@@ -53,6 +53,10 @@ struct DJView: View {
         lyrics.show(
           model.current, next: model.upcoming.first?.track, connection: session.connection)
       }
+      .onChange(of: model.upcoming.first?.track.id) { _, _ in
+        lyrics.show(
+          model.current, next: model.upcoming.first?.track, connection: session.connection)
+      }
   }
 
   /// Same glass as Studio: the player on one panel, the session on another.

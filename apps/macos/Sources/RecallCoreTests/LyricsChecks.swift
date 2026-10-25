@@ -38,6 +38,41 @@ func lyricsChecks() throws {
   var failed = false
   do { _ = try Lyrics.decode(["status": "bogus"]) } catch { failed = true }
   try expect(failed, "An unknown lyrics status was accepted")
+  let invalid = try Lyrics.decode([
+    "status": "synced", "lines": [["startMs": -1, "endMs": 2, "text": "invalid"]],
+    "text": "Fallback text", "offsetMs": Int.max, "durationDeltaMs": Int.min,
+  ])
+  try expect(
+    invalid.status == .plain && invalid.offsetMs == 30000,
+    "Malformed synced lyrics did not degrade to readable text")
+  try expect(invalid.durationDeltaMs == -86_400_000, "Malformed duration gap was not bounded")
+  try expect(
+    lyrics.position(at: .nan).index == nil && lyrics.position(at: .infinity).index == nil,
+    "An invalid clock sample reached lyric timing")
+  try expect(
+    lyrics.position(at: Double.greatestFiniteMagnitude).index == 2,
+    "A large clock sample crashed the lyrics panel")
+  try expect(
+    lyrics.start(of: -1) == 0 && lyrics.start(of: 999) == 0,
+    "A stale line selection crashed seeking")
+  let duplicates = Lyrics(
+    status: .synced,
+    lines: [
+      LyricsLine(startMs: 1000, endMs: 2000, text: "First"),
+      LyricsLine(startMs: 1000, endMs: 2500, text: "Translation"),
+      LyricsLine(startMs: 3000, endMs: 4000, text: "Next"),
+    ])
+  try expect(
+    duplicates.lines.count == 2 && duplicates.lines[0].text == "First\nTranslation",
+    "Simultaneous lyrics hid one of the lines")
+  var exact = duplicates
+  exact.offsetMs = 1234
+  try expect(
+    exact.start(of: 1) == 4.234 && exact.position(at: 4.234).index == 1,
+    "Click target and displayed line use different offset conventions")
+  try expect(
+    Lyrics(status: .synced, lines: []).status == .missing,
+    "Empty timed lyrics produced a blank synced panel")
   var clock = PlaybackClock()
   let start = Date(timeIntervalSince1970: 1000)
   clock.sample(42.25, playing: true, at: start)
