@@ -42,17 +42,15 @@ struct DJView: View {
       VStack(alignment: .leading, spacing: 14) {
         if player.studioReady {
           Spacer(minLength: 0)
+        } else if player.preparingStudio {
+          HStack(spacing: 10) {
+            ProgressView().controlSize(.small)
+            Text("Préparation du clip").foregroundStyle(.secondary)
+          }.frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
           PlayerView(player: player).aspectRatio(16 / 9, contentMode: .fit)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .overlay {
-              if model.current == nil {
-                idleScreen
-              } else if player.preparingStudio {
-                ProgressView("Préparation du clip…").padding(16)
-                  .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-              }
-            }
+            .overlay { if model.current == nil { idleScreen } }
         }
         nowPlaying(title: .system(size: 40, weight: .bold), subtitle: .title3)
         progress
@@ -73,10 +71,21 @@ struct DJView: View {
     .background {
       ZStack {
         Color.black
-        if player.studioReady { StudioPlayerView(player: player.nativePlayer) }
+        if player.studioReady {
+          StudioPlayerView(player: player.nativePlayer)
+        } else if player.preparingStudio, let current = model.current {
+          // While the clip downloads, its cover sets the mood instead of an empty player.
+          AsyncImage(url: URL(string: "https://i.ytimg.com/vi/\(current.id)/hqdefault.jpg")) {
+            image in image.resizable().scaledToFill()
+          } placeholder: {
+            Color.black
+          }.blur(radius: 40).overlay(Color.black.opacity(0.35)).clipped()
+            .transition(.opacity)
+        }
         LinearGradient(
           colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
       }.ignoresSafeArea().allowsHitTesting(false)
+        .animation(.easeInOut(duration: 0.6), value: player.studioReady)
     }
     .environment(\.colorScheme, .dark)
     .toolbarBackground(.hidden, for: .windowToolbar)
