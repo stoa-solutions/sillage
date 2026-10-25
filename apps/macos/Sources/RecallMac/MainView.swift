@@ -60,7 +60,7 @@ struct MainView: View {
         !window.styleMask.contains(.fullScreen), window.frame.width < 1180
       else { return }
       var frame = window.frame
-      frame.size.width = 1180
+      frame.size.width = min(1180, window.screen?.visibleFrame.width ?? 1180)
       if let screen = window.screen { frame = window.constrainFrameRect(frame, to: screen) }
       window.setFrame(frame, display: true, animate: true)
     }
@@ -166,7 +166,9 @@ private struct DisplayPicker: View {
   private func fitWindow(studio: Bool) {
     guard let window = NSApp.keyWindow, !window.styleMask.contains(.fullScreen) else { return }
     var frame = window.frame
-    frame.size.width = studio || wide ? max(frame.width, 1180) : min(frame.width, 600)
+    let available = window.screen?.visibleFrame.width ?? 1180
+    frame.size.width =
+      studio || wide ? min(max(frame.width, 1180), available) : min(frame.width, 600)
     if let screen = window.screen { frame = window.constrainFrameRect(frame, to: screen) }
     window.setFrame(frame, display: true, animate: true)
   }
