@@ -22,14 +22,20 @@ import SwiftUI
   @StateObject private var dj: DJModel
   @StateObject private var discovery: DiscoveryModel
   @StateObject private var history: HistorySync
+  @StateObject private var listened: ListeningHistoryModel
   @State private var didBootstrap = false
   init() {
     let session = Session()
     let library = LibraryModel(session: session)
     let dj = DJModel(session: session)
     let discovery = DiscoveryModel(session: session, library: library)
-    let history = HistorySync(session: session, dj: dj)
-    session.onConnectionChange = { [weak library, weak dj, weak discovery, weak history] in
+    let listened = ListeningHistoryModel()
+    let history = HistorySync(session: session, dj: dj) { [weak listened] in
+      listened?.refreshNewest(session)
+    }
+    session.onConnectionChange = {
+      [weak library, weak dj, weak discovery, weak history, weak listened] in
+      listened?.reset()
       // Plays still waiting belong to the previous account: dropped before its queue resets.
       history?.reset()
       discovery?.reset()
@@ -41,6 +47,7 @@ import SwiftUI
     _dj = StateObject(wrappedValue: dj)
     _discovery = StateObject(wrappedValue: discovery)
     _history = StateObject(wrappedValue: history)
+    _listened = StateObject(wrappedValue: listened)
   }
   private func bootstrap() async {
     if CommandLine.arguments.contains("--import-configuration-stdin") {
@@ -110,7 +117,7 @@ import SwiftUI
   var body: some Scene {
     WindowGroup("Playlist Recall") {
       MainView().environmentObject(session).environmentObject(library).environmentObject(dj)
-        .environmentObject(discovery)
+        .environmentObject(discovery).environmentObject(listened)
         .frame(minWidth: 600, minHeight: 640)
         .task {
           if !didBootstrap {

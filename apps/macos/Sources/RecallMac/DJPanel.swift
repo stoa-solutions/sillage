@@ -116,12 +116,12 @@ struct TypingIndicator: View {
       }
       .padding(.horizontal, 12).padding(.vertical, 10)
       .background(.white.opacity(0.06), in: Capsule())
+      .accessibilityHidden(true)
       Text(label).font(.caption).foregroundStyle(.secondary)
       Spacer(minLength: 0)
       Button("Annuler", action: cancel).buttonStyle(.plain).font(.caption)
         .foregroundStyle(.secondary)
     }
-    .accessibilityElement(children: .combine).accessibilityLabel(label)
   }
 }
 
@@ -162,10 +162,9 @@ struct CommandSuggestions: View {
   let prompt: String
   let choose: (String) -> Void
   var body: some View {
+    // Hidden once arguments differ from every command, so a typed count is never replaced.
     let items = DJCommand.suggestions.filter {
-      prompt == "/"
-        || $0.command.hasPrefix(
-          prompt.lowercased().split(separator: " ").first.map(String.init) ?? prompt)
+      prompt == "/" || $0.command.hasPrefix(prompt.lowercased())
     }
     if !items.isEmpty {
       VStack(alignment: .leading, spacing: 0) {

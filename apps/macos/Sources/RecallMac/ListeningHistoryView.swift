@@ -66,6 +66,33 @@ import SwiftUI
     }
   }
 
+  /// Forgets the shown plays at once, before another account's session starts.
+  func reset() {
+    task?.cancel()
+    plays = []
+    loading = false
+    reachedEnd = false
+    error = ""
+    generation = nil
+  }
+
+  /// After an upload: the newest page is merged on top, pages already loaded stay.
+  func refreshNewest(_ session: Session) {
+    guard let connection = session.connection, !plays.isEmpty, !loading else {
+      if plays.isEmpty { load(session) }
+      return
+    }
+    let current = session.generation
+    guard generation == current else { return load(session) }
+    Task {
+      guard let page = try? await HTTPClient().history(connection, limit: Self.pageSize),
+        session.generation == current, generation == current
+      else { return }
+      let known = Set(plays.map(\.id))
+      plays = page.filter { !known.contains($0.id) } + plays
+    }
+  }
+
   func clear(_ session: Session) {
     guard let connection = session.connection else { return }
     let current = session.generation

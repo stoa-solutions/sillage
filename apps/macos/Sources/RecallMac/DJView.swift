@@ -7,7 +7,7 @@ struct DJView: View {
   @AppStorage("djPanelCollapsed") private var panelCollapsed = false
   @State private var panelTab = SessionPanelTab.dj
   @StateObject private var lyrics = LyricsModel()
-  @StateObject private var listened = ListeningHistoryModel()
+  @EnvironmentObject var listened: ListeningHistoryModel
   let panelOnly: Bool
   let source: DiscoveryScope?
   @ObservedObject var model: DJModel
@@ -273,47 +273,79 @@ struct DJView: View {
     }.listStyle(.plain).scrollContentBackground(.hidden)
   }
 
-  /// The account's history from the server; refreshed shortly after each play is sent.
-  private var historyPanel: some View {
-    ScrollView {
-      LazyVStack(alignment: .leading, spacing: 0) {
-        ForEach(listenedDays, id: \.title) { day in
-          Text(day.title).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-            .padding(.horizontal, 6).padding(.top, 12).padding(.bottom, 4)
-          ForEach(day.plays) { play in
-            HistoryRow(
-              listened: play, playing: model.current?.id == play.track.id, compact: true,
-              onPlay: { model.play(play.track, source: source ?? model.searchScope) },
-              onEnqueue: { model.enqueue(play.track, source: source ?? model.searchScope) }
-            )
-            .onAppear {
-              if play.id == listened.plays.last?.id { listened.load(session, more: true) }
+  /// The account's history from the server, refreshed when a play upload is confirmed.
+  /// Without an account, this session's plays.
+  @ViewBuilder private var historyPanel: some View {
+    if session.connection == nil {
+      sessionHistory
+    } else {
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 0) {
+          ForEach(listenedDays, id: \.title) { day in
+            Text(day.title).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+              .padding(.horizontal, 6).padding(.top, 12).padding(.bottom, 4)
+            ForEach(day.plays) { play in
+              HistoryRow(
+                listened: play, playing: model.current?.id == play.track.id, compact: true,
+                onPlay: { model.play(play.track, source: source ?? model.searchScope) },
+                onEnqueue: { model.enqueue(play.track, source: source ?? model.searchScope) }
+              )
+              .onAppear {
+                if play.id == listened.plays.last?.id { listened.load(session, more: true) }
+              }
             }
           }
-        }
-      }.padding(.horizontal, 8).padding(.bottom, 12)
-    }
-    .overlay {
-      if listened.plays.isEmpty {
-        if listened.loading {
-          ProgressView()
-        } else if !listened.error.isEmpty {
-          EmptyState(
-            symbol: "exclamationmark.triangle", message: listened.error,
-            action: ("Réessayer", { listened.load(session) }))
-        } else {
-          EmptyState(
-            symbol: "clock.arrow.circlepath",
-            message: "Tes écoutes apparaîtront ici, enregistrées sur ton compte.")
+          if !listened.plays.isEmpty {
+            if !listened.error.isEmpty {
+              HStack {
+                Text(listened.error).font(.caption).foregroundStyle(.orange).lineLimit(2)
+                Spacer(minLength: 0)
+                Button("Réessayer") { listened.load(session) }.buttonStyle(.link).font(.caption)
+              }.padding(8)
+            } else if listened.loading {
+              ProgressView().controlSize(.small).padding(10).frame(maxWidth: .infinity)
+            }
+          }
+        }.padding(.horizontal, 8).padding(.bottom, 12)
+      }
+      .overlay {
+        if listened.plays.isEmpty {
+          if listened.loading {
+            ProgressView()
+          } else if !listened.error.isEmpty {
+            EmptyState(
+              symbol: "exclamationmark.triangle", message: listened.error,
+              action: ("Réessayer", { listened.load(session) }))
+          } else {
+            EmptyState(
+              symbol: "clock.arrow.circlepath",
+              message: "Tes écoutes apparaîtront ici, enregistrées sur ton compte.")
+          }
         }
       }
+      .task(id: session.generation) {
+        if listened.plays.isEmpty { listened.load(session) }
+      }
     }
-    .task(id: "\(session.generation)-\(model.history.count)") {
-      // A new play reaches the server a few seconds after it ends.
-      if !listened.plays.isEmpty { try? await Task.sleep(for: .seconds(7)) }
-      guard !Task.isCancelled else { return }
-      listened.load(session)
-    }
+  }
+
+  private var sessionHistory: some View {
+    List {
+      Section {
+        if model.history.isEmpty {
+          EmptyState(
+            symbol: "clock.arrow.circlepath",
+            message: "Les morceaux écoutés, passés ou indisponibles apparaîtront ici.")
+        }
+        ForEach(model.history.reversed()) { entry in
+          TrackRow(
+            track: entry.track, detail: entry.outcome.rawValue, artworkWidth: 72,
+            onPlay: { model.play(entry.track, source: source ?? model.searchScope) })
+        }
+      } header: {
+        SectionHeader("Cette session")
+      }
+    }.listStyle(.plain).scrollContentBackground(.hidden)
   }
 
   private var listenedDays: [(title: String, plays: [ListenedTrack])] {
@@ -353,7 +385,12 @@ struct DJView: View {
         }
       }
       .onChange(of: model.busy) { _, busy in
-        if busy { withAnimation { proxy.scrollTo("typing", anchor: .bottom) } }
+        guard busy else { return }
+        // The indicator is inserted by this same update; scroll once it exists.
+        Task {
+          try? await Task.sleep(for: .milliseconds(60))
+          withAnimation { proxy.scrollTo("typing", anchor: .bottom) }
+        }
       }
     }
   }

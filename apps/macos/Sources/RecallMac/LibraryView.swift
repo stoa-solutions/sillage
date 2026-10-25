@@ -11,7 +11,7 @@ struct LibraryView: View {
   @State private var adding = false
   @State private var deleting: ServerPlaylistSummary?
   @State private var showingHistory = false
-  @StateObject private var history = ListeningHistoryModel()
+  @EnvironmentObject var history: ListeningHistoryModel
 
   var body: some View {
     VStack(spacing: 12) {

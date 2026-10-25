@@ -10,9 +10,12 @@ import RecallKit
   private var watch: AnyCancellable?
   private var upload: Task<Void, Never>?
   private let session: Session
+  /// Called once the server confirmed a batch, so lists of the history can refresh.
+  private let uploaded: () -> Void
 
-  init(session: Session, dj: DJModel) {
+  init(session: Session, dj: DJModel, uploaded: @escaping () -> Void = {}) {
     self.session = session
+    self.uploaded = uploaded
     // Only history changes matter, not every chat or status update of the session.
     watch = dj.$listening.map(\.queue.history)
       .removeDuplicates { $0.map(\.id) == $1.map(\.id) }
@@ -49,6 +52,7 @@ import RecallKit
       try await HTTPClient().recordHistory(connection, batch)
       guard !Task.isCancelled else { return false }
       outbox.acknowledge(batch)
+      uploaded()
       return true
     } catch let error as HTTPServiceError
       where (400..<500).contains(error.status) && ![401, 408, 429].contains(error.status)
