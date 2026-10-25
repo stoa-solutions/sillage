@@ -107,3 +107,14 @@ CREATE TABLE IF NOT EXISTS oauth_grants (
 );
 ALTER TABLE videos ADD COLUMN IF NOT EXISTS channel_id text;
 CREATE TABLE IF NOT EXISTS channels (id text PRIMARY KEY, avatar_url text, fetched_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS lyrics (
+  video_id text PRIMARY KEY REFERENCES videos(id) ON DELETE CASCADE, status text NOT NULL,
+  source_id bigint, lines jsonb NOT NULL DEFAULT '[]', plain_text text, duration_delta_ms integer,
+  fetched_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS lyrics_offsets (
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  video_id text NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  offset_ms integer NOT NULL, updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY(user_id, video_id)
+);

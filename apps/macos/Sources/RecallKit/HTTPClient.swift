@@ -43,6 +43,14 @@ public struct HTTPClient: Sendable {
       url: URL(string: connection.url + "/v1/" + path)!, body: body,
       headers: ["Authorization": "Bearer " + connection.token])
   }
+  public func lyrics(_ connection: Connection, videoId: String) async throws -> Lyrics {
+    try Lyrics.decode(await server(connection, path: "lyrics/" + videoId))
+  }
+  public func setLyricsOffset(_ connection: Connection, videoId: String, offsetMs: Int)
+    async throws
+  {
+    _ = try await server(connection, path: "lyrics/\(videoId)/offset", body: ["offsetMs": offsetMs])
+  }
   public func search(_ connection: Connection, query: String) async throws -> [Track] {
     try await searchPage(connection, query: query).tracks
   }

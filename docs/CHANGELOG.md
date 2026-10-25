@@ -2,6 +2,12 @@
 
 ## Non publié
 
+### Mode karaoké (ticket #3)
+
+- Onglet « Paroles » dans le panneau de session : ligne chantée remplie progressivement, défilement automatique, clic sur une ligne pour y aller, boutons « Plus tôt / Plus tard » mémorisés par compte et par vidéo. En Studio, bouton « Karaoké » qui affiche les lignes en grand sur le clip.
+- Serveur : `GET /v1/lyrics/:videoId` et `POST /v1/lyrics/:videoId/offset`. Paroles LRCLIB cherchées depuis le titre YouTube, version la plus proche en durée, gardées 30 jours (absences réessayées après 7 jours), appels identifiés, en série, respectant `Retry-After`. Migration additive : tables `lyrics` et `lyrics_offsets`.
+- Lecteur YouTube intégré : la vidéo remplit enfin le cadre (le style injecté était refusé par la politique de sécurité de la page).
+
 - App Mac 1.4.8 (23) : direction musicale séparée du chat, six demandes récentes conservées, historique réel et file ordonnée transmis au DJ. La dernière demande a priorité et peut interrompre une recherche en cours. Une suite vide ou répétée déclenche au maximum une recherche différente, ouverte à des artistes proches si les contraintes le permettent, puis attend une relance explicite. Les identifiants déjà rencontrés restent exclus des suites automatiques toute la session, même après les 200 entrées d’historique visibles ; rejouer un titre explicitement reste possible. Les annonces ne citent plus les titres éliminés comme répétitions.
 
 - App Mac 1.4.7 (22) : panneau Compact/Studio repliable, onglets DJ / À suivre / Historique, file complète réordonnable par flèches sans changer le titre en cours. Lecture immédiate d’un titre futur sans perdre les autres ; historique de session des titres terminés, passés, remplacés et indisponibles.

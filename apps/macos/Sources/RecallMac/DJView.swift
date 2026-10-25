@@ -6,6 +6,8 @@ import SwiftUI
 struct DJView: View {
   @AppStorage("djPanelCollapsed") private var panelCollapsed = false
   @State private var panelTab = SessionPanelTab.dj
+  @AppStorage("karaokeOverlay") private var karaoke = false
+  @StateObject private var lyrics = LyricsModel()
   @ObservedObject var model: DJModel
   @EnvironmentObject var session: Session
   @ObservedObject var player: Player
@@ -21,6 +23,10 @@ struct DJView: View {
     Group {
       if player.studio { studio } else { compact }
     }.onChange(of: model.spoken) { _, value in if !value { model.stopVoice() } }
+      .onChange(of: model.current?.id, initial: true) { _, _ in
+        lyrics.show(
+          model.current, next: model.upcoming.first?.track, connection: session.connection)
+      }
       .onChange(of: model.continuous) { _, _ in model.continuousChanged() }
   }
 
@@ -48,7 +54,7 @@ struct DJView: View {
     HStack(alignment: .bottom, spacing: 0) {
       VStack(alignment: .leading, spacing: 14) {
         if player.studioReady {
-          Spacer(minLength: 0)
+          if karaoke { KaraokeOverlay(model: lyrics, player: player) } else { Spacer(minLength: 0) }
         } else if player.preparingStudio {
           HStack(spacing: 10) {
             ProgressView().controlSize(.small)
@@ -152,6 +158,10 @@ struct DJView: View {
         .help("Le DJ te répond et annonce les morceaux à voix haute")
       Toggle(isOn: $model.continuous) { Label("Enchaîner", systemImage: "infinity") }
         .help("À la fin de la file, le DJ ajoute de nouveaux morceaux dans la même ambiance")
+      if player.studio {
+        Toggle(isOn: $karaoke) { Label("Karaoké", systemImage: "music.mic") }
+          .help("Afficher les paroles en grand sur le clip")
+      }
       if let current = model.current {
         Link(destination: current.url) { Image(systemName: "arrow.up.right.square") }
           .foregroundStyle(.secondary)
@@ -219,6 +229,8 @@ struct DJView: View {
         queuePanel
       case .history:
         historyPanel
+      case .lyrics:
+        LyricsPanel(model: lyrics, player: player, connection: session.connection)
       }
     }
   }
@@ -393,6 +405,7 @@ private enum SessionPanelTab: String, CaseIterable, Identifiable {
   case dj = "DJ"
   case queue = "À suivre"
   case history = "Historique"
+  case lyrics = "Paroles"
   var id: Self { self }
 }
 

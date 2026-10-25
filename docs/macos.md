@@ -36,6 +36,7 @@ Chaque serveur garde une bibliothèque commune à ses jetons, pas un compte isol
 | `RecallMac/LibraryModel.swift` | Pages de la bibliothèque serveur, recherche et import par lien. |
 | `RecallMac/DJModel.swift` / `VoiceOutput.swift` | Conversation, file, micro ; voix du serveur ou voix macOS de secours. |
 | `RecallMac/Player.swift` | WebKit et messages du lecteur strictement contrôlés. |
+| `RecallKit/Lyrics.swift` / `RecallMac/LyricsView.swift` | Paroles et chronologie (ligne en cours, progression, calage) ; onglet Paroles et karaoké Studio. |
 | `RecallMac/RecallApp.swift` | Cycle de vie, fenêtres et Sparkle. |
 
 La bibliothèque réside uniquement sur le serveur (décision [0002](adr/0002-server-only-mac-library.md)). Les lignes de résultats et de file sont identifiées par position, car une playlist ou la file peut répéter une vidéo.

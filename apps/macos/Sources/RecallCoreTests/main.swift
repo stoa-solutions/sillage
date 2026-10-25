@@ -128,6 +128,7 @@ do {
     "Channel photo accepted from a host other than Google's")
   print("30 native behavior checks passed")
   try playbackSessionChecks()
+  try lyricsChecks()
   try await djCompositionChecks()
   try await studioCacheChecks()
   try await preparedSpeechChecks()

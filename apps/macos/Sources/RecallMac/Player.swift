@@ -64,11 +64,19 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     configuration.userContentController.addUserScript(
       WKUserScript(source: bridge, injectionTime: .atDocumentStart, forMainFrameOnly: true))
     // The app reports failures natively, so the video fills the frame and the hint stays hidden.
+    // The page's CSP refuses inline <style>; rules added to its own stylesheet are allowed.
     let layout = """
-      const style = document.createElement('style');
-      style.textContent = 'body{background:#000}#player{height:100vh!important;min-height:0!important}'
-        + '#hint{display:none}#play{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%)}';
-      document.head.appendChild(style);
+      const rules = ['body{background:#000}', '#player{height:100vh!important;min-height:0!important}',
+        '#hint{display:none}', '#play{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%)}'];
+      const link = document.querySelector('link[rel=stylesheet]');
+      const apply = () => {
+        const sheet = link && link.sheet;
+        if (!sheet || sheet.recallLayout) return;
+        sheet.recallLayout = true;
+        for (const rule of rules) sheet.insertRule(rule, sheet.cssRules.length);
+      };
+      apply();
+      link?.addEventListener('load', apply);
       """
     configuration.userContentController.addUserScript(
       WKUserScript(source: layout, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
@@ -281,8 +289,14 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     }
   }
   func seek(_ seconds: Double) {
-    guard studioReady, seconds.isFinite else { return }
-    nativePlayer.seek(to: CMTime(seconds: min(max(seconds, 0), duration), preferredTimescale: 600))
+    guard seconds.isFinite else { return }
+    if studioReady {
+      nativePlayer.seek(
+        to: CMTime(seconds: min(max(seconds, 0), duration), preferredTimescale: 600))
+    } else if !preparingStudio, let currentTrack {
+      // The embedded player has no seek command: cue the same video at the new time.
+      cueWeb(currentTrack, start: max(seconds, 0), autoplay: wantsPlayback)
+    }
   }
   func reset() {
     studioTask?.cancel()

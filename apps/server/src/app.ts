@@ -11,11 +11,21 @@ import { hash, parsePlaylistId } from "./content.ts";
 import type { Database } from "./db.ts";
 import { enqueue } from "./queue.ts";
 import { search } from "./search.ts";
+import {
+  Lrclib,
+  lyricsFor,
+  setLyricsOffset,
+  type LyricsSource,
+} from "./lyrics.ts";
 import { importLibrary, videoFromRow } from "./library.ts";
 import { parseImport, exportLibrary } from "@playlist-recall/core/import";
 import { handleMusicMcp } from "./music-mcp.ts";
 import { djPlayerHtml, djPlayerCss, djPlayerJs } from "./dj-player.ts";
-export function createApp(db: Database, identityProvider?: IdentityProvider) {
+export function createApp(
+  db: Database,
+  identityProvider?: IdentityProvider,
+  lyricsSource: LyricsSource = new Lrclib(),
+) {
   const app = new Hono<ApiEnvironment>();
   app.use(
     "*",
@@ -209,6 +219,32 @@ export function createApp(db: Database, identityProvider?: IdentityProvider) {
       })
       .parse(await c.req.json());
     return c.json(await search(db, input, c.get("userId")));
+  });
+  const videoId = z.string().regex(/^[A-Za-z0-9_-]{11}$/);
+  app.get("/v1/lyrics/:videoId", async (c) => {
+    const lyrics = await lyricsFor(
+      db,
+      lyricsSource,
+      c.get("userId"),
+      videoId.parse(c.req.param("videoId")),
+    );
+    return lyrics
+      ? c.json(lyrics)
+      : c.json({ error: "Vidéo absente de ta bibliothèque." }, 404);
+  });
+  app.post("/v1/lyrics/:videoId/offset", async (c) => {
+    const { offsetMs } = z
+      .object({ offsetMs: z.number().int().min(-30000).max(30000) })
+      .parse(await c.req.json());
+    const saved = await setLyricsOffset(
+      db,
+      c.get("userId"),
+      videoId.parse(c.req.param("videoId")),
+      offsetMs,
+    );
+    return saved
+      ? c.json({ offsetMs })
+      : c.json({ error: "Vidéo absente de ta bibliothèque." }, 404);
   });
   app.post("/v1/jobs/retry", async (c) => {
     if (c.get("userId") !== LEGACY_USER)
