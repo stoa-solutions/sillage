@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Qualité du DJ : banc de régression sans interface (intentions, vrai circuit MCP, sources et exclusions), évaluations HTTP du modèle réel avec rapports privés, durées et distinction entre échec comportemental et quota fournisseur.
+- DJ : corrige une demande ordonnée séparée par « maintenant, puis » qui pouvait créer un morceau vide et empêcher le lancement malgré deux titres trouvés ; défaut reproduit par l’évaluation HTTP.
 - Mac : évite le blocage du chat après plusieurs cartes de découverte en stabilisant la mise en page et le défilement ; design conservé.
 
 - DJ : recherche unifiée selon Mes playlists, YouTube ou Partout ; les deux sources sont interrogées en parallèle dans Partout. Les demandes d’alternatives gardent les cartes récentes comme repère et excluent les propositions explicitement refusées, sans imposer d’artiste ni de style.

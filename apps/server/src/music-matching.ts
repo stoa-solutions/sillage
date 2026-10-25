@@ -156,8 +156,13 @@ export function resolveExactRequest(
     .replace(/\s+(?:stp|s['’]il te pla[iî]t)[.!?]*$/i, "");
   const parts = (ordered
     ? request.split(/\s*\b(?:puis|ensuite|suivi(?:e)? de)\b\s*|\s*,\s*/i)
-    : [request]).filter((part) => withoutPlaybackModifiers(part)
-      || catalog.some((track) => songTitle(track.title) === normalizeMusic(part)));
+    : [request]).filter((part) => {
+      if (withoutPlaybackModifiers(part)) return true;
+      const title = normalizeMusic(part);
+      // Empty separators cannot become song requests, even when catalog metadata
+      // such as “[Official Video]” also normalizes to an empty song title.
+      return title.length > 0 && catalog.some((track) => songTitle(track.title) === title);
+    });
   if (!parts.length) return null;
   if (parts.length > 8)
     return {

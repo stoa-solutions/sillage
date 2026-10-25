@@ -11,7 +11,8 @@
     "migrate": "tsx src/migrate.ts",
     "check": "tsc --noEmit",
     "test": "vitest run --exclude '**/*.integration.test.ts'",
-    "test:integration": "vitest run tests/*.integration.test.ts"
+    "test:integration": "vitest run tests/*.integration.test.ts",
+    "test:dj": "vitest run tests/dj-*.test.ts tests/music-search.test.ts tests/music-matching.test.ts"
   },
   "dependencies": {
     "@hono/node-server": "2.1.3",

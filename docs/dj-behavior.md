@@ -58,6 +58,8 @@ Les genres d’artiste ne prouvent pas le genre d’un enregistrement. Une minia
 
 ## Validation et point de retour
 
+Pour itérer sans piloter l’interface : `npm run test:dj` exécute les scénarios déterministes et le vrai circuit MCP avec frontières simulées. `npm run eval:dj` prépare une évaluation HTTP ; `--live` l’exécute avec un compte explicitement fourni et un plafond de requêtes. Voir [le banc d’évaluation](../scripts/dj-eval/README.md) pour les scénarios, rapports, limites de preuve et tests Swift complémentaires.
+
 L’audit de référence porte sur `f142fbf`, app 1.6.3 (43), conservée par le tag `checkpoint/recall-1.6.3-before-dj-hardening`. Les scénarios identifiés sont ajoutés aux suites serveur et natives ; ils complètent les tests existants, qui passaient malgré ces défauts.
 
 `npm run verify:node` et `npm run verify:macos` valident les contrats, comportements et builds. Le déploiement et les essais réels restent des étapes distinctes. Une suite verte ne garantit ni une pertinence musicale parfaite ni l’absence de toute régression ; elle rend les défauts connus reproductibles et bloque leur retour.

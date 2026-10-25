@@ -162,3 +162,19 @@ it("does not silently remove musical constraints or resolve negated commands", (
   const constrained = resolveExactRequest("Joue Navajo puis Tadow sans live", catalog);
   expect(constrained?.missing).toEqual(["Tadow sans live"]);
 });
+
+it("ignores empty separators and trailing ordering syntax in the Acid Coco request", () => {
+  const acidCoco = [
+    { id: "lUWaHOuh7V0", title: "El Amor De Mis Amores", channel: "Acid Coco" },
+    { id: "X_f-RF8eaFI", title: "Acid Coco  - Todo Me Lleva a ti", channel: "Acid Coco" },
+    // A catalog title can normalize to empty; it must not revive an empty request part.
+    { id: "emptytitle1", title: "[Official Video]", channel: "Other artist" },
+  ];
+  const result = resolveExactRequest(
+    "Joue El Amor De Mis Amores de Acid Coco maintenant, puis Todo Me Lleva a ti de Acid Coco, dans cet ordre.",
+    acidCoco,
+  );
+  expect(result?.tracks.map((track) => track.id)).toEqual(["lUWaHOuh7V0", "X_f-RF8eaFI"]);
+  expect(result?.missing).toEqual([]);
+  expect(result?.append).toBe(false);
+});

@@ -1,0 +1,165 @@
+[
+  {
+    "id": "library-featuring",
+    "suite": "smoke",
+    "description": "Une demande vague de featuring propose des candidats sans lancer la lecture.",
+    "scope": "library",
+    "steps": [
+      {
+        "message": "Propose le morceau de Jewel Usain avec Hedges en feat, je ne connais plus le titre. Ne lance rien.",
+        "expect": {
+          "action": "keep",
+          "minCards": 1,
+          "includes": [
+            "C7vVkdPEun8"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "library-order",
+    "suite": "smoke",
+    "description": "Une demande immédiate conserve l’ordre explicite des titres.",
+    "scope": "library",
+    "steps": [
+      {
+        "message": "Joue El Amor De Mis Amores de Acid Coco maintenant, puis Todo Me Lleva a ti de Acid Coco, dans cet ordre.",
+        "expect": {
+          "action": "replace",
+          "exactIds": [
+            "lUWaHOuh7V0",
+            "X_f-RF8eaFI"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "library-prepare-five",
+    "suite": "smoke",
+    "description": "Préparer cinq titres garde le morceau en cours et évite ses répétitions.",
+    "scope": "library",
+    "current": {
+      "id": "lUWaHOuh7V0",
+      "title": "El Amor De Mis Amores",
+      "channel": "Acid Coco",
+      "artists": [
+        "Acid Coco"
+      ],
+      "genres": []
+    },
+    "steps": [
+      {
+        "message": "Prépare 5 morceaux de Mac Miller à suivre, sans répétition et sans interrompre la lecture.",
+        "expect": {
+          "action": "append",
+          "minTracks": 5,
+          "maxTracks": 5,
+          "preserveCurrent": true,
+          "excludes": [
+            "lUWaHOuh7V0"
+          ],
+          "artistAliases": [
+            "Mac Miller"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "all-new-acid-coco",
+    "suite": "external",
+    "description": "Partout trouve de nouveaux titres au-delà des deux titres de la bibliothèque.",
+    "scope": "all",
+    "current": {
+      "id": "lUWaHOuh7V0",
+      "title": "El Amor De Mis Amores",
+      "channel": "Acid Coco",
+      "artists": [
+        "Acid Coco"
+      ],
+      "genres": []
+    },
+    "queuedIds": [
+      "X_f-RF8eaFI"
+    ],
+    "steps": [
+      {
+        "message": "Prépare 5 nouveaux morceaux à suivre dans le même style, sans répétition et sans interrompre la lecture.",
+        "expect": {
+          "action": "append",
+          "minTracks": 5,
+          "maxTracks": 5,
+          "preserveCurrent": true,
+          "excludes": [
+            "lUWaHOuh7V0",
+            "X_f-RF8eaFI"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "youtube-proposals-and-rejection",
+    "suite": "external",
+    "description": "Deux tours de propositions puis refus des cartes précédentes, sans lecture.",
+    "scope": "youtube",
+    "steps": [
+      {
+        "message": "Propose deux titres de Acid Coco, sans lancer la lecture.",
+        "expect": {
+          "action": "keep",
+          "minCards": 2,
+          "maxCards": 2,
+          "artistAliases": [
+            "Acid Coco"
+          ]
+        }
+      },
+      {
+        "message": "D’autres, sauf ces deux-là. Propose seulement.",
+        "rejectPrevious": true,
+        "expect": {
+          "action": "keep",
+          "minCards": 1,
+          "noPreviousCards": true,
+          "artistAliases": [
+            "Acid Coco"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "all-immediate-correction",
+    "suite": "external",
+    "description": "La correction immédiate remplace la lecture au lieu d’ajouter à la file.",
+    "scope": "all",
+    "current": {
+      "id": "7CTJcHjkq0E",
+      "title": "Billie Jean",
+      "channel": "Michael Jackson",
+      "artists": [
+        "Michael Jackson"
+      ],
+      "genres": []
+    },
+    "steps": [
+      {
+        "message": "Non je t’ai dit ajoute du Omer Adam et mets-la directement, passe les musiques maintenant.",
+        "expect": {
+          "action": "replace",
+          "minTracks": 1,
+          "excludes": [
+            "7CTJcHjkq0E"
+          ],
+          "artistAliases": [
+            "Omer Adam",
+            "עומר אדם"
+          ]
+        }
+      }
+    ]
+  }
+]
