@@ -112,6 +112,7 @@ import SwiftUI
             if session.hasServer { library.sync() }
           }
         }
+        .onOpenURL { session.receiveGoogleCallback($0) }
         .onDisappear {
           dj.cancel()
           dj.player.command("pause")
@@ -129,6 +130,7 @@ import SwiftUI
     }
     Settings {
       SettingsView().environmentObject(session).environmentObject(library)
+        .onOpenURL { session.receiveGoogleCallback($0) }
         .preferredColorScheme(.light)
     }
   }

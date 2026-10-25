@@ -17,6 +17,10 @@ struct OnboardingView: View {
         Button(session.signingIn ? "Connexion…" : "Continuer avec Google") {
           Task { await session.connectGoogle() }
         }.buttonStyle(.borderedProminent).disabled(session.signingIn || session.loadingCredentials)
+        if session.signingIn {
+          Text("Termine la connexion dans ton navigateur.").font(.caption)
+          Button("Annuler la connexion") { session.cancelGoogleSignIn() }
+        }
         Text("Recall demande uniquement ton identité Google et ton adresse e-mail.").font(.caption)
       } else {
         Label(session.accountEmail, systemImage: "person.crop.circle.fill")

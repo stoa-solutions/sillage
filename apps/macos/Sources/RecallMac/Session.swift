@@ -110,6 +110,8 @@ final class Session: ObservableObject {
     await refreshCredentials()
     notice = "Serveur enregistré : " + (URL(string: connection.url)?.host ?? "")
   }
+  func receiveGoogleCallback(_ url: URL) { signIn.receive(url) }
+  func cancelGoogleSignIn() { signIn.cancel() }
   func connectGoogle() async {
     guard !signingIn else { return }
     signingIn = true
@@ -155,6 +157,7 @@ final class Session: ObservableObject {
     await refreshCredentials()
   }
   func forgetServer() async {
+    signIn.cancel()
     refreshAttempt = UUID()
     loadingCredentials = false
     let previous = connection

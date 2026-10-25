@@ -24,6 +24,10 @@ struct SettingsView: View {
             Task { await session.connectGoogle() }
           }
           .disabled(session.signingIn || session.loadingCredentials)
+          if session.signingIn {
+            Text("Termine la connexion dans ton navigateur.").font(.caption)
+            Button("Annuler la connexion") { session.cancelGoogleSignIn() }
+          }
         }
         if session.canClaimLibrary {
           Button("Rattacher mes playlists existantes à \(session.accountEmail)") {

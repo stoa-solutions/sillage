@@ -112,7 +112,29 @@ do {
   try FileManager.default.createSymbolicLink(at: file, withDestinationURL: target)
   try expectFailure { try sessions.save(token, account: "server") }
   try expect(try String(contentsOf: target) == "untouched", "Session followed a symlink")
-  print("29 native behavior checks passed")
+  let now = Date()
+  let authState = "test-state"
+  let grant = String(repeating: "g", count: 43)
+  let callbackURL = URL(string: "playlist-recall://auth?state=\(authState)&code=\(grant)")!
+  var callback = GoogleCallback(state: authState, now: now)
+  try expect(
+    callback.consume(URL(string: "playlist-recall://auth?state=wrong&code=\(grant)")!, now: now)
+      == nil, "Foreign OAuth state accepted")
+  try expect(
+    callback.consume(URL(string: callbackURL.absoluteString + "&code=\(grant)")!, now: now) == nil,
+    "Duplicate OAuth parameter accepted")
+  try expect(
+    callback.consume(
+      URL(
+        string: callbackURL.absoluteString.replacingOccurrences(
+          of: "//auth?", with: "//auth/other?"))!, now: now) == nil, "Wrong callback path accepted")
+  try expect(callback.consume(callbackURL, now: now) == grant, "Valid OAuth callback rejected")
+  try expect(callback.consume(callbackURL, now: now) == nil, "Replayed OAuth callback accepted")
+  var expired = GoogleCallback(state: authState, now: now)
+  try expect(
+    expired.consume(callbackURL, now: now.addingTimeInterval(601)) == nil,
+    "Expired OAuth callback accepted")
+  print("35 native behavior checks passed")
 } catch {
   fputs("Native tests failed: \(error.localizedDescription)\n", stderr)
   exit(1)

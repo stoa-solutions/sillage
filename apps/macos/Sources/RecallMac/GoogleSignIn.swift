@@ -1,15 +1,15 @@
 import AppKit
-import AuthenticationServices
 import CryptoKit
 import Foundation
 import RecallKit
 
 @MainActor
-final class GoogleSignIn: NSObject, ASWebAuthenticationPresentationContextProviding {
-  private var webSession: ASWebAuthenticationSession?
-  func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-    NSApp.keyWindow ?? NSApp.windows.first ?? ASPresentationAnchor()
-  }
+final class GoogleSignIn {
+  private var attempt: UUID?
+  private var callback: GoogleCallback?
+  private var continuation: CheckedContinuation<String, Error>?
+  private var timeout: Task<Void, Never>?
+
   private func random() throws -> String {
     var bytes = [UInt8](repeating: 0, count: 32)
     guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
@@ -18,9 +18,28 @@ final class GoogleSignIn: NSObject, ASWebAuthenticationPresentationContextProvid
     return Data(bytes).base64EncodedString().replacingOccurrences(of: "+", with: "-")
       .replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
   }
+  func receive(_ url: URL) {
+    guard let code = callback?.consume(url), let pending = continuation else { return }
+    continuation = nil
+    timeout?.cancel()
+    pending.resume(returning: code)
+    NSApp.activate(ignoringOtherApps: true)
+  }
+  func cancel() {
+    attempt = nil
+    let pending = continuation
+    continuation = nil
+    callback = nil
+    timeout?.cancel()
+    pending?.resume(throwing: RecallError.message("Connexion annulée. Tu peux réessayer."))
+  }
   func connect(server: String) async throws -> Connection {
-    guard webSession == nil else { throw RecallError.message("Une connexion est déjà en cours.") }
+    guard attempt == nil else { throw RecallError.message("Une connexion est déjà en cours.") }
+    let id = UUID()
+    attempt = id
+    defer { if attempt == id { attempt = nil } }
     let status = try await HTTPClient().json(url: URL(string: server + "/auth/status")!)
+    guard attempt == id else { throw RecallError.message("Connexion annulée.") }
     guard status["google"] as? Bool == true else {
       throw RecallError.message("La connexion Google attend sa configuration sur le serveur.")
     }
@@ -34,36 +53,35 @@ final class GoogleSignIn: NSObject, ASWebAuthenticationPresentationContextProvid
       URLQueryItem(name: "challenge", value: challenge),
       URLQueryItem(name: "app_state", value: state),
     ]
-    defer { webSession = nil }
-    let callback: URL = try await withCheckedThrowingContinuation { continuation in
-      let session = ASWebAuthenticationSession(
-        url: start.url!, callbackURLScheme: "playlist-recall"
-      ) { url, error in
-        if let url {
-          continuation.resume(returning: url)
-        } else {
-          continuation.resume(throwing: error ?? RecallError.message("Connexion annulée."))
-        }
+    defer {
+      continuation = nil
+      callback = nil
+      timeout?.cancel()
+    }
+    let code: String = try await withCheckedThrowingContinuation { pending in
+      continuation = pending
+      callback = GoogleCallback(state: state)
+      // Standard external-browser flow: no hidden macOS authentication sheet or Keychain lookup.
+      guard NSWorkspace.shared.open(start.url!) else {
+        continuation = nil
+        pending.resume(throwing: RecallError.message("Impossible d’ouvrir ton navigateur."))
+        return
       }
-      session.presentationContextProvider = self
-      // Use the user's browser Google session; Google still asks which account to use.
-      session.prefersEphemeralWebBrowserSession = false
-      self.webSession = session
-      if !session.start() {
-        continuation.resume(
-          throwing: RecallError.message("Impossible d’ouvrir la connexion Google."))
+      timeout = Task { [weak self] in
+        do { try await Task.sleep(nanoseconds: 600_000_000_000) } catch { return }
+        self?.cancel()
       }
     }
-    let items = URLComponents(url: callback, resolvingAgainstBaseURL: false)?.queryItems ?? []
-    guard callback.scheme == "playlist-recall", callback.host == "auth",
-      items.first(where: { $0.name == "state" })?.value == state,
-      let code = items.first(where: { $0.name == "code" })?.value
-    else { throw RecallError.message("Cette réponse de connexion n’est pas destinée à Recall.") }
     let result = try await HTTPClient().json(
       url: URL(string: server + "/auth/exchange")!, body: ["code": code, "verifier": verifier])
     guard let token = result["token"] as? String else {
       throw RecallError.message("Connexion incomplète.")
     }
-    return try Connection(url: server, token: token)
+    let connection = try Connection(url: server, token: token)
+    guard attempt == id else {
+      _ = try? await HTTPClient().server(connection, path: "logout", body: [:])
+      throw RecallError.message("Connexion annulée.")
+    }
+    return connection
   }
 }
