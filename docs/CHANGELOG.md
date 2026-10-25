@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Studio : efface aussi les fonds de verre partagés de la barre d’outils macOS pendant le fondu, sans déplacer le clip.
+
 - Studio : commandes, titre, navigation et boutons de fenêtre s’effacent en douceur après trois secondes sans interaction, puis reviennent à la souris ou au clavier ; pause, chargement et pages de lecture gardent les commandes. Le chat ouvert reste visible, le dégradé du clip s’atténue et les animations respectent Réduire les animations.
 - Lecteur YouTube natif : mode discret avec commandes et sous-titres non forcés, annotations désactivées et survol du lecteur évité ; les commandes Recall et le plein écran de la fenêtre restent disponibles. Certains éléments YouTube imposés à la pause restent possibles.
 - Chat : rendu Markdown natif (titres, listes, citations, code, gras et liens sélectionnables) et suppression du message technique Google/DuckDuckGo en cas de repli réussi. App Mac 1.7.1.

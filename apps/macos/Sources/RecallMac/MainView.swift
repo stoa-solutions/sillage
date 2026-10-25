@@ -35,12 +35,12 @@ struct MainView: View {
           Text("Bibliothèque").tag(Destination.library)
           Text("Découvrir").tag(Destination.discover)
         }.pickerStyle(.segmented).fixedSize().neutralSelection().studioChrome(immersion.visible)
-      }
+      }.studioBackground(immersion.visible)
       ToolbarItemGroup(placement: .primaryAction) {
         DisplayPicker(player: dj.player, wide: section == .discover).studioChrome(immersion.visible)
         SettingsLink { Image(systemName: "gearshape") }
           .help("Réglages").accessibilityLabel("Réglages").studioChrome(immersion.visible)
-      }
+      }.studioBackground(immersion.visible)
     }
     .background(
       StudioActivity(immersion: immersion, visible: immersion.visible, reduceMotion: reduceMotion)

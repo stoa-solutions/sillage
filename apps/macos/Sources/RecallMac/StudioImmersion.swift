@@ -54,6 +54,18 @@ extension View {
   }
 }
 
+extension ToolbarContent {
+  /// macOS draws the shared glass outside the SwiftUI label's opacity.
+  /// Hide that background separately while retaining the toolbar's layout.
+  @ToolbarContentBuilder func studioBackground(_ visible: Bool) -> some ToolbarContent {
+    if #available(macOS 26, *) {
+      sharedBackgroundVisibility(visible ? .automatic : .hidden)
+    } else {
+      self
+    }
+  }
+}
+
 /// App-local events only. It neither consumes input nor asks for global input permissions.
 struct StudioActivity: NSViewRepresentable {
   let immersion: StudioImmersion
