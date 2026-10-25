@@ -147,7 +147,8 @@ export async function search(
     pagination = ` ORDER BY ${input.sort === "duration" ? "v.duration_seconds DESC NULLS LAST" : "position"},v.id LIMIT $${selectionParams.length - 1} OFFSET $${selectionParams.length}`;
   }
   const candidates = await db.query(
-    `SELECT v.*,${positionSql} AS position FROM videos v WHERE ${selectionFilter}${pagination}`,
+    `SELECT v.*,${positionSql} AS position,(SELECT avatar_url FROM channels c WHERE c.id=v.channel_id) AS channel_avatar_url
+    FROM videos v WHERE ${selectionFilter}${pagination}`,
     selectionParams,
   );
   const rows = new Map<string, any>(
@@ -184,7 +185,10 @@ export async function search(
       ).rows
     : [];
   const results: (SearchResult & { reason: string })[] = page.map((row) => ({
-    video: videoFromRow(row),
+    video: {
+      ...videoFromRow(row),
+      channelAvatarUrl: row.channel_avatar_url ?? null,
+    },
     score: scores.get(row.id) ?? 0,
     semantic: semantic.includes(row.id),
     memberships: memberships

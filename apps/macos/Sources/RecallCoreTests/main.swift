@@ -116,7 +116,14 @@ do {
   try expect(
     expired.consume(callbackURL, now: now.addingTimeInterval(601)) == nil,
     "Expired OAuth callback accepted")
-  print("29 native behavior checks passed")
+  let avatars = try Catalog.parse(
+    Data(
+      #"{"videos":[{"id":"abcdefghijk","title":"a","channelAvatarUrl":"https://yt3.ggpht.com/x"},{"id":"bcdefghijkl","title":"b","channelAvatarUrl":"https://evil.example/ggpht.com"}]}"#
+        .utf8))
+  try expect(
+    avatars[0].channelAvatarURL?.host == "yt3.ggpht.com" && avatars[1].channelAvatarURL == nil,
+    "Channel photo accepted from a host other than Google's")
+  print("30 native behavior checks passed")
   try await studioCacheChecks()
 } catch {
   fputs("Native tests failed: \(error.localizedDescription)\n", stderr)

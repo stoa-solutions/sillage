@@ -8,7 +8,12 @@ import { createApp } from "../src/app.ts";
 import { enqueue, claim, finish, schedule } from "../src/queue.ts";
 import { infer } from "../src/inference-client.ts";
 import { indexText, indexImage } from "../src/indexing.ts";
-import { enqueueMissing, importLibrary, syncPlaylist } from "../src/library.ts";
+import {
+  enqueueMissing,
+  enrichVideos,
+  importLibrary,
+  syncPlaylist,
+} from "../src/library.ts";
 import { YouTube } from "../src/youtube.ts";
 import type { LibraryImport } from "@playlist-recall/core/types";
 vi.mock("../src/inference-client.ts", () => ({ infer: vi.fn() }));
@@ -54,7 +59,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
   await db.query(
-    "TRUNCATE tokens,playlists,videos,jobs,quota_usage,dj_usage,account_dj_usage,account_dj_settings CASCADE",
+    "TRUNCATE tokens,playlists,videos,channels,jobs,quota_usage,dj_usage,account_dj_usage,account_dj_settings CASCADE",
   );
   await db.query("INSERT INTO tokens(id,name,hash) VALUES($1,$2,$3)", [
     randomUUID(),
@@ -247,6 +252,56 @@ it("requeues failed work once and permits successful recovery", async () => {
   ).toBe("done");
 });
 
+it("returns the channel photo with search results and reuses it for a month", async () => {
+  await importLibrary(db, fixture);
+  const request = vi.fn(async (input: unknown) =>
+    String(input).includes("/channels")
+      ? Response.json({
+          items: [
+            {
+              id: "UCjazz",
+              snippet: {
+                thumbnails: { default: { url: "https://yt3.ggpht.com/jazz" } },
+              },
+            },
+          ],
+        })
+      : Response.json({
+          items: [
+            {
+              id: "abcdefghijk",
+              snippet: {
+                title: "Blue saxophone",
+                channelTitle: "Jazz",
+                channelId: "UCjazz",
+              },
+              contentDetails: { duration: "PT2H" },
+            },
+          ],
+        }),
+  );
+  const youtube = new YouTube("secret", undefined, request);
+  await enrichVideos(db, youtube, ["abcdefghijk"]);
+  await enrichVideos(db, youtube, ["abcdefghijk"]);
+  const channelCalls = request.mock.calls.filter(([url]) =>
+    String(url).includes("/channels"),
+  );
+  expect(channelCalls).toHaveLength(1);
+  vi.mocked(infer).mockRejectedValueOnce(new Error("Unavailable"));
+  const response = await app.request("/v1/search", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query: "" }),
+  });
+  const data = await response.json();
+  expect(data.results[0].video.channelAvatarUrl).toBe(
+    "https://yt3.ggpht.com/jazz",
+  );
+});
+
 it("finds partial lexical matches in a natural-language query when inference is unavailable", async () => {
   await importLibrary(db, fixture);
   vi.mocked(infer).mockRejectedValueOnce(new Error("Unavailable"));
@@ -281,9 +336,9 @@ it("excludes queued videos and caps results inside the search", async () => {
   });
   const data = await response.json();
   expect(response.status).toBe(200);
-  expect(data.results.map((r: { video: { id: string } }) => r.video.id)).not.toContain(
-    "abcdefghijk",
-  );
+  expect(
+    data.results.map((r: { video: { id: string } }) => r.video.id),
+  ).not.toContain("abcdefghijk");
   expect(data.results.length).toBeLessThanOrEqual(1);
 });
 

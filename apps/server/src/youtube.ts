@@ -91,7 +91,9 @@ export class YouTube {
     } while (page);
     return { title: info.items[0].snippet.title, entries };
   }
-  async videos(ids: string[]): Promise<Video[]> {
+  async videos(
+    ids: string[],
+  ): Promise<(Video & { channelId: string | null })[]> {
     if (!ids.length) return [];
     if (ids.length > 50) throw new Error("Maximum 50 vidéos par lot.");
     const data = await this.get("videos", {
@@ -102,6 +104,7 @@ export class YouTube {
       id: v.id,
       title: v.snippet.title,
       channel: v.snippet.channelTitle,
+      channelId: v.snippet.channelId ?? null,
       durationSeconds: isoDuration(v.contentDetails.duration),
       description: v.snippet.description ?? "",
       tags: v.snippet.tags ?? [],
@@ -111,5 +114,22 @@ export class YouTube {
         `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
       url: `https://www.youtube.com/watch?v=${v.id}`,
     }));
+  }
+  /** Channel photos (88 px), at most 50 channels per call and one quota unit. */
+  async channelAvatars(ids: string[]): Promise<Map<string, string>> {
+    if (!ids.length) return new Map();
+    if (ids.length > 50) throw new Error("Maximum 50 chaînes par lot.");
+    const data = await this.get("channels", {
+      part: "snippet",
+      id: ids.join(","),
+    });
+    return new Map(
+      (data.items ?? [])
+        .map((c: any) => [c.id, c.snippet?.thumbnails?.default?.url] as const)
+        .filter(
+          ([, url]: readonly [string, unknown]) =>
+            typeof url === "string" && url.startsWith("https://"),
+        ),
+    );
   }
 }

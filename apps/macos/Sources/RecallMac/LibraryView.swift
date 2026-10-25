@@ -166,7 +166,7 @@ private struct TrackRow: View {
         Text(track.title).fontWeight(.medium).lineLimit(2)
         if let channel = track.channel, !channel.isEmpty {
           HStack(spacing: 6) {
-            ChannelAvatar(name: channel)
+            ChannelAvatar(name: channel, photo: track.channelAvatarURL)
             Text(channelName(channel)).font(.callout).foregroundStyle(.secondary).lineLimit(1)
           }
         }
@@ -194,17 +194,26 @@ private func channelName(_ channel: String) -> String {
   channel.hasSuffix(" - Topic") ? String(channel.dropLast(8)) : channel
 }
 
-/// Initial on a colour derived from the channel name, so a channel keeps its colour everywhere.
+/// The channel's photo when the server has it; otherwise its initial on a colour derived from the
+/// name, so a channel keeps its colour everywhere.
 private struct ChannelAvatar: View {
   let name: String
+  let photo: URL?
   var body: some View {
+    AsyncImage(url: photo) { image in
+      image.resizable().scaledToFill().frame(width: 20, height: 20).clipShape(Circle())
+    } placeholder: {
+      monogram
+    }.accessibilityHidden(true)
+  }
+  private var monogram: some View {
     let label = channelName(name)
     let seed = label.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
-    Circle().fill(Color(hue: Double(seed % 360) / 360, saturation: 0.45, brightness: 0.62))
+    return Circle().fill(Color(hue: Double(seed % 360) / 360, saturation: 0.45, brightness: 0.62))
       .frame(width: 20, height: 20)
       .overlay {
         Text(label.first.map { String($0).uppercased() } ?? "?")
           .font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
-      }.accessibilityHidden(true)
+      }
   }
 }

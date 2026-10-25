@@ -80,6 +80,46 @@ describe("YouTube input and complete snapshots", () => {
       new YouTube("secret", undefined, request).videos(["abcdefghijk"]),
     ).rejects.toThrow("YouTube HTTP 403 (quotaExceeded)");
   });
+  it("reads channel ids and keeps only https channel photos", async () => {
+    const request = vi.fn(async (input: unknown) =>
+      String(input).includes("/channels")
+        ? Response.json({
+            items: [
+              {
+                id: "UCa",
+                snippet: {
+                  thumbnails: { default: { url: "https://yt3.ggpht.com/a" } },
+                },
+              },
+              {
+                id: "UCb",
+                snippet: {
+                  thumbnails: { default: { url: "http://insecure/b" } },
+                },
+              },
+              { id: "UCc", snippet: {} },
+            ],
+          })
+        : Response.json({
+            items: [
+              {
+                id: "abcdefghijk",
+                snippet: {
+                  title: "Song",
+                  channelTitle: "Artist",
+                  channelId: "UCa",
+                },
+                contentDetails: { duration: "PT3M" },
+              },
+            ],
+          }),
+    );
+    const youtube = new YouTube("secret", undefined, request);
+    const [video] = await youtube.videos(["abcdefghijk"]);
+    expect(video.channelId).toBe("UCa");
+    const avatars = await youtube.channelAvatars(["UCa", "UCb", "UCc"]);
+    expect([...avatars]).toEqual([["UCa", "https://yt3.ggpht.com/a"]]);
+  });
   it("parses real duration fields and preserves unknown values", () => {
     expect(isoDuration("PT7H26M36S")).toBe(26796);
     expect(isoDuration()).toBe(null);

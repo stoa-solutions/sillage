@@ -105,3 +105,5 @@ CREATE TABLE IF NOT EXISTS oauth_grants (
   code_hash text PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   challenge text NOT NULL, expires_at timestamptz NOT NULL
 );
+ALTER TABLE videos ADD COLUMN IF NOT EXISTS channel_id text;
+CREATE TABLE IF NOT EXISTS channels (id text PRIMARY KEY, avatar_url text, fetched_at timestamptz NOT NULL DEFAULT now());

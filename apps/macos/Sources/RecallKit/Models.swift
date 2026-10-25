@@ -7,10 +7,12 @@ public struct Track: Codable, Identifiable, Hashable, Sendable {
   public let durationSeconds: Double?
   public let description: String?
   public let metadataUnavailable: Bool?
+  /// Channel photo served by Google's image hosts; nil until the server knows it.
+  public let channelAvatarURL: URL?
   public var url: URL { URL(string: "https://www.youtube.com/watch?v=\(id)")! }
   public init(
     id: String, title: String, channel: String? = nil, durationSeconds: Double? = nil,
-    description: String? = nil, metadataUnavailable: Bool? = nil
+    description: String? = nil, metadataUnavailable: Bool? = nil, channelAvatarURL: URL? = nil
   ) {
     self.id = id
     self.title = title
@@ -18,6 +20,7 @@ public struct Track: Codable, Identifiable, Hashable, Sendable {
     self.durationSeconds = durationSeconds
     self.description = description
     self.metadataUnavailable = metadataUnavailable
+    self.channelAvatarURL = channelAvatarURL
   }
 }
 public struct ChatMessage: Codable, Identifiable, Sendable {
@@ -120,7 +123,15 @@ public enum Catalog {
         durationSeconds: duration,
         description: String((row["description"] as? String ?? "").prefix(10000)),
         metadataUnavailable: missingTitle || row["metadataUnavailable"] as? Bool == true
-          ? true : nil)
+          ? true : nil,
+        channelAvatarURL: (row["channelAvatarUrl"] as? String).flatMap(googleImage))
     }
   }
+}
+
+/// Only https images from Google's own hosts are loaded, whatever a server or import says.
+func googleImage(_ text: String) -> URL? {
+  guard let url = URL(string: text), url.scheme == "https", let host = url.host else { return nil }
+  let allowed = ["ggpht.com", "googleusercontent.com", "ytimg.com"]
+  return allowed.contains { host == $0 || host.hasSuffix("." + $0) } ? url : nil
 }

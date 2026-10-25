@@ -10,15 +10,16 @@ import { YouTube } from "./youtube.ts";
 
 export async function upsertVideo(
   client: pg.PoolClient | Database,
-  v: Video,
+  v: Video & { channelId?: string | null },
   enriched = false,
 ) {
   await client.query(
-    `INSERT INTO videos(id,title,channel,duration_seconds,description,tags,published_at,thumbnail_url,content_hash,enriched_at)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,CASE WHEN $10 THEN now() ELSE NULL END)
+    `INSERT INTO videos(id,title,channel,duration_seconds,description,tags,published_at,thumbnail_url,content_hash,enriched_at,channel_id)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,CASE WHEN $10 THEN now() ELSE NULL END,$11)
     ON CONFLICT(id) DO UPDATE SET title=excluded.title,channel=excluded.channel,duration_seconds=excluded.duration_seconds,
     description=excluded.description,tags=excluded.tags,published_at=excluded.published_at,thumbnail_url=excluded.thumbnail_url,
-    content_hash=excluded.content_hash,enriched_at=CASE WHEN $10 THEN now() ELSE videos.enriched_at END,available=true`,
+    content_hash=excluded.content_hash,enriched_at=CASE WHEN $10 THEN now() ELSE videos.enriched_at END,available=true,
+    channel_id=COALESCE(excluded.channel_id,videos.channel_id)`,
     [
       v.id,
       v.title,
@@ -30,6 +31,7 @@ export async function upsertVideo(
       v.thumbnailUrl,
       hash(documentText(v)),
       enriched,
+      v.channelId ?? null,
     ],
   );
 }
@@ -233,10 +235,43 @@ export async function enrichVideos(
           [id],
         );
   });
+  await refreshChannelAvatars(
+    db,
+    youtube,
+    videos.map((v) => v.channelId),
+  );
   for (const v of videos) {
     await enqueue(db, "text", `${v.id}:${hash(documentText(v))}`, {
       videoId: v.id,
     });
     await enqueue(db, "image", v.id, { videoId: v.id });
   }
+}
+/** Photos are decoration: a YouTube failure leaves the initial shown by the apps. */
+async function refreshChannelAvatars(
+  db: Database,
+  youtube: YouTube,
+  channelIds: (string | null)[],
+) {
+  const ids = [...new Set(channelIds.filter((id): id is string => !!id))];
+  if (!ids.length) return;
+  const { rows } = await db.query(
+    `SELECT id FROM channels WHERE id=ANY($1::text[]) AND fetched_at>now()-interval '30 days'`,
+    [ids],
+  );
+  const fresh = new Set(rows.map((r) => r.id));
+  const stale = ids.filter((id) => !fresh.has(id));
+  if (!stale.length) return;
+  let avatars: Map<string, string>;
+  try {
+    avatars = await youtube.channelAvatars(stale);
+  } catch {
+    return;
+  }
+  for (const id of stale)
+    await db.query(
+      `INSERT INTO channels(id,avatar_url,fetched_at) VALUES($1,$2,now())
+      ON CONFLICT(id) DO UPDATE SET avatar_url=COALESCE(excluded.avatar_url,channels.avatar_url),fetched_at=now()`,
+      [id, avatars.get(id) ?? null],
+    );
 }

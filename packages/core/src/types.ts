@@ -8,6 +8,8 @@ export interface Video {
   thumbnailUrl: string;
   url: string;
   publishedAt: string | null;
+  /** Channel photo from YouTube; present in server search results once known. */
+  channelAvatarUrl?: string | null;
 }
 export interface Playlist { id: string; title: string; sourceUrl: string; importedAt: string }
 export interface Membership { key: string; playlistId: string; videoId: string; position: number }
