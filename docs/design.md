@@ -58,3 +58,7 @@ Pas de libellés en capitales, pas de points médians en séparateur, pas de num
 ## Vérification
 
 Chaque écran est vérifié en Compact et en Studio, clair et sombre, avec « Réduire les animations », au clavier et avec VoiceOver. Les captures avant et après sont jointes à l’intégration.
+
+### Paroles
+
+Les paroles restent dans le panneau latéral, jamais au centre du clip. Le raccourci Paroles ouvre cet onglet et déplie le panneau si nécessaire. La ligne chantée, son défilement, le clic pour se déplacer et le calage par compte sont conservés.

@@ -6,7 +6,6 @@ import SwiftUI
 struct DJView: View {
   @AppStorage("djPanelCollapsed") private var panelCollapsed = false
   @State private var panelTab = SessionPanelTab.dj
-  @AppStorage("karaokeOverlay") private var karaoke = false
   @StateObject private var lyrics = LyricsModel()
   let panelOnly: Bool
   let source: DiscoveryScope?
@@ -65,7 +64,7 @@ struct DJView: View {
     HStack(alignment: .bottom, spacing: 0) {
       VStack(alignment: .leading, spacing: 14) {
         if player.studioReady {
-          if karaoke { KaraokeOverlay(model: lyrics, player: player) } else { Spacer(minLength: 0) }
+          Spacer(minLength: 0)
         } else if player.preparingStudio {
           HStack(spacing: 10) {
             ProgressView().controlSize(.small)
@@ -135,12 +134,20 @@ struct DJView: View {
       Toggle(isOn: $model.continuous) { Label("Enchaîner", systemImage: "infinity") }
         .help("À la fin de la file, le DJ ajoute de nouveaux morceaux dans la même ambiance")
       if player.studio {
-        Toggle(isOn: $karaoke) { Label("Karaoké", systemImage: "music.mic") }
-          .disabled(!player.studioReady)
-          .help(
-            player.studioReady
-              ? "Afficher les paroles en grand sur le clip"
-              : "Disponible quand le clip Studio est prêt")
+        Toggle(
+          isOn: Binding(
+            get: { !panelCollapsed && panelTab == .lyrics },
+            set: { visible in
+              if visible {
+                panelCollapsed = false
+                panelTab = .lyrics
+              } else {
+                panelTab = .dj
+              }
+            }
+          )
+        ) { Label("Paroles", systemImage: "music.note.list") }
+        .help("Afficher les paroles synchronisées dans le panneau latéral")
       }
       if let current = model.current {
         Link(destination: current.url) { Image(systemName: "arrow.up.right.square") }

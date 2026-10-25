@@ -128,42 +128,6 @@ struct LyricsPanel: View {
   }
 }
 
-/// Studio: the line being sung and the next one, large over the clip.
-struct KaraokeOverlay: View {
-  @ObservedObject var model: LyricsModel
-  @ObservedObject var player: Player
-  @State private var clock = PlaybackClock()
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-  var body: some View {
-    Group {
-      if let lyrics = model.lyrics, lyrics.status == .synced {
-        TimelineView(.animation(minimumInterval: 1 / 30, paused: !player.playing)) { context in
-          let position = lyrics.position(at: clock.now(context.date, playing: player.playing))
-          let index = position.index ?? -1
-          VStack(spacing: 14) {
-            if index >= 0 {
-              LyricsLineView(
-                text: lyrics.lines[index].text,
-                state: .current(reduceMotion ? 1 : position.progress), size: 44)
-            }
-            if lyrics.lines.indices.contains(index + 1) {
-              LyricsLineView(text: lyrics.lines[index + 1].text, state: .future, size: 30)
-            }
-          }.multilineTextAlignment(.center).shadow(color: .black.opacity(0.6), radius: 12)
-            .frame(maxWidth: 900).animation(
-              reduceMotion ? nil : .easeOut(duration: 0.25), value: index)
-        }
-      } else {
-        Color.clear
-      }
-    }.frame(maxWidth: .infinity, maxHeight: .infinity)
-      .onChange(of: player.elapsed) { _, value in clock = PlaybackClock(elapsed: value, at: Date())
-      }
-      .accessibilityHidden(true)
-  }
-}
-
 enum LineState: Equatable {
   case past
   case current(Double)

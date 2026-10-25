@@ -2,7 +2,9 @@
 
 ## Non publié
 
-- Relecture croisée : paroles et calage isolés après changement de compte, source des suites liée à la dernière direction musicale, annonces vocales nettoyées identiques à leur préparation ; une seule source commune dans Découvrir et bouton karaoké inactif tant que le clip n’est pas prêt.
+- Paroles : à la demande de Samuel, aucun texte au centre du clip. Le bouton Paroles ouvre le panneau latéral synchronisé ; le calage et le clic sur une ligne restent disponibles.
+
+- Relecture croisée : paroles et calage isolés après changement de compte, source des suites liée à la dernière direction musicale, annonces vocales nettoyées identiques à leur préparation ; une seule source commune dans Découvrir.
 
 - App 1.5.2 : Découvrir, son chat DJ et Bibliothèque ont un fond sombre stable ; le clip reste discret derrière les pages de lecture. Surfaces et fonds centralisés dans Surfaces.swift, respect de Réduire la transparence et Réduire les animations ; les actions de bibliothèque restent visibles.
 

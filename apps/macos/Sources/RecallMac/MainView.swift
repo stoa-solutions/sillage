@@ -83,7 +83,7 @@ struct MainView: View {
 }
 
 /// Every page sits on the same dark stage under a transparent toolbar: the clip in Studio
-/// (blurred and dimmed outside DJ), the cover in Compact. Reading panels stay opaque.
+/// (dimmed outside DJ), the cover in Compact. Reading panels retain stable contrast.
 private struct Shell<Content: View>: View {
   @ObservedObject var player: Player
   let current: Track?
