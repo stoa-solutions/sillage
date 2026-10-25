@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Découvrir : identité visuelle distincte pour un morceau présent dans les deux sources ; le filtre de playlist conserve la bonne ligne et ses actions.
+
 - Réglages : une clé refusée par Google avec une réponse 400 reçoit le même message explicite que les refus 401/403.
 
 - Découvrir : recherche YouTube limitée à la musique ; aperçu de trois résultats privés pour garder les découvertes visibles en mode Partout.

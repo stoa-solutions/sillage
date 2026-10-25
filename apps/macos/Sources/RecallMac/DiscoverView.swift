@@ -56,7 +56,7 @@ struct DiscoverView: View {
               if discovery.searched && discovery.scope != .youtube {
                 resultHeading("Dans tes playlists (\(discovery.libraryTotal))")
                 if !discovery.libraryError.isEmpty { error(discovery.libraryError) }
-                ForEach(visibleLibrary) { track in
+                ForEach(visibleLibrary.map { ("library:" + $0.id, $0) }, id: \.0) { _, track in
                   LibraryDiscoveryRow(track: track)
                   Divider()
                 }
@@ -69,7 +69,9 @@ struct DiscoverView: View {
                   Text("Aucun morceau dans cette sélection de playlists.").foregroundStyle(
                     .secondary)
                 }
-                if discovery.libraryTotal > discovery.libraryTracks.count {
+                if discovery.libraryTotal > discovery.libraryTracks.count
+                  && (showAllLibrary || discovery.scope == .library)
+                {
                   Text(
                     "Les 25 premiers résultats. Affine ta recherche ou utilise la pagination dans Bibliothèque."
                   ).font(.caption).foregroundStyle(.secondary)
@@ -78,7 +80,7 @@ struct DiscoverView: View {
               if discovery.searched && discovery.scope != .library {
                 resultHeading("À découvrir sur YouTube")
                 if !discovery.youtubeError.isEmpty { error(discovery.youtubeError) }
-                ForEach(discovery.youtube) { item in
+                ForEach(discovery.youtube.map { ("youtube:" + $0.id, $0) }, id: \.0) { _, item in
                   DiscoveryTrackRow(item: item)
                   Divider()
                 }
