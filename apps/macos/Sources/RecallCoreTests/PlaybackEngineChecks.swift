@@ -10,8 +10,16 @@ private final class FakePlayer: PlaybackBackend {
   var volume: Double = 1
   var position: Double = 0
   var failLoad = false
+  /// When set, loads wait until `release()`; lets a test act while the clip is loading.
+  var holdLoads = false
+  var held: [CheckedContinuation<Void, Never>] = []
+  func release() {
+    held.forEach { $0.resume() }
+    held = []
+  }
   func load(_ source: PlaybackSource, at start: Double, autoplay: Bool) async throws {
     if failLoad { throw RecallError.message("load failed") }
+    if holdLoads { await withCheckedContinuation { held.append($0) } }
     loaded.append((source, start, autoplay))
     position = start
     playing = autoplay
@@ -41,9 +49,10 @@ private final class FakeClips: ClipSource {
 
 @MainActor
 private func settle(_ condition: () -> Bool) async throws {
+  // Real time passes too: crossfades in these checks last a fraction of a second.
   for _ in 0..<2000 {
     if condition() { return }
-    await Task.yield()
+    try await Task.sleep(nanoseconds: 1_000_000)
   }
   throw RecallError.message("Playback engine did not settle")
 }
@@ -172,5 +181,51 @@ func playbackEngineChecks() async throws {
   engine.duck(false)
   try expect(youtube.volume == 1, "The music was not restored after the voice")
 
-  print("Playback engine checks passed: instant start, crossfade handover, pause, fallbacks, stale clips, YouTube only")
+  // A real crossfade interrupted by a quality change ends cleanly on YouTube.
+  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  engine = PlaybackEngine(
+    youtube: youtube, clip: clip, clips: clips, volume: 0.6, fadeDuration: 0.2, fadeSteps: 4)
+  engine.cue(song)
+  try await settle { clips.waiting[song.id] != nil }
+  youtube.onSignal?(.playing(true))
+  clips.deliver(song.id)
+  try await settle { engine.fading }
+  engine.reloadClip()
+  try expect(!engine.fading && engine.active == .youtube, "A reload left the crossfade running")
+  try await Task.sleep(nanoseconds: 300_000_000)
+  try expect(
+    !engine.fading && abs(youtube.volume - 0.6) < 0.001,
+    "The interrupted crossfade kept changing the volume")
+  engine.volume = 0.4
+  try expect(abs(youtube.volume - 0.4) < 0.001, "Volume stopped applying after an interrupted fade")
+
+  // Pausing during the crossfade silences both players.
+  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  engine = PlaybackEngine(
+    youtube: youtube, clip: clip, clips: clips, fadeDuration: 0.2, fadeSteps: 4)
+  engine.cue(song)
+  try await settle { clips.waiting[song.id] != nil }
+  youtube.onSignal?(.playing(true))
+  clips.deliver(song.id)
+  try await settle { engine.fading }
+  engine.pause()
+  try expect(!youtube.playing && !clip.playing, "A pause during the crossfade left YouTube playing")
+  try await settle { !engine.fading }
+
+  // Next while the clip is still loading: the old load never takes over the new song.
+  youtube = FakePlayer(); clip = FakePlayer(); clips = FakeClips()
+  clip.holdLoads = true
+  engine = PlaybackEngine(youtube: youtube, clip: clip, clips: clips, fadeDuration: 0)
+  engine.cue(song)
+  try await settle { clips.waiting[song.id] != nil }
+  clips.deliver(song.id)
+  try await settle { clip.held.count == 1 }
+  engine.cue(other)
+  clip.release()
+  for _ in 0..<50 { await Task.yield() }
+  try expect(
+    engine.active == .youtube && engine.track?.id == other.id && !clip.playing,
+    "A clip still loading for the previous song took over the new one")
+
+  print("Playback engine checks passed: instant start, crossfade handover, pause, fallbacks, stale clips, YouTube only, interrupted fades, Next during load")
 }

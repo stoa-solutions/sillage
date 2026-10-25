@@ -141,6 +141,7 @@ do {
   try playbackSessionChecks()
   try listeningSessionChecks()
   try await playbackEngineChecks()
+  try await clipPlayerChecks()
   try lyricsChecks()
   try await lyricsAccountChecks()
   try trackTitleChecks()

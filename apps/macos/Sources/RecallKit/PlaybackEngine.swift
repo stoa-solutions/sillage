@@ -116,7 +116,9 @@ public final class PlaybackEngine: ObservableObject {
 
   public func pause() {
     wantsPlayback = false
-    backend(active).pause()
+    // During the crossfade both players sound: pause both.
+    youtube.pause()
+    clip.pause()
   }
 
   public func seek(_ seconds: Double) {
@@ -151,6 +153,7 @@ public final class PlaybackEngine: ObservableObject {
     guard let track else { return }
     generation += 1
     clipTask?.cancel()
+    fading = false
     if active == .clip {
       let resume = clip.position
       clip.stop()
@@ -166,6 +169,7 @@ public final class PlaybackEngine: ObservableObject {
   public func reset() {
     generation += 1
     clipTask?.cancel()
+    fading = false
     youtube.stop()
     clip.stop()
     track = nil
@@ -205,10 +209,8 @@ public final class PlaybackEngine: ObservableObject {
       clipFailed(generation: generation)
       return
     }
-    guard generation == self.generation else {
-      clip.stop()
-      return
-    }
+    // A newer song already stopped this clip and may be loading its own: leave it alone.
+    guard generation == self.generation else { return }
     heldUnavailable = false
     failure = ""
     if wantsPlayback {
