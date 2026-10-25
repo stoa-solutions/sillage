@@ -7,7 +7,7 @@ export function djIntent(message: string): DJIntent {
     && /\b(joue|mets|met|lance|ecoute|passe|remplace)\b/.test(text)
     && !/\b(ne|pas|sans|apres|plus tard)\b/.test(text)) return "replace";
   // Deferred listening wins over an imperative such as "joue après ce titre".
-  if (/\b(a la suite|dans la (file|queue)|en (file|queue)|apres (ce|le|la) (titre|morceau|chanson)|plus tard|sans (couper|interrompre|changer))\b/.test(text)
+  if (/\b(a la suite|a suivre|dans la (file|queue)|en (file|queue)|apres (ce|le|la) (titre|morceau|chanson)|plus tard|sans (couper|interrompre|changer))\b/.test(text)
     || /\b(continue|poursuis|prolonge|prepare(?:r)? la suite|ajoute|rajoute|enqueue)\b/.test(text))
     return "append";
   if (/\b(joue|jouer|mets|met|lance|lancer|ecouter|ecoute|passe|remplace|play)\b/.test(text))
@@ -24,4 +24,10 @@ export function djIntent(message: string): DJIntent {
 }
 export function playbackAction(intent: DJIntent, proposed: "replace" | "append" | "keep") {
   return intent === "browse" || proposed === "keep" ? "keep" : intent;
+}
+
+/** Relative requests refer to actual playback, never an old assistant announcement. */
+export function followsCurrent(message: string): boolean {
+  const text = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return /\b(meme (style|ambiance|vibe|esprit|genre)|comme (ca|celle ci|celui ci)|dans cet esprit)\b/.test(text);
 }

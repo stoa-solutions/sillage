@@ -16,6 +16,9 @@ struct QueueEntry: Identifiable {
 final class DJModel: ObservableObject {
   @Published private(set) var listening = ListeningSession()
   @Published var prompt = ""
+  @Published var showingRules = false
+  @Published private(set) var rulesText = ""
+  private var rulesTask: Task<Void, Never>?
   @Published var searchScope: DiscoveryScope = .library
   let player = Player()
   let microphone = Microphone()
@@ -73,6 +76,9 @@ final class DJModel: ObservableObject {
 
   /// The account changed: the File and the chat belonged to the previous library.
   func reset() {
+    rulesTask?.cancel()
+    showingRules = false
+    rulesText = ""
     work?.cancel()
     work = nil
     microphone.stop()
@@ -94,8 +100,32 @@ final class DJModel: ObservableObject {
     }
     prompt = ""
     microphone.stop()
+    if DJCommand.parse(text) == .rules {
+      showRules()
+      return
+    }
     dispatch(.ask(text, source: source ?? searchScope))
   }
+  private func showRules() {
+    showingRules = true
+    rulesText = "Chargement des règles…"
+    rulesTask?.cancel()
+    guard let connection = session.connection else {
+      rulesText = "Connecte ton compte pour consulter les règles du DJ."
+      return
+    }
+    rulesTask = Task { [weak self] in
+      do {
+        let response = try await HTTPClient().server(connection, path: "dj/rules")
+        try Task.checkCancellation()
+        self?.rulesText = response["prompt"] as? String ?? "Règles indisponibles."
+      } catch {
+        guard !Task.isCancelled else { return }
+        self?.rulesText = "Impossible de charger les règles. Réessaie avec /prompt."
+      }
+    }
+  }
+
   func play(_ track: Track, source: DiscoveryScope = .library) {
     dispatch(.play(track, source: source))
   }
@@ -160,7 +190,8 @@ final class DJModel: ObservableObject {
     guard let connection = session.connection else {
       dispatch(
         .failed(
-          request: id, message: "Connecte ton serveur dans Réglages pour retrouver ta bibliothèque."))
+          request: id, message: "Connecte ton serveur dans Réglages pour retrouver ta bibliothèque."
+        ))
       return
     }
     work = Task { [weak self] in

@@ -2,6 +2,10 @@
 
 ## Non publié
 
+- Composition : préparation manuelle et automatique sans rejouer les titres déjà écoutés/en file, y compris un même artiste/titre sous une autre vidéo. Cinq titres visés par défaut, une seule recherche complémentaire si la sélection est trop courte ; manque de résultats signalé. Menu `/`, commandes `/suite 1…8`, `/suivant`, `/pause`, `/reprendre`, `/aide`, `/prompt` (règles de base en lecture seule).
+
+- DJ : « prépare-moi des à suivre » conserve la lecture. Les demandes « même style / comme ça » reçoivent le morceau et l’artiste réellement en cours dans un contexte séparé ; les anciennes annonces ne servent plus de référence. Les annonces de sélection décrivent l’action validée et les titres retenus.
+
 - DJ : les références aux cartes (« le trois », « les trois ») pilotent directement les titres affichés, dans leur ordre. Le contexte conserve les propositions ; « joue directement » prime sur « ajoute ». Une sélection vide ne peut plus annoncer un démarrage. Commandes « mets Play » et « mets la suivante » locales, design conservé.
 
 - MusicBrainz : extension progressive par compte, file bornée à dix tâches et correspondances prudentes conservées. Bibliothèque affiche les morceaux traités, enrichis, ambigus, sans correspondance et les reprises ; suivi actualisé sans interrompre la lecture.

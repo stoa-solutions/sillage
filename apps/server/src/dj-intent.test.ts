@@ -28,3 +28,11 @@ it("does not convert a clarification/no-result into a playback command", () => {
   expect(playbackAction("replace", "append")).toBe("replace");
   expect(playbackAction("append", "replace")).toBe("append");
 });
+it.each([
+  ["prepare moi des à suivre comme ça stp", "append"],
+  ["prépare-moi quelques titres à suivre", "append"],
+  ["j'ai envie que tu me mettre une next musique dans ce meme style stp", "replace"],
+  ["mets ce titre à suivre", "append"],
+])("honors continuation intent in %s", (message, expected) => {
+  expect(djIntent(message)).toBe(expected);
+});

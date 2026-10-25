@@ -451,3 +451,12 @@ it("excludes queued public tracks from automatic discovery but permits explicit 
     }
   } finally { await mcp.close(); }
 });
+it("exposes only public DJ rules to authenticated accounts, without configuration secrets", async () => {
+  expect((await req("/v1/dj/rules", "invalid-token")).status).toBe(401);
+  const response = await req("/v1/dj/rules");
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(Object.keys(body)).toEqual(["prompt"]);
+  expect(body.prompt).toContain("DJ personnel");
+  expect(body.prompt).not.toContain("test-youtube-key");
+});

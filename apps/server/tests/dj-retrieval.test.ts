@@ -66,3 +66,35 @@ it("does not announce playback with an empty executable selection", async () => 
   provider([tool, { content: JSON.stringify({ reply: "C'est parti, je lance Omer Adam", action: "replace", trackIds: [] }) }]);
   await expect(djTurn(db, djInput.parse({ scope: "all", message: "lance Omer Adam" }), undefined, config, "alice")).rejects.toThrow("pas obtenu de morceau");
 });
+it("grounds a relative queue request in current artist, ignoring stale assistant claims", async () => {
+  const reply = { content: JSON.stringify({ reply: "Je lance Acid Coco tout de suite", action: "replace", trackIds: [track.id] }) };
+  const bodies = provider([tool, reply, tool, reply]);
+  const result = await djTurn(db, djInput.parse({ scope: "all", message: "prepare moi des à suivre comme ça stp",
+    playbackContext: { current: { id: "nMQw29nfzpg", title: "Tel Aviv", channel: "Omer Adam feat. Arisa", artists: [], genres: [] }, direction: "Du Omer Adam" },
+    history: [{ role: "assistant", content: "Je lance Acid Coco" }],
+  }), undefined, config, "alice");
+  expect(result.action).toBe("append");
+  expect(result.reply).toContain(track.title);
+  expect(result.reply).not.toMatch(/Acid Coco|tout de suite|Je lance/);
+  expect(bodies[0].messages.some((m: any) => m.content === "Je lance Acid Coco")).toBe(false);
+  expect(JSON.stringify(bodies[0].messages)).toContain("Omer Adam feat. Arisa");
+});
+it("supports older clients that do not send a playback snapshot", async () => {
+  provider([tool, answer()]);
+  const result = await djTurn(db, djInput.parse({ message: "cherche Edge" }), undefined, config, "alice");
+  expect(result.action).toBe("keep");
+});
+
+it("retries one short queue selection and rejects IDs already played even if the tool returns them", async () => {
+  const fresh = { ...track, id: "fresh000001", title: "Fresh song" };
+  mocks.call.mockResolvedValue({ content: [{ type: "text", text: JSON.stringify({ tracks: [track, fresh] }) }] });
+  const reply = { content: JSON.stringify({ reply: "Je rejoue", action: "append", trackIds: [track.id, fresh.id, fresh.id] }) };
+  const bodies = provider([tool, reply, tool, reply]);
+  const result = await djTurn(db, djInput.parse({ scope: "all", message: "Prépare 5 nouveaux morceaux à suivre", excludeIds: [track.id] }), undefined, config, "alice");
+  expect(result).toMatchObject({ action: "append", tracks: [fresh] });
+  expect(result.reply).toContain("sur les 5 demandés");
+  expect(bodies).toHaveLength(4);
+});
+it("accepts an empty native playback snapshot before the first track", () => {
+  expect(djInput.parse({ message: "du jazz", playbackContext: { direction: "" } }).playbackContext?.current).toBeUndefined();
+});

@@ -115,6 +115,32 @@ func djCompositionChecks() async throws {
   try expect(
     composition.request(history: [], queue: queue).scope == .library,
     "New musical direction did not update its source")
+  composition.direct("Du Omer Adam sans live", source: .all)
+  queue.replace([Track(id: "nMQw29nfzpg", title: "Tel Aviv", channel: "Omer Adam feat. Arisa")])
+  composition.direct("prepare moi des à suivre comme ça stp", source: .all)
+  let relative = composition.userRequest("dans ce même style", history: noisyChat, queue: queue)
+  try expect(
+    relative.playbackContext?.current?.channel == "Omer Adam feat. Arisa",
+    "Current artist was lost from the relative request")
+  try expect(
+    relative.playbackContext?.direction == "Du Omer Adam sans live",
+    "Relative follow-up erased the musical direction or restrictions")
+  try expect(
+    composition.request(history: noisyChat, queue: queue).playbackContext?.current?.id
+      == "nMQw29nfzpg",
+    "Automatic refill lost actual playback context")
+  var copies = PlaybackQueue()
+  copies.replace([
+    Track(id: "original001", title: "Artist - Song (Official Video)", channel: "Artist")
+  ])
+  let duplicateCopy = Track(id: "duplicate01", title: "Song", channel: "Artist - Topic")
+  try expect(
+    copies.freshContinuation(DJResponse(reply: "Encore", action: "append", tracks: [duplicateCopy]))
+      .tracks.isEmpty,
+    "Another upload of the same cleaned artist/title was replayed")
+  try expect(
+    copies.apply(DJResponse(reply: "Rejoue", action: "replace", tracks: [duplicateCopy])),
+    "An explicit immediate replay was blocked")
   composition.reset()
   try expect(
     composition.directions.isEmpty && !composition.needsDirection,

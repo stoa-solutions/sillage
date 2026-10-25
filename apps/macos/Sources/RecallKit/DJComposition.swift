@@ -10,7 +10,10 @@ public struct DJComposition: Sendable {
   public mutating func reset() { self = Self() }
   public mutating func direct(_ text: String, source: DiscoveryScope = .library) {
     self.source = source
-    directions.append(String(text.prefix(600)))
+    // Relative follow-ups retain the last explicit musical direction and its restrictions.
+    if !DJPlaybackContext.followsCurrent(text) || directions.isEmpty {
+      directions.append(String(text.prefix(600)))
+    }
     directions = Array(directions.suffix(6))
     resume()
   }
@@ -47,8 +50,10 @@ public struct DJComposition: Sendable {
   }
   public func userRequest(_ text: String, history: [ChatMessage], queue: PlaybackQueue) -> DJRequest
   {
-    DJRequest(
+    var request = DJRequest(
       message: text, history: contextualHistory(history, queue: queue), queued: queue.excludedIDs)
+    request.playbackContext = DJPlaybackContext(queue: queue, direction: directions.last ?? "")
+    return request
   }
   private func contextualHistory(_ history: [ChatMessage], queue: PlaybackQueue) -> [ChatMessage] {
     let direction = directions.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(
@@ -95,6 +100,7 @@ public struct DJComposition: Sendable {
       message: request.message + guidance,
       history: memory, queued: queue.excludedIDs)
     continuation.scope = source
+    continuation.playbackContext = DJPlaybackContext(queue: queue, direction: directions.last ?? "")
     return continuation
   }
 }

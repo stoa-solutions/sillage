@@ -120,7 +120,9 @@ func listeningSessionChecks() throws {
   session = playingAlone(a)
   _ = session.handle(.enqueue(b, source: .library))
   try expect(
-    session.handle(.enqueue(b, source: .library)).banners == ["Ce morceau est déjà à suivre."],
+    session.handle(.enqueue(b, source: .library)).banners == [
+      "Ce morceau est déjà joué ou à suivre. Utilise Écouter pour le rejouer."
+    ],
     "A duplicate was queued twice")
 
   // Turning continuous play off stops a background refill but keeps the direction.
@@ -169,6 +171,27 @@ func listeningSessionChecks() throws {
     .contextContent
   try expect(
     context.contains(d.id) && context.contains("position"), "Visible cards lost from AI context")
+
+  session = playingAlone(a)
+  _ = session.handle(.enqueue(b, source: .library))
+  let suite = session.handle(.ask("/suite 5", source: .all))
+  try expect(suite.requests.count == 1, "Slash suite did not send a single composition request")
+  let prepared = session.handle(
+    .answer(
+      request: suite.requests[0],
+      DJResponse(reply: "Je lance A", action: "append", tracks: [a, b, c, c, d])))
+  try expect(
+    prepared.cued.isEmpty && session.current?.id == a.id
+      && session.upcoming.map(\.id) == [b.id, c.id, d.id],
+    "Manual preparation replayed current/queued music or interrupted playback")
+  try expect(session.handle(.ask("/pause", source: .all)).pauses, "Slash pause called the provider")
+  try expect(
+    session.handle(.ask("/suite 99", source: .all)).requests.isEmpty,
+    "Invalid command reached provider")
+  try expect(
+    session.handle(.ask("/aide", source: .all)).requests.isEmpty, "Help consumed an AI turn")
+  try expect(DJCommand.parse("/suite") == .prepare(5), "Default suite was not five songs")
+  try expect(DJCommand.parse("/suite 8") == .prepare(8), "Explicit suite length lost")
 
   print(
     "Listening session checks passed: requests, late answers, pause/resume, sign-in, refill, unavailable"

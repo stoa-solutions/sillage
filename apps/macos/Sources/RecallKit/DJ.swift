@@ -7,6 +7,7 @@ public protocol DJ: Sendable {
 
 public struct DJRequest: Sendable {
   public var scope: DiscoveryScope = .library
+  public var playbackContext: DJPlaybackContext?
   public let message: String
   public let history: [ChatMessage]
   /// Tracks already in the play queue. They are excluded unless the person asks for them again.
@@ -20,7 +21,7 @@ public struct DJRequest: Sendable {
       role: "user", content: "Mon envie musicale de référence : " + context)
     return DJRequest(
       message:
-        "Continue cette session avec de nouveaux vrais morceaux dans la même ambiance ou du même artiste. Consulte les sources autorisées avec des recherches courtes et plusieurs formulations si nécessaire. Ajoute une petite suite sans répéter les titres déjà joués ou en file. Ne rejoue pas la liste précédente. Si aucun morceau ne convient, explique-le sans inventer. Exclue les type beats et hommages sauf demande explicite.",
+        "Continue cette session avec de nouveaux vrais morceaux dans la même ambiance ou du même artiste. Consulte les sources autorisées avec des recherches courtes et plusieurs formulations si nécessaire. Ajoute cinq nouveaux morceaux sans répéter les titres déjà joués ou en file. Ne rejoue pas la liste précédente. Si aucun morceau ne convient, explique-le sans inventer. Exclue les type beats et hommages sauf demande explicite.",
       history: Array(history.suffix(10)) + [contextMessage], queued: queued)
   }
   public init(message: String, history: [ChatMessage], queued: Set<String>) {
@@ -35,15 +36,18 @@ public struct ServerDJ: DJ {
   let connection: Connection
   public init(connection: Connection) { self.connection = connection }
   public func turn(_ request: DJRequest) async throws -> DJResponse {
-    let object = try await HTTPClient().server(
-      connection, path: "dj/chat",
-      body: [
-        "message": String(request.message.prefix(1500)), "scope": request.scope.rawValue,
-        "history": request.history.suffix(12).map {
-          ["role": $0.role, "content": String($0.contextContent.prefix(2000))]
-        },
-        "excludeIds": Array(request.queued.prefix(100)),
-      ])
+    var body: [String: Any] = [
+      "message": String(request.message.prefix(1500)), "scope": request.scope.rawValue,
+      "history": request.history.suffix(12).map {
+        ["role": $0.role, "content": String($0.contextContent.prefix(2000))]
+      },
+      "excludeIds": Array(request.queued.prefix(100)),
+    ]
+    if let context = request.playbackContext {
+      body["playbackContext"] = try JSONSerialization.jsonObject(
+        with: JSONEncoder().encode(context))
+    }
+    let object = try await HTTPClient().server(connection, path: "dj/chat", body: body)
     return try JSONDecoder().decode(
       DJResponse.self, from: JSONSerialization.data(withJSONObject: object))
   }

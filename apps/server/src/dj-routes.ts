@@ -1,3 +1,4 @@
+import { djSystemPrompt } from "./dj-prompt.ts";
 import { checkDj } from "./dj-check.ts";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -16,6 +17,7 @@ export type ApiEnvironment = {
 };
 export function createDjRoutes(db: Database) {
   const app = new Hono<ApiEnvironment>();
+  app.get("/rules", (c) => c.json({ prompt: djSystemPrompt }));
   app.get("/status", async (c) => {
     const config = await personalDjConfig(db, c.get("userId"));
     return c.json({

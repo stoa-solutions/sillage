@@ -102,8 +102,12 @@ public struct ListeningSession: Sendable {
       unavailableCount = 0
       startCurrent(into: &effects)
     case .enqueue(let track, let source):
-      guard !upcoming.contains(where: { $0.id == track.id }) else {
-        effects.append(.banner("Ce morceau est déjà à suivre."))
+      guard
+        !queue.freshContinuation(DJResponse(reply: "", action: "append", tracks: [track])).tracks
+          .isEmpty
+      else {
+        effects.append(
+          .banner("Ce morceau est déjà joué ou à suivre. Utilise Écouter pour le rejouer."))
         break
       }
       let started = queue.apply(
@@ -175,6 +179,29 @@ public struct ListeningSession: Sendable {
   private mutating func ask(_ text: String, source: DiscoveryScope, into effects: inout [Effect]) {
     let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !text.isEmpty else { return }
+    if text.hasPrefix("/") {
+      switch DJCommand.parse(text) {
+      case .next: ask("next", source: source, into: &effects)
+      case .pause: ask("pause", source: source, into: &effects)
+      case .resume: ask("play", source: source, into: &effects)
+      case .prepare(let count):
+        ask(
+          "Prépare \(count) nouveaux morceaux à suivre dans le même style, sans répétition et sans interrompre la lecture.",
+          source: source, into: &effects)
+      case .help:
+        say(user: text)
+        say(assistant: DJCommand.helpText)
+      case .rules:
+        say(assistant: "Les règles du DJ sont consultables avec /prompt dans l’app.")
+      case .invalid:
+        say(user: text)
+        say(
+          assistant:
+            "Commande inconnue ou nombre invalide. Utilise /suite 1 à 8, /suivant, /pause, /reprendre, /prompt ou /aide."
+        )
+      }
+      return
+    }
     let cards = messages.last(where: { !($0.discoveries?.isEmpty ?? true) })?.discoveries ?? []
     if let command = DJSuggestionCommand.parse(text, count: cards.count) {
       cancelPending(into: &effects)
@@ -250,6 +277,9 @@ public struct ListeningSession: Sendable {
   private mutating func answer(_ id: Int, _ response: DJResponse, into effects: inout [Effect]) {
     guard var request = pending, request.id == id else { return }
     var response = response
+    if !request.automatic && response.action == "append" {
+      response = queue.freshContinuation(response)
+    }
     if request.automatic {
       response = queue.freshContinuation(response)
       // Exactly two chances for a fresh continuation: the second one broadens the search.

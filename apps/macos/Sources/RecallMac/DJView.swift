@@ -25,6 +25,22 @@ struct DJView: View {
   var body: some View {
     Group {
       if panelOnly { sessionPanel } else if player.studio { studio } else { compact }
+    }.sheet(isPresented: $model.showingRules) {
+      VStack(alignment: .leading, spacing: 16) {
+        HStack {
+          Text("Les règles de ton DJ").font(.title2.weight(.semibold))
+          Spacer()
+          Button("Fermer") { model.showingRules = false }.keyboardShortcut(.cancelAction)
+        }
+        Text(
+          "Prompt de base en lecture seule. Le morceau en cours, ta demande et les résultats de recherche sont ajoutés à chaque tour. Aucune clé API n’est affichée."
+        )
+        .font(.callout).foregroundStyle(.secondary)
+        ScrollView {
+          Text(model.rulesText).textSelection(.enabled).frame(
+            maxWidth: .infinity, alignment: .leading)
+        }
+      }.padding(24).frame(width: 680, height: 560)
     }.onChange(of: model.spoken) { _, value in if !value { model.stopVoice() } }
       .onChange(of: model.current?.id, initial: true) { _, _ in
         lyrics.show(
@@ -345,10 +361,32 @@ struct DJView: View {
       } else if !voice.status.isEmpty {
         Text(voice.status).font(.caption).foregroundStyle(.secondary)
       }
+      if model.prompt.hasPrefix("/") {
+        VStack(alignment: .leading, spacing: 4) {
+          ForEach(
+            DJCommand.suggestions.filter {
+              model.prompt == "/" || $0.command.hasPrefix(model.prompt.lowercased())
+            }, id: \.command
+          ) { item in
+            Button {
+              model.prompt = item.command
+            } label: {
+              HStack {
+                Text(item.command).monospaced()
+                Text(item.label).foregroundStyle(.secondary)
+                Spacer()
+              }
+              .padding(.vertical, 3)
+            }.buttonStyle(.plain)
+          }
+        }.font(.callout).padding(10).glassPanel()
+      }
       HStack(alignment: .bottom, spacing: 8) {
-        TextField("Ton envie, un artiste, un titre…", text: $model.prompt, axis: .vertical)
-          .lineLimit(1...4).textFieldStyle(.plain).padding(.vertical, 6)
-          .onSubmit { model.send(source: source) }
+        TextField(
+          "Ton envie, un artiste… ou / pour les commandes", text: $model.prompt, axis: .vertical
+        )
+        .lineLimit(1...4).textFieldStyle(.plain).padding(.vertical, 6)
+        .onSubmit { model.send(source: source) }
         Button {
           model.toggleMicrophone(source: source)
         } label: {
