@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Apparence : fond Stoa au repos, image personnelle copiée sur ce Mac, voile sombre réglable et aperçu. Réglages organisés en Apparence, DJ et voix, Lecture, Compte ; aucun changement de fond pendant un morceau.
+
 - App Mac : session d’écoute et module de lecture (architecture). La musique démarre immédiatement, puis le clip téléchargé prend le relais en fondu, à la même qualité en Compact et en Studio (Studio devient un choix d’affichage). Les trois titres suivants sont préparés à l’avance ; option « Lecteur YouTube seulement ». Corrigé : une pause par le chat suivie d’une reprise au bouton ne bloque plus la suite automatique ; une suite demandée pendant la connexion attend le compte au lieu d’écrire dans le champ de saisie. Contrôles natifs par scénarios pour la session et la bascule entre lecteurs.
 
 - Recherche : les noms d’albums connus restent des recherches précises, même avec des mots comme « où » ; leurs occurrences complètes dans les descriptions YouTube sont conservées, sans les voisins sémantiques hors sujet.

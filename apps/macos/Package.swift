@@ -9,7 +9,7 @@ let package = Package(
         .target(name: "RecallAudio", dependencies: ["RecallKit"]),
         .executableTarget(name: "RecallAudioTests", dependencies: ["RecallAudio"]),
         .executableTarget(name: "RecallDiagnostics", dependencies: ["RecallKit"]),
-        .executableTarget(name: "RecallMac", dependencies: ["RecallKit", "RecallAudio", .product(name: "Sparkle", package: "Sparkle")], linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]),
+        .executableTarget(name: "RecallMac", dependencies: ["RecallKit", "RecallAudio", .product(name: "Sparkle", package: "Sparkle")], resources: [.copy("Resources")], linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]),
         .executableTarget(name: "RecallCoreTests", dependencies: ["RecallKit"]),
         .executableTarget(name: "RecallServerTests", dependencies: ["RecallKit"])
     ]

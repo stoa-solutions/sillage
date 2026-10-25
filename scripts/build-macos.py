@@ -51,6 +51,9 @@ framework = project / ".build/artifacts/sparkle/Sparkle/Sparkle.xcframework/maco
 if not framework.exists():
     framework = next((project / ".build/artifacts/sparkle").rglob("macos-arm64_x86_64/Sparkle.framework"))
 shutil.copytree(framework, contents / "Frameworks/Sparkle.framework", symlinks=True)
+# Include SwiftPM resources in the installed app, not only the build directory.
+resources = project / f".build/{architectures[0]}-apple-macosx/release/PlaylistRecallMac_RecallMac.bundle"
+shutil.copytree(resources, contents / "Resources" / resources.name)
 shutil.copy2(root / "apps/extension/public/icon/128.png", contents / "Resources/Recall.png")
 shutil.copy2(project / "Resources/Installation.txt", contents / "Resources/Installation.txt")
 shutil.copy2(project / ".build/artifacts/sparkle/Sparkle/LICENSE", contents / "Resources/Sparkle-LICENSE.txt")

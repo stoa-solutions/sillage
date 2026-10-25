@@ -10,6 +10,7 @@ func expectFailure(_ work: () throws -> Void) throws {
   try expect(failed, "Invalid input was accepted")
 }
 do {
+  try checkAppearance()
   let metadataJSON =
     #"{"id":"C7vVkdPEun8","title":"Incapable","musicMetadata":{"source":"MusicBrainz","status":"matched","checkedAt":"2026-10-25","recordingId":"a30b0cec-cb5b-41ce-b0c6-c046a4271fa3","artists":[{"id":"test","name":"Hedges","role":"featured"}],"albums":[{"id":"album","title":"Où les garçons grandissent"}],"genres":[],"artistGenres":["hip hop"]}}"#
   let musicTrack = try JSONDecoder().decode(Track.self, from: Data(metadataJSON.utf8))

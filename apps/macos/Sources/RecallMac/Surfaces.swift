@@ -57,15 +57,17 @@ struct StageBackground: View {
   var body: some View {
     ZStack {
       Color.black
-      if (immersive || !reduceTransparency) && current != nil {
+      if current == nil {
+        IdleBackground()
+      } else if immersive || !reduceTransparency {
         // YouTube first, the downloaded clip fading in over it: the stage never jumps.
         VideoSurface(player: player, fill: true)
           .frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
       }
-      if immersive {
+      if current != nil && immersive {
         LinearGradient(
           colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
-      } else {
+      } else if current != nil {
         Color.black.opacity(0.55)
       }
     }
@@ -84,12 +86,14 @@ struct AmbientBackground: View {
     ZStack {
       LinearGradient(
         colors: [Color(white: 0.11), Color(white: 0.05)], startPoint: .top, endPoint: .bottom)
-      if !reduceTransparency, let current {
+      if current == nil {
+        IdleBackground()
+      } else if !reduceTransparency, let current {
         Artwork.image(for: current, quality: "hqdefault").blur(radius: 60)
           .opacity(surface == .reading ? 0.18 : 0.45)
           .clipped().transition(.opacity).id(current.id)
       }
-      Color.black.opacity(0.35)
+      if current != nil { Color.black.opacity(0.35) }
     }.animation(reduceMotion ? nil : .easeInOut(duration: 0.4), value: current?.id)
       .accessibilityHidden(true)
   }
