@@ -1,62 +1,124 @@
 import AVKit
+import Combine
 import RecallKit
 import SwiftUI
 import VideoToolbox
 import WebKit
 
+/// What the screens see of playback: the engine's state, the two video surfaces, and the
+/// display and quality preferences. Studio is only a display choice; the downloaded clip plays
+/// in Compact too, unless "YouTube player only" is chosen.
 @MainActor
-final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMessageHandler {
-  @Published private(set) var ready = false
-  @Published private(set) var playing = false {
-    didSet { clock.setPlaying(playing) }
-  }
-  @Published var failure = ""
+final class Player: ObservableObject {
+  let youtube = YouTubePlayer()
+  let clipPlayer = ClipPlayer()
+  let engine: PlaybackEngine
+  private let clips: StudioClips
+  private var relay: AnyCancellable?
+
   @Published private(set) var studio = UserDefaults.standard.bool(forKey: "studioMode")
-  @Published private(set) var studioReady = false
-  @Published private(set) var preparingStudio = false
-  @Published private(set) var elapsed: Double = 0 {
-    didSet { clock.sample(elapsed, playing: playing) }
-  }
-  private var clock = PlaybackClock()
-  private var seekRequest: UUID?
-  private var webSeek: (target: Double, started: Date)?
-  func position(at date: Date) -> Double { clock.position(at: date) }
-  @Published private(set) var duration: Double = 0
-  /// Music volume from 0 to 1, shared by both players; the DJ's voice lowers it temporarily.
-  @Published var volume = UserDefaults.standard.object(forKey: "musicVolume") as? Double ?? 1 {
-    didSet {
-      UserDefaults.standard.set(volume, forKey: "musicVolume")
-      applyVolume()
-    }
-  }
+  @Published private(set) var quality: StudioQuality
+  @Published private(set) var youtubeOnly = UserDefaults.standard.bool(forKey: "youtubeOnly")
   static var supports4K: Bool { VTIsHardwareDecodeSupported(kCMVideoCodecType_AV1) }
-  @Published private(set) var quality: StudioQuality = {
+
+  init() {
     let saved =
       StudioQuality(rawValue: UserDefaults.standard.string(forKey: "studioQuality") ?? "") ?? .hd
-    return saved == .ultra && !Player.supports4K ? .hd : saved
-  }()
-  @Published private(set) var downloadingStudio = false
-  @Published private(set) var videoHeight: Int = 0
-  var onProgress: (() -> Void)?
-  private var wantsPlayback = true
-  private var webResumePosition: Double?
-  let nativePlayer = AVPlayer()
-  private let studioCache = StudioVideoCache()
-  private var studioTask: Task<Void, Never>?
-  private var prefetchTask: Task<Void, Never>?
-  private var nextTrack: Track?
-  private var currentTrack: Track?
-  private var nativeState: NSKeyValueObservation?
-  private var itemState: NSKeyValueObservation?
-  private var endObserver: NSObjectProtocol?
-  private var timeObserver: Any?
-  private var voiceDucked = false
-  var onEnded: (() -> Void)?
-  var onUnavailable: (() -> Void)?
-  private var pending: (track: Track, start: Double, autoplay: Bool)?
-  private var canEnd = false
+    let quality = saved == .ultra && !Self.supports4K ? .hd : saved
+    self.quality = quality
+    clips = StudioClips(quality: quality)
+    engine = PlaybackEngine(
+      youtube: youtube, clip: clipPlayer, clips: clips,
+      volume: UserDefaults.standard.object(forKey: "musicVolume") as? Double ?? 1,
+      downloads: !UserDefaults.standard.bool(forKey: "youtubeOnly"))
+    relay = engine.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
+  }
+
+  var webView: WKWebView { youtube.webView }
+  var nativePlayer: AVPlayer { clipPlayer.player }
+  var playing: Bool { engine.playing }
+  var elapsed: Double { engine.elapsed }
+  var duration: Double { engine.duration }
+  var failure: String { engine.failure }
+  /// The downloaded clip is the one on screen and in the speakers.
+  var clipActive: Bool { engine.active == .clip }
+  var preparingClip: Bool { engine.preparingClip }
+  /// YouTube stays on screen only until the clip has fully faded in.
+  var youtubeHidden: Bool { clipActive && !engine.fading }
+  var videoHeight: Int { clipActive ? clipPlayer.videoHeight : 0 }
+  var volume: Double {
+    get { engine.volume }
+    set {
+      engine.volume = newValue
+      UserDefaults.standard.set(newValue, forKey: "musicVolume")
+    }
+  }
+  func position(at date: Date) -> Double { engine.position(at: date) }
+  func seek(_ seconds: Double) { engine.seek(seconds) }
+
+  func setStudio(_ value: Bool) {
+    studio = value
+    UserDefaults.standard.set(value, forKey: "studioMode")
+  }
+  func setQuality(_ value: StudioQuality) {
+    let value: StudioQuality = value == .ultra && !Self.supports4K ? .hd : value
+    guard quality != value else { return }
+    quality = value
+    clips.quality = value
+    UserDefaults.standard.set(value.rawValue, forKey: "studioQuality")
+    engine.reloadClip()
+  }
+  func setYouTubeOnly(_ value: Bool) {
+    youtubeOnly = value
+    UserDefaults.standard.set(value, forKey: "youtubeOnly")
+    engine.setDownloads(!value)
+  }
+}
+
+/// The Studio cache as the engine's clip source: nearest clips first, others released.
+@MainActor
+final class StudioClips: ClipSource {
+  private let cache = StudioVideoCache()
+  var quality: StudioQuality {
+    didSet { cache.cancel() }
+  }
+  private var prefetch: [Task<Void, Never>] = []
+  init(quality: StudioQuality) { self.quality = quality }
+  func clip(for id: String) async throws -> URL { try await cache.file(for: id, quality: quality) }
+  func keep(_ ids: [String]) {
+    let wanted = Array(ids.prefix(ListeningSession.preparedAhead + 1))
+    cache.cancel(except: Set(wanted))
+    prefetch.forEach { $0.cancel() }
+    // One download at a time keeps the next song's clip first in line.
+    prefetch = [
+      Task { [cache, quality] in
+        for id in wanted.dropFirst() {
+          guard !Task.isCancelled else { return }
+          _ = try? await cache.file(for: id, quality: quality)
+        }
+      }
+    ]
+    cache.trim(keeping: Set(wanted), quality: quality)
+  }
+}
+
+/// The official YouTube player in a WebKit page, bridged by strictly checked messages.
+@MainActor
+final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKScriptMessageHandler
+{
+  var onSignal: ((PlaybackSignal) -> Void)?
+  var onFailure: ((String) -> Void)?
   let webView: WKWebView
+  private(set) var position: Double = 0
+  private var ready = false
+  private var pending: (id: String, start: Double, autoplay: Bool)?
+  private var currentID: String?
+  private var canEnd = false
+  private var resumeAt: Double?
+  private var seeking: (target: Double, started: Date)?
+  private var level = 1.0
   private static let origin = "https://recall.stoa.solutions"
+
   override init() {
     let configuration = WKWebViewConfiguration()
     configuration.websiteDataStore = .nonPersistent()
@@ -90,39 +152,43 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
       WKUserScript(source: layout, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
     webView = WKWebView(frame: .zero, configuration: configuration)
     super.init()
-    nativeState = nativePlayer.observe(\.timeControlStatus) { [weak self] native, _ in
-      Task { @MainActor in
-        guard let self, self.studioReady else { return }
-        self.playing = native.timeControlStatus == .playing
-      }
-    }
-    endObserver = NotificationCenter.default.addObserver(
-      forName: .AVPlayerItemDidPlayToEndTime,
-      object: nil, queue: .main
-    ) { [weak self] event in
-      let item = event.object as? AVPlayerItem
-      Task { @MainActor in
-        guard let self, self.studioReady, item === self.nativePlayer.currentItem else { return }
-        self.playing = false
-        self.onEnded?()
-      }
-    }
-    timeObserver = nativePlayer.addPeriodicTimeObserver(
-      forInterval: CMTime(seconds: 0.1, preferredTimescale: 600), queue: .main
-    ) { [weak self] time in
-      Task { @MainActor in
-        guard let self, self.studioReady, self.seekRequest == nil else { return }
-        self.elapsed = time.seconds.isFinite ? time.seconds : 0
-        let length = self.nativePlayer.currentItem?.duration.seconds ?? 0
-        self.duration = length.isFinite ? length : 0
-        self.videoHeight = Int(self.nativePlayer.currentItem?.presentationSize.height ?? 0)
-        self.onProgress?()
-      }
-    }
     configuration.userContentController.add(self, name: "player")
     webView.navigationDelegate = self
     webView.load(URLRequest(url: URL(string: Self.origin + "/dj/player")!))
   }
+
+  func load(_ source: PlaybackSource, at start: Double, autoplay: Bool) async throws {
+    guard case .youtube(let id) = source else { return }
+    currentID = id
+    canEnd = false
+    seeking = nil
+    position = start
+    guard ready else {
+      pending = (id, start, autoplay)
+      return
+    }
+    resumeAt = start > 0 ? start : nil
+    send("cue", ["id": id, "autoplay": autoplay, "start": start])
+  }
+  func play() { send("play") }
+  func pause() { send("pause") }
+  func seek(to seconds: Double) {
+    guard let id = currentID else { return }
+    resumeAt = nil
+    seeking = (seconds, Date())
+    position = seconds
+    send("seek", ["id": id, "seconds": seconds])
+  }
+  func stop() {
+    currentID = nil
+    pending = nil
+    send("pause")
+  }
+  func setVolume(_ level: Double) {
+    self.level = level
+    send("volume", ["value": Int((level * 100).rounded())])
+  }
+
   func userContentController(
     _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
   ) {
@@ -133,59 +199,49 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     switch value["event"] as? String {
     case "ready":
       ready = true
-      applyVolume()
+      setVolume(level)
       if let pending {
         self.pending = nil
-        cueWeb(pending.track, start: pending.start, autoplay: pending.autoplay)
+        resumeAt = pending.start > 0 ? pending.start : nil
+        send("cue", ["id": pending.id, "autoplay": pending.autoplay, "start": pending.start])
       }
     case "progress":
-      guard !studioReady, !preparingStudio, value["id"] as? String == currentTrack?.id else {
+      guard value["id"] as? String == currentID, let time = value["elapsed"] as? Double,
+        time.isFinite
+      else { return }
+      if let seek = seeking, abs(time - seek.target) > 1, Date().timeIntervalSince(seek.started) < 2 {
         return
       }
-      if let time = value["elapsed"] as? Double, time.isFinite {
-        if let seek = webSeek, abs(time - seek.target) > 1,
-          Date().timeIntervalSince(seek.started) < 2
-        {
-          return
-        }
-        webSeek = nil
-        // A cued, paused YouTube item reports zero before its requested start is applied.
-        if let resume = webResumePosition, time < resume - 2 { return }
-        webResumePosition = nil
-        elapsed = time
-      }
-      if let length = value["duration"] as? Double, length.isFinite { duration = length }
-      onProgress?()
+      seeking = nil
+      // A cued, paused YouTube item reports zero before its requested start is applied.
+      if let resume = resumeAt, time < resume - 2 { return }
+      resumeAt = nil
+      position = time
+      let length = value["duration"] as? Double ?? 0
+      onSignal?(.progress(elapsed: time, duration: length.isFinite ? length : 0))
     case "state":
-      if let id = value["id"] as? String, id != currentTrack?.id { return }
-      guard !studioReady && !preparingStudio else { return }
+      if let id = value["id"] as? String, id != currentID { return }
       let state = value["state"] as? Int
-      playing = state == 1
-      if state == 1 {
-        canEnd = true
-        wantsPlayback = true
-      }
-      if state == 2 { wantsPlayback = false }
+      if state == 1 { canEnd = true }
+      onSignal?(.playing(state == 1))
       if state == 0, canEnd {
         canEnd = false
-        onEnded?()
+        onSignal?(.ended)
       }
     case "blocked":
-      guard !studioReady && !preparingStudio else { return }
-      failure = "Clique sur Lecture pour lancer l’écoute."
+      onFailure?("Clique sur Lecture pour lancer l’écoute.")
     case "error":
-      if let id = value["id"] as? String, id != currentTrack?.id { return }
-      guard !studioReady && !preparingStudio else { return }
-      failure = "YouTube bloque l’intégration de ce titre."
-      onUnavailable?()
+      if let id = value["id"] as? String, id != currentID { return }
+      onFailure?("YouTube bloque l’intégration de ce titre.")
+      onSignal?(.unavailable)
     default: break
     }
   }
-  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { command("hello") }
+  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { send("hello") }
   func webView(
     _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
     withError error: Error
-  ) { failure = "Le lecteur ne peut pas joindre YouTube. Vérifie ta connexion." }
+  ) { onFailure?("Le lecteur ne peut pas joindre YouTube. Vérifie ta connexion.") }
   func webView(
     _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
@@ -205,181 +261,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     }
     decisionHandler(.allow)
   }
-  func cue(_ track: Track, start: Double = 0, autoplay: Bool = true) {
-    seekRequest = nil
-    webSeek = nil
-    playing = false
-    currentTrack = track
-    canEnd = false
-    failure = ""
-    studioTask?.cancel()
-    nativePlayer.pause()
-    nativePlayer.replaceCurrentItem(with: nil)
-    studioReady = false
-    elapsed = start
-    duration = 0
-    videoHeight = 0
-    wantsPlayback = autoplay
-    if studio {
-      // Keep Studio's full-frame cover and loader until the clip is ready.
-      preparingStudio = true
-      downloadingStudio = true
-      playing = false
-      pending = nil
-      sendWebCommand("pause")
-      studioTask = Task {
-        do {
-          let file = try await studioCache.file(for: track.id, quality: quality)
-          try Task.checkCancellation()
-          guard currentTrack?.id == track.id, studio else { return }
-          let item = AVPlayerItem(url: file)
-          itemState = item.observe(\.status) { [weak self] item, _ in
-            Task { @MainActor in
-              guard let self, self.nativePlayer.currentItem === item, item.status == .failed else {
-                return
-              }
-              self.nativePlayer.pause()
-              self.studioReady = false
-              self.failure = "Lecture locale indisponible. Retour au lecteur YouTube."
-              self.cueWeb(track, start: self.elapsed, autoplay: self.wantsPlayback)
-            }
-          }
-          nativePlayer.replaceCurrentItem(with: item)
-          let resume = elapsed
-          await nativePlayer.seek(
-            to: CMTime(seconds: resume, preferredTimescale: 600), toleranceBefore: .zero,
-            toleranceAfter: .zero)
-          try Task.checkCancellation()
-          guard currentTrack?.id == track.id, studio else { return }
-          videoHeight = Int(item.presentationSize.height)
-          applyVolume()
-          downloadingStudio = false
-          preparingStudio = false
-          studioReady = true
-          sendWebCommand("pause")
-          if wantsPlayback { nativePlayer.play() }
-          studioCache.trim(
-            keeping: Set([track.id, nextTrack?.id].compactMap { $0 }), quality: quality)
-        } catch {
-          guard !Task.isCancelled, currentTrack?.id == track.id else { return }
-          downloadingStudio = false
-          preparingStudio = false
-          failure = error.localizedDescription
-          cueWeb(track, start: elapsed, autoplay: wantsPlayback)
-        }
-      }
-    } else {
-      preparingStudio = false
-      downloadingStudio = false
-      cueWeb(track, start: start, autoplay: autoplay)
-    }
-  }
-  func prepareNext(_ track: Track?) {
-    nextTrack = track
-    let keep = Set([currentTrack?.id, track?.id].compactMap { $0 })
-    studioCache.cancel(except: keep)
-    prefetchTask?.cancel()
-    guard studio, let track else { return }
-    prefetchTask = Task { _ = try? await studioCache.file(for: track.id, quality: quality) }
-  }
-  func setStudio(_ value: Bool) {
-    studio = value
-    UserDefaults.standard.set(value, forKey: "studioMode")
-    if !value {
-      studioCache.cancel()
-      prefetchTask?.cancel()
-    }
-    if let currentTrack {
-      cue(currentTrack, start: elapsed, autoplay: wantsPlayback)
-      prepareNext(nextTrack)
-    }
-  }
-  func setQuality(_ value: StudioQuality) {
-    let value: StudioQuality = value == .ultra && !Self.supports4K ? .hd : value
-    guard quality != value else { return }
-    quality = value
-    UserDefaults.standard.set(value.rawValue, forKey: "studioQuality")
-    studioCache.cancel()
-    if studio, let currentTrack {
-      cue(currentTrack, start: elapsed, autoplay: wantsPlayback)
-      prepareNext(nextTrack)
-    }
-  }
-  func seek(_ seconds: Double) {
-    guard seconds.isFinite, let track = currentTrack, !preparingStudio else { return }
-    let target = max(0, duration > 0 ? min(seconds, duration) : seconds)
-    elapsed = target
-    if studioReady {
-      let request = UUID()
-      seekRequest = request
-      nativePlayer.currentItem?.cancelPendingSeeks()
-      nativePlayer.seek(
-        to: CMTime(seconds: target, preferredTimescale: 1000),
-        toleranceBefore: .zero, toleranceAfter: .zero
-      ) { [weak self] finished in
-        Task { @MainActor in
-          guard let self, self.seekRequest == request else { return }
-          self.seekRequest = nil
-          let actual = self.nativePlayer.currentTime().seconds
-          if actual.isFinite { self.elapsed = actual }
-          if !finished { self.failure = "Le déplacement n’a pas abouti. Réessaie." }
-        }
-      }
-    } else {
-      webResumePosition = nil
-      webSeek = (target, Date())
-      sendWebCommand("seek", extra: ["id": track.id, "seconds": target])
-    }
-  }
-  func reset() {
-    seekRequest = nil
-    webSeek = nil
-    playing = false
-    studioTask?.cancel()
-    prefetchTask?.cancel()
-    studioCache.cancel()
-    nativePlayer.pause()
-    nativePlayer.replaceCurrentItem(with: nil)
-    studioReady = false
-    preparingStudio = false
-    downloadingStudio = false
-    elapsed = 0
-    duration = 0
-    currentTrack = nil
-    nextTrack = nil
-    pending = nil
-    sendWebCommand("pause")
-  }
-  private func cueWeb(_ track: Track, start: Double = 0, autoplay: Bool = true) {
-    guard ready else {
-      pending = (track, start, autoplay)
-      return
-    }
-    webResumePosition = start > 0 ? start : nil
-    sendWebCommand("cue", extra: ["id": track.id, "autoplay": autoplay, "start": start])
-  }
-  func command(_ name: String, extra: [String: Any] = [:]) {
-    if name == "play" { wantsPlayback = true }
-    if name == "pause" { wantsPlayback = false }
-    if name == "duck" || name == "restore" {
-      voiceDucked = name == "duck"
-      nativePlayer.volume = nativeVolume
-    }
-    if studioReady {
-      if name == "play" { nativePlayer.play() }
-      if name == "pause" { nativePlayer.pause() }
-      return
-    }
-    sendWebCommand(name, extra: extra)
-    // The web player restores its pre-duck volume; the slider may have moved meanwhile.
-    if name == "restore" { applyVolume() }
-  }
-  private var nativeVolume: Float { Float(voiceDucked ? min(volume, 0.18) : volume) }
-  private func applyVolume() {
-    nativePlayer.volume = nativeVolume
-    if !voiceDucked { sendWebCommand("volume", extra: ["value": Int(volume * 100)]) }
-  }
-  private func sendWebCommand(_ name: String, extra: [String: Any] = [:]) {
+  private func send(_ name: String, _ extra: [String: Any] = [:]) {
     var value = extra
     value["source"] = "recall-dj"
     value["command"] = name
@@ -390,28 +272,156 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
   }
 }
 
+/// The downloaded clip, played natively with frame-accurate seeks.
+@MainActor
+final class ClipPlayer: PlaybackBackend {
+  var onSignal: ((PlaybackSignal) -> Void)?
+  var onFailure: ((String) -> Void)?
+  let player = AVPlayer()
+  private(set) var videoHeight = 0
+  private var statusObservation: NSKeyValueObservation?
+  private var itemObservation: NSKeyValueObservation?
+  private var endObserver: NSObjectProtocol?
+  private var timeObserver: Any?
+  private var seekRequest: UUID?
+
+  var position: Double {
+    let time = player.currentTime().seconds
+    return time.isFinite ? time : 0
+  }
+
+  init() {
+    statusObservation = player.observe(\.timeControlStatus) { [weak self] native, _ in
+      Task { @MainActor in
+        guard let self, native.currentItem != nil else { return }
+        self.onSignal?(.playing(native.timeControlStatus == .playing))
+      }
+    }
+    endObserver = NotificationCenter.default.addObserver(
+      forName: .AVPlayerItemDidPlayToEndTime, object: nil, queue: .main
+    ) { [weak self] event in
+      let item = event.object as? AVPlayerItem
+      Task { @MainActor in
+        guard let self, item === self.player.currentItem else { return }
+        self.onSignal?(.ended)
+      }
+    }
+    timeObserver = player.addPeriodicTimeObserver(
+      forInterval: CMTime(seconds: 0.1, preferredTimescale: 600), queue: .main
+    ) { [weak self] time in
+      Task { @MainActor in
+        guard let self, let item = self.player.currentItem, self.seekRequest == nil else { return }
+        let length = item.duration.seconds
+        self.videoHeight = Int(item.presentationSize.height)
+        self.onSignal?(
+          .progress(
+            elapsed: time.seconds.isFinite ? time.seconds : 0,
+            duration: length.isFinite ? length : 0))
+      }
+    }
+  }
+
+  func load(_ source: PlaybackSource, at start: Double, autoplay: Bool) async throws {
+    guard case .file(let url) = source else { return }
+    let item = AVPlayerItem(url: url)
+    player.replaceCurrentItem(with: item)
+    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+      var resumed = false
+      itemObservation = item.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
+        Task { @MainActor in
+          guard !resumed else {
+            if item.status == .failed { self?.onSignal?(.unavailable) }
+            return
+          }
+          switch item.status {
+          case .readyToPlay:
+            resumed = true
+            continuation.resume()
+          case .failed:
+            resumed = true
+            continuation.resume(throwing: item.error ?? RecallError.message("Clip illisible."))
+          default: break
+          }
+        }
+      }
+    }
+    await player.seek(
+      to: CMTime(seconds: start, preferredTimescale: 600), toleranceBefore: .zero,
+      toleranceAfter: .zero)
+    if autoplay { player.play() }
+  }
+  func play() { player.play() }
+  func pause() { player.pause() }
+  func seek(to seconds: Double) {
+    let request = UUID()
+    seekRequest = request
+    player.currentItem?.cancelPendingSeeks()
+    player.seek(
+      to: CMTime(seconds: seconds, preferredTimescale: 1000), toleranceBefore: .zero,
+      toleranceAfter: .zero
+    ) { [weak self] finished in
+      Task { @MainActor in
+        guard let self, self.seekRequest == request else { return }
+        self.seekRequest = nil
+        if !finished { self.onFailure?("Le déplacement n’a pas abouti. Réessaie.") }
+      }
+    }
+  }
+  func stop() {
+    player.pause()
+    player.replaceCurrentItem(with: nil)
+    itemObservation = nil
+    videoHeight = 0
+  }
+  func setVolume(_ level: Double) { player.volume = Float(level) }
+}
+
+/// Both players stacked in one frame: the clip fades in over YouTube, so nothing moves.
+struct VideoSurface: View {
+  @ObservedObject var player: Player
+  var fill = false
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  var body: some View {
+    ZStack {
+      Color.black
+      // WebKit paints over sibling views, whatever the SwiftUI order: hide it once the clip is in.
+      PlayerView(player: player, cornerRadius: fill ? 0 : 10, hidden: player.youtubeHidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+      // AVPlayerView would otherwise keep the clip's natural size instead of the frame's.
+      StudioPlayerView(player: player.nativePlayer, fill: fill)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .opacity(player.clipActive ? 1 : 0)
+        .allowsHitTesting(player.clipActive)
+    }.animation(reduceMotion ? nil : .easeInOut(duration: 0.6), value: player.clipActive)
+  }
+}
+
 struct StudioPlayerView: NSViewRepresentable {
   let player: AVPlayer
+  var fill = true
   func makeNSView(context: Context) -> AVPlayerView {
     let view = AVPlayerView()
     view.player = player
     view.controlsStyle = .none
-    view.videoGravity = .resizeAspectFill
+    view.videoGravity = fill ? .resizeAspectFill : .resizeAspect
     return view
   }
-  func updateNSView(_ view: AVPlayerView, context: Context) { view.player = player }
+  func updateNSView(_ view: AVPlayerView, context: Context) {
+    view.player = player
+    view.videoGravity = fill ? .resizeAspectFill : .resizeAspect
+  }
 }
 // SwiftUI sizes this container, while WebKit remains free to reparent its view for fullscreen.
 // Direct AutoLayout constraints on WKWebView collapse its viewport during that transition.
 final class PlayerContainerView: NSView {
-  init(webView: WKWebView) {
+  init(webView: WKWebView, cornerRadius: CGFloat) {
     super.init(frame: .zero)
     webView.translatesAutoresizingMaskIntoConstraints = true
     webView.autoresizingMask = [.width, .height]
     webView.frame = bounds
     addSubview(webView)
     wantsLayer = true
-    layer?.cornerRadius = 10
+    layer?.cornerRadius = cornerRadius
     layer?.masksToBounds = true
     setAccessibilityElement(false)
     setAccessibilityChildren([webView])
@@ -420,8 +430,10 @@ final class PlayerContainerView: NSView {
 }
 struct PlayerView: NSViewRepresentable {
   let player: Player
+  var cornerRadius: CGFloat = 10
+  var hidden = false
   func makeNSView(context: Context) -> PlayerContainerView {
-    PlayerContainerView(webView: player.webView)
+    PlayerContainerView(webView: player.webView, cornerRadius: cornerRadius)
   }
-  func updateNSView(_ nsView: PlayerContainerView, context: Context) {}
+  func updateNSView(_ nsView: PlayerContainerView, context: Context) { nsView.isHidden = hidden }
 }

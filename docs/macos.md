@@ -28,14 +28,16 @@ Chaque serveur garde une bibliothèque commune à ses jetons, pas un compte isol
 | `RecallKit/DJ.swift` | Tour de DJ : `DJRequest` et `ServerDJ`, qui délègue le tour au serveur. |
 | `RecallKit/ServerPlaylistImporter.swift` | Liens YouTube validés, import par le serveur et attente d’une synchronisation fraîche. |
 | `RecallKit/ServerLibraryOverview.swift` | Nombre de vidéos et playlists du serveur. |
+| `RecallKit/ListeningSession.swift` | Session d’écoute : événements (clics, chat, signaux du lecteur, réponses du DJ) → effets (lire, préparer, demander, annoncer). File, direction musicale, suite automatique, numéro de demande. Aucune lecture, voix ni réseau : testée par scénarios. |
+| `RecallKit/PlaybackEngine.swift` | Module de lecture : démarrage immédiat sur YouTube, bascule fondue vers le clip téléchargé au même instant, replis, préparation des titres suivants, volume et voix. Deux lecteurs interchangeables derrière une même interface. |
 | `RecallKit/PlaybackQueue.swift` | File de lecture : remplacement, ajout, fin de morceau, continuation. |
 | `RecallKit/CredentialFile.swift` / `GoogleCallback.swift` | Session privée hors Trousseau ; retour de connexion Google à usage unique. |
 | `RecallKit/Models.swift` | Contrats et décodage des vidéos renvoyées par le serveur. |
 | `RecallAudio/Microphone.swift` | Autorisation, capture, dictée et arrêt. |
 | `RecallMac/Session.swift` / `SessionStore.swift` / `GoogleSignIn.swift` | Compte, connexion serveur et session. |
 | `RecallMac/LibraryModel.swift` | Pages de la bibliothèque serveur, recherche et import par lien. |
-| `RecallMac/DJModel.swift` / `VoiceOutput.swift` | Conversation, file, micro ; voix du serveur ou voix macOS de secours. |
-| `RecallMac/Player.swift` | WebKit et messages du lecteur strictement contrôlés. |
+| `RecallMac/DJModel.swift` / `VoiceOutput.swift` | Exécute la session d’écoute : chaque geste devient un événement, chaque effet une action (lecteur, demande serveur, voix, bannière). Micro ; voix du serveur ou voix macOS de secours. |
+| `RecallMac/Player.swift` | Les deux lecteurs (YouTube dans WebKit, clip dans AVPlayer), le cache Studio comme source de clips, et la surface vidéo où le clip apparaît en fondu par-dessus YouTube. |
 | `RecallKit/Lyrics.swift` / `RecallMac/LyricsView.swift` | Paroles et chronologie (ligne en cours, progression, calage) ; onglet Paroles et karaoké Studio. |
 | `RecallMac/RecallApp.swift` | Cycle de vie, fenêtres et Sparkle. |
 
@@ -211,12 +213,14 @@ Le navigateur par défaut s’ouvre directement. Le lien `playlist-recall://auth
 ## Studio personnel (optionnel)
 
 Samuel a mis la distribution en attente et demandé un mode Studio pour son Mac.
-Le DJ a deux affichages, choisis dans la barre d’outils. Compact : une colonne de 540 points
-avec le lecteur YouTube, les contrôles et la conversation ; apparence du système. Studio : le
-clip remplit la fenêtre sombre, la conversation flotte dans un panneau translucide. Studio ne
-change que l’affichage ; la voix et l’enchaînement restent deux boutons du lecteur. Les clips publics
-préparables sont lus avec AVPlayer en fond, avec préchargement du prochain titre.
-Un téléchargement ou décodage impossible conserve le lecteur officiel YouTube.
+Studio n’est plus qu’un choix d’affichage : colonne (Compact) ou plein écran (Studio). La qualité est la même
+dans les deux : le morceau démarre aussitôt sur le lecteur YouTube, puis le clip téléchargé prend le relais au
+même instant, image en fondu et son croisé, sans changement de mise en page. Les trois titres suivants sont
+préparés à l’avance, un à la fois. Un clip impossible à préparer ou qui échoue laisse YouTube jouer ; un titre
+refusé par l’intégration YouTube attend son clip avant d’être passé. Le réglage « Qualité vidéo » propose 1080p,
+« Jusqu’à 4K » (décodage AV1 matériel) ou « Lecteur YouTube seulement », sans aucun téléchargement.
+Mesuré le 25/10 : environ 7 s d’analyse YouTube puis 8 à 11 s de téléchargement pour un clip 1080p de 3 min ;
+quatre fragments en parallèle font gagner 15 à 20 %.
 Le téléchargement utilise l’installation Homebrew de yt-dlp et ffmpeg ; aucun cookie
 Google, fichier de connexion ou paramètre du shell utilisateur n’est transmis.
 Clips limités à 20 minutes, 720p H.264/AAC et 200 Mio après assemblage ; nettoyage

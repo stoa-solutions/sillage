@@ -35,14 +35,14 @@ struct DJView: View {
         lyrics.show(
           model.current, next: model.upcoming.first?.track, connection: session.connection)
       }
-      .onChange(of: model.continuous) { _, _ in model.continuousChanged() }
   }
 
   /// Same glass as Studio: the player on one panel, the session on another.
   private var compact: some View {
     VStack(spacing: 12) {
       VStack(alignment: .leading, spacing: 12) {
-        PlayerView(player: player).aspectRatio(16 / 9, contentMode: .fit)
+        VideoSurface(player: player).aspectRatio(16 / 9, contentMode: .fit)
+          .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
           .frame(maxWidth: .infinity).overlay { if model.current == nil { idleScreen } }
         TrackHeadline(track: model.current, titleFont: .title3.weight(.semibold), detailFont: .body)
         transport
@@ -63,18 +63,8 @@ struct DJView: View {
   private var studio: some View {
     HStack(alignment: .bottom, spacing: 0) {
       VStack(alignment: .leading, spacing: 14) {
-        if player.studioReady {
-          Spacer(minLength: 0)
-        } else if player.preparingStudio {
-          HStack(spacing: 10) {
-            ProgressView().controlSize(.small)
-            Text("Préparation du clip").foregroundStyle(.secondary)
-          }.frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-          PlayerView(player: player).aspectRatio(16 / 9, contentMode: .fit)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .overlay { if model.current == nil { idleScreen } }
-        }
+        // The video itself fills the stage behind this page (StageBackground).
+        Spacer(minLength: 0)
         TrackHeadline(
           track: model.current, titleFont: .system(size: 40, weight: .bold), detailFont: .title3,
           lines: 2)
@@ -98,11 +88,11 @@ struct DJView: View {
   }
 
   @ViewBuilder private var progress: some View {
-    if player.studioReady {
+    if player.duration > 0 {
       HStack(spacing: 10) {
         Text(clock(player.elapsed))
         Slider(
-          value: Binding(get: { player.elapsed }, set: { player.seek($0) }),
+          value: Binding(get: { player.elapsed }, set: { model.seek($0) }),
           in: 0...max(1, player.duration)
         ).accessibilityLabel("Position du morceau")
         Text(clock(player.duration))
@@ -113,14 +103,14 @@ struct DJView: View {
   private var transport: some View {
     HStack(spacing: 12) {
       Button {
-        player.command(player.playing ? "pause" : "play")
+        model.togglePlayback()
       } label: {
         Image(systemName: player.playing ? "pause.fill" : "play.fill").font(.title3)
           .frame(width: 40, height: 40)
           .foregroundStyle(Color(nsColor: .windowBackgroundColor))
           .background(Circle().fill(Color.recall))
       }.buttonStyle(.plain).accessibilityLabel(player.playing ? "Pause" : "Lecture")
-        .disabled(model.current == nil || player.preparingStudio)
+        .disabled(model.current == nil)
       Button {
         model.next()
       } label: {

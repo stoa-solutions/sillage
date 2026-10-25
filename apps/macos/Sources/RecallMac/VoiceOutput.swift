@@ -9,7 +9,7 @@ final class VoiceOutput: NSObject, ObservableObject, AVAudioPlayerDelegate,
   AVSpeechSynthesizerDelegate
 {
   @Published private(set) var status = ""
-  private let player: Player
+  private let engine: PlaybackEngine
   private var task: Task<Void, Never>?
   private let prepared = PreparedSpeech()
   private var preparation: Task<Void, Never>?
@@ -20,8 +20,8 @@ final class VoiceOutput: NSObject, ObservableObject, AVAudioPlayerDelegate,
   var onFallback: (() -> Void)?
   var onCloudPlayback: (() -> Void)?
 
-  init(player: Player) {
-    self.player = player
+  init(engine: PlaybackEngine) {
+    self.engine = engine
     super.init()
     synthesizer.delegate = self
   }
@@ -40,7 +40,7 @@ final class VoiceOutput: NSObject, ObservableObject, AVAudioPlayerDelegate,
         let sound = try AVAudioPlayer(data: data)
         sound.delegate = self
         audio = sound
-        player.command("duck")
+        engine.duck(true)
         if !sound.play() { throw RecallError.message("L’audio n’a pas démarré.") }
         status = "Le DJ parle · voix Gemini"
         onCloudPlayback?()
@@ -77,7 +77,7 @@ final class VoiceOutput: NSObject, ObservableObject, AVAudioPlayerDelegate,
     let utterance = AVSpeechUtterance(string: text)
     currentUtterance = utterance
     utterance.voice = AVSpeechSynthesisVoice(language: "fr-FR")
-    player.command("duck")
+    engine.duck(true)
     synthesizer.speak(utterance)
     status = "Le DJ parle · voix macOS"
   }
@@ -87,14 +87,14 @@ final class VoiceOutput: NSObject, ObservableObject, AVAudioPlayerDelegate,
     audio = nil
     currentUtterance = nil
     synthesizer.stopSpeaking(at: .immediate)
-    player.command("restore")
+    engine.duck(false)
     status = ""
   }
   nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
     Task { @MainActor in
       guard self.audio === player else { return }
       self.audio = nil
-      self.player.command("restore")
+      self.engine.duck(false)
       self.status = ""
     }
   }
@@ -104,7 +104,7 @@ final class VoiceOutput: NSObject, ObservableObject, AVAudioPlayerDelegate,
     Task { @MainActor in
       guard self.currentUtterance === utterance else { return }
       self.currentUtterance = nil
-      self.player.command("restore")
+      self.engine.duck(false)
       self.status = ""
     }
   }

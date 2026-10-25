@@ -107,7 +107,7 @@ struct SettingsView: View {
         Toggle("Voix Gemini expressive", isOn: $session.cloudVoice)
           .help("Micro au clic, dictée Apple. Voix Gemini avec ta clé, voix macOS en secours.")
       }
-      Section("Studio") {
+      Section("Vidéo") {
         StudioQualitySettings(player: dj.player)
       }
       if !session.error.isEmpty { Text(session.error).font(.caption).foregroundStyle(.red) }
@@ -120,17 +120,28 @@ struct SettingsView: View {
 private struct StudioQualitySettings: View {
   @ObservedObject var player: Player
   var body: some View {
-    Picker("Qualité", selection: Binding(get: { player.quality }, set: { player.setQuality($0) })) {
-      Text("1080p").tag(StudioQuality.hd)
-      if Player.supports4K { Text("Jusqu’à 4K").tag(StudioQuality.ultra) }
-    }
-    Text(
+    Picker(
+      "Qualité vidéo",
+      selection: Binding(
+        get: { player.youtubeOnly ? "youtube" : player.quality.rawValue },
+        set: { value in
+          if value == "youtube" {
+            player.setYouTubeOnly(true)
+          } else {
+            player.setYouTubeOnly(false)
+            player.setQuality(StudioQuality(rawValue: value) ?? .hd)
+          }
+        })
+    ) {
+      Text("1080p").tag(StudioQuality.hd.rawValue)
+      if Player.supports4K { Text("Jusqu’à 4K").tag(StudioQuality.ultra.rawValue) }
+      Text("Lecteur YouTube seulement").tag("youtube")
+    }.help(
       Player.supports4K
-        ? "La résolution dépend du clip disponible. Cache Studio : 2 Go en 1080p, 6 Go en 4K."
-        : "1080p sur ce Mac. La 4K nécessite le décodage matériel AV1. Cache Studio : 2 Go."
-    ).font(.caption)
-    if player.downloadingStudio {
-      Text("Le clip Studio se prépare en plein écran.").font(.caption)
+        ? "Même qualité en Compact et en Studio. Le clip est téléchargé sur ce Mac ; la musique démarre aussitôt sur YouTube puis bascule. Cache : 2 Go en 1080p, 6 Go en 4K."
+        : "Même qualité en Compact et en Studio. Le clip est téléchargé sur ce Mac ; la musique démarre aussitôt sur YouTube puis bascule. Cache : 2 Go. La 4K demande le décodage matériel AV1.")
+    if player.preparingClip {
+      Text("Préparation du clip en haute qualité…").font(.caption).foregroundStyle(.secondary)
     }
     if player.videoHeight > 0 { Text("Clip en cours : \(player.videoHeight)p").font(.caption) }
   }

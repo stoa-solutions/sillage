@@ -120,7 +120,7 @@ import SwiftUI
         .onOpenURL { session.receiveGoogleCallback($0) }
         .onDisappear {
           dj.cancel()
-          dj.player.command("pause")
+          dj.pause()
         }
     }
     .defaultSize(width: 600, height: 840)

@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- App Mac : session d’écoute et module de lecture (architecture). La musique démarre immédiatement, puis le clip téléchargé prend le relais en fondu, à la même qualité en Compact et en Studio (Studio devient un choix d’affichage). Les trois titres suivants sont préparés à l’avance ; option « Lecteur YouTube seulement ». Corrigé : une pause par le chat suivie d’une reprise au bouton ne bloque plus la suite automatique ; une suite demandée pendant la connexion attend le compte au lieu d’écrire dans le champ de saisie. Contrôles natifs par scénarios pour la session et la bascule entre lecteurs.
+
 - Recherche : les noms d’albums connus restent des recherches précises, même avec des mots comme « où » ; leurs occurrences complètes dans les descriptions YouTube sont conservées, sans les voisins sémantiques hors sujet.
 
 - App 1.5.4 : pilote MusicBrainz limité à dix morceaux côté worker. Crédits/featurings et albums cherchables, métadonnées accessibles au DJ, détails sourcés dans les lignes existantes ; genres de morceau et styles d’artiste restent distincts. Correspondances ambiguës conservées sans attribution, aucune extension automatique à la bibliothèque.

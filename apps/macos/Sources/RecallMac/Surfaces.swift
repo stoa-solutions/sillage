@@ -57,15 +57,10 @@ struct StageBackground: View {
   var body: some View {
     ZStack {
       Color.black
-      if immersive || !reduceTransparency {
-        if player.studioReady {
-          StudioPlayerView(player: player.nativePlayer)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
-        } else if let current {
-          Artwork.image(for: current, quality: "hqdefault").blur(radius: 40)
-            .opacity(immersive && player.preparingStudio ? 1 : 0.55).clipped()
-        }
+      if (immersive || !reduceTransparency) && current != nil {
+        // YouTube first, the downloaded clip fading in over it: the stage never jumps.
+        VideoSurface(player: player, fill: true)
+          .frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
       }
       if immersive {
         LinearGradient(
@@ -74,7 +69,6 @@ struct StageBackground: View {
         Color.black.opacity(0.55)
       }
     }
-    .animation(reduceMotion ? nil : .easeInOut(duration: 0.4), value: player.studioReady)
     .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: surface)
     .accessibilityHidden(true)
   }

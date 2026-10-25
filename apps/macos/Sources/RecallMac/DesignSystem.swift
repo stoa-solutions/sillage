@@ -207,22 +207,17 @@ struct NowPlayingBar: View {
         TrackHeadline(
           track: model.current, detail: "Choisis un morceau ou parle au DJ.",
           titleFont: .callout.weight(.semibold), detailFont: .caption)
-        if player.preparingStudio {
-          HStack(spacing: 6) {
-            ProgressView().controlSize(.mini)
-            Text("Préparation du clip…").font(.caption).foregroundStyle(.secondary)
-          }
-        } else if !player.failure.isEmpty {
+        if !player.failure.isEmpty {
           Text(player.failure).font(.caption).foregroundStyle(.orange).lineLimit(2)
         }
       }.frame(maxWidth: .infinity, alignment: .leading).clipped()
       Button {
-        player.command(player.playing ? "pause" : "play")
+        model.togglePlayback()
       } label: {
         Image(systemName: player.playing ? "pause.fill" : "play.fill").frame(width: 34, height: 34)
           .foregroundStyle(Color(nsColor: .windowBackgroundColor))
           .background(Circle().fill(Color.recall))
-      }.buttonStyle(.plain).disabled(model.current == nil || player.preparingStudio)
+      }.buttonStyle(.plain).disabled(model.current == nil)
         .accessibilityLabel(player.playing ? "Pause" : "Lecture")
       Button {
         model.next()

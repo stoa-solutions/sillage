@@ -86,7 +86,7 @@ public final class StudioVideoCache {
     process.executableURL = URL(fileURLWithPath: executable)
     process.arguments = [
       "--ignore-config", "--no-playlist", "--no-cache-dir", "--no-progress",
-      "--quiet", "--no-warnings", "--retries", "1", "--fragment-retries", "1", "--socket-timeout",
+      "--quiet", "--no-warnings", "--concurrent-fragments", "4", "--retries", "1", "--fragment-retries", "1", "--socket-timeout",
       "15",
       "--max-filesize", String(quality.maximumBytes), "--match-filters",
       "duration <= 1200 & !is_live",
