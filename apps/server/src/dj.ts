@@ -124,9 +124,10 @@ export async function djTurn(
         tracks: [],
         source: "catalog" as const,
       };
+    const append = intent === "append" || requested.append;
     return {
-      reply: `C’est parti : ${tracks.map((t) => t.title).join(", puis ")}.`,
-      action: intent === "append" || requested.append ? ("append" as const) : ("replace" as const),
+      reply: `${append ? "J’ajoute à la suite" : "C’est parti"} : ${tracks.map((t) => t.title).join(", puis ")}.`,
+      action: append ? ("append" as const) : ("replace" as const),
       tracks,
       source: "catalog" as const,
     };
@@ -297,7 +298,9 @@ export async function djTurn(
             502,
           );
         return {
-          reply: output.reply,
+          reply: ids.length
+            ? `Je te propose ${ids.length === 1 ? "ce morceau" : `ces ${ids.length} morceaux`}. Choisis celui que tu veux écouter.`
+            : output.reply,
           action: "keep" as const,
           tracks: [],
           discoveries: ids.map((id) => discoveries.get(id)!),
