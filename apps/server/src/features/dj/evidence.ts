@@ -163,6 +163,15 @@ export function readToolEvidence(
           (source: { status?: string }) => source.status === "error",
         ).length
       : 0;
+  const youtubeDailyQuota =
+    name === "music_search" &&
+    Array.isArray(data.sources) &&
+    data.sources.some(
+      (source: { source?: string; status?: string; reason?: string }) =>
+        source.source === "youtube" &&
+        source.status === "error" &&
+        source.reason === "daily_quota",
+    );
   const visualUnsupported =
     name === "music_search" &&
     !items.length &&
@@ -173,7 +182,13 @@ export function readToolEvidence(
   const context = isSearch
     ? compactSearch(name, data, items)
     : { text: compactOverview(data), items: [] };
-  return { ...context, isSearch, failedSources, visualUnsupported };
+  return {
+    ...context,
+    isSearch,
+    failedSources,
+    visualUnsupported,
+    youtubeDailyQuota,
+  };
 }
 
 /** Explain catalog facts, never repeat a provider's unexecuted action or diagnosis. */
@@ -200,8 +215,11 @@ export function discoveryReply(cards: DiscoveryEvidence[]) {
 export function noSelectionReply(
   failedSearches: number,
   currentTitle?: string,
+  youtubeDailyQuota = false,
 ) {
   const reference = currentTitle ? ` autour de « ${currentTitle} »` : "";
+  if (youtubeDailyQuota)
+    return `YouTube a atteint son quota quotidien de recherche. Je n’ai pas de nouvelle sélection vérifiée${reference} dans les sources choisies. Ta lecture et ta file sont conservées. La recherche YouTube reprendra au renouvellement du quota Google.`;
   return failedSearches
     ? `Une source de recherche n’a pas pu fournir de résultat exploitable ; je n’ai pas de nouvelle sélection vérifiée${reference}. Ta lecture et ta file sont conservées. Réessaie la suite dans un instant.`
     : `Je n’ai pas trouvé de nouvelle sélection compatible${reference} dans les sources choisies. Ta lecture et ta file sont conservées. Tu peux élargir la recherche ou demander une autre ambiance.`;

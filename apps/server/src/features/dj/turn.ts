@@ -54,6 +54,11 @@ export async function djTurn(
   let searched = false;
   let failedSearches = 0;
   let reformulated = false;
+  let youtubeDailyQuota = false;
+  const withSourceNote = (reply: string) =>
+    youtubeDailyQuota
+      ? `${reply} YouTube a atteint son quota quotidien de recherche ; je m’appuie sur les résultats disponibles.`
+      : reply;
   let visualUnsupported = false;
   function emptyReply() {
     return visualUnsupported && !failedSearches
@@ -61,6 +66,7 @@ export async function djTurn(
       : noSelectionReply(
           failedSearches,
           plan.relative ? plan.playback?.current?.title : undefined,
+          youtubeDailyQuota,
         );
   }
   async function partialSelection() {
@@ -72,7 +78,7 @@ export async function djTurn(
       action: tracks.length ? ("append" as const) : ("keep" as const),
       tracks,
       reply: tracks.length
-        ? selectionReply("append", tracks, targetCount)
+        ? withSourceNote(selectionReply("append", tracks, targetCount))
         : emptyReply(),
       source: "mcp" as const,
     };
@@ -112,6 +118,7 @@ export async function djTurn(
         }
         if (evidence.isSearch) searched = true;
         failedSearches += evidence.failedSources;
+        youtubeDailyQuota ||= evidence.youtubeDailyQuota;
         visualUnsupported ||= evidence.visualUnsupported;
       } catch (error) {
         timeout.throwIfAborted();
@@ -181,7 +188,7 @@ export async function djTurn(
           messages.push({
             role: "user",
             content:
-              "La recherche n’a pas fourni de nouveau candidat. Essaie une autre formulation musicale pertinente dans le périmètre choisi, sans te limiter à l’artiste en cours. Le morceau actuel et les cartes précédentes sont déjà connus ; ne les redemande pas. Si les sources restent sans résultat, conserve la lecture.",
+              "La recherche n’a pas fourni de nouveau candidat. Repars du mot musical employé par l’utilisateur, seul, sans ajouter playlist ou plusieurs genres dans la même requête. Essaie ensuite une graphie ou un genre pertinent séparément. Une source en erreur ne rend pas les autres sources indisponibles. Si YouTube indique daily_quota, explore la bibliothèque autorisée avec des requêtes courtes ; ne demande pas à l’utilisateur de répéter son envie. Respecte les exclusions de la demande et les cartes rejetées. Si les sources restent sans résultat, conserve la lecture.",
           });
         }
         continue;
@@ -231,7 +238,9 @@ export async function djTurn(
           .filter((id) => !input.rejectedIds.includes(id))
           .map((id) => discoveries.get(id)!);
         return {
-          reply: cards.length ? discoveryReply(cards) : emptyReply(),
+          reply: cards.length
+            ? withSourceNote(discoveryReply(cards))
+            : emptyReply(),
           action: "keep" as const,
           tracks: [],
           discoveries: cards,
@@ -284,7 +293,7 @@ export async function djTurn(
       return {
         reply:
           tracks.length && action !== "keep"
-            ? selectionReply(action, tracks, targetCount)
+            ? withSourceNote(selectionReply(action, tracks, targetCount))
             : emptyReply(),
         action: tracks.length ? action : "keep",
         tracks,

@@ -161,5 +161,20 @@
         }
       }
     ]
+  },
+  {
+    "id": "all-afro-source-recovery",
+    "suite": "external",
+    "description": "Partout compose depuis les playlists même lorsque YouTube est limité.",
+    "scope": "all",
+    "steps": [
+      {
+        "message": "Fais-moi une playlist de musique afro s'il te plaît",
+        "expect": {
+          "action": "replace",
+          "minTracks": 1
+        }
+      }
+    ]
   }
 ]

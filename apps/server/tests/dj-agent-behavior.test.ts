@@ -330,3 +330,62 @@ it("bounds an agent that keeps searching after both sources fail", async () => {
   expect(JSON.stringify(requests)).not.toContain("private library diagnostic");
   expect(requests.at(-1)).not.toHaveProperty("tools");
 });
+
+it("recovers a broad afro request with a short library query when YouTube's daily quota is exhausted", async () => {
+  boundaries.youtube.mockRejectedValue(
+    Object.assign(new Error("private provider details"), {
+      status: 429,
+      reason: "daily_quota",
+    }),
+  );
+  boundaries.search
+    .mockResolvedValueOnce({ results: [], degraded: null })
+    .mockResolvedValue({
+      results: library.slice(0, 2).map((video) => ({ video })),
+      degraded: null,
+    });
+  responses.push(
+    searchCall("afrobeats afro pop"),
+    searchCall("afro"),
+    selection(
+      library.slice(0, 2).map((track) => track.id),
+      "replace",
+    ),
+  );
+  const result = await run({
+    message: "Fais-moi une playlist de musique afro s'il te plaît",
+    scope: "all",
+  });
+  expect(result.action).toBe("replace");
+  expect(result.tracks).toHaveLength(2);
+  expect(result.reply).toContain("quota quotidien");
+  expect(result.reply).not.toContain("dans un instant");
+  expect(toolEvidence()[0].sources).toContainEqual(
+    expect.objectContaining({ source: "youtube", reason: "daily_quota" }),
+  );
+  expect(JSON.stringify(requests[1].messages)).toContain(
+    "Repars du mot musical",
+  );
+  expect(boundaries.search).toHaveBeenLastCalledWith(
+    db,
+    expect.objectContaining({ query: "afro" }),
+    "alice",
+  );
+  expect(JSON.stringify(requests)).not.toContain("private provider details");
+});
+
+it("explains daily YouTube exhaustion truthfully when no authorized source has candidates", async () => {
+  boundaries.youtube.mockRejectedValue(
+    Object.assign(new Error("private"), { status: 429, reason: "daily_quota" }),
+  );
+  boundaries.search.mockResolvedValue({ results: [], degraded: null });
+  responses.push(searchCall("afro"), selection([], "keep"));
+  const result = await run({
+    message: "Propose de la musique afro",
+    scope: "youtube",
+  });
+  expect(result).toMatchObject({ action: "keep", tracks: [] });
+  expect(result.reply).toContain("quota quotidien");
+  expect(result.reply).not.toContain("dans un instant");
+  expect(boundaries.search).not.toHaveBeenCalled();
+});

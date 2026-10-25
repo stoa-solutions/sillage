@@ -82,3 +82,10 @@ test("HTML report treats model output as text, never executable markup", () => {
   assert.ok(html.includes("&lt;script&gt;"));
   assert.ok(!html.includes("<img"));
 });
+
+test("a usable partial selection is evaluated even when its reply discloses a source quota", () => {
+  const response = { reply: "YouTube a atteint son quota quotidien", action: "replace", tracks: [a] };
+  assert.equal(classifyFailure(200, response), null);
+  assert.equal(classifyFailure(429, response), "quota_or_busy");
+  assert.equal(classifyFailure(200, { ...response, tracks: [] }), "quota_or_busy");
+});

@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- DJ : distingue le quota quotidien YouTube des pannes temporaires, continue les recherches courtes dans les playlists en mode Partout et explique les résultats partiels. Les recherches YouTube épuisées ne sont plus répétées jusqu’au renouvellement du quota ; les imports et métadonnées restent indépendants.
+
 - Qualité du DJ : banc de régression sans interface (intentions, vrai circuit MCP, sources et exclusions), évaluations HTTP du modèle réel avec rapports privés, durées et distinction entre échec comportemental et quota fournisseur.
 - DJ : corrige une demande ordonnée séparée par « maintenant, puis » qui pouvait créer un morceau vide et empêcher le lancement malgré deux titres trouvés ; défaut reproduit par l’évaluation HTTP.
 - Mac : évite le blocage du chat après plusieurs cartes de découverte en stabilisant la mise en page et le défilement ; design conservé.

@@ -78,7 +78,7 @@ describe("YouTube input and complete snapshots", () => {
     );
     await expect(
       new YouTube("secret", undefined, request).videos(["abcdefghijk"]),
-    ).rejects.toThrow("YouTube HTTP 403 (quotaExceeded)");
+    ).rejects.toMatchObject({ kind: "daily_quota", status: 403 });
   });
   it("reads channel ids and keeps only https channel photos", async () => {
     const request = vi.fn(async (input: unknown) =>

@@ -109,7 +109,10 @@ export function applyResponse(request, response, state) {
 export function classifyFailure(status, response) {
   const message = String(response?.error || response?.reply || "");
   if (status === 401 || status === 403) return "authentication";
-  if (status === 429 || /quota|limite de débit/i.test(message)) return "quota_or_busy";
+  // A partial-source warning is not a failed turn if the requested operation
+  // still has candidates; behavioral assertions below decide whether enough exist.
+  const hasCandidates = (response?.tracks?.length ?? 0) + (response?.discoveries?.length ?? 0) > 0;
+  if (status === 429 || (!hasCandidates && /quota|limite de débit/i.test(message))) return "quota_or_busy";
   if (/source.*(?:pas pu|indisponible)|sources.*joindre/i.test(message)) return "source_unavailable";
   if (status >= 500) return "server_or_provider";
   return null;

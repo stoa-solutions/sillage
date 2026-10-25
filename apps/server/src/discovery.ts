@@ -6,6 +6,7 @@ import { ownsPlaylist } from "./accounts.ts";
 import { upsertVideo } from "./library.ts";
 import { documentText, hash } from "./content.ts";
 import { YouTube } from "./youtube.ts";
+import { YouTubeError } from "./youtube-errors.ts";
 import type { ApiEnvironment } from "./dj-routes.ts";
 
 export const discoveryInput = z.object({
@@ -21,6 +22,8 @@ export class DiscoveryError extends Error {
   constructor(
     message: string,
     public status: 404 | 429 | 502 | 503,
+    public reason:
+      "daily_quota" | "rate_or_quota" | "unavailable" = "unavailable",
   ) {
     super(message);
   }
@@ -140,10 +143,20 @@ export class Discovery {
 }
 function providerError(error: unknown): DiscoveryError {
   const message = error instanceof Error ? error.message : "";
-  if (/quota|Budget|dailyLimit/i.test(message))
+  if (
+    (error instanceof YouTubeError && error.kind === "daily_quota") ||
+    /quotaExceeded|Budget|dailyLimit/i.test(message)
+  )
     return new DiscoveryError(
-      "Le quota YouTube du serveur est atteint. Tes playlists restent disponibles.",
+      "Le quota quotidien de recherche YouTube est atteint. Tes playlists restent disponibles.",
       429,
+      "daily_quota",
+    );
+  if (error instanceof YouTubeError && error.kind === "rate_limit")
+    return new DiscoveryError(
+      "YouTube limite temporairement les recherches. Réessaie dans un instant.",
+      429,
+      "rate_or_quota",
     );
   if (/Clé YouTube absente/.test(message))
     return new DiscoveryError(

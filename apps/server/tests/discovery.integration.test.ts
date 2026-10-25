@@ -21,10 +21,11 @@ if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 const schema = "discovery_test";
 const admin = new pg.Pool({ connectionString: url });
-const db = new pg.Pool({
+const createPool = () => new pg.Pool({
   connectionString: url,
   options: `-c search_path=${schema},public`,
 });
+let db = createPool();
 const alice = randomUUID(),
   bob = randomUUID();
 const tokenA = "alice-discovery-token-123456789",
@@ -56,8 +57,12 @@ const req = (path: string, token = tokenA, body?: unknown) =>
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
   await migrate(db);
+  await db.end();
 });
+// Each case models a fresh service instance: public cache and quota cooldown
+// must not outlive the fixture while its database rows are reset.
 beforeEach(async () => {
+  db = createPool();
   status = 200;
   vi.stubEnv("YOUTUBE_API_KEY", "test-youtube-key");
   vi.stubEnv("DJ_SETTINGS_ENCRYPTION_KEY", "42".repeat(32));
@@ -84,7 +89,7 @@ beforeEach(async () => {
       if (address.hostname === "www.googleapis.com") {
         if (status !== 200)
           return Response.json(
-            { error: { errors: [{ reason: "quotaExceeded" }] } },
+            { error: { errors: [{ reason: status === 429 ? "rateLimitExceeded" : "quotaExceeded" }], details: [{ metadata: { quota_limit: "defaultSearchListPerDayPerProject" } }] } },
             { status },
           );
         if (address.pathname.endsWith("/search"))
@@ -152,12 +157,12 @@ beforeEach(async () => {
   vi.stubGlobal("fetch", upstream);
   app = createApp(db);
 });
-afterEach(() => {
+afterEach(async () => {
+  await db.end();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
 afterAll(async () => {
-  await db.end();
   await admin.query(`DROP SCHEMA ${schema} CASCADE`);
   await admin.end();
 });
@@ -459,4 +464,28 @@ it("exposes only public DJ rules to authenticated accounts, without configuratio
   expect(Object.keys(body)).toEqual(["prompt"]);
   expect(body.prompt).toContain("DJ personnel");
   expect(body.prompt).not.toContain("test-youtube-key");
+});
+
+it("daily search quota remains explicit on later queries without another provider call", async () => {
+  status = 429;
+  const first = await req("/v1/discover/search", tokenA, { query: "afro" });
+  expect(first.status).toBe(429);
+  expect((await first.json()).error).toContain("quotidien");
+  const calls = upstream.mock.calls.length;
+  const next = await req("/v1/discover/search", tokenA, { query: "afrobeat" });
+  expect(next.status).toBe(429);
+  expect(upstream.mock.calls.length).toBe(calls);
+});
+
+it("switches from playlists to Partout on the next chat request without retaining the old scope", async () => {
+  await req("/v1/discover/add", tokenA, { videoId: "newtrack001" });
+  await req("/v1/dj/settings", tokenA, { apiKey: "test-gemini-personal-key", model: "gemini-3.5-flash-lite" });
+  const youtubeSearches = () => upstream.mock.calls.filter(([url]) => String(url).includes("youtube/v3/search")).length;
+  const local = await req("/v1/dj/chat", tokenA, { message: "Cherche Real artist", scope: "library" });
+  expect(local.status).toBe(200);
+  expect(youtubeSearches()).toBe(0);
+  const everywhere = await req("/v1/dj/chat", tokenA, { message: "Cherche Real artist", scope: "all" });
+  expect(everywhere.status).toBe(200);
+  expect(youtubeSearches()).toBe(1);
+  expect((await everywhere.json()).discoveries[0].video.id).toBe("newtrack001");
 });

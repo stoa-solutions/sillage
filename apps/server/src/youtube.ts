@@ -9,25 +9,36 @@ export interface PlaylistEntry {
   title: string | null;
   channel: string | null;
 }
+import {
+  YouTubeError,
+  youtubeError,
+  nextYouTubeQuotaReset,
+} from "./youtube-errors.ts";
 type Fetcher = typeof fetch;
 export class YouTube {
+  private exhausted = new Map<string, { until: number; error: YouTubeError }>();
   constructor(
     private key: string,
     private db?: Database,
     private request: Fetcher = fetch,
+    private now: () => number = Date.now,
   ) {}
   async get(endpoint: string, params: Record<string, string>): Promise<any> {
     if (!this.key)
       throw new Error(
         "Clé YouTube absente : configurez YOUTUBE_API_KEY côté serveur.",
       );
+    // A search-specific daily quota must not disable playlist imports or video metadata.
+    const cooldown = this.exhausted.get(endpoint);
+    if (cooldown && cooldown.until > this.now()) throw cooldown.error;
+    this.exhausted.delete(endpoint);
     if (this.db) {
       const { rows } = await this.db.query(
         `INSERT INTO quota_usage(day,units) VALUES((now() AT TIME ZONE 'America/Los_Angeles')::date,1)
         ON CONFLICT(day) DO UPDATE SET units=quota_usage.units+1 WHERE quota_usage.units<$1 RETURNING units`,
         [Number(process.env.YOUTUBE_DAILY_BUDGET ?? 8000)],
       );
-      if (!rows.length) throw new Error("Budget YouTube journalier atteint.");
+      if (!rows.length) throw new YouTubeError("daily_quota", 429);
     }
     const url = new URL(`https://www.googleapis.com/youtube/v3/${endpoint}`);
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
@@ -38,10 +49,13 @@ export class YouTube {
     });
     if (!response.ok) {
       const body = (await response.json().catch(() => ({}))) as any;
-      const reason = body.error?.errors?.[0]?.reason;
-      throw new Error(
-        `YouTube HTTP ${response.status}${typeof reason === "string" ? ` (${reason.replace(/[^a-zA-Z0-9_-]/g, "")})` : ""}`,
-      );
+      const error = youtubeError(response.status, body);
+      if (error.kind === "daily_quota")
+        this.exhausted.set(endpoint, {
+          until: nextYouTubeQuotaReset(this.now()),
+          error,
+        });
+      throw error;
     }
     return response.json();
   }
