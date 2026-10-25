@@ -176,7 +176,7 @@ final class DJModel: ObservableObject {
 
   private func run(_ effect: ListeningSession.Effect) {
     switch effect {
-    case .cue(let track): player.engine.cue(track)
+    case .cue(let track, let autoplay): player.engine.cue(track, autoplay: autoplay)
     case .prepare(let tracks): player.engine.prepare(tracks)
     case .play: player.engine.play()
     case .pause: player.engine.pause()

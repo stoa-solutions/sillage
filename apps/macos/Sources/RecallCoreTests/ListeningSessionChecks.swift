@@ -2,11 +2,35 @@ import Foundation
 import RecallKit
 
 extension Array where Element == ListeningSession.Effect {
+  fileprivate var sentRequests: [DJRequest] {
+    compactMap {
+      if case .send(_, let request) = $0 { return request }
+      return nil
+    }
+  }
   fileprivate var requests: [Int] {
     compactMap { if case .send(let id, _) = $0 { return id } else { return nil } }
   }
   fileprivate var cued: [String] {
-    compactMap { if case .cue(let t) = $0 { return t.id } else { return nil } }
+    compactMap { if case .cue(let t, _) = $0 { return t.id } else { return nil } }
+  }
+  fileprivate var autoplay: [Bool] {
+    compactMap {
+      if case .cue(_, let autoplay) = $0 { return autoplay }
+      return nil
+    }
+  }
+  fileprivate var stopsSpeech: Bool {
+    contains {
+      if case .stopSpeech = $0 { return true }
+      return false
+    }
+  }
+  fileprivate var speaks: Bool {
+    contains {
+      if case .speak = $0 { return true }
+      return false
+    }
   }
   fileprivate var prepared: [[String]] {
     compactMap { if case .prepare(let t) = $0 { return t.map(\.id) } else { return nil } }
@@ -192,6 +216,167 @@ func listeningSessionChecks() throws {
     session.handle(.ask("/aide", source: .all)).requests.isEmpty, "Help consumed an AI turn")
   try expect(DJCommand.parse("/suite") == .prepare(5), "Default suite was not five songs")
   try expect(DJCommand.parse("/suite 8") == .prepare(8), "Explicit suite length lost")
+
+  // The last transport intent wins over a slower answer, for both manual and automatic turns.
+  session = playingAlone(a)
+  let delayed = session.handle(.ask("Joue du jazz", source: .library)).requests[0]
+  let paused = session.handle(.ask("Tu peux mettre la musique en pause stp", source: .library))
+  try expect(paused.pauses && paused.stopsSpeech, "Natural pause did not stop music and voice")
+  let afterPause = session.handle(
+    .answer(
+      request: delayed,
+      DJResponse(reply: "Je lance B", action: "replace", tracks: [b])))
+  try expect(
+    afterPause.cued == [b.id] && afterPause.autoplay == [false] && !afterPause.speaks,
+    "A late selection overrode the user's newer Pause")
+  _ = session.handle(.resume)
+  let explicit = session.handle(.ask("Joue C", source: .library)).requests[0]
+  _ = session.handle(.pause)
+  _ = session.handle(.resume)
+  let resumed = session.handle(
+    .answer(
+      request: explicit,
+      DJResponse(reply: "C", action: "replace", tracks: [c])))
+  try expect(resumed.autoplay == [true], "An explicit Resume before the answer was ignored")
+
+  session = playingAlone(a)
+  let pendingNext = session.handle(.next).requests[0]
+  _ = session.handle(.pause)
+  let pausedRefill = session.handle(
+    .answer(
+      request: pendingNext,
+      DJResponse(reply: "B", action: "append", tracks: [b])))
+  try expect(
+    pausedRefill.autoplay == [false] && !pausedRefill.speaks,
+    "A refill restarted music after Pause at the queue tail")
+  _ = session.handle(.next)
+  _ = session.handle(.pause)
+  let preparePaused = session.handle(.ask("/suite 5", source: .library)).requests[0]
+  let preparedPaused = session.handle(
+    .answer(
+      request: preparePaused,
+      DJResponse(reply: "C", action: "append", tracks: [c])))
+  try expect(
+    preparedPaused.autoplay == [false], "Manual preparation resumed a paused, exhausted queue")
+  let replacement = session.handle(.play(d, source: .library))
+  try expect(
+    replacement.stopsSpeech && replacement.autoplay == [true],
+    "Direct selection did not stop obsolete speech or start its selected song")
+
+  session = playingAlone(a)
+  _ = session.handle(.pause)
+  let newerSelection = session.handle(.ask("Joue B maintenant", source: .library)).requests[0]
+  let selectedAfterPause = session.handle(
+    .answer(
+      request: newerSelection,
+      DJResponse(reply: "B", action: "replace", tracks: [b])))
+  try expect(
+    selectedAfterPause.autoplay == [true], "A new play request remained stuck on an old Pause")
+
+  session = playingAlone(a)
+  _ = session.handle(.pause)
+  let browse = session.handle(.ask("Cherche du jazz", source: .library)).requests[0]
+  let browseAnswer = session.handle(
+    .answer(
+      request: browse,
+      DJResponse(reply: "Voici des propositions", action: "keep", tracks: [])))
+  try expect(
+    browseAnswer.speaks && browseAnswer.cued.isEmpty,
+    "A new chat request on paused music lost its spoken response")
+
+  for text in [
+    "Tu peux mettre en pause stp", "arrête la musique", "Peux-tu stopper la musique ?",
+    "stop la musique", "mets-moi en pause",
+  ] {
+    guard case .pause? = DJTransportCommand.parse(text) else {
+      throw RecallError.message("Natural pause was not recognized: " + text)
+    }
+  }
+  for text in ["Tu peux passer au suivant stp", "Peux-tu changer de morceau ?"] {
+    guard case .next? = DJTransportCommand.parse(text) else {
+      throw RecallError.message("Natural next was not recognized: " + text)
+    }
+  }
+  for text in ["Tu peux reprendre la lecture stp", "peux-tu mettre play"] {
+    guard case .resume? = DJTransportCommand.parse(text) else {
+      throw RecallError.message("Natural resume was not recognized: " + text)
+    }
+  }
+  for text in [
+    "Ne mets pas en pause", "ne passe pas au suivant", "sans changer de morceau",
+    "joue Don't Stop Me Now", "next de Tyga", "pause puis joue du jazz", "non stop",
+  ] {
+    try expect(
+      DJTransportCommand.parse(text) == nil,
+      "Negation, song title or compound request was intercepted: " + text)
+  }
+
+  // Follow-ups refer to the shown choices, not an unrelated track still playing.
+  session = playingAlone(a)
+  let discover = session.handle(.ask("Cherche Acid Coco", source: .all)).requests[0]
+  _ = session.handle(
+    .answer(
+      request: discover,
+      DJResponse(
+        reply: "Deux choix", action: "keep", tracks: [], discoveries: Array(items.prefix(2)))))
+  let alternatives = session.handle(.ask("d’autre", source: .all)).sentRequests[0]
+  try expect(
+    Set(alternatives.rejectedIds) == Set([b.id, c.id]),
+    "Explicit alternatives did not reject the displayed choices")
+  try expect(
+    alternatives.discoveryContext.map(\.id) == [b.id, c.id]
+      && alternatives.playbackContext?.current?.id == a.id,
+    "Discovery choices were confused with current playback")
+  let except = session.handle(.ask("met tout ce que tu trouve sauf ces deux la", source: .all))
+  try expect(
+    except.cued.isEmpty && except.sentRequests.count == 1
+      && Set(except.sentRequests[0].rejectedIds) == Set([b.id, c.id]),
+    "All except these two replayed the two suggestion cards")
+  let normalBrowse = session.handle(.ask("Cherche du jazz", source: .all)).sentRequests[0]
+  try expect(
+    normalBrowse.rejectedIds.isEmpty && normalBrowse.queued.contains(a.id),
+    "Explicit refusals leaked into a new musical direction or replaced playback exclusions")
+  session = playingAlone(a)
+  let noCards = session.handle(.ask("d'autres morceaux", source: .all)).sentRequests[0]
+  try expect(
+    noCards.rejectedIds.isEmpty && noCards.discoveryContext.isEmpty,
+    "Alternatives without cards invented a rejection")
+  try expect(
+    !DJDiscoveryFollowUp.rejectsSuggestions("je ne veux pas d'autres morceaux"),
+    "A negated request for alternatives rejected the choices")
+
+  try expect(
+    DJDiscoveryFollowUp.rejectsSuggestions("sauf ces deux-là", cardCount: 2),
+    "An exact two-card refusal was ignored")
+  try expect(
+    !DJDiscoveryFollowUp.rejectsSuggestions("sauf ces deux-là", cardCount: 3),
+    "An ambiguous two-card refusal rejected all three cards")
+  try expect(
+    DJDiscoveryFollowUp.rejectsSuggestions("d'autres morceaux", cardCount: 3),
+    "A request for different suggestions lost its whole-group reference")
+
+  // Two failed automatic chances block polling, but a deliberate Next gets one fresh turn.
+  session = playingAlone(a)
+  let prefetch = session.handle(.playback(.progress(elapsed: 190, duration: 220))).requests[0]
+  let broaden = session.handle(
+    .answer(
+      request: prefetch,
+      DJResponse(reply: "Vide", action: "keep", tracks: []))
+  ).requests[0]
+  _ = session.handle(
+    .answer(
+      request: broaden,
+      DJResponse(reply: "Toujours vide", action: "keep", tracks: [])))
+  try expect(
+    session.handle(.playback(.progress(elapsed: 195, duration: 220))).requests.isEmpty,
+    "An exhausted automatic continuation looped")
+  let deliberateRetry = session.handle(.next)
+  try expect(
+    deliberateRetry.requests.count == 1 && session.waitingForNext,
+    "Explicit Next was blocked by exhausted background preparation")
+  try expect(
+    session.handle(.playback(.progress(elapsed: 196, duration: 220))).requests.isEmpty,
+    "Progress duplicated the deliberate continuation request")
 
   print(
     "Listening session checks passed: requests, late answers, pause/resume, sign-in, refill, unavailable"

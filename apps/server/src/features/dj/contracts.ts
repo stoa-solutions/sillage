@@ -27,6 +27,20 @@ export const djInput = z.object({
     )
     .max(12)
     .default([]),
+  discoveryContext: z
+    .array(
+      z.object({
+        id: z.string().regex(/^[\w-]{11}$/),
+        title: z.string().max(300),
+        channel: z.string().max(200).nullish(),
+      }),
+    )
+    .max(8)
+    .default([]),
+  rejectedIds: z
+    .array(z.string().regex(/^[\w-]{11}$/))
+    .max(100)
+    .default([]),
   excludeIds: z
     .array(z.string().regex(/^[\w-]{11}$/))
     .max(100)

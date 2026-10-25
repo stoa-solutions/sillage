@@ -64,6 +64,7 @@ public final class PlaybackEngine: ObservableObject {
   private let fadeSteps: Int
   private var generation = 0
   private var clipTask: Task<Void, Never>?
+  private var youtubeTask: Task<Void, Never>?
   private var wantsPlayback = true
   private var ducked = false
   private var heldUnavailable = false
@@ -105,7 +106,7 @@ public final class PlaybackEngine: ObservableObject {
     clock.sample(0, playing: false)
     youtube.setVolume(level)
     let generation = generation
-    Task { [youtube] in try? await youtube.load(.youtube(track.id), at: 0, autoplay: autoplay) }
+    loadYouTube(track, at: 0)
     if downloads { prepareClip(for: track, generation: generation) }
   }
 
@@ -159,10 +160,7 @@ public final class PlaybackEngine: ObservableObject {
       clip.stop()
       active = .youtube
       youtube.setVolume(level)
-      let autoplay = wantsPlayback
-      Task { [youtube] in
-        try? await youtube.load(.youtube(track.id), at: resume, autoplay: autoplay)
-      }
+      loadYouTube(track, at: resume)
     }
     preparingClip = false
     if downloads { prepareClip(for: track, generation: generation) }
@@ -172,6 +170,8 @@ public final class PlaybackEngine: ObservableObject {
     generation += 1
     clipTask?.cancel()
     fading = false
+    youtubeTask?.cancel()
+    youtubeTask = nil
     youtube.stop()
     clip.stop()
     track = nil
@@ -183,6 +183,29 @@ public final class PlaybackEngine: ObservableObject {
     failure = ""
     heldUnavailable = false
     clock.sample(0, playing: false)
+  }
+
+  /// Queue only the latest YouTube load, with transport intent read when it actually runs.
+  private func loadYouTube(_ track: Track, at position: Double) {
+    youtubeTask?.cancel()
+    let expectedGeneration = generation
+    youtubeTask = Task { [weak self] in
+      guard let self, !Task.isCancelled, generation == expectedGeneration else { return }
+      do {
+        try await youtube.load(.youtube(track.id), at: position, autoplay: wantsPlayback)
+        guard !Task.isCancelled, generation == expectedGeneration else {
+          // Reset may have happened while a backend was awaiting readiness. Stop any
+          // late start, but never stop a newer song that now owns this backend.
+          if self.track == nil { youtube.stop() }
+          return
+        }
+        // A backend may suspend during loading; a newer Pause still wins when it returns.
+        if !wantsPlayback { youtube.pause() }
+      } catch {
+        guard !Task.isCancelled, generation == expectedGeneration else { return }
+        receive(.unavailable, from: .youtube)
+      }
+    }
   }
 
   // MARK: - Clip handover
@@ -265,10 +288,7 @@ public final class PlaybackEngine: ObservableObject {
       active = .youtube
       failure = "Lecture locale indisponible. Retour au lecteur YouTube."
       youtube.setVolume(level)
-      let autoplay = wantsPlayback
-      Task { [youtube] in
-        try? await youtube.load(.youtube(track.id), at: resume, autoplay: autoplay)
-      }
+      loadYouTube(track, at: resume)
       return
     case .playing(let value):
       if playing != value { playing = value }

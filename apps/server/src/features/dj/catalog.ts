@@ -19,6 +19,9 @@ export async function catalogSelection(
       ? null
       : await requestedTracks(db, input.message, userId);
   if (requested) {
+    // A rejected suggestion is a search clue, never an implicit replay request.
+    // Let the DJ explore alternatives rather than partially changing an ordered set.
+    if (requested.tracks.some((track) => input.rejectedIds.includes(track.id))) return null;
     if (requested.missing.length)
       return {
         reply: `Je n’ai pas identifié précisément : ${requested.missing.join(" ; ")}. Précise le titre ou l’artiste ; je garde ta file actuelle.`,
@@ -39,7 +42,9 @@ export async function catalogSelection(
         tracks: [],
         source: "catalog" as const,
       };
-    const append = intent === "append" || requested.append;
+    // The turn policy is the sole playback authority, including on this fast path.
+    // Matching identifies titles and order; it must not reinterpret the timing.
+    const append = intent === "append";
     return {
       reply: `${append ? "J’ajoute à la suite" : "C’est parti"} : ${tracks.map((t) => t.title).join(", puis ")}.`,
       action: append ? ("append" as const) : ("replace" as const),

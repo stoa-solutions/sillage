@@ -205,6 +205,55 @@ func playbackEngineChecks() async throws {
     clips.waiting.isEmpty && clips.kept.isEmpty && !engine.preparingClip,
     "YouTube-only mode still downloaded clips")
 
+  // A cue runs on the next actor turn: Pause and Reset must still win before it starts.
+  youtube = FakePlayer()
+  clip = FakePlayer()
+  clips = FakeClips()
+  engine = PlaybackEngine(youtube: youtube, clip: clip, clips: clips, downloads: false)
+  engine.cue(song)
+  engine.pause()
+  try await settle { youtube.loaded.count == 1 }
+  try expect(
+    !youtube.playing && !youtube.loaded[0].2,
+    "A queued YouTube load ignored the latest Pause")
+  youtube.loaded = []
+  engine.cue(other)
+  engine.reset()
+  for _ in 0..<50 { await Task.yield() }
+  try expect(
+    youtube.loaded.isEmpty && !youtube.playing && engine.track == nil,
+    "A queued YouTube load survived account reset")
+  engine.cue(song)
+  engine.cue(other)
+  try await settle { !youtube.loaded.isEmpty }
+  try expect(
+    youtube.loaded.map { $0.0 } == [.youtube(other.id)],
+    "A superseded YouTube cue reached the backend")
+
+  // Pause while a backend's asynchronous load is suspended must win at completion too.
+  youtube = FakePlayer()
+  youtube.holdLoads = true
+  clip = FakePlayer()
+  clips = FakeClips()
+  engine = PlaybackEngine(youtube: youtube, clip: clip, clips: clips, downloads: false)
+  engine.cue(song)
+  try await settle { !youtube.held.isEmpty }
+  engine.pause()
+  youtube.release()
+  try await settle { youtube.loaded.count == 1 }
+  try expect(!youtube.playing, "A suspended YouTube load resumed after Pause")
+
+  // A backend that completes after reset must not leave orphan audio playing.
+  youtube.loaded = []
+  engine.cue(other)
+  try await settle { !youtube.held.isEmpty }
+  engine.reset()
+  youtube.release()
+  try await settle { youtube.loaded.count == 1 }
+  try expect(
+    !youtube.playing && engine.track == nil,
+    "A suspended YouTube load left audio playing after reset")
+
   // Upcoming tracks are prepared ahead, current first; the voice ducks the sounding player.
   youtube = FakePlayer()
   clip = FakePlayer()

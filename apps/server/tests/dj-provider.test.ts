@@ -132,3 +132,20 @@ it("passes cancellation to the transport without starting a second request", asy
   ).rejects.toThrow();
   expect(fetcher).toHaveBeenCalledOnce();
 });
+
+it("identifies provider throttling or quota separately from the Recall budget", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      async () => new Response("provider-private-details", { status: 429 }),
+    ),
+  );
+  await expect(
+    completeTurn(config, messages, tools, 0, new AbortController().signal),
+  ).rejects.toMatchObject({
+    status: 429,
+    message: expect.stringContaining(
+      "limite de débit ou quota de ta clé Gemini",
+    ),
+  });
+});

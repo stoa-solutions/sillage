@@ -573,7 +573,7 @@ it("uses each account key for chat and voice requests and blocks unowned model s
                     id: "search",
                     type: "function",
                     function: {
-                      name: "library_search",
+                      name: "music_search",
                       arguments: JSON.stringify({ query: "Jazz" }),
                     },
                   },

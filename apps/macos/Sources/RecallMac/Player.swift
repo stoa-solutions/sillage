@@ -176,8 +176,14 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
     resumeAt = start > 0 ? start : nil
     send("cue", ["id": id, "autoplay": autoplay, "start": start])
   }
-  func play() { send("play") }
-  func pause() { send("pause") }
+  func play() {
+    if let pending { self.pending = (pending.id, pending.start, true) }
+    send("play")
+  }
+  func pause() {
+    if let pending { self.pending = (pending.id, pending.start, false) }
+    send("pause")
+  }
   func seek(to seconds: Double) {
     guard let id = currentID else { return }
     resumeAt = nil

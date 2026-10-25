@@ -137,3 +137,28 @@ it("ignores resolution annotations when resolving an exact requested title", () 
   expect(result?.tracks.map(t => t.id)).toEqual(["take-on-me", "navajo"]);
   expect(result?.missing).toEqual([]);
 });
+
+it.each([
+  ["Joue Navajo de Masego maintenant, puis Tadow de Masego et FKJ, dans cet ordre.", false],
+  ["Joue Navajo puis Tadow à la suite", true],
+  ["Joue Navajo puis Tadow, sans couper le morceau actuel", true],
+  ["Ajoute Navajo puis Tadow en file d’attente", true],
+  ["Joue maintenant Navajo puis Tadow", false],
+])("separates scheduling controls from ordered titles: %s", (message, append) => {
+  const result = resolveExactRequest(message, catalog);
+  expect(result?.missing).toEqual([]);
+  expect(result?.tracks.map((t) => t.id)).toEqual(["navajo", "tadow"]);
+  expect(result?.append).toBe(append);
+});
+it("does not erase a real title that is also a scheduling word", () => {
+  const result = resolveExactRequest("Joue Maintenant de Artist puis Tadow", [
+    ...catalog, {id: "now", title: "Maintenant", channel: "Artist"},
+  ]);
+  expect(result?.tracks.map((t) => t.id)).toEqual(["now", "tadow"]);
+  expect(result?.missing).toEqual([]);
+});
+it("does not silently remove musical constraints or resolve negated commands", () => {
+  expect(resolveExactRequest("Ne joue pas Navajo", catalog)).toBeNull();
+  const constrained = resolveExactRequest("Joue Navajo puis Tadow sans live", catalog);
+  expect(constrained?.missing).toEqual(["Tadow sans live"]);
+});

@@ -1,3 +1,5 @@
+import { parseDJIntent } from "./dj-intent.ts";
+
 /** Matching uses catalog metadata, never inferred audio characteristics. */
 export function normalizeMusic(value: string): string {
   return value
@@ -98,11 +100,46 @@ export interface ExactRequest {
   append: boolean;
 }
 
+/** Remove only scheduling syntax at the edges, never musical exclusions. */
+function withoutPlaybackModifiers(part: string): string {
+  let value = part.trim().replace(/^(?:dans cet ordre\s*:?\s*)/i, "")
+    .replace(/^(?:maintenant|directement|tout de suite|imm[eé]diatement)\s+/i, "");
+  const suffix = /(?:^|\s+)(?:maintenant|directement|tout de suite|imm[eé]diatement|[àa] la suite|[àa] suivre|(?:en|dans la) (?:file|queue)(?: d['’]attente)?|apr[eè]s (?:ce|le|la) (?:titre|morceau|chanson)|sans (?:couper|interrompre|changer)(?: (?:le morceau|la musique|la lecture|le titre)(?: actuel(?:le)?)?)?|dans cet ordre|stp|s['’]il te pla[iî]t)[.!?]*$/i;
+  while (suffix.test(value)) value = value.replace(suffix, "").trim();
+  return value.replace(/^[.!?]+$/, "");
+}
+
+function exactCandidates(part: string, catalog: RequestedTrack[]): RequestedTrack[] {
+  const normalized = normalizeMusic(part);
+  return catalog
+    .filter((track) => {
+      const title = songTitle(track.title);
+      if (!title || !phrase(normalized, title)) return false;
+      const metadata = new Set(
+        words(track.title + " " + (track.channel ?? "")),
+      );
+      const requested = words(part);
+      // Extra intent words ("similaire", "sans", etc.) must not silently disappear.
+      return (
+        requested.length > 0 &&
+        requested.every((token) => metadata.has(token))
+      );
+    })
+    .sort(
+      (a, b) =>
+        musicMatchRank(part, b) - musicMatchRank(part, a) ||
+        a.title.length - b.title.length ||
+        a.id.localeCompare(b.id),
+    );
+}
+
 /** Resolve only explicit song references; mood/artist requests stay with the DJ. */
 export function resolveExactRequest(
   message: string,
   catalog: RequestedTrack[],
 ): ExactRequest | null {
+  const controls = parseDJIntent(message);
+  if (controls.intent === "browse") return null;
   const ordered = /\b(?:puis|ensuite|suivi(?:e)? de|dans cet ordre)\b/i.test(
     message,
   );
@@ -117,11 +154,11 @@ export function resolveExactRequest(
     )
     .replace(/^(?:dans cet ordre\s*:?\s*)/i, "")
     .replace(/\s+(?:stp|s['’]il te pla[iî]t)[.!?]*$/i, "");
-  const parts = ordered
-    ? request
-        .split(/\s*\b(?:puis|ensuite|suivi(?:e)? de)\b\s*|\s*,\s*/i)
-        .filter(Boolean)
-    : [request];
+  const parts = (ordered
+    ? request.split(/\s*\b(?:puis|ensuite|suivi(?:e)? de)\b\s*|\s*,\s*/i)
+    : [request]).filter((part) => withoutPlaybackModifiers(part)
+      || catalog.some((track) => songTitle(track.title) === normalizeMusic(part)));
+  if (!parts.length) return null;
   if (parts.length > 8)
     return {
       tracks: [],
@@ -131,28 +168,11 @@ export function resolveExactRequest(
   const tracks: RequestedTrack[] = [],
     missing: string[] = [];
   let hadAmbiguity = false;
-  for (const part of parts) {
-    const normalized = normalizeMusic(part);
-    const matches = catalog
-      .filter((track) => {
-        const title = songTitle(track.title);
-        if (!title || !phrase(normalized, title)) return false;
-        const metadata = new Set(
-          words(track.title + " " + (track.channel ?? "")),
-        );
-        const requested = words(part);
-        // Extra intent words ("similaire", "sans", etc.) must not silently disappear.
-        return (
-          requested.length > 0 &&
-          requested.every((token) => metadata.has(token))
-        );
-      })
-      .sort(
-        (a, b) =>
-          musicMatchRank(part, b) - musicMatchRank(part, a) ||
-          a.title.length - b.title.length ||
-          a.id.localeCompare(b.id),
-      );
+  for (const rawPart of parts) {
+    // Preserve a real title such as “Maintenant” before interpreting that word as timing.
+    const rawMatches = exactCandidates(rawPart, catalog);
+    const part = rawMatches.length ? rawPart : withoutPlaybackModifiers(rawPart);
+    const matches = rawMatches.length ? rawMatches : exactCandidates(part, catalog);
     const ambiguous =
       matches.length > 1 &&
       musicMatchRank(part, matches[0]) === musicMatchRank(part, matches[1]) &&
@@ -163,5 +183,5 @@ export function resolveExactRequest(
   }
   if (!ordered && !tracks.length && !hadAmbiguity) return null;
   if (ordered && !command && !tracks.length) return null;
-  return { tracks, missing, append: /^ajoute\b/i.test(message.trim()) };
+  return { tracks, missing, append: controls.intent === "append" };
 }

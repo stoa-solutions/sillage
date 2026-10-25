@@ -122,7 +122,7 @@ beforeEach(async () => {
                       id: "s",
                       type: "function",
                       function: {
-                        name: "youtube_search",
+                        name: "music_search",
                         arguments: JSON.stringify({ query: "Real artist" }),
                       },
                     },

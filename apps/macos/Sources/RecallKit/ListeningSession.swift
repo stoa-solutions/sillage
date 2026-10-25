@@ -36,7 +36,7 @@ public struct ListeningSession: Sendable {
   }
 
   public enum Effect: Sendable {
-    case cue(Track)
+    case cue(Track, autoplay: Bool)
     /// Upcoming tracks to prepare ahead, nearest first.
     case prepare([Track])
     case play
@@ -56,6 +56,7 @@ public struct ListeningSession: Sendable {
     let automatic: Bool
     let text: String
     let source: DiscoveryScope
+    let transportRevision: Int
     var broadened = false
   }
 
@@ -82,6 +83,11 @@ public struct ListeningSession: Sendable {
   private var accountReady = false
   private var deferredContinuation = false
   private var preparedSpeechFor: Int?
+  // Desired transport is independent from delayed backend signals and network answers.
+  private var wantsPlayback = true
+  private var transportRevision = 0
+  // Session-local refusals survive an empty answer and remain distinct from play history.
+  private var rejectedDiscoveryIDs: [String] = []
 
   /// How many upcoming tracks are prepared ahead (downloaded clip in Studio quality).
   public static let preparedAhead = 3
@@ -95,6 +101,9 @@ public struct ListeningSession: Sendable {
     switch event {
     case .ask(let text, let source): ask(text, source: source, into: &effects)
     case .play(let track, let source):
+      rejectedDiscoveryIDs = []
+      setPlaybackIntent(true)
+      effects += [.stopSpeech, .clearPreparedSpeech]
       cancelPending(into: &effects)
       composition.direct(
         "Des morceaux dans l’esprit de \(TrackTitle(track).spoken).", source: source)
@@ -113,6 +122,7 @@ public struct ListeningSession: Sendable {
       let started = queue.apply(
         DJResponse(reply: "", action: "append", tracks: [track]), automatic: false)
       if started {
+        setPlaybackIntent(true)
         composition.direct(
           "Des morceaux dans l’esprit de \(TrackTitle(track).spoken).", source: source)
         startCurrent(into: &effects)
@@ -125,6 +135,7 @@ public struct ListeningSession: Sendable {
       guard index > queue.position, queue.tracks.indices.contains(index) else { break }
       cancelPending(into: &effects)
       guard queue.playUpcoming(at: index) else { break }
+      setPlaybackIntent(true)
       composition.resume()
       unavailableCount = 0
       effects += [.stopSpeech, .clearPreparedSpeech]
@@ -136,8 +147,10 @@ public struct ListeningSession: Sendable {
       effects += [.clearPreparedSpeech, .prepare(prepared)]
     case .pause:
       // Pausing never touches the musical direction: the continuation resumes with the music.
-      effects.append(.pause)
+      setPlaybackIntent(false)
+      effects += [.pause, .stopSpeech]
     case .resume:
+      setPlaybackIntent(true)
       effects.append(.play)
     case .retryContinuation:
       guard pending == nil else { break }
@@ -202,7 +215,15 @@ public struct ListeningSession: Sendable {
       }
       return
     }
-    let cards = messages.last(where: { !($0.discoveries?.isEmpty ?? true) })?.discoveries ?? []
+    let cards = latestDiscoveries
+    let rejectsCards =
+      !cards.isEmpty && DJDiscoveryFollowUp.rejectsSuggestions(text, cardCount: cards.count)
+    if rejectsCards {
+      for card in cards where !rejectedDiscoveryIDs.contains(card.id) {
+        rejectedDiscoveryIDs.append(card.id)
+      }
+      rejectedDiscoveryIDs = Array(rejectedDiscoveryIDs.suffix(100))
+    }
     if let command = DJSuggestionCommand.parse(text, count: cards.count) {
       cancelPending(into: &effects)
       effects += [.stopSpeech, .clearPreparedSpeech]
@@ -217,13 +238,16 @@ public struct ListeningSession: Sendable {
       }
       let selected = command.indices.map { cards[$0] }
       let tracks = selected.map(\.video)
+      let selectedIDs = Set(tracks.map(\.id))
+      rejectedDiscoveryIDs.removeAll { selectedIDs.contains($0) }
       let titles = tracks.map { TrackTitle($0).spoken }.joined(separator: ", puis ")
       // Remember the actual choice, not a reference such as "the third", for future refills.
       lastRequest += 1
       pending = Pending(
         id: lastRequest, automatic: false,
         text: "Des morceaux dans l’esprit de " + titles,
-        source: selected.allSatisfy(\.inLibrary) ? .library : .all)
+        source: selected.allSatisfy(\.inLibrary) ? .library : .all,
+        transportRevision: transportRevision)
       answer(
         lastRequest,
         DJResponse(
@@ -240,13 +264,19 @@ public struct ListeningSession: Sendable {
       switch command {
       case .next: next(userInitiated: true, into: &effects)
       case .pause:
-        effects.append(.pause)
+        setPlaybackIntent(false)
+        effects += [.pause, .stopSpeech]
         say(assistant: "Musique en pause.")
       case .resume:
+        setPlaybackIntent(true)
         effects.append(.play)
         say(assistant: "La lecture reprend.")
       }
       return
+    }
+    // Refusals apply to this discovery direction, never to a new musical wish.
+    if !rejectsCards && !DJPlaybackContext.followsCurrent(text) {
+      rejectedDiscoveryIDs = []
     }
     cancelPending(into: &effects)
     effects += [.stopSpeech, .clearPreparedSpeech, .error("")]
@@ -264,8 +294,21 @@ public struct ListeningSession: Sendable {
     into effects: inout [Effect]
   ) {
     lastRequest += 1
-    pending = Pending(id: lastRequest, automatic: automatic, text: text, source: source)
-    effects.append(.send(request: lastRequest, request))
+    pending = Pending(
+      id: lastRequest, automatic: automatic, text: text, source: source,
+      transportRevision: transportRevision)
+    effects.append(.send(request: lastRequest, withDiscoveryContext(request)))
+  }
+
+  private var latestDiscoveries: [DiscoveryItem] {
+    messages.last(where: { !($0.discoveries?.isEmpty ?? true) })?.discoveries ?? []
+  }
+
+  private func withDiscoveryContext(_ request: DJRequest) -> DJRequest {
+    var request = request
+    request.rejectedIds = rejectedDiscoveryIDs
+    request.discoveryContext = latestDiscoveries.prefix(8).map { DJDiscoveryContext($0.video) }
+    return request
   }
 
   private mutating func cancelPending(into effects: inout [Effect]) {
@@ -288,11 +331,12 @@ public struct ListeningSession: Sendable {
         lastRequest += 1
         pending = Pending(
           id: lastRequest, automatic: true, text: request.text, source: request.source,
-          broadened: true)
+          transportRevision: request.transportRevision, broadened: true)
         effects.append(
           .send(
             request: lastRequest,
-            composition.request(history: messages, queue: queue, broaden: true)))
+            withDiscoveryContext(
+              composition.request(history: messages, queue: queue, broaden: true))))
         return
       }
     } else if response.action != "keep", !response.tracks.isEmpty {
@@ -307,6 +351,12 @@ public struct ListeningSession: Sendable {
     let added = queue.tracks.count > before || changed
     if request.automatic { composition.finish(added: added) }
     if changed {
+      // An explicit new selection may start music, but never undo a newer Pause.
+      if !request.automatic, response.action == "replace",
+        request.transportRevision == transportRevision
+      {
+        wantsPlayback = true
+      }
       startCurrent(into: &effects)
     } else {
       effects.append(.prepare(prepared))
@@ -318,7 +368,14 @@ public struct ListeningSession: Sendable {
     }
     waitingForNext = false
     // A background refill must not interrupt the current song with a premature announcement.
-    if spoken && (!request.automatic || changed) { effects.append(.speak(response.reply)) }
+    // A fresh chat request may speak over an already-paused song. Only a newer Pause
+    // suppresses its delayed voice; automatic refills stay silent while paused.
+    let maySpeak =
+      request.automatic
+      ? wantsPlayback : wantsPlayback || request.transportRevision == transportRevision
+    if spoken && maySpeak && (!request.automatic || changed) {
+      effects.append(.speak(response.reply))
+    }
   }
 
   private mutating func requestContinuation(retry: Bool, into effects: inout [Effect]) {
@@ -347,6 +404,7 @@ public struct ListeningSession: Sendable {
   ) {
     guard current != nil else { return }
     if userInitiated {
+      setPlaybackIntent(true)
       unavailableCount = 0
       // A late manual search must not undo a more recent Next; an automatic refill keeps going.
       if let request = pending, !request.automatic {
@@ -404,6 +462,11 @@ public struct ListeningSession: Sendable {
     }
   }
 
+  private mutating func setPlaybackIntent(_ value: Bool) {
+    transportRevision += 1
+    wantsPlayback = value
+  }
+
   private var prepared: [Track] { Array(upcoming.prefix(Self.preparedAhead)) }
 
   private mutating func startCurrent(into effects: inout [Effect]) {
@@ -413,7 +476,7 @@ public struct ListeningSession: Sendable {
     elapsed = 0
     duration = 0
     guard let current else { return }
-    effects += [.cue(current), .prepare(prepared)]
+    effects += [.cue(current, autoplay: wantsPlayback), .prepare(prepared)]
   }
 
   private mutating func announce(into effects: inout [Effect]) {

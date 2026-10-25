@@ -1,3 +1,8 @@
+import {
+  readToolEvidence,
+  discoveryReply,
+  noSelectionReply,
+} from "./evidence.ts";
 import { selectionReply } from "../../dj-selection.ts";
 import { playbackAction } from "../../dj-intent.ts";
 import { LEGACY_USER } from "../../accounts.ts";
@@ -35,6 +40,8 @@ export async function djTurn(
     input.excludeIds,
     userId,
     externalSearch,
+    plan.scope,
+    input.rejectedIds,
   );
   const candidates = new Map<string, DjTrack>();
   const discoveries = new Map<string, { video: DjTrack; inLibrary: boolean }>();
@@ -45,6 +52,31 @@ export async function djTurn(
   ]);
   let toolCalls = 0;
   let searched = false;
+  let failedSearches = 0;
+  let reformulated = false;
+  let visualUnsupported = false;
+  function emptyReply() {
+    return visualUnsupported && !failedSearches
+      ? "YouTube ne permet pas de chercher par couleur ou détail de pochette. Choisis Mes playlists ou Partout pour explorer les miniatures de ta bibliothèque. Ta lecture reste inchangée."
+      : noSelectionReply(
+          failedSearches,
+          plan.relative ? plan.playback?.current?.title : undefined,
+        );
+  }
+  async function partialSelection() {
+    const tracks = externalSearch
+      ? partialIds.slice(0, targetCount ?? 8).map((id) => candidates.get(id)!)
+      : await musicTracks(db, partialIds.slice(0, targetCount ?? 8), userId);
+    timeout.throwIfAborted();
+    return {
+      action: tracks.length ? ("append" as const) : ("keep" as const),
+      tracks,
+      reply: tracks.length
+        ? selectionReply("append", tracks, targetCount)
+        : emptyReply(),
+      source: "mcp" as const,
+    };
+  }
   try {
     const listed = await mcp.client.listTools();
     const tools: ChatTool[] = listed.tools.map((tool) => ({
@@ -55,6 +87,47 @@ export async function djTurn(
         parameters: tool.inputSchema,
       },
     }));
+    async function searchTool(
+      name: string,
+      args: Record<string, unknown>,
+      id: string,
+    ) {
+      const isSearch = [
+        "library_search",
+        "youtube_search",
+        "music_search",
+      ].includes(name);
+      let text: string;
+      try {
+        const result = await mcp.client.callTool(
+          { name, arguments: args },
+          undefined,
+          { signal: timeout },
+        );
+        const evidence = readToolEvidence(name, result);
+        text = evidence.text;
+        for (const item of evidence.items) {
+          candidates.set(item.video.id, item.video);
+          discoveries.set(item.video.id, item);
+        }
+        if (evidence.isSearch) searched = true;
+        failedSearches += evidence.failedSources;
+        visualUnsupported ||= evidence.visualUnsupported;
+      } catch (error) {
+        timeout.throwIfAborted();
+        if (isSearch) {
+          searched = true;
+          failedSearches++;
+        }
+        // Do not pass transport diagnostics or tool instructions to the model.
+        text = JSON.stringify({
+          error: "source_unavailable",
+          source: name,
+          tracks: [],
+        });
+      }
+      messages.push({ role: "tool", tool_call_id: id, content: text });
+    }
     for (let turn = 0; turn < MAX_ROUNDS; turn++) {
       const message = await completeTurn(
         config,
@@ -95,41 +168,20 @@ export async function djTurn(
               502,
             );
           }
-          const result = await mcp.client.callTool(
-            {
-              name: call.function.name,
-              arguments: args as Record<string, unknown>,
-            },
-            undefined,
-            { signal: timeout },
+          await searchTool(
+            call.function.name,
+            args as Record<string, unknown>,
+            call.id,
           );
-          const content = result.content as { type: string; text?: string }[];
-          const text = content
-            .filter((c) => c.type === "text")
-            .map((c) => c.text)
-            .join("\n");
-          if (!result.isError && call.function.name === "library_search") {
-            searched = true;
-            const data = JSON.parse(text) as { tracks?: DjTrack[] };
-            for (const track of data.tracks ?? [])
-              candidates.set(track.id, track);
-            for (const track of data.tracks ?? [])
-              discoveries.set(track.id, { video: track, inLibrary: true });
-          }
-          if (!result.isError && call.function.name === "youtube_search") {
-            searched = true;
-            const data = JSON.parse(text) as {
-              results?: { video: DjTrack; inLibrary: boolean }[];
-            };
-            for (const item of data.results ?? []) {
-              discoveries.set(item.video.id, item);
-              candidates.set(item.video.id, item.video);
-            }
-          }
+        }
+        // Sources are routed by the server. A single reformulation can explore
+        // other musical clues freely; never force the playing artist as a filter.
+        if (searched && !candidates.size && !reformulated && toolCalls < 8) {
+          reformulated = true;
           messages.push({
-            role: "tool",
-            tool_call_id: call.id,
-            content: text.slice(0, 20000),
+            role: "user",
+            content:
+              "La recherche n’a pas fourni de nouveau candidat. Essaie une autre formulation musicale pertinente dans le périmètre choisi, sans te limiter à l’artiste en cours. Le morceau actuel et les cartes précédentes sont déjà connus ; ne les redemande pas. Si les sources restent sans résultat, conserve la lecture.",
           });
         }
         continue;
@@ -141,7 +193,7 @@ export async function djTurn(
         messages.push({
           role: "user",
           content:
-            "Cherche les indices de ma demande avec library_search ou youtube_search avant de conclure ou de demander un titre exact. Propose les candidats vérifiés si plusieurs conviennent.",
+            "Cherche les indices de ma demande avec music_search avant de conclure ou de demander un titre exact. Propose les candidats vérifiés si plusieurs conviennent.",
         });
         continue;
       }
@@ -175,13 +227,14 @@ export async function djTurn(
             "Résultat de découverte non vérifié. Réessaie.",
             502,
           );
+        const cards = [...new Set(ids)]
+          .filter((id) => !input.rejectedIds.includes(id))
+          .map((id) => discoveries.get(id)!);
         return {
-          reply: ids.length
-            ? `Je te propose ${ids.length === 1 ? "ce morceau" : `ces ${ids.length} morceaux`}. Choisis celui que tu veux écouter.`
-            : output.reply,
+          reply: cards.length ? discoveryReply(cards) : emptyReply(),
           action: "keep" as const,
           tracks: [],
-          discoveries: ids.map((id) => discoveries.get(id)!),
+          discoveries: cards,
         };
       }
       if (output.trackIds.some((id) => !candidates.has(id)))
@@ -194,7 +247,9 @@ export async function djTurn(
         action === "keep"
           ? []
           : [...new Set(output.trackIds)].filter(
-              (id) => !avoidRepeats || !input.excludeIds.includes(id),
+              (id) =>
+                !input.rejectedIds.includes(id) &&
+                (!avoidRepeats || !input.excludeIds.includes(id)),
             );
       if (action === "append" && ids.length > partialIds.length)
         partialIds = ids;
@@ -230,25 +285,21 @@ export async function djTurn(
         reply:
           tracks.length && action !== "keep"
             ? selectionReply(action, tracks, targetCount)
-            : output.reply,
+            : emptyReply(),
         action: tracks.length ? action : "keep",
         tracks,
         source: "mcp" as const,
       };
     }
-    // Never throw away an already validated partial selection while looking for more.
-    const tracks = externalSearch
-      ? partialIds.slice(0, targetCount ?? 8).map((id) => candidates.get(id)!)
-      : await musicTracks(db, partialIds.slice(0, targetCount ?? 8), userId);
-    return {
-      action: tracks.length ? ("append" as const) : ("keep" as const),
-      tracks,
-      reply: tracks.length
-        ? selectionReply("append", tracks, targetCount)
-        : "Je n’ai pas trouvé de nouvelle sélection compatible dans les sources choisies. Ta file est conservée ; tu peux préciser ton envie ou élargir la recherche.",
-      source: "mcp" as const,
-    };
+    // A later empty search must not discard already validated candidates.
+    return await partialSelection();
   } catch (error) {
+    // A provider outage while expanding cannot erase a verified partial queue.
+    // Cancellation, including the deadline, always wins over that recovery.
+    if (partialIds.length && !timeout.aborted) {
+      const partial = await partialSelection();
+      if (partial.tracks.length) return partial;
+    }
     if (error instanceof DjUnavailable) throw error;
     throw new DjUnavailable(
       "Le DJ est momentanément indisponible. Ta file de lecture est conservée.",

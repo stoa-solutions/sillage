@@ -2,6 +2,10 @@
 
 ## Non publié
 
+- DJ : recherche unifiée selon Mes playlists, YouTube ou Partout ; les deux sources sont interrogées en parallèle dans Partout. Les demandes d’alternatives gardent les cartes récentes comme repère et excluent les propositions explicitement refusées, sans imposer d’artiste ni de style.
+- DJ : décision de lecture centralisée (action, moment, référence et nombre), corrections des négations et demandes ordonnées ; contexte musical explicite prioritaire et repli de recherche borné sans inventer une panne des sources.
+- Mac : dernière pause respectée malgré les réponses tardives, annulation du chargement YouTube, arrêt de l’ancienne annonce lors d’un changement de titre ; commandes naturelles de lecture élargies et scénarios de régression issus de l’audit.
+
 - Mac : réduit les rafraîchissements de lecture sans dégrader l’horloge des paroles ; nettoyage des observateurs et du pont WebKit, chargement YouTube différé jusqu’au premier titre.
 - Connexion Google : retour vers l’app qui a démarré la connexion, reconnexion sans déconnexion préalable et page de retour explicite dans le navigateur avec bouton de reprise.
 

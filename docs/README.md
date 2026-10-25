@@ -17,3 +17,5 @@
 Règles de travail des agents : [`AGENTS.md`](../AGENTS.md). Vocabulaire : [`GLOSSARY.md`](../GLOSSARY.md).
 
 - [Comptes Google et isolation](accounts.md) : connexion, clés personnelles, migration et validation.
+
+- [Décisions du DJ et garanties de lecture](dj-behavior.md) : contrat d’intention, outils MCP, concurrence et scénarios de référence.

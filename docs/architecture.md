@@ -96,3 +96,8 @@ La séparation est progressive. Les domaines recherche, comptes, playlists et pa
 La CI exécute trois validations distinctes : Node (frontières, types, comportement, build), Mac (compilation et scénarios natifs), PostgreSQL jetable (migrations, isolation des comptes et opérations persistantes). Les réponses tardives, les exclusions, les sélections partielles et les erreurs fournisseur restent des scénarios de comportement ; ne pas les remplacer par des tests qui recopient l'implémentation.
 
 Ces contrôles ciblent des régressions connues ; ils ne prouvent ni l'absence de tout défaut, ni la qualité musicale d'une réponse réelle. Les changements de lecteur, de voix ou de parcours demandent toujours un essai dans l'app. Le déploiement reste une étape séparée.
+
+
+## Politique du DJ et concurrence
+
+Les décisions musicales, les résultats MCP et la lecture asynchrone ont des propriétaires distincts. Le contrat d’intention et les scénarios de non-régression sont décrits dans [Décisions du DJ](dj-behavior.md). Le prompt guide la recherche ; il ne peut pas annuler les contrôles d’action, de compte, de candidat ou la dernière pause utilisateur.

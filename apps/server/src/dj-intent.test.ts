@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { djIntent, playbackAction } from "./dj-intent.ts";
+import { djIntent, playbackAction, parseDJIntent, followsCurrent } from "./dj-intent.ts";
 it.each([
   ["Non je t'ai dit ajoute du Omer Adam et mets-la directement et fais passe les musiques", "replace"],
   ["ajoute Omer Adam et joue-le maintenant", "replace"],
@@ -35,4 +35,56 @@ it.each([
   ["mets ce titre à suivre", "append"],
 ])("honors continuation intent in %s", (message, expected) => {
   expect(djIntent(message)).toBe(expected);
+});
+
+it.each([
+  ["Ajoute du jazz et joue-le maintenant, sans live", "replace"],
+  ["Non, ne le mets pas en file : joue-le maintenant", "replace"],
+  ["Ne joue pas maintenant, prépare la suite", "append"],
+  ["Ne rajoute rien", "browse"],
+  ["Ne joue pas Navajo", "browse"],
+  ["Joue Ne me quitte pas", "replace"],
+  ["Tu peux ne pas changer de musique", "browse"],
+  ["Peux-tu ne pas lancer de musique", "browse"],
+  ["Tu peux ne pas changer de musique, mais prépare la suite", "append"],
+  ["Tu peux jouer Ne me quitte pas", "replace"],
+  ["D’autres stp", "browse"],
+  ["Autre chose", "browse"],
+  ["Mets tout ce que tu trouves sauf ces deux-là", "replace"],
+  ["Cherche du jazz sans jouer les morceaux", "browse"],
+  ["Joue Mac Miller, pas Self Care", "replace"],
+  ["Joue Mac Miller pas Self Care", "replace"],
+  ["Prépare-moi une file de rap US", "append"],
+  ["Prépare la file, sans changer la musique", "append"],
+])("scopes operation and negation in %s", (message, expected) => {
+  expect(djIntent(message)).toBe(expected);
+});
+
+it("does not turn a corrected immediate request back into append", () => {
+  expect(playbackAction(djIntent("Ajoute du jazz et joue-le maintenant, sans live"), "replace"))
+    .toBe("replace");
+});
+
+it.each([
+  ["Prépare trois nouveaux morceaux à suivre", 3],
+  ["Prépare huit nouvelles chansons à suivre", 8],
+  ["Ajoute 2 titres", 2],
+  ["Ajoute un morceau", 1],
+])("extracts the explicit bounded count in %s", (message, count) => {
+  expect(parseDJIntent(message)).toMatchObject({ intent: "append", timing: "later", count });
+});
+it.each([
+  ["dans le même style que Michael Jackson", "named", false],
+  ["dans la même ambiance que Tyga", "named", false],
+  ["dans ce même style", "current", true],
+  ["dans cette ambiance", "current", true],
+  ["dans la même veine", "current", true],
+  ["dans la même veine que Michael Jackson", "named", false],
+  ["comme celui-ci", "current", true],
+  ["comme celle-ci", "current", true],
+  ["comme ça", "current", true],
+  ["du jazz", "none", false],
+])("distinguishes an explicit reference in %s", (message, reference, relative) => {
+  expect(parseDJIntent(message).reference).toBe(reference);
+  expect(followsCurrent(message)).toBe(relative);
 });

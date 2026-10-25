@@ -67,7 +67,7 @@ export async function completeTurn(
   if (!response.ok) {
     throw new DjUnavailable(
       response.status === 429
-        ? "L’IA du DJ est momentanément occupée. Ta musique reste disponible."
+        ? "Google a refusé la demande : limite de débit ou quota de ta clé Gemini atteint. Ce n’est pas le plafond Recall. Ta lecture reste disponible ; vérifie le quota de ta clé dans Réglages avant de réessayer."
         : "L’IA du DJ ne répond pas pour le moment. Réessaie dans un instant.",
       response.status === 429 ? 429 : 502,
     );
