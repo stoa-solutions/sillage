@@ -2,6 +2,7 @@ import Foundation
 
 public struct HTTPClient: Sendable {
   public init() {}
+  private static let session = URLSession(configuration: .ephemeral)
   public func json(url: URL, body: Any? = nil, headers: [String: String] = [:]) async throws
     -> [String: Any]
   {
@@ -12,7 +13,7 @@ public struct HTTPClient: Sendable {
       request.httpBody = try JSONSerialization.data(withJSONObject: body)
       request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     }
-    let (data, response) = try await URLSession.shared.data(for: request)
+    let (data, response) = try await Self.session.data(for: request)
     guard let http = response as? HTTPURLResponse else {
       throw RecallError.message("Réponse réseau invalide.")
     }
@@ -39,16 +40,40 @@ public struct HTTPClient: Sendable {
   public func search(_ connection: Connection, query: String) async throws -> [Track] {
     try await searchPage(connection, query: query).tracks
   }
-  public func searchPage(_ connection: Connection, query: String, offset: Int = 0,
-                         limit: Int = 50) async throws -> LibrarySearchPage {
-    let object = try await server(
-      connection, path: "search",
-      body: ["query": query, "mode": "text", "sort": "relevance", "offset": offset, "limit": limit])
+  public func searchPage(
+    _ connection: Connection, query: String, offset: Int = 0,
+    limit: Int = 50, playlist: String? = nil
+  ) async throws -> LibrarySearchPage {
+    var body: [String: Any] = [
+      "query": query, "mode": "text", "sort": query.isEmpty ? "position" : "relevance",
+      "offset": offset, "limit": limit,
+    ]
+    if let playlist { body["playlistId"] = playlist }
+    let object = try await server(connection, path: "search", body: body)
     let videos = (object["results"] as? [[String: Any]] ?? []).compactMap {
       $0["video"] as? [String: Any]
     }
     let tracks = try Catalog.parse(JSONSerialization.data(withJSONObject: ["videos": videos]))
     return LibrarySearchPage(tracks: tracks, total: object["total"] as? Int ?? tracks.count)
+  }
+  public func libraryOverview(_ connection: Connection) async throws -> ServerLibraryOverview {
+    let status = try await server(connection, path: "status")
+    let collections = try await server(connection, path: "playlists")
+    return try ServerLibraryOverview(status: status, collections: collections)
+  }
+  /// Supplement MCP's short list from server pages, including when earlier tracks are queued.
+  public func djCandidates(_ connection: Connection, query: String, excluded: Set<String>)
+    async throws -> [Track]
+  {
+    let primary = try await mcpSearch(connection, query: query)
+    var seen = Set<String>()
+    var tracks = primary.filter { !excluded.contains($0.id) && seen.insert($0.id).inserted }
+    for offset in stride(from: 0, to: 300, by: 100) {
+      let page = try await searchPage(connection, query: query, offset: offset, limit: 100)
+      tracks += page.tracks.filter { !excluded.contains($0.id) && seen.insert($0.id).inserted }
+      if tracks.count >= 30 || offset + 100 >= page.total { break }
+    }
+    return Array(tracks.prefix(80))
   }
   public func mcpSearch(_ connection: Connection, query: String, includeQueued: Bool = false)
     async throws -> [Track]

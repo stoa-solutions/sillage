@@ -15,6 +15,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
   private static let origin = "https://recall.stoa.solutions"
   override init() {
     let configuration = WKWebViewConfiguration()
+    configuration.websiteDataStore = .nonPersistent()
     configuration.mediaTypesRequiringUserActionForPlayback = []
     configuration.allowsAirPlayForMediaPlayback = true
     configuration.preferences.isElementFullscreenEnabled = true

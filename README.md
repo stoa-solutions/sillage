@@ -4,7 +4,7 @@ Extension Chrome avec bibliothèque locale et serveur personnel pour retrouver u
 
 ## App Mac
 
-Une app native SwiftUI est disponible dans `apps/macos` : chat DJ, micro Apple, voix Gemini, lecture YouTube et clés dans le Trousseau. Elle utilise ton serveur privé ou une bibliothèque JSON locale. Le paquet universel est généré par `npm run build:macos` ; il ne contient aucune connexion personnelle.
+Une app native SwiftUI est disponible dans `apps/macos` : chat DJ, micro Apple, voix Gemini, lecture YouTube et clés dans le Trousseau. Depuis la version 1.3, sa bibliothèque réside uniquement sur ton serveur privé : import YouTube par lien, recherche et pagination à distance, sans base musicale locale. Le paquet universel est généré par `npm run build:macos` ; il ne contient aucune connexion personnelle.
 
 Cette première version est destinée aux essais locaux. Sparkle est intégré pour les mises à jour signées ; la distribution publique sans avertissement attend une signature et une notarisation Apple. Voir [le guide Mac](docs/macos.md) pour les fonctions, les limites, la compilation et la publication.
 

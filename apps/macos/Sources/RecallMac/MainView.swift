@@ -29,9 +29,7 @@ struct MainView: View {
         }
         Spacer()
         Text("\(library.libraryCount) vidéos").font(.headline)
-        Text(
-          session.useServer ? "Recherche vectorielle · ton serveur" : "Bibliothèque locale · ce Mac"
-        ).font(.caption).foregroundStyle(.secondary)
+        Text(session.hasServer ? "Bibliothèque sur ton serveur" : "Serveur à connecter").font(.caption).foregroundStyle(.secondary)
         SettingsLink { Label("Réglages", systemImage: "slider.horizontal.3") }
       }.padding(24).buttonStyle(.plain).navigationSplitViewColumnWidth(220)
     } detail: {

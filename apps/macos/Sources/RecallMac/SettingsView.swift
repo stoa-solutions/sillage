@@ -7,7 +7,6 @@ struct SettingsView: View {
   @EnvironmentObject var session: Session
   @EnvironmentObject var library: LibraryModel
   @State private var key = ""
-  @State private var youtubeKey = ""
   @State private var serverURL = ""
   @State private var token = ""
   @State private var message = ""
@@ -19,37 +18,27 @@ struct SettingsView: View {
         ).font(.caption)
       }
       Section("Ton IA musicale") {
-        Toggle("DJ Apple sur ce Mac · sans clé Gemini", isOn: $session.localDJ)
+        Picker("Modèle", selection: $session.model) {
+          Text("Gemini 3.8 Flash · rapide et équilibré").tag("gemini-3.8-flash")
+          Text("Gemini 3.5 Flash-Lite · très rapide").tag("gemini-3.5-flash-lite")
+          Text("Gemini 4 Argon · raisonnement avancé").tag("gemini-4-argon")
+        }
+        SecureField(
+          session.hasKey
+            ? "Nouvelle clé Gemini (laisser vide pour conserver)" : "Ta clé API Gemini",
+          text: $key)
         Text(
-          AppleDJ.availability
-            ?? "Modèle Apple prêt. Tes demandes et les titres restent sur ce Mac."
+          session.hasKey
+            ? "Clé enregistrée dans le Trousseau de ce Mac."
+            : "Ajoute ta clé pour utiliser ton projet Google. Sans clé personnelle, le DJ du serveur connecté peut être utilisé."
         ).font(.caption).foregroundStyle(.secondary)
         Text(
-          "Désactive ce mode pour utiliser Gemini ou ton serveur. Aucun basculement vers le cloud sans ton choix."
+          "Le chat et les métadonnées sélectionnées sont transmis à Google. Les appels directs utilisent ton quota Google ; la limite du serveur ne s’applique pas à eux."
         ).font(.caption)
-        if !session.localDJ {
-          Picker("Modèle", selection: $session.model) {
-            Text("Gemini 3.8 Flash · rapide et équilibré").tag("gemini-3.8-flash")
-            Text("Gemini 3.5 Flash-Lite · très rapide").tag("gemini-3.5-flash-lite")
-            Text("Gemini 4 Argon · raisonnement avancé").tag("gemini-4-argon")
-          }
-          SecureField(
-            session.hasKey
-              ? "Nouvelle clé Gemini (laisser vide pour conserver)" : "Ta clé API Gemini",
-            text: $key)
-          Text(
-            session.hasKey
-              ? "Clé enregistrée dans le Trousseau de ce Mac."
-              : "Ajoute ta clé pour utiliser ton projet Google. Sans clé personnelle, le DJ du serveur connecté peut être utilisé."
-          ).font(.caption).foregroundStyle(.secondary)
-          Text(
-            "Le chat et les métadonnées sélectionnées sont transmis à Google. Les appels directs utilisent ton quota Google ; la limite du serveur ne s’applique pas à eux."
-          ).font(.caption)
-        }
       }
       Section("Import YouTube") {
         Text(
-          "Colle un lien dans Bibliothèque. Choisis « Mon serveur » ou « Sur ce Mac » pour y ajouter la playlist. Ton serveur se charge de YouTube. La clé YouTube reste sur le serveur."
+          "Colle un lien dans Bibliothèque : ton serveur importe et conserve les playlists. La clé YouTube reste sur le serveur."
         ).font(.caption)
       }
       Section("Bibliothèque") {
@@ -65,20 +54,19 @@ struct SettingsView: View {
             }
           }
         }
-        Toggle("Utiliser mon serveur vectoriel", isOn: $session.useServer)
-        TextField("Adresse HTTPS du serveur (facultatif)", text: $serverURL)
+        TextField("Adresse HTTPS du serveur", text: $serverURL)
         SecureField("Jeton personnel (laisser vide pour conserver)", text: $token)
         if session.hasServer {
           Button("Oublier ce serveur") {
             Task {
               await session.forgetServer()
               serverURL = ""
-              message = "Serveur retiré de ce Mac. Ta bibliothèque locale est conservée."
+              message = "Connexion retirée. Tes playlists restent sur le serveur."
             }
           }
         }
         Text(
-          "Sur ce Mac, ajoute un lien YouTube dans Bibliothèque ou importe un export JSON. Le serveur vectoriel reste facultatif. Les jetons d’un même serveur partagent sa bibliothèque."
+          "La bibliothèque reste sur le serveur. Les clés de connexion restent dans le Trousseau. Les jetons de ce serveur partagent actuellement la même bibliothèque ; les comptes individuels viendront ensuite."
         ).font(.caption).foregroundStyle(.secondary)
       }
       Section("Micro et voix") {
@@ -133,16 +121,12 @@ struct SettingsView: View {
         }
         connection = try Connection(
           url: address, token: token.isEmpty ? previous?.token ?? "" : token)
-      } else if session.useServer {
-        throw RecallError.message("Renseigne l’adresse du serveur ou désactive le mode serveur.")
+      } else {
+        throw RecallError.message("Renseigne l’adresse de ton serveur.")
       }
       let newKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
       guard newKey.isEmpty || (20...256).contains(newKey.count) else {
         throw RecallError.message("La clé Gemini est invalide.")
-      }
-      let newYouTubeKey = youtubeKey.trimmingCharacters(in: .whitespacesAndNewlines)
-      guard newYouTubeKey.isEmpty || (20...256).contains(newYouTubeKey.count) else {
-        throw RecallError.message("Clé YouTube invalide.")
       }
       let savedConnection = connection
       try await Task.detached {
@@ -150,13 +134,11 @@ struct SettingsView: View {
           try KeychainStore.save(JSONEncoder().encode(savedConnection), account: "server")
         }
         if !newKey.isEmpty { try KeychainStore.save(newKey, account: "gemini") }
-        if !newYouTubeKey.isEmpty { try KeychainStore.save(newYouTubeKey, account: "youtube") }
       }.value
       key = ""
-      youtubeKey = ""
       token = ""
       await session.refreshCredentials()
-      library.search()
+      library.sync()
       message = "Réglages enregistrés. Tu n’auras pas à ressaisir ta clé au prochain lancement."
     } catch { message = error.localizedDescription }
   }

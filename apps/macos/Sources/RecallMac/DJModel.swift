@@ -57,6 +57,9 @@ final class DJModel: ObservableObject {
   func reset() {
     cancel()
     playback.reset()
+    messages = []
+    prompt = ""
+    lastRequest = ""
     player.command("pause")
   }
   func send(_ text: String? = nil, automatic: Bool = false) {
@@ -95,46 +98,20 @@ final class DJModel: ObservableObject {
   private func respond(to text: String, history: [ChatMessage], excluded: Set<String>)
     async throws -> DJResponse
   {
-    let connection = session.connection
-    if session.useServer && connection == nil {
-      throw RecallError.message("Connecte ton serveur dans Réglages ou repasse sur ce Mac.")
-    }
-    if session.localDJ {
-      let store = session.store
-      let source = session.source
-      return try await AppleDJ.turn(message: text, history: history, excluded: excluded) {
-        query, includeQueued in
-        try await Task.detached {
-          try store.search(
-            query, source: source, limit: 30, excluded: includeQueued ? [] : excluded)
-        }.value
-      }
+    guard let connection = session.connection else {
+      throw RecallError.message(
+        "Connecte ton serveur dans Réglages pour retrouver ta bibliothèque.")
     }
     if !session.geminiKey.isEmpty {
-      let store = session.store
-      let server = session.useServer ? connection : nil
       return try await GeminiDJ(key: session.geminiKey, model: session.model).turn(
         message: text, history: history, excluded: excluded
       ) { query, includeQueued in
-        if let server {
-          let primary = try await HTTPClient().mcpSearch(
-            server, query: query, includeQueued: includeQueued)
-          let additional = try await Task.detached {
-            try store.search(
-              query, source: .server, limit: 50, excluded: includeQueued ? [] : excluded)
-          }.value
-          var seen = Set<String>()
-          return (primary + additional).filter {
-            (includeQueued || !excluded.contains($0.id)) && seen.insert($0.id).inserted
-          }
-        }
-        return try await Task.detached {
-          try store.search(
-            query, source: .local, limit: 30, excluded: includeQueued ? [] : excluded)
-        }.value
+        try await HTTPClient().djCandidates(
+          connection, query: query,
+          excluded: includeQueued ? [] : excluded)
       }
     }
-    if session.useServer, let connection {
+    do {
       let object = try await HTTPClient().server(
         connection, path: "dj/chat",
         body: [
@@ -145,7 +122,6 @@ final class DJModel: ObservableObject {
       return try JSONDecoder().decode(
         DJResponse.self, from: JSONSerialization.data(withJSONObject: object))
     }
-    throw RecallError.message("Ajoute ta clé Gemini dans Réglages pour activer ton DJ.")
   }
   private func speak(_ text: String) {
     if !session.cloudVoice {
@@ -154,7 +130,7 @@ final class DJModel: ObservableObject {
     }
     let key = session.geminiKey
     let model = session.model
-    let connection = session.useServer ? session.connection : nil
+    let connection = session.connection
     voice.speak(text) { text in
       if !key.isEmpty { return try await GeminiDJ(key: key, model: model).speech(text) }
       guard let connection else { throw RecallError.message("Voix indisponible.") }
