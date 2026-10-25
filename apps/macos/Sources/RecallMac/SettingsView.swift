@@ -116,7 +116,7 @@ private struct StudioQualitySettings: View {
         : "1080p sur ce Mac. La 4K nécessite le décodage matériel AV1. Cache Studio : 2 Go."
     ).font(.caption)
     if player.downloadingStudio {
-      Text("Le clip Studio se prépare ; YouTube continue la lecture.").font(.caption)
+      Text("Le clip Studio se prépare en plein écran.").font(.caption)
     }
     if player.videoHeight > 0 { Text("Clip en cours : \(player.videoHeight)p").font(.caption) }
   }

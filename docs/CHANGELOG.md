@@ -2,9 +2,9 @@
 
 ## Non publié
 
-- App Mac 1.4.6 (19) : recherche directe artiste/titre sans inférence, tolérance aux petites fautes et préfixes, rejet des correspondances partielles inventées, vérification des genres pour les recherches d’ambiance ; les souvenirs décrits en langage naturel restent orientés vers la recherche sémantique.
+- App Mac 1.4.6 (20) : recherche directe artiste/titre sans inférence, tolérance aux petites fautes et préfixes, rejet des correspondances partielles inventées, vérification des genres pour les recherches d’ambiance ; les souvenirs décrits en langage naturel restent orientés vers la recherche sémantique.
 - Voix : une seule annonce suivante préparée en mémoire dans les vingt dernières secondes, si la voix et l’enchaînement sont actifs ; réutilisée au passage suivant, effacée au changement de compte ou de demande.
-- Studio : 1080p par défaut, option jusqu’à 4K sur les Mac décodant l’AV1 ; cache séparé par qualité (2/6 Go), YouTube démarre pendant la préparation puis reprend en natif à la même position. Changer de mode ou de qualité conserve la position et la pause. Design Compact/Studio conservé ; résolution réellement décodée affichée dans Réglages. Les annotations [4K] ne bloquent plus les demandes de titres exacts.
+- Studio : 1080p par défaut, option jusqu’à 4K sur les Mac décodant l’AV1 ; cache séparé par qualité (2/6 Go), pochette plein cadre et indicateur de préparation conservés jusqu’à la lecture native, sans petit lecteur intermédiaire. Le morceau suivant est préchargé. Changer de mode ou de qualité conserve la position et la pause. Design Compact/Studio conservé ; résolution réellement décodée affichée dans Réglages. Les annotations [4K] ne bloquent plus les demandes de titres exacts.
 
 - App Mac 1.4.5 (17) : installation locale du design actuel de main (Compact/Studio, volume, Voix du DJ, Enchaîner et photos de chaîne).
 

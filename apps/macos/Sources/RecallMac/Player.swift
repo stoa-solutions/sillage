@@ -123,7 +123,9 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
         cueWeb(pending.track, start: pending.start, autoplay: pending.autoplay)
       }
     case "progress":
-      guard !studioReady, value["id"] as? String == currentTrack?.id else { return }
+      guard !studioReady, !preparingStudio, value["id"] as? String == currentTrack?.id else {
+        return
+      }
       if let time = value["elapsed"] as? Double, time.isFinite {
         // A cued, paused YouTube item reports zero before its requested start is applied.
         if let resume = webResumePosition, time < resume - 2 { return }
@@ -194,10 +196,12 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     videoHeight = 0
     wantsPlayback = autoplay
     if studio {
-      // Keep the visible YouTube player active until the native file is ready.
-      preparingStudio = false
+      // Keep Studio's full-frame cover and loader until the clip is ready.
+      preparingStudio = true
       downloadingStudio = true
-      cueWeb(track, start: start, autoplay: autoplay)
+      playing = false
+      pending = nil
+      sendWebCommand("pause")
       studioTask = Task {
         do {
           let file = try await studioCache.file(for: track.id, quality: quality)
@@ -225,6 +229,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
           videoHeight = Int(item.presentationSize.height)
           applyVolume()
           downloadingStudio = false
+          preparingStudio = false
           studioReady = true
           sendWebCommand("pause")
           if wantsPlayback { nativePlayer.play() }
@@ -233,7 +238,9 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
         } catch {
           guard !Task.isCancelled, currentTrack?.id == track.id else { return }
           downloadingStudio = false
+          preparingStudio = false
           failure = error.localizedDescription
+          cueWeb(track, start: elapsed, autoplay: wantsPlayback)
         }
       }
     } else {
