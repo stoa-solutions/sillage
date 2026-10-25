@@ -70,7 +70,9 @@ struct DiscoverView: View {
           SectionHeader("Dans tes playlists", count: discovery.libraryTotal)
           if !discovery.libraryError.isEmpty { error(discovery.libraryError) }
           ForEach(visibleLibrary.map { ("library:" + $0.id, $0) }, id: \.0) { _, track in
-            TrackRow(track: track, artworkWidth: 96, onPlay: { dj.play(track) }) {
+            TrackRow(
+              track: track, artworkWidth: 96, persistentActions: true, onPlay: { dj.play(track) }
+            ) {
               Button {
                 dj.enqueue(track)
               } label: {
@@ -148,7 +150,7 @@ struct DiscoveryTrackRow: View {
   private var saved: Bool { item.inLibrary || discovery.savedIDs.contains(item.id) }
   var body: some View {
     TrackRow(
-      track: item.video, detail: saved ? "Dans ta bibliothèque" : nil,
+      track: item.video, detail: saved ? "Dans ta bibliothèque" : nil, detailColor: .recall,
       artworkWidth: compact ? 72 : 140, persistentActions: true, onPlay: { dj.play(item.video) }
     ) {
       HStack(spacing: 6) {

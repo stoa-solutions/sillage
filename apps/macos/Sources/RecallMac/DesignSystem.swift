@@ -46,6 +46,7 @@ struct StageBackground: View {
       Color.black
       if player.studioReady {
         StudioPlayerView(player: player.nativePlayer)
+          .frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
       } else if let current {
         Artwork.image(for: current, quality: "hqdefault").blur(radius: 40)
           .opacity(focused && player.preparingStudio ? 1 : 0.55).clipped()
@@ -195,6 +196,7 @@ struct TrackHeadline: View {
 struct TrackRow<Actions: View>: View {
   let track: Track
   var detail: String? = nil
+  var detailColor: Color = .secondary
   var artworkWidth: CGFloat = 96
   /// Keeps actions visible when they are the point of the page (Découvrir).
   var persistentActions = false
@@ -224,7 +226,7 @@ struct TrackRow<Actions: View>: View {
             .foregroundStyle(.secondary).lineLimit(1)
         }
         if let detail, !detail.isEmpty {
-          Text(detail).font(.caption).foregroundStyle(.tertiary).lineLimit(2)
+          Text(detail).font(.caption).foregroundStyle(detailColor).lineLimit(2)
         }
       }.frame(maxWidth: .infinity, alignment: .leading)
       actions.opacity(hovering || persistentActions ? 1 : 0)
@@ -260,10 +262,19 @@ struct NowPlayingBar: View {
           RoundedRectangle(cornerRadius: 6).fill(.quaternary).frame(width: 72, height: 40.5)
         }
       }.onTapGesture(perform: openDJ).help("Ouvrir le DJ")
-      TrackHeadline(
-        track: model.current, detail: "Choisis un morceau ou parle au DJ.",
-        titleFont: .callout.weight(.semibold), detailFont: .caption
-      ).frame(maxWidth: .infinity, alignment: .leading).clipped()
+      VStack(alignment: .leading, spacing: 4) {
+        TrackHeadline(
+          track: model.current, detail: "Choisis un morceau ou parle au DJ.",
+          titleFont: .callout.weight(.semibold), detailFont: .caption)
+        if player.preparingStudio {
+          HStack(spacing: 6) {
+            ProgressView().controlSize(.mini)
+            Text("Préparation du clip…").font(.caption).foregroundStyle(.secondary)
+          }
+        } else if !player.failure.isEmpty {
+          Text(player.failure).font(.caption).foregroundStyle(.orange).lineLimit(2)
+        }
+      }.frame(maxWidth: .infinity, alignment: .leading).clipped()
       Button {
         player.command(player.playing ? "pause" : "play")
       } label: {

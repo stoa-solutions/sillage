@@ -13,7 +13,7 @@ public struct TrackTitle: Equatable, Sendable {
       self.init(song: cleaned, artist: String(channel.dropLast(8)))
       return
     }
-    for separator in [" - ", " – ", " — ", " | "] {
+    for separator in [" - ", " – ", " — "] {
       if let range = cleaned.range(of: separator) {
         let artist = cleaned[..<range.lowerBound].trimmingCharacters(in: .whitespaces)
         let song = cleaned[range.upperBound...].trimmingCharacters(in: .whitespaces)

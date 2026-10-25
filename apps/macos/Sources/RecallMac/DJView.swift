@@ -216,7 +216,8 @@ struct DJView: View {
         }
         ForEach(model.allUpcoming) { entry in
           TrackRow(
-            track: entry.track, artworkWidth: 72, onPlay: { model.playUpcoming(at: entry.id) }
+            track: entry.track, artworkWidth: 72, persistentActions: true,
+            onPlay: { model.playUpcoming(at: entry.id) }
           ) {
             Menu {
               Button("Lire maintenant") { model.playUpcoming(at: entry.id) }
