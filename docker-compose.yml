@@ -35,6 +35,7 @@ services:
       DJ_BASE_URL: ${DJ_BASE_URL:-https://api.openai.com/v1}
       DJ_MODEL: ${DJ_MODEL:-}
       DJ_DAILY_REQUEST_LIMIT: ${DJ_DAILY_REQUEST_LIMIT:-100}
+      DJ_ACCOUNT_DAILY_LIMITS: ${DJ_ACCOUNT_DAILY_LIMITS:-}
       MAC_RELEASES_DIR: /releases
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://recall.stoa.solutions}
     volumes:
