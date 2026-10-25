@@ -57,6 +57,20 @@ public struct HTTPClient: Sendable {
   public func recordHistory(_ connection: Connection, _ events: [ListeningEvent]) async throws {
     _ = try await server(connection, path: "history", body: ["events": events.map(\.payload)])
   }
+  /// A page of the account's history, newest first; pass the last play to read further back.
+  public func history(_ connection: Connection, limit: Int = 50, after last: ListenedTrack? = nil)
+    async throws -> [ListenedTrack]
+  {
+    var path = "history?limit=\(limit)"
+    if let last {
+      let date = ListeningEvent.format.string(from: last.playedAt)
+      path += "&before=\(date)&beforeId=\(last.id.uuidString.lowercased())"
+    }
+    return ListenedTrack.page(try await server(connection, path: path))
+  }
+  public func clearHistory(_ connection: Connection) async throws {
+    _ = try await server(connection, path: "history", method: "DELETE")
+  }
   /// Removes a playlist from this account only; YouTube is never changed.
   public func deletePlaylist(_ connection: Connection, id: String) async throws {
     let encoded = id.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? id

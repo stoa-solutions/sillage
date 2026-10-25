@@ -73,6 +73,19 @@ func listeningHistoryChecks() throws {
       && strict.pending[0].title.utf16.count == 300
       && strict.pending[0].title.allSatisfy { $0 == "🎵" },
     "History sent an invalid video ID or a title the server would reject")
+  let page = ListenedTrack.page([
+    "events": [
+      [
+        "id": "6f1c1f8e-1d2b-4c35-9a52-3f1c6a7b8c9d", "videoId": "emojititle1", "title": "Titre",
+        "channel": NSNull(), "outcome": "skipped", "playedAt": "2026-10-25T10:04:00.000Z",
+      ],
+      ["id": "pas-un-uuid", "videoId": "x", "title": "t", "outcome": "finished"],
+    ]
+  ])
+  try expect(
+    page.count == 1 && page[0].outcome == .skipped && page[0].track.channel == nil
+      && page[0].playedAt == Date(timeIntervalSince1970: 1_792_922_640),
+    "History page lost a play or accepted a malformed row")
   print(
     "Listening history checks passed: order, duplicates, payload, acknowledgement, reset, bound")
 }

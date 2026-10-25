@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- App 1.6.1 : « Écoutes récentes » dans la Bibliothèque affiche l’historique enregistré sur le serveur, groupé par jour (écouté, passé, heure), avec relecture, ajout à la suite et effacement confirmé.
+
 - Historique d’écoute enregistré sur le serveur pour chaque compte (titre, issue, date), sans doublon si un envoi est répété ; base des futures suggestions de Découvrir. Bibliothèque : retirer une playlist depuis son menu ou un clic droit, avec confirmation ; YouTube et les autres comptes ne changent pas.
 - Architecture : DJ serveur séparé en contrat, contexte, catalogue, fournisseur typé, quota et orchestration ; façade publique conservée. Contrôles de frontières dans la validation Node, tests PostgreSQL en CI et guide de contribution enrichi.
 

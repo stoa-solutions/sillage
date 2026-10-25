@@ -50,7 +50,7 @@ public struct ListeningEvent: Sendable, Equatable {
       "playedAt": Self.format.string(from: playedAt),
     ]
   }
-  nonisolated(unsafe) private static let format: ISO8601DateFormatter = {
+  nonisolated(unsafe) static let format: ISO8601DateFormatter = {
     let format = ISO8601DateFormatter()
     format.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     return format
@@ -83,4 +83,45 @@ public struct ListeningHistoryOutbox: Sendable {
   }
   /// Forgets pending plays but remembers the visible history, so it is not sent again.
   public mutating func reset() { pending = [] }
+}
+
+/// One play read back from the server's history, newest first.
+public struct ListenedTrack: Identifiable, Sendable, Equatable {
+  public let id: UUID
+  public let track: Track
+  public let outcome: PlaybackOutcome
+  public let playedAt: Date
+
+  /// Rows the server returned; malformed ones are skipped rather than failing the page.
+  public static func page(_ object: [String: Any]) -> [ListenedTrack] {
+    let rows = object["events"] as? [[String: Any]] ?? []
+    return rows.compactMap { row in
+      guard let id = (row["id"] as? String).flatMap(UUID.init(uuidString:)),
+        let videoId = row["videoId"] as? String, let title = row["title"] as? String,
+        let outcome = (row["outcome"] as? String).flatMap(PlaybackOutcome.init(server:)),
+        let date = (row["playedAt"] as? String).flatMap(ListeningEvent.date(from:))
+      else { return nil }
+      return ListenedTrack(
+        id: id, track: Track(id: videoId, title: title, channel: row["channel"] as? String),
+        outcome: outcome, playedAt: date)
+    }
+  }
+}
+
+extension PlaybackOutcome {
+  init?(server value: String) {
+    switch value {
+    case "finished": self = .finished
+    case "skipped": self = .skipped
+    case "unavailable": self = .unavailable
+    case "replaced": self = .replaced
+    default: return nil
+    }
+  }
+}
+
+extension ListeningEvent {
+  static func date(from text: String) -> Date? {
+    format.date(from: text) ?? ISO8601DateFormatter().date(from: text)
+  }
 }

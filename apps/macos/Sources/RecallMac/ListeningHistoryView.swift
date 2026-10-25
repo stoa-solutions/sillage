@@ -1,0 +1,231 @@
+import RecallKit
+import SwiftUI
+
+/// The account's listening history read from the server, newest first, page by page.
+@MainActor final class ListeningHistoryModel: ObservableObject {
+  @Published private(set) var plays: [ListenedTrack] = []
+  @Published private(set) var loading = false
+  @Published private(set) var reachedEnd = false
+  @Published private(set) var error = ""
+  private var task: Task<Void, Never>?
+  private var generation: UUID?
+  static let pageSize = 50
+
+  /// From the newest play, or the next page when `more` is set.
+  func load(_ session: Session, more: Bool = false) {
+    if more && (loading || reachedEnd) { return }
+    guard let connection = session.connection else {
+      plays = []
+      return
+    }
+    // Another account's plays never stay on screen.
+    if generation != session.generation {
+      plays = []
+      reachedEnd = false
+    }
+    let current = session.generation
+    generation = current
+    let last = more ? plays.last : nil
+    task?.cancel()
+    loading = true
+    task = Task {
+      defer { if !Task.isCancelled { loading = false } }
+      do {
+        let page = try await HTTPClient().history(
+          connection, limit: Self.pageSize, after: last)
+        try Task.checkCancellation()
+        guard session.generation == current else { return }
+        plays = more ? plays + page : page
+        reachedEnd = page.count < Self.pageSize
+        error = ""
+      } catch {
+        guard !Task.isCancelled, session.generation == current else { return }
+        self.error = "Historique indisponible. " + error.localizedDescription
+      }
+    }
+  }
+
+  func clear(_ session: Session) {
+    guard let connection = session.connection else { return }
+    let current = session.generation
+    Task {
+      do {
+        try await HTTPClient().clearHistory(connection)
+        guard session.generation == current else { return }
+        plays = []
+        reachedEnd = true
+        session.notice = "Historique d’écoute effacé."
+      } catch {
+        guard session.generation == current else { return }
+        self.error = "Impossible d’effacer l’historique. " + error.localizedDescription
+      }
+    }
+  }
+}
+
+/// Écoutes récentes: plays grouped by day, each one playable again.
+struct ListeningHistoryView: View {
+  @ObservedObject var model: ListeningHistoryModel
+  let play: (Track) -> Void
+  let enqueue: (Track) -> Void
+  let clear: () -> Void
+  let refresh: () -> Void
+  let loadMore: () -> Void
+  @EnvironmentObject var dj: DJModel
+  @State private var confirming = false
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      header.padding(20)
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 0, pinnedViews: []) {
+          ForEach(days, id: \.title) { day in
+            Text(day.title).font(.headline).padding(.horizontal, 10).padding(.top, 14)
+              .padding(.bottom, 4)
+            ForEach(day.plays) { listened in
+              HistoryRow(
+                listened: listened, playing: dj.current?.id == listened.track.id,
+                onPlay: { play(listened.track) }, onEnqueue: { enqueue(listened.track) }
+              )
+              .onAppear { if listened.id == model.plays.last?.id { loadMore() } }
+            }
+          }
+          if model.loading && !model.plays.isEmpty {
+            ProgressView().controlSize(.small).padding(12).frame(maxWidth: .infinity)
+          }
+        }.padding(.horizontal, 10).padding(.bottom, 12)
+      }
+      .overlay {
+        if model.plays.isEmpty {
+          if model.loading {
+            ProgressView()
+          } else if !model.error.isEmpty {
+            EmptyState(
+              symbol: "exclamationmark.triangle", message: model.error,
+              action: ("Réessayer", refresh))
+          } else {
+            EmptyState(
+              symbol: "clock.arrow.circlepath",
+              message:
+                "Tes écoutes apparaîtront ici dès la fin d’un titre ou quand tu passes au suivant.")
+          }
+        }
+      }
+    }
+    .confirmationDialog(
+      "Effacer tout l’historique d’écoute ?", isPresented: $confirming, titleVisibility: .visible
+    ) {
+      Button("Effacer", role: .destructive, action: clear)
+    } message: {
+      Text(
+        "Il est supprimé du serveur pour ton compte. Ta bibliothèque et tes playlists ne changent pas."
+      )
+    }
+  }
+
+  private var header: some View {
+    HStack(alignment: .bottom, spacing: 18) {
+      PlaylistTile(title: "Écoutes récentes", symbol: "clock.arrow.circlepath", size: 104)
+        .shadow(color: .black.opacity(0.4), radius: 12, y: 6)
+      VStack(alignment: .leading, spacing: 6) {
+        Text("Historique").font(.callout).foregroundStyle(.secondary)
+        Text("Écoutes récentes").font(.system(size: 34, weight: .bold)).lineLimit(1)
+        Text("Enregistrées sur ton compte, de la plus récente à la plus ancienne.")
+          .font(.callout).foregroundStyle(.secondary)
+      }
+      Spacer()
+      IconButton(symbol: "arrow.clockwise", help: "Actualiser", action: refresh).font(.title3)
+        .disabled(model.loading)
+      Menu {
+        Button("Effacer l’historique…", systemImage: "trash", role: .destructive) {
+          confirming = true
+        }.disabled(model.plays.isEmpty)
+      } label: {
+        Image(systemName: "ellipsis").font(.title3).frame(width: 26, height: 26)
+          .contentShape(Rectangle())
+      }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+        .foregroundStyle(.secondary).help("Plus d’actions")
+        .accessibilityLabel("Plus d’actions pour l’historique")
+    }
+  }
+
+  private var days: [(title: String, plays: [ListenedTrack])] {
+    let calendar = Calendar.current
+    var groups: [(title: String, plays: [ListenedTrack])] = []
+    for listened in model.plays {
+      let title =
+        calendar.isDateInToday(listened.playedAt)
+        ? "Aujourd’hui"
+        : calendar.isDateInYesterday(listened.playedAt)
+          ? "Hier"
+          : listened.playedAt.formatted(.dateTime.weekday(.wide).day().month(.wide))
+            .capitalized(with: Locale(identifier: "fr_FR"))
+      if groups.last?.title == title {
+        groups[groups.count - 1].plays.append(listened)
+      } else {
+        groups.append((title, [listened]))
+      }
+    }
+    return groups
+  }
+}
+
+/// A play: artwork, song and artist, how it ended, and the time.
+private struct HistoryRow: View {
+  let listened: ListenedTrack
+  let playing: Bool
+  let onPlay: () -> Void
+  let onEnqueue: () -> Void
+  @State private var hovering = false
+  var body: some View {
+    let name = TrackTitle(listened.track)
+    HStack(spacing: 12) {
+      Button(action: onPlay) {
+        Artwork(track: listened.track, showsDuration: false).frame(width: 64)
+          .overlay {
+            if hovering {
+              Image(systemName: "play.fill").foregroundStyle(.white)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 6))
+            }
+          }
+      }.buttonStyle(.plain).accessibilityHidden(true)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(name.title).fontWeight(.medium).lineLimit(1)
+          .foregroundStyle(playing ? Color.recall : Color.primary)
+        Text(name.artist ?? listened.track.channel ?? "YouTube").font(.callout)
+          .foregroundStyle(.secondary).lineLimit(1)
+      }.frame(maxWidth: .infinity, alignment: .leading)
+      HStack(spacing: 2) {
+        if hovering {
+          IconButton(symbol: "text.badge.plus", help: "Lire ensuite", action: onEnqueue)
+        }
+      }.frame(width: 28)
+      Text(outcome).font(.caption).foregroundStyle(.secondary).frame(
+        width: 80, alignment: .trailing)
+      Text(listened.playedAt.formatted(date: .omitted, time: .shortened))
+        .font(.callout.monospacedDigit()).foregroundStyle(.secondary)
+        .frame(width: 50, alignment: .trailing)
+    }
+    .padding(.horizontal, 10).padding(.vertical, 6)
+    .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(hovering ? 0.07 : 0)))
+    .contentShape(Rectangle())
+    .onHover { hovering = $0 }
+    .onTapGesture(count: 2, perform: onPlay)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(
+      "\(name.title), \(name.artist ?? ""), \(outcome), "
+        + listened.playedAt.formatted(date: .abbreviated, time: .shortened)
+    )
+    .accessibilityAction(named: "Lire", onPlay)
+    .accessibilityAction(named: "Lire ensuite", onEnqueue)
+  }
+  private var outcome: String {
+    switch listened.outcome {
+    case .finished: "Écouté"
+    case .skipped: "Passé"
+    case .unavailable: "Indisponible"
+    case .replaced: "Interrompu"
+    }
+  }
+}

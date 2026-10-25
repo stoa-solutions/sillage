@@ -10,6 +10,8 @@ struct LibraryView: View {
   @EnvironmentObject var dj: DJModel
   @State private var adding = false
   @State private var deleting: ServerPlaylistSummary?
+  @State private var showingHistory = false
+  @StateObject private var history = ListeningHistoryModel()
 
   var body: some View {
     VStack(spacing: 12) {
@@ -25,6 +27,9 @@ struct LibraryView: View {
       NowPlayingBar(model: dj, player: dj.player, openDJ: onPlay)
     }.padding(16)
       .task(id: session.generation) { await library.watchEnrichment() }
+      .onChange(of: session.generation) { _, _ in
+        showingHistory = false
+      }
       .confirmationDialog(
         "Retirer « \(deleting?.title ?? "") » ?", isPresented: deletingBinding,
         titleVisibility: .visible, presenting: deleting
@@ -59,6 +64,7 @@ struct LibraryView: View {
       }.padding(.horizontal, 14).padding(.top, 14).padding(.bottom, 8)
       ScrollView {
         VStack(spacing: 2) {
+          historyItem
           playlistItem(
             id: "", title: "Toutes les vidéos", count: library.libraryCount,
             symbol: "music.note.list")
@@ -81,8 +87,9 @@ struct LibraryView: View {
   private func playlistItem(id: String, title: String, count: Int, symbol: String? = nil)
     -> some View
   {
-    let selected = library.selectedPlaylist == id
+    let selected = !showingHistory && library.selectedPlaylist == id
     return Button {
+      showingHistory = false
       library.selectedPlaylist = id
     } label: {
       HStack(spacing: 10) {
@@ -101,6 +108,29 @@ struct LibraryView: View {
     }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
   }
 
+  private var historyItem: some View {
+    Button(action: openHistory) {
+      HStack(spacing: 10) {
+        PlaylistTile(title: "Écoutes récentes", symbol: "clock.arrow.circlepath", size: 36)
+        VStack(alignment: .leading, spacing: 1) {
+          Text("Écoutes récentes").font(.callout.weight(.medium)).lineLimit(1)
+          Text("Historique").font(.caption).foregroundStyle(.secondary)
+        }
+        Spacer(minLength: 0)
+      }
+      .padding(6)
+      .background(
+        RoundedRectangle(cornerRadius: 8).fill(.white.opacity(showingHistory ? 0.1 : 0))
+      )
+      .contentShape(Rectangle())
+    }.buttonStyle(.plain).accessibilityAddTraits(showingHistory ? .isSelected : [])
+  }
+
+  private func openHistory() {
+    showingHistory = true
+    history.load(session)
+  }
+
   // MARK: Main
 
   @ViewBuilder private func main(wide: Bool) -> some View {
@@ -112,6 +142,11 @@ struct LibraryView: View {
         Button("Continuer avec Google") { session.showOnboarding = true }
           .buttonStyle(.borderedProminent).disabled(session.loadingCredentials)
       }.frame(maxWidth: .infinity, maxHeight: .infinity)
+    } else if showingHistory {
+      ListeningHistoryView(
+        model: history, play: play, enqueue: { dj.enqueue($0) },
+        clear: { history.clear(session) }, refresh: { history.load(session) },
+        loadMore: { history.load(session, more: true) })
     } else if library.overviewLoaded && library.libraryCount == 0 && !library.syncing {
       VStack(alignment: .leading, spacing: 16) {
         Text("Ta bibliothèque est vide").font(.largeTitle.bold())
@@ -190,10 +225,18 @@ struct LibraryView: View {
 
   private var playlistMenu: some View {
     Menu {
-      Button("Toutes les vidéos") { library.selectedPlaylist = "" }
+      Button("Écoutes récentes", action: openHistory)
+      Divider()
+      Button("Toutes les vidéos") {
+        showingHistory = false
+        library.selectedPlaylist = ""
+      }
       Divider()
       ForEach(library.playlists) { playlist in
-        Button(playlist.title) { library.selectedPlaylist = playlist.id }
+        Button(playlist.title) {
+          showingHistory = false
+          library.selectedPlaylist = playlist.id
+        }
       }
     } label: {
       HStack(spacing: 6) {
