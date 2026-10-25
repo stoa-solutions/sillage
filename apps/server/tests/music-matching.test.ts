@@ -129,3 +129,11 @@ describe("explicit DJ requests", () => {
     expect(result?.missing).toEqual(["Hello"]);
   });
 });
+
+it("ignores resolution annotations when resolving an exact requested title", () => {
+  const result = resolveExactRequest("Joue a-ha Take On Me puis Masego Navajo", [
+    ...catalog, {id:"take-on-me",title:"a-ha - Take On Me (Official Video) [4K]",channel:"a-ha"}
+  ]);
+  expect(result?.tracks.map(t => t.id)).toEqual(["take-on-me", "navajo"]);
+  expect(result?.missing).toEqual([]);
+});

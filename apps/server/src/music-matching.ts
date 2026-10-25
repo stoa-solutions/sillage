@@ -74,6 +74,7 @@ function songTitle(title: string): string {
         /\[[^\]]*(?:official|video|audio|lyrics|live|remaster)[^\]]*\]/gi,
         "",
       )
+      .replace(/\[(?:4k|8k|1080p|hd|hq)\]/gi, "")
       .replace(/\s*\|.*$/, "")
       .replace(
         /\b(?:official music video|official video|official audio|lyrics video)\b/gi,

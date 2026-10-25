@@ -5,6 +5,7 @@ export function lookupTokens(query: string): string[] {
   return [...new Set(normalizeMusic(query).split(" ").filter(w => w && !filler.has(w)))];
 }
 export function isDescriptiveQuery(query: string): boolean {
+  if (/^(jazz|classique|classical|reggae|metal|techno)$/.test(normalizeMusic(query))) return true;
   return /\b(ambiance|mood|doux|douce|calme|soiree|soir|relax|chill|energi\w*|triste|joyeux|pour|ressemble|similaire|cherche|souvenir|quiet|evening|relaxing|happy|sad)\b/.test(normalizeMusic(query));
 }
 function nearWord(a: string, b: string): boolean {

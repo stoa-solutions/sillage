@@ -31,6 +31,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
   @Published private(set) var videoHeight: Int = 0
   var onProgress: (() -> Void)?
   private var wantsPlayback = true
+  private var webResumePosition: Double?
   let nativePlayer = AVPlayer()
   private let studioCache = StudioVideoCache()
   private var studioTask: Task<Void, Never>?
@@ -98,6 +99,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
         self.elapsed = time.seconds.isFinite ? time.seconds : 0
         let length = self.nativePlayer.currentItem?.duration.seconds ?? 0
         self.duration = length.isFinite ? length : 0
+        self.videoHeight = Int(self.nativePlayer.currentItem?.presentationSize.height ?? 0)
         self.onProgress?()
       }
     }
@@ -122,7 +124,12 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
       }
     case "progress":
       guard !studioReady, value["id"] as? String == currentTrack?.id else { return }
-      if let time = value["elapsed"] as? Double, time.isFinite { elapsed = time }
+      if let time = value["elapsed"] as? Double, time.isFinite {
+        // A cued, paused YouTube item reports zero before its requested start is applied.
+        if let resume = webResumePosition, time < resume - 2 { return }
+        webResumePosition = nil
+        elapsed = time
+      }
       if let length = value["duration"] as? Double, length.isFinite { duration = length }
       onProgress?()
     case "state":
@@ -291,6 +298,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
       pending = (track, start, autoplay)
       return
     }
+    webResumePosition = start > 0 ? start : nil
     sendWebCommand("cue", extra: ["id": track.id, "autoplay": autoplay, "start": start])
   }
   func command(_ name: String, extra: [String: Any] = [:]) {
