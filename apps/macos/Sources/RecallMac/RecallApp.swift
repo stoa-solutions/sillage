@@ -101,7 +101,7 @@ import SwiftUI
   var body: some Scene {
     WindowGroup("Playlist Recall") {
       MainView().environmentObject(session).environmentObject(library).environmentObject(dj)
-        .frame(minWidth: 1000, minHeight: 700)
+        .frame(minWidth: 540, minHeight: 640)
         .task {
           if !didBootstrap {
             didBootstrap = true
@@ -118,7 +118,8 @@ import SwiftUI
           dj.player.command("pause")
         }
     }
-    .defaultSize(width: 1180, height: 800)
+    .defaultSize(width: 540, height: 840)
+    .windowToolbarStyle(.unified(showsTitle: false))
     .commands {
       CommandGroup(after: .appInfo) {
         Button("Rechercher des mises à jour…") { delegate.updater?.checkForUpdates(nil) }
@@ -131,7 +132,7 @@ import SwiftUI
     Settings {
       SettingsView().environmentObject(session).environmentObject(library)
         .onOpenURL { session.receiveGoogleCallback($0) }
-        .preferredColorScheme(.light)
+        .tint(.recall)
     }
   }
 }

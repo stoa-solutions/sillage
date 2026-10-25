@@ -44,6 +44,15 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
       """
     configuration.userContentController.addUserScript(
       WKUserScript(source: bridge, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    // The app reports failures natively, so the video fills the frame and the hint stays hidden.
+    let layout = """
+      const style = document.createElement('style');
+      style.textContent = 'body{background:#000}#player{height:100vh!important;min-height:0!important}'
+        + '#hint{display:none}#play{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%)}';
+      document.head.appendChild(style);
+      """
+    configuration.userContentController.addUserScript(
+      WKUserScript(source: layout, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
     webView = WKWebView(frame: .zero, configuration: configuration)
     super.init()
     nativeState = nativePlayer.observe(\.timeControlStatus) { [weak self] native, _ in
@@ -274,6 +283,9 @@ final class PlayerContainerView: NSView {
     webView.autoresizingMask = [.width, .height]
     webView.frame = bounds
     addSubview(webView)
+    wantsLayer = true
+    layer?.cornerRadius = 10
+    layer?.masksToBounds = true
     setAccessibilityElement(false)
     setAccessibilityChildren([webView])
   }

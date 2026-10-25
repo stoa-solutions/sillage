@@ -16,7 +16,7 @@ App native SwiftUI pour macOS 14 ou plus récent, compilable pour Apple Silicon 
 - Cache serveur et bibliothèque locale séparés dans SQLite, dans `~/Library/Application Support/Playlist Recall/`. Les anciens JSON sont conservés et migrés sans suppression.
 - Exports limités aux vidéos : aucune clé ni connexion privée. L’app redistribuée ne contient ni catalogue personnel, ni clé, ni jeton.
 
-Les appels Gemini directs sont facturés au projet de la clé de l’utilisateur ; ils ne passent pas par le plafond quotidien du VPS. Les conversations et métadonnées utiles sont transmises à Google. YouTube reçoit les identifiants lus. Le lecteur public est hébergé sur Recall Stoa et ne reçoit pas le jeton ou la clé Gemini. Aucun identifiant personnel n’est préconfiguré dans le paquet public.
+Les appels Gemini directs sont facturés au projet de la clé de l’utilisateur ; ils ne passent pas par le plafond quotidien du VPS. Les conversations et métadonnées utiles sont transmises à Google. YouTube reçoit les identifiants lus, et ceux des miniatures affichées dans la bibliothèque (i.ytimg.com). Le lecteur public est hébergé sur Recall Stoa et ne reçoit pas le jeton ou la clé Gemini. Aucun identifiant personnel n’est préconfiguré dans le paquet public.
 
 Chaque serveur garde une bibliothèque commune à ses jetons, pas un compte isolé par personne. Ne pas distribuer le jeton personnel de Samuel avec l’app. Pour partager l’app, envoyer uniquement l’archive générée.
 
@@ -210,7 +210,10 @@ Le navigateur par défaut s’ouvre directement. Le lien `playlist-recall://auth
 ## Studio personnel (optionnel)
 
 Samuel a mis la distribution en attente et demandé un mode Studio pour son Mac.
-La case Studio active la voix, l’enchaînement et le thème cinéma. Les clips publics
+Le DJ a deux affichages, choisis dans la barre d’outils. Compact : une colonne de 540 points
+avec le lecteur YouTube, les contrôles et la conversation ; apparence du système. Studio : le
+clip remplit la fenêtre sombre, la conversation flotte dans un panneau translucide. Studio ne
+change que l’affichage ; la voix et l’enchaînement restent deux boutons du lecteur. Les clips publics
 préparables sont lus avec AVPlayer en fond, avec préchargement du prochain titre.
 Un téléchargement ou décodage impossible conserve le lecteur officiel YouTube.
 Le téléchargement utilise l’installation Homebrew de yt-dlp et ffmpeg ; aucun cookie

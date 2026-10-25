@@ -8,6 +8,11 @@
 - Les titres explicitement identifiés sont joués seuls, dans l’ordre demandé, sans compléter la file avec des suggestions ; une référence manquante conserve la file et demande une précision.
 - Le plafond quotidien Recall est distingué du quota Google ; un plafond par compte et une dérogation temporaire avec expiration peuvent être définis sans modifier les autres comptes.
 
+### App Mac : affichages Compact et Studio
+
+- App Mac : deux affichages du DJ, Compact et Studio, dans la barre d’outils (le mode cinéma disparaît). Navigation DJ / Bibliothèque dans la barre d’outils, apparence du système hors Studio, chat translucide sur le clip, boutons Voix et Enchaîner visibles, bibliothèque avec miniatures, durée, avatar de chaîne et début de description ; Studio n’active plus la voix ni l’enchaînement.
+
+### Antérieur
 
 - Import Recall : une playlist sans identifiant reçoit un identifiant stable ; les vidéos hors playlist sont exportées dans « Autres vidéos » et réimportées sans créer de playlist ; une entrée sans titre ne remplace plus une entrée titrée. Cas de référence dans `packages/core/fixtures/format`.
 - Mode Studio personnel sur Mac : cache vidéo opt-in, lecture native en fond, préchargement du morceau suivant et retour au lecteur YouTube si le téléchargement échoue. Distribution et page de téléchargement mises en attente à la demande de Samuel.

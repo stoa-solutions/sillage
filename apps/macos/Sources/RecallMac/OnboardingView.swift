@@ -77,6 +77,6 @@ struct OnboardingView: View {
         session.showOnboarding = false
       }
       .buttonStyle(.plain).font(.caption).disabled(busy || session.claimingLibrary)
-    }.padding(32).frame(width: 540).interactiveDismissDisabled().preferredColorScheme(.light)
+    }.padding(32).frame(width: 540).interactiveDismissDisabled().tint(.recall)
   }
 }
