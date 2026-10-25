@@ -74,12 +74,13 @@ import SwiftUI
         guard let connection = session.connection, !session.geminiKey.isEmpty else {
           throw RecallError.message("Clé ou connexion existante absente")
         }
-        let response = try await GeminiDJ(key: session.geminiKey, model: session.model).turn(
-          message: "Mets-moi trois vrais titres de Mac Miller, sans type beats ni hommages.",
-          history: [], excluded: []
-        ) { query, includeQueued in
-          try await HTTPClient().mcpSearch(connection, query: query, includeQueued: includeQueued)
-        }
+        let response = try await LocalDJ(
+          model: GeminiDJ(key: session.geminiKey, model: session.model),
+          library: ServerLibrarySearch(connection: connection)
+        ).turn(
+          DJRequest(
+            message: "Mets-moi trois vrais titres de Mac Miller, sans type beats ni hommages.",
+            history: [], queued: []))
         guard !response.tracks.isEmpty, response.tracks.allSatisfy({ !Catalog.isImitation($0) })
         else { throw RecallError.message("Sélection musicale incorrecte") }
         let audio = try await GeminiDJ(key: session.geminiKey, model: session.model).speech(

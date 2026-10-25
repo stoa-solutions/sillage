@@ -22,7 +22,7 @@
     "test:integration": "npm run test:integration -w @playlist-recall/server",
     "package:webstore": "npm run build && python3 scripts/package-webstore.py",
     "build:macos": "python3 scripts/build-macos.py --universal",
-    "test:macos": "swift build --package-path apps/macos && swift run --skip-build --package-path apps/macos RecallCoreTests && swift run --skip-build --package-path apps/macos RecallAudioTests && swift run --skip-build --package-path apps/macos RecallLibraryTests",
+    "test:macos": "swift build --package-path apps/macos && swift run --skip-build --package-path apps/macos RecallCoreTests && swift run --skip-build --package-path apps/macos RecallAudioTests && swift run --skip-build --package-path apps/macos RecallLibraryTests && swift run --skip-build --package-path apps/macos RecallDJTests",
     "verify": "npm run verify:node && npm run verify:macos",
     "verify:node": "npm run check && npm test && npm run build",
     "verify:macos": "npm run test:macos",

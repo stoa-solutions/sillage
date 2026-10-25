@@ -45,42 +45,5 @@ public struct HTTPClient: Sendable {
     }
     return try Catalog.parse(JSONSerialization.data(withJSONObject: ["videos": videos]))
   }
-  public func mcpSearch(_ connection: Connection, query: String, includeQueued: Bool = false)
-    async throws -> [Track]
-  {
-    let endpoint = URL(string: connection.url + "/v1/mcp")!
-    let headers = [
-      "Authorization": "Bearer " + connection.token,
-      "Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2025-03-26",
-    ]
-    let initialized = try await json(
-      url: endpoint,
-      body: [
-        "jsonrpc": "2.0", "id": 1, "method": "initialize",
-        "params": [
-          "protocolVersion": "2025-03-26", "capabilities": [:],
-          "clientInfo": ["name": "recall-macos", "version": "1.0.0"],
-        ],
-      ], headers: headers)
-    guard initialized["result"] != nil else {
-      throw RecallError.message("Le serveur MCP n’a pas accepté la connexion.")
-    }
-    let response = try await json(
-      url: endpoint,
-      body: [
-        "jsonrpc": "2.0", "id": 2, "method": "tools/call",
-        "params": [
-          "name": "library_search", "arguments": ["query": query, "includeQueued": includeQueued],
-        ],
-      ], headers: headers)
-    guard let result = response["result"] as? [String: Any], result["isError"] as? Bool != true,
-      let content = result["content"] as? [[String: Any]],
-      let text = content.first?["text"] as? String,
-      let data = text.data(using: .utf8),
-      let catalog = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-      let tracks = catalog["tracks"] as? [[String: Any]]
-    else { throw RecallError.message("La recherche MCP n’a pas renvoyé de bibliothèque valide.") }
-    return try Catalog.parse(JSONSerialization.data(withJSONObject: ["videos": tracks]))
-  }
 
 }

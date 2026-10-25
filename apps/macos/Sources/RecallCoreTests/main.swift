@@ -19,10 +19,6 @@ do {
   try expectFailure {
     _ = try Catalog.parse(Data(#"{"videos":[{"id":"bad/url","title":"bad"}]}"#.utf8))
   }
-  try expectFailure { _ = try Catalog.validateSelection(ids: ["invented123"], candidates: [:]) }
-  try expect(
-    try Catalog.validateSelection(ids: [long.id, long.id], candidates: [long.id: long]) == [long],
-    "Duplicate selection")
   try expectFailure {
     _ = try Connection(url: "http://example.com", token: String(repeating: "t", count: 20))
   }
@@ -50,12 +46,12 @@ do {
   let baker = Track(id: "baker123456", title: "Chet Baker - Almost Blue")
   let faker = Track(id: "faker123456", title: "Chet Faker - Gold")
   try expect(
-    AppleDJ.namedMatches([baker, faker], query: "Chet Baker") == [baker],
+    LocalDJ.namedMatches([baker, faker], query: "Chet Baker") == [baker],
     "Named search confused similar artists")
   try expect(
-    AppleDJ.namedMatches([faker], query: "Chet Baker").isEmpty, "Missing artist was substituted")
+    LocalDJ.namedMatches([faker], query: "Chet Baker").isEmpty, "Missing artist was substituted")
   try expect(
-    AppleDJ.namedMatches([long], query: "ete cafe") == [long],
+    LocalDJ.namedMatches([long], query: "ete cafe") == [long],
     "Named matching lost accent normalization")
   var queue = PlaybackQueue()
   queue.replace([long])
@@ -85,7 +81,7 @@ do {
   try expect(
     untitled.count == 1 && untitled[0].metadataUnavailable == true,
     "Untitled YouTube entries were silently lost")
-  print("21 native behavior checks passed")
+  print("19 native behavior checks passed")
 } catch {
   fputs("Native tests failed: \(error.localizedDescription)\n", stderr)
   exit(1)

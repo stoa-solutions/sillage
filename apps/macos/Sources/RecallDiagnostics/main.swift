@@ -1,6 +1,17 @@
 import Foundation
 import RecallKit
 
+/// Prints each search the DJ runs and what the library returned.
+struct LoggedSearch: LibrarySearch {
+  let base: any LibrarySearch
+  func search(_ query: String, excluding: Set<String>, limit: Int) async throws -> [Track] {
+    let found = try await base.search(query, excluding: excluding, limit: limit)
+    print(
+      "Query: \(query) → \(found.count) [\(found.prefix(5).map(\.title).joined(separator: " | "))]")
+    return found
+  }
+}
+
 @main struct Diagnostics {
   static func main() async {
     do {
@@ -32,22 +43,24 @@ import RecallKit
               "Playlist Recall"))
         let start = Date()
         let request = CommandLine.arguments.dropFirst(2).joined(separator: " ")
-        let response = try await AppleDJ.turn(
-          message: request.isEmpty ? "Mets-moi du Mac Miller" : request, history: [], excluded: []
-        ) { query, _ in
-          print("Query: \(query)")
-          return try store.search(query, source: .local, limit: 20)
-        }
+        let response = try await LocalDJ(
+          model: AppleDJ(),
+          library: LoggedSearch(base: LocalLibrarySearch(store: store, source: .local))
+        ).turn(
+          DJRequest(
+            message: request.isEmpty ? "Mets-moi du Mac Miller" : request, history: [], queued: []))
+        print(response.reply)
+        print(response.tracks.map(\.title).joined(separator: "\n"))
         if request.isEmpty {
           guard !response.tracks.isEmpty,
-            response.tracks.allSatisfy({ $0.title.localizedCaseInsensitiveContains("Mac Miller") })
+            response.tracks.allSatisfy({
+              ($0.title + " " + ($0.channel ?? "")).localizedCaseInsensitiveContains("Mac Miller")
+            })
           else { throw RecallError.message("Apple did not select Mac Miller tracks") }
         }
         print(
           "Apple DJ: \(response.tracks.count) verified local tracks in \(Date().timeIntervalSince(start))s"
         )
-        print(response.reply)
-        print(response.tracks.map(\.title).joined(separator: "\n"))
         return
       }
 
@@ -62,11 +75,10 @@ import RecallKit
       let start = Date()
       let selectedModel =
         CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "gemini-3.8-flash"
-      let response = try await GeminiDJ(key: key, model: selectedModel).turn(
-        message: "Mets-moi Self Care de Mac Miller.", history: [], excluded: []
-      ) { query, _ in
-        try await HTTPClient().mcpSearch(connection, query: query)
-      }
+      let response = try await LocalDJ(
+        model: GeminiDJ(key: key, model: selectedModel),
+        library: ServerLibrarySearch(connection: connection)
+      ).turn(DJRequest(message: "Mets-moi Self Care de Mac Miller.", history: [], queued: []))
       let seconds = Date().timeIntervalSince(start)
       print(
         "Native DJ verified in \(String(format: "%.2f", seconds)) seconds: \(response.tracks.map(\.title).joined(separator: ", "))"

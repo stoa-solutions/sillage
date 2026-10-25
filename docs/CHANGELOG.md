@@ -2,6 +2,9 @@
 
 ## Non publié
 
+- App Mac : Gemini et Apple suivent le même tour de DJ, en deux appels : mêmes règles, mêmes plafonds, titres en file exclus sauf redemande, identifiants inventés écartés.
+- App Mac : en mode serveur, le DJ cherche via `/v1/search` avec exclusions (un aller-retour par recherche au lieu de deux).
+- Serveur : `/v1/search` accepte `excludeIds` et `availableOnly`.
 - App Mac : DJ Apple sur l’appareil (macOS 26, Apple Intelligence), sans clé ni réseau pour le choix des titres.
 - App Mac : accueil au premier lancement, installation locale d’abord ; import de playlist YouTube via le serveur connecté.
 - App Mac : voix Gemini rétablie ; la file continue la demande en cours au lieu de repartir de zéro.

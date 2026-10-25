@@ -9,7 +9,7 @@ App native SwiftUI pour macOS 14 ou plus récent, compilable pour Apple Silicon 
 - Micro au clic via AVAudioEngine et Speech : français sur l’appareil lorsque pris en charge, sinon service Apple. Arrêt après une courte pause ou au second clic.
 - Synthèse vocale Gemini, lecture WAV par AVAudioPlayer, voix macOS en secours. Baisse puis restauration du volume musical.
 - Lecteur YouTube, pause, suivant, enchaînement, gestion des intégrations interdites et lien externe.
-- Serveur privé facultatif : bibliothèque synchronisée et recherche vectorielle via le vrai point d’entrée MCP `/v1/mcp` pour le DJ.
+- Serveur privé facultatif : bibliothèque synchronisée et recherche hybride via `/v1/search` pour le DJ, avec exclusion des titres en file.
 - Mode local : import JSON Recall/yt-dlp et liens YouTube publics ou non répertoriés, playlists ordonnées et recherche FTS5. Réimporter un lien actualise la playlist. L’inférence vectorielle et la synchronisation périodique restent celles du serveur facultatif.
 - Cache serveur et bibliothèque locale séparés dans SQLite, dans `~/Library/Application Support/Playlist Recall/`. Les anciens JSON sont conservés et migrés sans suppression.
 - Exports limités aux vidéos : aucune clé ni connexion privée. L’app redistribuée ne contient ni catalogue personnel, ni clé, ni jeton.
@@ -27,7 +27,9 @@ Chaque serveur garde une bibliothèque commune à ses jetons, pas un compte isol
 | `RecallKit/SQLiteConnection.swift` | Connexion par opération, transactions, erreurs SQLite détaillées. |
 | `RecallKit/YouTubePlaylistImporter.swift` | Liens, pages YouTube, quota et reprise sans secrets, valable 24 h. |
 | `RecallKit/HTTPClient.swift` | API privée et client MCP HTTP authentifié. |
-| `RecallKit/GeminiDJ.swift` | Dialogue avec outils, bornes de recherche et voix. |
+| `RecallKit/DJ.swift` | Tour de DJ : interface `DJ`, `LocalDJ` (règles, prompts, recherche, vérification) et `ServerDJ`. |
+| `RecallKit/LibrarySearch.swift` | Recherche d’une bibliothèque avec exclusion et plafond : SQLite local ou `/v1/search` du serveur. |
+| `RecallKit/GeminiDJ.swift` / `AppleDJ.swift` | Adapters de modèle du tour de DJ ; voix Gemini. |
 | `RecallMac/KeychainStore.swift` | Secrets natifs. |
 | `RecallAudio/Microphone.swift` | Autorisation, capture, dictée et arrêt. |
 | `RecallMac/Player.swift` | WebKit et messages du lecteur strictement contrôlés. |

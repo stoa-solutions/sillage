@@ -12,6 +12,7 @@ let package = Package(
         .executableTarget(name: "RecallDiagnostics", dependencies: ["RecallKit"]),
         .executableTarget(name: "RecallMac", dependencies: ["RecallKit", "RecallAudio", .product(name: "Sparkle", package: "Sparkle")], linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]),
         .executableTarget(name: "RecallCoreTests", dependencies: ["RecallKit"]),
-        .executableTarget(name: "RecallLibraryTests", dependencies: ["RecallKit"])
+        .executableTarget(name: "RecallLibraryTests", dependencies: ["RecallKit"]),
+        .executableTarget(name: "RecallDJTests", dependencies: ["RecallKit"])
     ]
 )

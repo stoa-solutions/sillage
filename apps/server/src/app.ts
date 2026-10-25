@@ -152,6 +152,11 @@ export function createApp(db: Database) {
       .object({
         query: z.string().max(1000).default(""),
         playlistId: z.string().max(160).optional(),
+        excludeIds: z
+          .array(z.string().regex(/^[A-Za-z0-9_-]{11}$/))
+          .max(100)
+          .optional(),
+        availableOnly: z.boolean().optional(),
         minDuration: z.number().min(0).optional(),
         maxDuration: z.number().min(0).optional(),
         channel: z.string().max(300).optional(),

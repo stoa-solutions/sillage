@@ -134,7 +134,10 @@ public struct LibraryStore: Sendable {
       }
       let (from, args) = filtered(match)
       // Playlist rows keep repeated positions; callers identify rows by position.
-      let order = playlist != nil ? "m.position" : match.isEmpty ? "v.rowid" : "rank"
+      // Title and channel outweigh descriptions, where tags and links mention everything.
+      let order =
+        playlist != nil
+        ? "m.position" : match.isEmpty ? "v.rowid" : "bm25(video_search, 0, 0, 10, 5, 1)"
       return try decode(
         db.rows(
           "SELECT v.payload " + from + "ORDER BY " + order + " LIMIT ? OFFSET ?",
@@ -212,7 +215,8 @@ public struct LibraryStore: Sendable {
           id: incoming.id, title: incoming.title, channel: incoming.channel ?? previous.channel,
           durationSeconds: incoming.durationSeconds ?? previous.durationSeconds,
           description: (incoming.description?.isEmpty == false
-            ? incoming.description : previous.description), metadataUnavailable: incoming.metadataUnavailable)
+            ? incoming.description : previous.description),
+          metadataUnavailable: incoming.metadataUnavailable)
       }
       guard track.id.range(of: "^[A-Za-z0-9_-]{11}$", options: .regularExpression) != nil else {
         throw RecallError.message("Vidéo invalide.")

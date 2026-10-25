@@ -90,61 +90,34 @@ final class DJModel: ObservableObject {
       } catch { if !Task.isCancelled { session.error = error.localizedDescription } }
     }
   }
-  /// With a personal Gemini key the Mac runs the DJ itself and searches the active source;
-  /// otherwise the connected server runs it with its own key.
   private func respond(to text: String, history: [ChatMessage], excluded: Set<String>)
     async throws -> DJResponse
   {
+    try await currentDJ().turn(DJRequest(message: text, history: history, queued: excluded))
+  }
+  /// The Mac runs the DJ itself with Apple or a personal Gemini key, searching the active
+  /// library; without either, the connected server runs the whole turn.
+  private func currentDJ() throws -> any DJ {
     let connection = session.connection
     if session.useServer && connection == nil {
       throw RecallError.message("Connecte ton serveur dans Réglages ou repasse sur ce Mac.")
     }
-    if session.localDJ {
-      let store = session.store
-      let source = session.source
-      return try await AppleDJ.turn(message: text, history: history, excluded: excluded) {
-        query, includeQueued in
-        try await Task.detached {
-          try store.search(
-            query, source: source, limit: 30, excluded: includeQueued ? [] : excluded)
-        }.value
-      }
-    }
-    if !session.geminiKey.isEmpty {
-      let store = session.store
-      let server = session.useServer ? connection : nil
-      return try await GeminiDJ(key: session.geminiKey, model: session.model).turn(
-        message: text, history: history, excluded: excluded
-      ) { query, includeQueued in
-        if let server {
-          let primary = try await HTTPClient().mcpSearch(
-            server, query: query, includeQueued: includeQueued)
-          let additional = try await Task.detached {
-            try store.search(
-              query, source: .server, limit: 50, excluded: includeQueued ? [] : excluded)
-          }.value
-          var seen = Set<String>()
-          return (primary + additional).filter {
-            (includeQueued || !excluded.contains($0.id)) && seen.insert($0.id).inserted
-          }
-        }
-        return try await Task.detached {
-          try store.search(
-            query, source: .local, limit: 30, excluded: includeQueued ? [] : excluded)
-        }.value
-      }
-    }
-    if session.useServer, let connection {
-      let object = try await HTTPClient().server(
-        connection, path: "dj/chat",
-        body: [
-          "message": String(text.prefix(1500)),
-          "history": history.suffix(12).map { ["role": $0.role, "content": $0.content] },
-          "excludeIds": Array(excluded),
+    let library: any LibrarySearch =
+      if session.useServer, let connection {
+        // Hybrid server ranking first, then text matches from the synced cache.
+        MergedLibrarySearch([
+          ServerLibrarySearch(connection: connection),
+          LocalLibrarySearch(store: session.store, source: .server),
         ])
-      return try JSONDecoder().decode(
-        DJResponse.self, from: JSONSerialization.data(withJSONObject: object))
+      } else {
+        LocalLibrarySearch(store: session.store, source: .local)
+      }
+    if session.localDJ { return LocalDJ(model: AppleDJ(), library: library) }
+    if !session.geminiKey.isEmpty {
+      return LocalDJ(
+        model: GeminiDJ(key: session.geminiKey, model: session.model), library: library)
     }
+    if session.useServer, let connection { return ServerDJ(connection: connection) }
     throw RecallError.message("Ajoute ta clé Gemini dans Réglages pour activer ton DJ.")
   }
   private func speak(_ text: String) {

@@ -262,6 +262,30 @@ it("finds partial lexical matches in a natural-language query when inference is 
   expect(data.degraded).toContain("mots-clés");
 });
 
+it("excludes queued videos and caps results inside the search", async () => {
+  await importLibrary(db, fixture);
+  vi.mocked(infer).mockRejectedValueOnce(new Error("Unavailable"));
+  const response = await app.request("/v1/search", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      query: "blue",
+      excludeIds: ["abcdefghijk"],
+      availableOnly: true,
+      limit: 1,
+    }),
+  });
+  const data = await response.json();
+  expect(response.status).toBe(200);
+  expect(data.results.map((r: { video: { id: string } }) => r.video.id)).not.toContain(
+    "abcdefghijk",
+  );
+  expect(data.results.length).toBeLessThanOrEqual(1);
+});
+
 it("hides historical failures after a newer successful attempt", async () => {
   await enqueue(db, "sync", "PL1234567890", { playlistId: "PL1234567890" });
   const failed = await claim(db);

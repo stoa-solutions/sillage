@@ -123,12 +123,4 @@ public enum Catalog {
           ? true : nil)
     }
   }
-  public static func validateSelection(ids: [String], candidates: [String: Track]) throws -> [Track]
-  {
-    guard ids.count <= 8, ids.allSatisfy({ candidates[$0] != nil }) else {
-      throw RecallError.message("Le DJ a proposé un titre non vérifié. Réessaie.")
-    }
-    var seen = Set<String>()
-    return ids.filter { seen.insert($0).inserted }.compactMap { candidates[$0] }
-  }
 }
