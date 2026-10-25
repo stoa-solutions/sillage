@@ -27,7 +27,7 @@ struct GlassPanel: ViewModifier {
           .overlay(shape.strokeBorder(.separator.opacity(0.5)))
       case .reading:
         // An explicit fill keeps text contrast independent of the clip's brightness.
-        shape.fill(Color(white: 0.075).opacity(reduceTransparency ? 1 : 0.94))
+        shape.fill(Color(white: 0.075).opacity(reduceTransparency ? 1 : 0.86))
           .overlay(shape.strokeBorder(.white.opacity(0.09)))
       case .immersive:
         if reduceTransparency {
@@ -61,7 +61,7 @@ struct StageBackground: View {
         if player.studioReady {
           StudioPlayerView(player: player.nativePlayer)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .blur(radius: immersive ? 0 : 16).clipped()
+            .clipped()
         } else if let current {
           Artwork.image(for: current, quality: "hqdefault").blur(radius: 40)
             .opacity(immersive && player.preparingStudio ? 1 : 0.55).clipped()
@@ -71,7 +71,7 @@ struct StageBackground: View {
         LinearGradient(
           colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
       } else {
-        Color.black.opacity(0.72)
+        Color.black.opacity(0.55)
       }
     }
     .animation(reduceMotion ? nil : .easeInOut(duration: 0.4), value: player.studioReady)

@@ -46,14 +46,12 @@ struct DiscoverView: View {
           }
           results
         }.padding(20).frame(maxWidth: .infinity).glassPanel()
-        DJView(model: dj, panelOnly: true).frame(width: 350).glassPanel()
+        DJView(model: dj, panelOnly: true, source: discovery.scope).frame(width: 350).glassPanel()
       }
       NowPlayingBar(model: dj, player: dj.player, openDJ: openDJ)
     }.padding(16)
-      .onAppear { dj.searchScope = discovery.scope }
       .onChange(of: discovery.submittedQuery) { _, _ in showAllLibrary = false }
-      .onChange(of: discovery.scope) { _, source in
-        dj.searchScope = source
+      .onChange(of: discovery.scope) { _, _ in
         if discovery.searched { discovery.search() }
       }
       .onChange(of: discovery.playlistID) { _, _ in
@@ -75,10 +73,11 @@ struct DiscoverView: View {
           if !discovery.libraryError.isEmpty { error(discovery.libraryError) }
           ForEach(visibleLibrary.map { ("library:" + $0.id, $0) }, id: \.0) { _, track in
             TrackRow(
-              track: track, artworkWidth: 96, persistentActions: true, onPlay: { dj.play(track) }
+              track: track, artworkWidth: 96, persistentActions: true,
+              onPlay: { dj.play(track, source: discovery.scope) }
             ) {
               Button {
-                dj.enqueue(track)
+                dj.enqueue(track, source: discovery.scope)
               } label: {
                 Label("À suivre", systemImage: "text.badge.plus")
               }.buttonStyle(.bordered).buttonBorderShape(.capsule)
@@ -100,7 +99,7 @@ struct DiscoverView: View {
           SectionHeader("Sur YouTube")
           if !discovery.youtubeError.isEmpty { error(discovery.youtubeError) }
           ForEach(discovery.youtube.map { ("youtube:" + $0.id, $0) }, id: \.0) { _, item in
-            DiscoveryTrackRow(item: item)
+            DiscoveryTrackRow(item: item, source: discovery.scope)
             Divider()
           }
           if discovery.youtube.isEmpty && !discovery.searching && discovery.youtubeError.isEmpty {
@@ -149,23 +148,25 @@ struct DiscoverView: View {
 struct DiscoveryTrackRow: View {
   let item: DiscoveryItem
   var compact = false
+  var source: DiscoveryScope = .library
   @EnvironmentObject var discovery: DiscoveryModel
   @EnvironmentObject var dj: DJModel
   private var saved: Bool { item.inLibrary || discovery.savedIDs.contains(item.id) }
   var body: some View {
     TrackRow(
       track: item.video, detail: saved ? "Dans ta bibliothèque" : nil, detailColor: .recall,
-      artworkWidth: compact ? 72 : 140, persistentActions: true, onPlay: { dj.play(item.video) }
+      artworkWidth: compact ? 72 : 140, persistentActions: true,
+      onPlay: { dj.play(item.video, source: source) }
     ) {
       HStack(spacing: 6) {
         Button {
-          dj.play(item.video)
+          dj.play(item.video, source: source)
         } label: {
           Label("Écouter", systemImage: "play.fill")
         }.help("Lire maintenant ; ta file est remplacée.")
         if saved {
           Button {
-            dj.enqueue(item.video)
+            dj.enqueue(item.video, source: source)
           } label: {
             Label("À suivre", systemImage: "text.badge.plus")
           }

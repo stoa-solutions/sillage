@@ -9,12 +9,14 @@ struct DJView: View {
   @AppStorage("karaokeOverlay") private var karaoke = false
   @StateObject private var lyrics = LyricsModel()
   let panelOnly: Bool
+  let source: DiscoveryScope?
   @ObservedObject var model: DJModel
   @EnvironmentObject var session: Session
   @ObservedObject var player: Player
   @ObservedObject var microphone: Microphone
   @ObservedObject var voice: VoiceOutput
-  init(model: DJModel, panelOnly: Bool = false) {
+  init(model: DJModel, panelOnly: Bool = false, source: DiscoveryScope? = nil) {
+    self.source = source
     self.panelOnly = panelOnly
     self.model = model
     player = model.player
@@ -269,7 +271,7 @@ struct DJView: View {
         ForEach(model.history.reversed()) { entry in
           TrackRow(
             track: entry.track, detail: entry.outcome.rawValue, artworkWidth: 72,
-            onPlay: { model.play(entry.track) })
+            onPlay: { model.play(entry.track, source: source ?? model.searchScope) })
         }
       } header: {
         SectionHeader("Cette session")
@@ -286,7 +288,9 @@ struct DJView: View {
             VStack(alignment: .leading, spacing: 10) {
               MessageRow(message: message)
               if let results = message.discoveries {
-                ForEach(results) { DiscoveryTrackRow(item: $0, compact: true) }
+                ForEach(results) {
+                  DiscoveryTrackRow(item: $0, compact: true, source: source ?? model.searchScope)
+                }
               }
             }.id(message.id)
           }
@@ -306,7 +310,8 @@ struct DJView: View {
         .foregroundStyle(.secondary)
       ForEach(["Du Mac Miller", "Une soirée jazz douce", "De l’énergie pour avancer"], id: \.self) {
         text in
-        Button(text) { model.send(text) }.buttonStyle(GlassButtonStyle(emphasized: true))
+        Button(text) { model.send(text, source: source) }.buttonStyle(
+          GlassButtonStyle(emphasized: true))
       }
       if session.loadingCredentials {
         Text("Connexion à ton compte…").font(.caption).foregroundStyle(.secondary)
@@ -346,9 +351,9 @@ struct DJView: View {
       HStack(alignment: .bottom, spacing: 8) {
         TextField("Ton envie, un artiste, un titre…", text: $model.prompt, axis: .vertical)
           .lineLimit(1...4).textFieldStyle(.plain).padding(.vertical, 6)
-          .onSubmit { model.send() }
+          .onSubmit { model.send(source: source) }
         Button {
-          model.toggleMicrophone()
+          model.toggleMicrophone(source: source)
         } label: {
           Image(systemName: microphone.active ? "mic.fill" : "mic").font(.body)
             .foregroundStyle(microphone.active ? Color.recall : .secondary)
@@ -357,7 +362,7 @@ struct DJView: View {
           .accessibilityLabel(microphone.active ? "Terminer la dictée" : "Parler au DJ")
           .disabled(microphone.finishing)
         Button {
-          model.send()
+          model.send(source: source)
         } label: {
           Image(systemName: "arrow.up").fontWeight(.semibold).frame(width: 28, height: 28)
             .foregroundStyle(Color(nsColor: .windowBackgroundColor))

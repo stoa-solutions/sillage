@@ -4,7 +4,7 @@
 
 - Relecture croisée : paroles et calage isolés après changement de compte, source des suites liée à la dernière direction musicale, annonces vocales nettoyées identiques à leur préparation ; une seule source commune dans Découvrir et bouton karaoké inactif tant que le clip n’est pas prêt.
 
-- App 1.5.2 : Découvrir, son chat DJ et Bibliothèque ont un fond sombre stable ; le clip reste discret et flouté derrière les pages de lecture. Surfaces et fonds centralisés dans Surfaces.swift, respect de Réduire la transparence et Réduire les animations ; les actions de bibliothèque restent visibles.
+- App 1.5.2 : Découvrir, son chat DJ et Bibliothèque ont un fond sombre stable ; le clip reste discret derrière les pages de lecture. Surfaces et fonds centralisés dans Surfaces.swift, respect de Réduire la transparence et Réduire les animations ; les actions de bibliothèque restent visibles.
 
 - Contrôle final 1.5.1 : préparation du clip visible dans le mini-lecteur, actions À suivre/réorganisation toujours accessibles, état « Dans ta bibliothèque » confirmé en vert ; un suffixe de vidéo comme « | Open Mic » ne remplace plus le titre du morceau.
 

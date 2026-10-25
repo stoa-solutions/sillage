@@ -31,6 +31,7 @@ final class DJModel: ObservableObject {
   private var automaticRequest = false
   private var composition = DJComposition()
   private var unavailableCount = 0
+  private var microphoneSource: DiscoveryScope = .library
   let player = Player()
   let microphone = Microphone()
   private let session: Session
@@ -44,7 +45,10 @@ final class DJModel: ObservableObject {
 
   init(session: Session) {
     self.session = session
-    microphone.onText = { [weak self] text in self?.send(text) }
+    microphone.onText = { [weak self] text in
+      guard let self else { return }
+      self.send(text, source: self.microphoneSource)
+    }
     microphone.onError = { [weak self] text in self?.session.error = text }
     player.onProgress = { [weak self] in
       if let self, player.playing, player.elapsed > 2 { unavailableCount = 0 }
@@ -91,7 +95,7 @@ final class DJModel: ObservableObject {
     composition.reset()
     player.reset()
   }
-  func send(_ text: String? = nil, automatic: Bool = false) {
+  func send(_ text: String? = nil, automatic: Bool = false, source: DiscoveryScope? = nil) {
     let text = (text ?? prompt).trimmingCharacters(in: .whitespacesAndNewlines)
     guard !text.isEmpty else { return }
     if automatic && busy { return }
@@ -121,7 +125,7 @@ final class DJModel: ObservableObject {
     let id = UUID()
     requestID = id
     if !automatic { prompt = "" }
-    let source = searchScope
+    let source = source ?? searchScope
     let history = messages
     if !automatic {
       messages.append(ChatMessage(role: "user", content: text))
@@ -247,10 +251,10 @@ final class DJModel: ObservableObject {
     microphone.stop()
     voice.stop()
   }
-  func play(_ track: Track) {
+  func play(_ track: Track, source: DiscoveryScope = .library) {
     cancel()
     composition.direct(
-      "Des morceaux dans l’esprit de \(TrackTitle(track).spoken).", source: searchScope)
+      "Des morceaux dans l’esprit de \(TrackTitle(track).spoken).", source: source)
     playback.replace([track])
     unavailableCount = 0
     playCurrent()
@@ -263,14 +267,20 @@ final class DJModel: ObservableObject {
       player.prepareNext(upcoming.first?.track)
     }
   }
-  func enqueue(_ track: Track) {
+  func enqueue(_ track: Track, source: DiscoveryScope = .library) {
     if allUpcoming.contains(where: { $0.track.id == track.id }) {
       session.notice = "Ce morceau est déjà à suivre."
       return
     }
     let changed = playback.apply(
       DJResponse(reply: "", action: "append", tracks: [track]), automatic: false)
-    if changed { playCurrent() } else { player.prepareNext(upcoming.first?.track) }
+    if changed {
+      composition.direct(
+        "Des morceaux dans l’esprit de \(TrackTitle(track).spoken).", source: source)
+      playCurrent()
+    } else {
+      player.prepareNext(upcoming.first?.track)
+    }
     session.notice = "À suivre : " + TrackTitle(track).spoken
   }
   func next(outcome: PlaybackOutcome = .skipped, userInitiated: Bool = true) {
@@ -345,7 +355,8 @@ final class DJModel: ObservableObject {
     messages = Array(messages.suffix(24))
     speak(announcement)
   }
-  func toggleMicrophone() {
+  func toggleMicrophone(source: DiscoveryScope? = nil) {
+    if !microphone.active { microphoneSource = source ?? searchScope }
     if busy { cancel() }
     voice.stop()
     player.command("pause")
