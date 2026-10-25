@@ -281,9 +281,12 @@ export async function djTurn(
         );
       }
       if (discoveryMode) {
+        // Some providers still use the ordinary selection field. Preserve that
+        // selection; never expand it to every retrieved candidate (which can
+        // reintroduce titles the user explicitly excluded).
         const ids = output.discoveryIds?.length
           ? output.discoveryIds
-          : [...discoveries.keys()].slice(0, 8);
+          : output.trackIds;
         if (ids.some((id) => !discoveries.has(id)))
           throw new DjUnavailable(
             "Résultat de découverte non vérifié. Réessaie.",

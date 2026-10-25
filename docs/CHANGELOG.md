@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- DJ Découvrir : conserve la sélection choisie par le modèle même s’il utilise le champ habituel de lecture ; ne réintroduit pas tous les candidats dans les cartes.
+
 - Découvrir : identité visuelle distincte pour un morceau présent dans les deux sources ; le filtre de playlist conserve la bonne ligne et ses actions.
 
 - Réglages : une clé refusée par Google avec une réponse 400 reçoit le même message explicite que les refus 401/403.

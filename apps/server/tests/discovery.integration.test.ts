@@ -370,3 +370,43 @@ it("keeps the existing encrypted key after a rejected draft check", async () => 
   expect(voice.voice).toBe(false);
   expect(voice.message).toContain("voix Gemini est indisponible");
 });
+
+it("preserves a model's chosen subset when it uses the ordinary trackIds field", async () => {
+  const normal = upstream.getMockImplementation() as (
+    ...args: any[]
+  ) => Promise<Response>;
+  upstream.mockImplementation(async (...args: any[]) => {
+    const response = await normal(...args);
+    if (String(args[0]).endsWith("/chat/completions")) {
+      const body = await response.clone().json();
+      if (body.choices?.[0]?.message?.content?.includes("discoveryIds")) {
+        return Response.json({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  reply: "Uniquement le titre demandé",
+                  trackIds: ["newtrack001"],
+                  action: "keep",
+                }),
+              },
+            },
+          ],
+        });
+      }
+    }
+    return response;
+  });
+  await req("/v1/dj/settings", tokenA, {
+    apiKey: "test-gemini-personal-key",
+    model: "gemini-3.5-flash-lite",
+  });
+  const result = await req("/v1/dj/chat", tokenA, {
+    message: "Cherche Real artist sur YouTube, sans le deuxième titre",
+    scope: "youtube",
+  });
+  expect(result.status).toBe(200);
+  const body = await result.json();
+  expect(body.discoveries.map((x: any) => x.video.id)).toEqual(["newtrack001"]);
+  expect(body.tracks).toEqual([]);
+});
