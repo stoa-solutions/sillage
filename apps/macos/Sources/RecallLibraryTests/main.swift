@@ -58,6 +58,48 @@ actor Fixture {
     )
   }
 }
+actor ServerFixture {
+  var polls = 0
+  var posted = false
+  func call(_ path: String, _ body: [String: String]?) throws -> [String: Any] {
+    if path == "status" { return ["youtubeConfigured": true] }
+    if path == "playlists", body != nil {
+      posted = true
+      return ["id": "PL1234567890"]
+    }
+    if path == "playlists" {
+      polls += 1
+      let fresh = posted && polls > 2
+      return [
+        "playlists": [
+          [
+            "id": "PL1234567890", "status": fresh ? "ready" : "syncing",
+            "last_sync_at": fresh ? "new" : "old",
+          ]
+        ]
+      ]
+    }
+    if path == "export" {
+      return [
+        "collections": [
+          [
+            "playlist": ["id": "PL1234567890", "title": "Test"],
+            "videos": [
+              ["id": "abcdefghijk", "title": "Self Care"],
+              ["id": "12345678901", "title": NSNull()],
+            ],
+          ],
+          [
+            "playlist": ["id": "OtherPlaylist", "title": "Other"],
+            "videos": [["id": "other123456", "title": "Other"]],
+          ],
+        ]
+      ]
+    }
+    throw RecallError.message("Unexpected server request")
+  }
+}
+
 @main struct LibraryTests {
   static func main() async {
     do {
@@ -219,8 +261,30 @@ actor Fixture {
       try check(
         try store.search("", source: .server, offset: 100, limit: 100).count == 100,
         "Bounded page failed")
+      let serverFixture = ServerFixture()
+      let serverImporter = ServerPlaylistImporter(
+        call: { path, body in try await serverFixture.call(path, body) }, pause: {})
+      let serverResult = try await serverImporter.load(
+        link: "https://www.youtube.com/playlist?list=PL1234567890")
+      try check(
+        serverResult.playlists.count == 1 && serverResult.tracks.count == 2,
+        "Server import leaked other playlists or dropped untitled videos")
+      try check(
+        serverResult.tracks.contains { $0.metadataUnavailable == true },
+        "Untitled server entry was lost")
+      let stopped = Task {
+        try await ServerPlaylistImporter(
+          call: { path, body in try await serverFixture.call(path, body) },
+          pause: { try Task.checkCancellation() }
+        ).load(link: "https://www.youtube.com/playlist?list=PL1234567890")
+      }
+      stopped.cancel()
+      do {
+        _ = try await stopped.value
+        throw RecallError.message("Cancelled server import completed")
+      } catch is CancellationError {}
       print(
-        "Library regression scenarios passed: migration, transactions, sources, playlists, FTS, URL validation, quota/resume/expiry, broadened FTS, export. 10,000 synthetic videos imported in \(String(format:"%.2f",duration)) s."
+        "Library regression scenarios passed: migration, transactions, sources, playlists, FTS, URL validation, quota/resume/expiry, broadened FTS, export, server import/freshness/isolation/cancellation. 10,000 synthetic videos imported in \(String(format:"%.2f",duration)) s."
       )
     } catch {
       fputs("Library tests failed: \(error.localizedDescription)\n", stderr)

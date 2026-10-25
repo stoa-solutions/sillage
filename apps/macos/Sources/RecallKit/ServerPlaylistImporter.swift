@@ -1,0 +1,59 @@
+import Foundation
+
+/// Uses the user's authenticated private server. The YouTube key never leaves that server.
+public struct ServerPlaylistImporter: Sendable {
+  public typealias Call = @Sendable (String, [String: String]?) async throws -> [String: Any]
+  private let call: Call
+  private let pause: @Sendable () async throws -> Void
+  public init(connection: Connection) {
+    call = { path, body in try await HTTPClient().server(connection, path: path, body: body) }
+    pause = { try await Task.sleep(nanoseconds: 2_000_000_000) }
+  }
+  public init(call: @escaping Call, pause: @escaping @Sendable () async throws -> Void) {
+    self.call = call
+    self.pause = pause
+  }
+  public func load(link: String) async throws -> LibraryDocument {
+    try Task.checkCancellation()
+    let id = try YouTubePlaylistLink.id(from: link)
+    let status = try await call("status", nil)
+    guard status["youtubeConfigured"] as? Bool == true else {
+      throw RecallError.message(
+        "La clé YouTube doit être configurée sur ton serveur. Aucune clé n’est demandée dans l’app."
+      )
+    }
+    let before = try await call("playlists", nil)
+    let previous =
+      (before["playlists"] as? [[String: Any]])?.first { $0["id"] as? String == id }?[
+        "last_sync_at"] as? String
+    try Task.checkCancellation()
+    _ = try await call("playlists", ["url": link])
+    for _ in 0..<150 {
+      try Task.checkCancellation()
+      try await pause()
+      let result = try await call("playlists", nil)
+      let playlist = (result["playlists"] as? [[String: Any]])?.first { $0["id"] as? String == id }
+      if playlist?["status"] as? String == "error" {
+        throw RecallError.message(
+          "YouTube n’a pas pu actualiser cette playlist. Vérifie son accès et le quota dans les réglages du serveur."
+        )
+      }
+      if playlist?["status"] as? String == "ready",
+        let synced = playlist?["last_sync_at"] as? String, synced != previous
+      {
+        let exported = try await call("export", nil)
+        let document = try LibraryDocument.parse(JSONSerialization.data(withJSONObject: exported))
+        guard let selected = document.playlists.first(where: { $0.id == id }) else {
+          throw RecallError.message(
+            "La playlist synchronisée n’est pas encore disponible dans l’export.")
+        }
+        let ids = Set(selected.videoIDs)
+        return LibraryDocument(
+          tracks: document.tracks.filter { ids.contains($0.id) }, playlists: [selected])
+      }
+    }
+    throw RecallError.message(
+      "Le serveur travaille encore. Réimporte le même lien dans quelques instants ; ta bibliothèque reste conservée."
+    )
+  }
+}

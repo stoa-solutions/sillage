@@ -64,7 +64,43 @@ import SwiftUI
         session.model = UserDefaults.standard.string(forKey: "djModel") ?? "gemini-3.5-flash-lite"
       } catch { session.error = error.localizedDescription }
     }
-    if session.useServer || !session.localDJ { await session.refreshCredentials() }
+    if session.useServer || !session.localDJ || session.cloudVoice {
+      await session.refreshCredentials()
+    }
+    if CommandLine.arguments.contains("--verify-quality") {
+      let report = session.store.directory.appendingPathComponent("quality-verification.json")
+      do {
+        let started = Date()
+        guard let connection = session.connection, !session.geminiKey.isEmpty else {
+          throw RecallError.message("Clé ou connexion existante absente")
+        }
+        let response = try await GeminiDJ(key: session.geminiKey, model: session.model).turn(
+          message: "Mets-moi trois vrais titres de Mac Miller, sans type beats ni hommages.",
+          history: [], excluded: []
+        ) { query, includeQueued in
+          try await HTTPClient().mcpSearch(connection, query: query, includeQueued: includeQueued)
+        }
+        guard !response.tracks.isEmpty, response.tracks.allSatisfy({ !Catalog.isImitation($0) })
+        else { throw RecallError.message("Sélection musicale incorrecte") }
+        let audio = try await GeminiDJ(key: session.geminiKey, model: session.model).speech(
+          "Salut Samuel. Ton DJ et sa voix sont de retour. On reprend la musique.")
+        guard audio.starts(with: Data("RIFF".utf8)) else {
+          throw RecallError.message("Voix invalide")
+        }
+        let value: [String: Any] = [
+          "ok": true, "model": session.model, "tracks": response.tracks.map(\.title),
+          "voiceBytes": audio.count, "seconds": Date().timeIntervalSince(started),
+        ]
+        try JSONSerialization.data(withJSONObject: value, options: .prettyPrinted).write(
+          to: report, options: .atomic)
+      } catch {
+        try? JSONSerialization.data(withJSONObject: [
+          "ok": false, "error": error.localizedDescription,
+        ]).write(to: report, options: .atomic)
+        session.error = error.localizedDescription
+      }
+    }
+    session.showOnboarding = !session.localDJ && !session.hasKey && !session.hasServer
     if session.useServer { library.sync() }
   }
   var body: some Scene {
@@ -76,6 +112,10 @@ import SwiftUI
           if !didBootstrap {
             didBootstrap = true
             await bootstrap()
+          }
+          while !Task.isCancelled {
+            do { try await Task.sleep(nanoseconds: 60_000_000_000) } catch { break }
+            if session.useServer { library.sync() }
           }
         }
         .onDisappear {

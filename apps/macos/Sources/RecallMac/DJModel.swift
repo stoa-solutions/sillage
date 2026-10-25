@@ -14,8 +14,9 @@ struct QueueEntry: Identifiable {
 final class DJModel: ObservableObject {
   @Published private(set) var messages: [ChatMessage] = []
   @Published var prompt = ""
-  @Published private(set) var queue: [Track] = []
-  @Published private(set) var position = 0
+  @Published private var playback = PlaybackQueue()
+  var queue: [Track] { playback.tracks }
+  var position: Int { playback.position }
   @Published private(set) var busy = false
   @Published var spoken = true
   @Published var continuous = true
@@ -24,6 +25,7 @@ final class DJModel: ObservableObject {
   private let session: Session
   private lazy var voice = VoiceOutput(player: player)
   private var work: Task<Void, Never>?
+  private var lastRequest = ""
   var current: Track? { queue.indices.contains(position) ? queue[position] : nil }
   var upcoming: [QueueEntry] {
     queue.indices.dropFirst(position + 1).prefix(3).map { QueueEntry(id: $0, track: queue[$0]) }
@@ -33,11 +35,14 @@ final class DJModel: ObservableObject {
     self.session = session
     microphone.onText = { [weak self] text in self?.send(text) }
     microphone.onError = { [weak self] text in self?.session.error = text }
-    player.onEnded = { [weak self] in self?.next() }
+    player.onEnded = { [weak self] in
+      self?.playback.markEnded()
+      self?.next()
+    }
     player.onUnavailable = { [weak self] in
       guard let self else { return }
       if position + 1 < queue.count {
-        position += 1
+        playback.advance()
         playCurrent()
       } else {
         session.error =
@@ -51,8 +56,7 @@ final class DJModel: ObservableObject {
   /// Called when the source changes: the queue came from the previous library.
   func reset() {
     cancel()
-    queue = []
-    position = 0
+    playback.reset()
     player.command("pause")
   }
   func send(_ text: String? = nil, automatic: Bool = false) {
@@ -69,7 +73,10 @@ final class DJModel: ObservableObject {
     busy = true
     prompt = ""
     let history = messages
-    if !automatic { messages.append(ChatMessage(role: "user", content: text)) }
+    if !automatic {
+      lastRequest = text
+      messages.append(ChatMessage(role: "user", content: text))
+    }
     let excluded = Set(queue.suffix(100).map(\.id))
     work = Task {
       defer { busy = false }
@@ -78,15 +85,7 @@ final class DJModel: ObservableObject {
         try Task.checkCancellation()
         messages.append(ChatMessage(role: "assistant", content: response.reply))
         messages = Array(messages.suffix(24))
-        if !response.tracks.isEmpty {
-          if response.action == "append", position < queue.count {
-            queue.append(contentsOf: response.tracks)
-          } else {
-            queue = response.tracks
-            position = 0
-            playCurrent()
-          }
-        }
+        if playback.apply(response, automatic: automatic) { playCurrent() }
         if spoken { speak(response.reply) }
       } catch { if !Task.isCancelled { session.error = error.localizedDescription } }
     }
@@ -118,8 +117,16 @@ final class DJModel: ObservableObject {
         message: text, history: history, excluded: excluded
       ) { query, includeQueued in
         if let server {
-          return try await HTTPClient().mcpSearch(
+          let primary = try await HTTPClient().mcpSearch(
             server, query: query, includeQueued: includeQueued)
+          let additional = try await Task.detached {
+            try store.search(
+              query, source: .server, limit: 50, excluded: includeQueued ? [] : excluded)
+          }.value
+          var seen = Set<String>()
+          return (primary + additional).filter {
+            (includeQueued || !excluded.contains($0.id)) && seen.insert($0.id).inserted
+          }
         }
         return try await Task.detached {
           try store.search(
@@ -141,7 +148,7 @@ final class DJModel: ObservableObject {
     throw RecallError.message("Ajoute ta clé Gemini dans Réglages pour activer ton DJ.")
   }
   private func speak(_ text: String) {
-    if session.localDJ {
+    if !session.cloudVoice {
       voice.speakLocally(text)
       return
     }
@@ -164,18 +171,19 @@ final class DJModel: ObservableObject {
     voice.stop()
   }
   func play(_ track: Track) {
-    queue = [track]
-    position = 0
+    playback.replace([track])
     playCurrent()
   }
-  private func playCurrent() { if let current { player.cue(current) } }
+  private func playCurrent() {
+    if let current { player.cue(current) }
+  }
   func next() {
-    if position + 1 < queue.count {
-      position += 1
+    if playback.advance() {
       playCurrent()
     } else if continuous, !queue.isEmpty {
+      playback.markEnded()
       send(
-        "Continue avec d’autres titres de ma bibliothèque dans le même esprit, sans répétition.",
+        "Continue ma demande : \(lastRequest). Cherche de nouveaux vrais morceaux dans la bibliothèque, sans répétition. Ajoute-les à la file. Exclue les type beats et hommages sauf si je les ai demandés.",
         automatic: true)
     }
   }

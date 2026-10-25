@@ -6,16 +6,18 @@ public struct Track: Codable, Identifiable, Hashable, Sendable {
   public let channel: String?
   public let durationSeconds: Double?
   public let description: String?
+  public let metadataUnavailable: Bool?
   public var url: URL { URL(string: "https://www.youtube.com/watch?v=\(id)")! }
   public init(
     id: String, title: String, channel: String? = nil, durationSeconds: Double? = nil,
-    description: String? = nil
+    description: String? = nil, metadataUnavailable: Bool? = nil
   ) {
     self.id = id
     self.title = title
     self.channel = channel
     self.durationSeconds = durationSeconds
     self.description = description
+    self.metadataUnavailable = metadataUnavailable
   }
 }
 public struct ChatMessage: Codable, Identifiable, Sendable {
@@ -31,6 +33,11 @@ public struct DJResponse: Codable, Sendable {
   public let reply: String
   public let action: String
   public let tracks: [Track]
+  public init(reply: String, action: String, tracks: [Track]) {
+    self.reply = reply
+    self.action = action
+    self.tracks = tracks
+  }
 }
 public struct Connection: Codable, Sendable {
   public let url: String
@@ -57,6 +64,20 @@ public enum RecallError: LocalizedError {
   }
 }
 public enum Catalog {
+  private static func hasImitationMarker(_ text: String) -> Bool {
+    ["type beat", "typebeat", "hommage", "tribute", "instrumental"].contains {
+      text.localizedCaseInsensitiveContains($0)
+    }
+  }
+  public static func requestsImitations(_ text: String) -> Bool {
+    let negative = [
+      "sans type", "pas de type", "sans hommage", "sans instrumental", "sans tribute", "exclu",
+    ]
+    return hasImitationMarker(text)
+      && !negative.contains { text.localizedCaseInsensitiveContains($0) }
+  }
+  public static func isImitation(_ track: Track) -> Bool { hasImitationMarker(track.title) }
+
   public static func parse(_ data: Data) throws -> [Track] {
     guard data.count <= 40 * 1024 * 1024,
       let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -83,7 +104,10 @@ public enum Catalog {
       else {
         throw RecallError.message("Un identifiant vidéo de l’import est invalide.")
       }
-      guard let title = row["title"] as? String, !title.isEmpty else { return nil }
+      let originalTitle = row["title"] as? String
+      let missingTitle =
+        originalTitle?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+      let title = missingTitle ? "Vidéo sans titre · " + id : originalTitle!
       guard seen.insert(id).inserted else { return nil }
       let duration =
         (row["durationSeconds"] ?? row["duration_seconds"] ?? row["duration"]) as? Double
@@ -94,7 +118,9 @@ public enum Catalog {
         id: id, title: String(title.prefix(1000)),
         channel: (row["channel"] ?? row["uploader"]) as? String,
         durationSeconds: duration,
-        description: String((row["description"] as? String ?? "").prefix(10000)))
+        description: String((row["description"] as? String ?? "").prefix(10000)),
+        metadataUnavailable: missingTitle || row["metadataUnavailable"] as? Bool == true
+          ? true : nil)
     }
   }
   public static func validateSelection(ids: [String], candidates: [String: Track]) throws -> [Track]
