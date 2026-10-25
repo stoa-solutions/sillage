@@ -43,7 +43,7 @@ Pas de libellés en capitales, pas de points médians en séparateur, pas de num
 
 ## Enchaînements
 
-- **Accueil** : trois écrans qui glissent dans une feuille de taille fixe, avec trois points de progression en haut.
+- **Accueil** : trois écrans dans une feuille de taille fixe, mis en page comme Studio : le fond choisi dans Apparence (Stoa par défaut) sous un voile encre, texte aligné à gauche, couleurs Stoa (encre `#20201e`, craie `#f5f3ee`, orange `#f15a24` réservé à la progression, au champ actif et aux erreurs). Trois traits de progression en haut, un seul bouton craie par écran.
   1. Compte Google : « Continuer avec Google ».
   2. Clé Gemini : un champ et « Activer mon DJ » ; le lien « Obtenir ma clé » ouvre AI Studio.
   3. Première playlist : un champ pour coller le lien et « Importer ». À la fin, on arrive dans la Bibliothèque, où l’import progresse.
