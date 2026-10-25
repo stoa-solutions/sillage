@@ -14,6 +14,7 @@ struct QueueEntry: Identifiable {
 final class DJModel: ObservableObject {
   @Published private(set) var messages: [ChatMessage] = []
   @Published var prompt = ""
+  @Published var searchScope: DiscoveryScope = .library
   @Published private var playback = PlaybackQueue()
   var queue: [Track] { playback.tracks }
   var position: Int { playback.position }
@@ -85,6 +86,7 @@ final class DJModel: ObservableObject {
     playback.reset()
     messages = []
     prompt = ""
+    searchScope = .library
     continuationNotice = ""
     composition.reset()
     player.reset()
@@ -131,7 +133,9 @@ final class DJModel: ObservableObject {
         try Task.checkCancellation()
         guard requestID == id else { return }
         if automatic { response = playback.freshContinuation(response) }
-        messages.append(ChatMessage(role: "assistant", content: response.reply))
+        messages.append(
+          ChatMessage(role: "assistant", content: response.reply, discoveries: response.discoveries)
+        )
         messages = Array(messages.suffix(24))
         let oldCount = queue.count
         let changed = playback.apply(response, automatic: automatic)
@@ -175,7 +179,9 @@ final class DJModel: ObservableObject {
         try await dj.turn($0)
       }
     }
-    return try await dj.turn(composition.userRequest(text, history: history, queue: playback))
+    var request = composition.userRequest(text, history: history, queue: playback)
+    request.scope = searchScope
+    return try await dj.turn(request)
   }
   private func speak(_ text: String) {
     if !session.cloudVoice {
@@ -245,6 +251,16 @@ final class DJModel: ObservableObject {
       player.cue(current)
       player.prepareNext(upcoming.first?.track)
     }
+  }
+  func enqueue(_ track: Track) {
+    if allUpcoming.contains(where: { $0.track.id == track.id }) {
+      session.notice = "Ce morceau est déjà à suivre."
+      return
+    }
+    let changed = playback.apply(
+      DJResponse(reply: "", action: "append", tracks: [track]), automatic: false)
+    if changed { playCurrent() } else { player.prepareNext(upcoming.first?.track) }
+    session.notice = "À suivre : " + track.title
   }
   func next(outcome: PlaybackOutcome = .skipped, userInitiated: Bool = true) {
     guard current != nil else { return }

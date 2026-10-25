@@ -94,8 +94,14 @@ final class Session: ObservableObject {
     guard let connection, googleAccount else {
       throw RecallError.message("Connecte ton compte Google avant d’enregistrer ta clé.")
     }
+    let accountGeneration = generation
+    let selectedModel = model
+    let check = try await HTTPClient().checkGemini(connection, model: selectedModel, key: key)
+    guard check.ok else { throw RecallError.message(check.message) }
+    guard generation == accountGeneration else { throw CancellationError() }
     _ = try await HTTPClient().server(
-      connection, path: "dj/settings", body: ["apiKey": key, "model": model])
+      connection, path: "dj/settings", body: ["apiKey": key, "model": selectedModel])
+    guard generation == accountGeneration else { throw CancellationError() }
     cloudVoice = true
     await refreshCredentials()
     guard hasKey else {
@@ -158,9 +164,31 @@ final class Session: ObservableObject {
       if hasKey { showOnboarding = false }
     } catch { self.error = error.localizedDescription }
   }
+  func testGeminiKey(_ value: String, voice: Bool = true) async throws -> GeminiCheck {
+    guard let connection, googleAccount else {
+      throw RecallError.message("Connecte ton compte Google.")
+    }
+    let key = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard key.isEmpty || (20...256).contains(key.count) else {
+      throw RecallError.message("Vérifie ta clé Gemini.")
+    }
+    let accountGeneration = generation
+    let check = try await HTTPClient().checkGemini(
+      connection, model: model, key: key.isEmpty ? nil : key, voice: voice)
+    guard generation == accountGeneration else { throw CancellationError() }
+    return check
+  }
   func saveModel() async throws {
-    guard let connection, googleAccount, hasKey else { return }
-    _ = try await HTTPClient().server(connection, path: "dj/settings", body: ["model": model])
+    guard let connection, googleAccount, hasKey else {
+      throw RecallError.message("Renseigne d’abord ta clé Gemini.")
+    }
+    let accountGeneration = generation
+    let selectedModel = model
+    let check = try await HTTPClient().checkGemini(connection, model: selectedModel)
+    guard check.ok else { throw RecallError.message(check.message) }
+    guard generation == accountGeneration else { throw CancellationError() }
+    _ = try await HTTPClient().server(
+      connection, path: "dj/settings", body: ["model": selectedModel])
   }
   func removeGeminiKey() async throws {
     guard let connection, googleAccount else { return }

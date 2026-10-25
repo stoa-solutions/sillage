@@ -15,7 +15,11 @@ struct SettingsView: View {
           Label(session.accountEmail, systemImage: "person.crop.circle.fill")
           Text("Seules tes playlists et ta clé Gemini sont accessibles depuis ce compte.").font(
             .caption)
-          Button("Me déconnecter") { Task { await session.forgetServer() } }
+          Button("Me déconnecter") {
+            key = ""
+            message = ""
+            Task { await session.forgetServer() }
+          }.disabled(busy)
         } else {
           Text(
             session.hasServer
@@ -42,9 +46,11 @@ struct SettingsView: View {
           Text("Gemini 3.5 Flash-Lite · très rapide").tag("gemini-3.5-flash-lite")
           Text("Gemini 4 Argon · raisonnement avancé").tag("gemini-4-argon")
         }
+        .disabled(busy)
         SecureField(
           session.hasKey ? "Nouvelle clé (laisser vide pour conserver)" : "Ma clé API Gemini",
-          text: $key)
+          text: $key
+        ).disabled(busy)
         Text(
           "Chiffrée sur le serveur, réservée à ton compte. Les demandes au DJ et les titres proposés sont transmis à Google et utilisent ton quota Gemini."
         ).font(.caption)
@@ -52,8 +58,9 @@ struct SettingsView: View {
           "Obtenir ma clé Gemini", destination: URL(string: "https://aistudio.google.com/api-keys")!
         )
         HStack {
-          Button(busy ? "Enregistrement…" : "Enregistrer") {
+          Button(busy ? "Vérification…" : "Vérifier et enregistrer") {
             busy = true
+            message = ""
             Task {
               defer { busy = false }
               do {
@@ -67,16 +74,37 @@ struct SettingsView: View {
               } catch { message = error.localizedDescription }
             }
           }.buttonStyle(.borderedProminent).disabled(busy || !session.googleAccount)
+          Button("Tester le DJ et la voix") {
+            busy = true
+            message = ""
+            Task {
+              defer { busy = false }
+              do { message = try await session.testGeminiKey(key).message } catch {
+                message = error.localizedDescription
+              }
+            }
+          }.disabled(busy || !session.googleAccount || (!session.hasKey && key.isEmpty))
           if session.hasKey && session.googleAccount {
             Button("Retirer ma clé") {
+              busy = true
+              message = ""
               Task {
-                do { try await session.removeGeminiKey() } catch {
+                defer { busy = false }
+                do {
+                  try await session.removeGeminiKey()
+                  key = ""
+                  message = "Clé retirée de ton compte."
+                } catch {
                   message = error.localizedDescription
                 }
               }
-            }
+            }.disabled(busy)
           }
         }
+        if !message.isEmpty { Text(message).font(.callout).textSelection(.enabled) }
+        Text(
+          "Le test effectue de courts appels réels à Google et utilise le quota de la clé. Il ne l’enregistre pas."
+        ).font(.caption)
       }
       Section("YouTube") {
         Text(
@@ -96,8 +124,8 @@ struct SettingsView: View {
           "Les archives de mise à jour doivent être signées. Cette version utilise une signature locale ; la distribution sans avertissement macOS attend la notarisation Apple."
         ).font(.caption)
       }
-      if !message.isEmpty { Text(message).font(.caption) }
       if !session.error.isEmpty { Text(session.error).font(.caption).foregroundStyle(.red) }
+    }.onChange(of: key) { _, _ in message = "" }.onChange(of: session.model) { _, _ in message = ""
     }.formStyle(.grouped).frame(width: 650, height: 700)
       .task { await session.refreshCredentials() }
   }

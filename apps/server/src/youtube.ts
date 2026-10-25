@@ -45,6 +45,34 @@ export class YouTube {
     }
     return response.json();
   }
+  async search(query: string, pageToken = "") {
+    const data = await this.get("search", {
+      part: "snippet",
+      type: "video",
+      q: query,
+      maxResults: "15",
+      videoEmbeddable: "true",
+      videoSyndicated: "true",
+      order: "relevance",
+      ...(pageToken ? { pageToken } : {}),
+    });
+    const ids: string[] = [
+      ...new Set<string>(
+        (data.items ?? [])
+          .map((row: any) => row.id?.videoId)
+          .filter(
+            (id: unknown) => typeof id === "string" && /^[\w-]{11}$/.test(id),
+          ),
+      ),
+    ];
+    const videos = await this.videos(ids);
+    const byId = new Map(videos.map((video) => [video.id, video]));
+    return {
+      videos: ids.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])),
+      nextPageToken:
+        typeof data.nextPageToken === "string" ? data.nextPageToken : null,
+    };
+  }
   async playlist(
     id: string,
   ): Promise<{ title: string; entries: PlaylistEntry[] }> {

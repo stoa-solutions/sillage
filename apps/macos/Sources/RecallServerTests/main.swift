@@ -84,6 +84,34 @@ actor ServerFixture {
         overview.videoCount == 15 && overview.playlists.map(\.entries) == [13, 5],
         "Server summary lost distinct total or playlist counts")
       try rejects { _ = try ServerLibraryOverview(status: [:], collections: [:]) }
+      let discoveryData = Data(
+        #"{"reply":"Voici un résultat","action":"keep","tracks":[],"discoveries":[{"video":{"id":"newtrack001","title":"New track"},"inLibrary":false}]}"#
+          .utf8)
+      let discoveryReply = try JSONDecoder().decode(DJResponse.self, from: discoveryData)
+      try check(discoveryReply.discoveries?.first?.id == "newtrack001", "DJ discovery cards lost")
+      var playback = PlaybackQueue()
+      playback.replace([Track(id: "oldtrack001", title: "Current")])
+      try check(
+        !playback.apply(discoveryReply) && playback.tracks.first?.id == "oldtrack001",
+        "Discovery replaced playback")
+      try rejects {
+        _ = try JSONDecoder().decode(
+          DiscoveryItem.self,
+          from: Data(#"{"video":{"id":"../unsafe","title":"Bad"},"inLibrary":false}"#.utf8))
+      }
+      let personalCollection = try ServerLibraryOverview(
+        status: ["counts": ["videos": 1]],
+        collections: [
+          "playlists": [
+            [
+              "id": "recall-discoveries:user", "title": "Mes découvertes", "entries": 1,
+              "sync_enabled": false,
+            ]
+          ]
+        ])
+      try check(
+        personalCollection.playlists.first?.syncEnabled == false,
+        "Private collection would be synced as YouTube playlist")
       print(
         "Server client checks passed: YouTube links, server import freshness and cancellation, library summary."
       )

@@ -27,7 +27,9 @@ public struct ChatMessage: Codable, Identifiable, Sendable {
   public var id = UUID()
   public let role: String
   public let content: String
-  public init(role: String, content: String) {
+  public let discoveries: [DiscoveryItem]?
+  public init(role: String, content: String, discoveries: [DiscoveryItem]? = nil) {
+    self.discoveries = discoveries
     self.role = role
     self.content = content
   }
@@ -36,7 +38,9 @@ public struct DJResponse: Codable, Sendable {
   public let reply: String
   public let action: String
   public let tracks: [Track]
-  public init(reply: String, action: String, tracks: [Track]) {
+  public let discoveries: [DiscoveryItem]?
+  public init(reply: String, action: String, tracks: [Track], discoveries: [DiscoveryItem]? = nil) {
+    self.discoveries = discoveries
     self.reply = reply
     self.action = action
     self.tracks = tracks

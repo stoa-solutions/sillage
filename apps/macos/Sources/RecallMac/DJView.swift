@@ -8,12 +8,14 @@ struct DJView: View {
   @State private var panelTab = SessionPanelTab.dj
   @AppStorage("karaokeOverlay") private var karaoke = false
   @StateObject private var lyrics = LyricsModel()
+  let panelOnly: Bool
   @ObservedObject var model: DJModel
   @EnvironmentObject var session: Session
   @ObservedObject var player: Player
   @ObservedObject var microphone: Microphone
   @ObservedObject var voice: VoiceOutput
-  init(model: DJModel) {
+  init(model: DJModel, panelOnly: Bool = false) {
+    self.panelOnly = panelOnly
     self.model = model
     player = model.player
     microphone = model.microphone
@@ -21,7 +23,7 @@ struct DJView: View {
   }
   var body: some View {
     Group {
-      if player.studio { studio } else { compact }
+      if panelOnly { sessionPanel } else if player.studio { studio } else { compact }
     }.onChange(of: model.spoken) { _, value in if !value { model.stopVoice() } }
       .onChange(of: model.current?.id, initial: true) { _, _ in
         lyrics.show(
@@ -324,7 +326,12 @@ struct DJView: View {
         LazyVStack(alignment: .leading, spacing: 12) {
           if model.messages.isEmpty { welcome }
           ForEach(model.messages) { message in
-            MessageRow(message: message).id(message.id)
+            VStack(alignment: .leading, spacing: 10) {
+              MessageRow(message: message)
+              if let results = message.discoveries {
+                ForEach(results) { DiscoveryTrackRow(item: $0, compact: true) }
+              }
+            }.id(message.id)
           }
         }.padding(.vertical, 16)
       }.onChange(of: model.messages.count) { _, _ in
@@ -355,6 +362,12 @@ struct DJView: View {
 
   private var composer: some View {
     VStack(alignment: .leading, spacing: 8) {
+      Picker("Chercher dans", selection: $model.searchScope) {
+        Text("Mes playlists").tag(DiscoveryScope.library)
+        Text("YouTube").tag(DiscoveryScope.youtube)
+        Text("Partout").tag(DiscoveryScope.all)
+      }.pickerStyle(.segmented).labelsHidden().help(
+        "YouTube et Partout proposent des résultats sans remplacer la file.")
       if microphone.active {
         HStack(spacing: 8) {
           if microphone.starting || microphone.finishing { ProgressView().controlSize(.small) }

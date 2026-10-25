@@ -166,7 +166,7 @@ final class LibraryModel: ObservableObject {
       do {
         if refreshYouTube {
           let overview = try await HTTPClient().libraryOverview(connection)
-          for playlist in overview.playlists {
+          for playlist in overview.playlists where playlist.syncEnabled {
             _ = try await ServerPlaylistImporter(connection: connection).synchronize(
               link: "https://www.youtube.com/playlist?list=" + playlist.id)
           }

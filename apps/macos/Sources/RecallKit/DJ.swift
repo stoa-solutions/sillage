@@ -6,6 +6,7 @@ public protocol DJ: Sendable {
 }
 
 public struct DJRequest: Sendable {
+  public var scope: DiscoveryScope = .library
   public let message: String
   public let history: [ChatMessage]
   /// Tracks already in the play queue. They are excluded unless the person asks for them again.
@@ -37,7 +38,7 @@ public struct ServerDJ: DJ {
     let object = try await HTTPClient().server(
       connection, path: "dj/chat",
       body: [
-        "message": String(request.message.prefix(1500)),
+        "message": String(request.message.prefix(1500)), "scope": request.scope.rawValue,
         "history": request.history.suffix(12).map { ["role": $0.role, "content": $0.content] },
         "excludeIds": Array(request.queued.prefix(100)),
       ])

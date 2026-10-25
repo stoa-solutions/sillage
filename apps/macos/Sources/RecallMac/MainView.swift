@@ -12,7 +12,7 @@ extension Color {
     })
 }
 
-private enum Destination: Hashable { case dj, library }
+private enum Destination: Hashable { case dj, library, discover }
 
 struct MainView: View {
   @EnvironmentObject var session: Session
@@ -32,6 +32,7 @@ struct MainView: View {
         }
       }
       switch section {
+      case .discover: DiscoverView()
       case .dj: DJView(model: dj)
       case .library: LibraryView(onPlay: { section = .dj })
       }
@@ -41,6 +42,7 @@ struct MainView: View {
         Picker("Vue", selection: $section) {
           Text("DJ").tag(Destination.dj)
           Text("Bibliothèque").tag(Destination.library)
+          Text("Découvrir").tag(Destination.discover)
         }.pickerStyle(.segmented).fixedSize()
       }
       ToolbarItemGroup(placement: .primaryAction) {
@@ -48,7 +50,9 @@ struct MainView: View {
         SettingsLink { Label("Réglages", systemImage: "gearshape") }.help("Réglages")
       }
     }
-    .background(WindowAppearance(player: dj.player, dj: section == .dj))
+    .background(
+      WindowAppearance(player: dj.player, dj: section == .dj, discovery: section == .discover)
+    )
     .tint(.recall)
     .sheet(isPresented: $session.showOnboarding) { OnboardingView().environmentObject(session) }
     .onChange(of: session.showOnboarding) { _, showing in
@@ -105,9 +109,10 @@ private struct DisplayPicker: View {
 private struct WindowAppearance: NSViewRepresentable {
   @ObservedObject var player: Player
   let dj: Bool
+  let discovery: Bool
   func makeNSView(context: Context) -> NSView { NSView() }
   func updateNSView(_ view: NSView, context: Context) {
-    let studio = dj && player.studio
+    let studio = discovery || (dj && player.studio)
     DispatchQueue.main.async {
       guard let window = view.window else { return }
       window.appearance = studio ? NSAppearance(named: .darkAqua) : nil

@@ -47,7 +47,7 @@ struct OnboardingView: View {
             "Crée une clé dans Google AI Studio, puis colle-la ici. Tu n’auras pas à la ressaisir à chaque lancement."
           )
           .font(.caption).foregroundStyle(.secondary)
-          Button(busy ? "Enregistrement…" : "Activer mon DJ") {
+          Button(busy ? "Vérification de la clé…" : "Vérifier et activer mon DJ") {
             error = ""
             busy = true
             Task {

@@ -20,18 +20,22 @@ import SwiftUI
   @StateObject private var session: Session
   @StateObject private var library: LibraryModel
   @StateObject private var dj: DJModel
+  @StateObject private var discovery: DiscoveryModel
   @State private var didBootstrap = false
   init() {
     let session = Session()
     let library = LibraryModel(session: session)
     let dj = DJModel(session: session)
-    session.onConnectionChange = { [weak library, weak dj] in
+    let discovery = DiscoveryModel(session: session, library: library)
+    session.onConnectionChange = { [weak library, weak dj, weak discovery] in
+      discovery?.reset()
       dj?.reset()
       library?.reset()
     }
     _session = StateObject(wrappedValue: session)
     _library = StateObject(wrappedValue: library)
     _dj = StateObject(wrappedValue: dj)
+    _discovery = StateObject(wrappedValue: discovery)
   }
   private func bootstrap() async {
     if CommandLine.arguments.contains("--import-configuration-stdin") {
@@ -101,6 +105,7 @@ import SwiftUI
   var body: some Scene {
     WindowGroup("Playlist Recall") {
       MainView().environmentObject(session).environmentObject(library).environmentObject(dj)
+        .environmentObject(discovery)
         .frame(minWidth: 540, minHeight: 640)
         .task {
           if !didBootstrap {

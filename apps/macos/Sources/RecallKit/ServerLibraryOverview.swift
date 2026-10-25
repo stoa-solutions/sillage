@@ -4,6 +4,7 @@ public struct ServerPlaylistSummary: Identifiable, Sendable {
   public let id: String
   public let title: String
   public let entries: Int
+  public let syncEnabled: Bool
 }
 
 public struct ServerLibraryOverview: Sendable {
@@ -24,7 +25,8 @@ public struct ServerLibraryOverview: Sendable {
       else {
         throw RecallError.message("Une playlist du serveur est illisible.")
       }
-      return ServerPlaylistSummary(id: id, title: title, entries: entries)
+      return ServerPlaylistSummary(
+        id: id, title: title, entries: entries, syncEnabled: row["sync_enabled"] as? Bool ?? true)
     }
   }
 }

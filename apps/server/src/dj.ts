@@ -11,6 +11,7 @@ import {
 } from "./music-mcp.ts";
 
 export const djInput = z.object({
+  scope: z.enum(["library", "youtube", "all"]).optional(),
   message: z.string().trim().min(1).max(1500),
   history: z
     .array(
@@ -27,6 +28,10 @@ export const djInput = z.object({
     .default([]),
 });
 const selection = z.object({
+  discoveryIds: z
+    .array(z.string().regex(/^[\w-]{11}$/))
+    .max(8)
+    .optional(),
   reply: z.string().min(1).max(1500),
   trackIds: z.array(z.string().regex(/^[\w-]{11}$/)).max(8),
   action: z.enum(["replace", "append", "keep"]),
@@ -88,7 +93,14 @@ export async function djTurn(
   config: DjConfig = djConfig(),
   userId = LEGACY_USER,
 ) {
-  const requested = await requestedTracks(db, input.message, userId);
+  const discoveryMode =
+    input.scope === "youtube" ||
+    input.scope === "all" ||
+    /\byoutube\b/i.test(input.message);
+  const requested =
+    discoveryMode || /\bplaylist\b/i.test(input.message)
+      ? null
+      : await requestedTracks(db, input.message, userId);
   if (requested) {
     if (requested.missing.length)
       return {
@@ -122,10 +134,23 @@ export async function djTurn(
       "Le mode DJ attend la configuration de son IA côté serveur. Ta bibliothèque reste disponible.",
     );
   await reserveDj(db, userId);
-  const mcp = await connectMusicMcp(db, input.excludeIds, userId);
+  const mcp = await connectMusicMcp(
+    db,
+    input.excludeIds,
+    userId,
+    discoveryMode,
+  );
   const candidates = new Map<string, DjTrack>();
+  const discoveries = new Map<string, { video: DjTrack; inLibrary: boolean }>();
   const messages: any[] = [
-    { role: "system", content: system },
+    {
+      role: "system",
+      content:
+        system +
+        (discoveryMode
+          ? ` MODE DÉCOUVERTE : la personne cherche des résultats à examiner, ne lance ni ne remplace la musique. Renvoie action=keep et trackIds=[] et discoveryIds contenant au plus 8 IDs réellement vus dans les outils. Pour YouTube, utilise youtube_search ; pour une recherche partout, utilise aussi library_search. Pour une playlist nommée, identifie son ID avec library_overview puis passe playlistId à library_search. Les résultats externes sont des propositions à ajouter par un clic ; ne prétends jamais les avoir enregistrés. Source demandée : ${input.scope ?? "youtube"}.`
+          : " Pour chercher dans une playlist précise, appelle library_overview pour son ID, puis library_search avec playlistId."),
+    },
     ...input.history,
     { role: "user", content: input.message },
   ];
@@ -229,6 +254,14 @@ export async function djTurn(
             const data = JSON.parse(text);
             for (const track of data.tracks ?? [])
               candidates.set(track.id, track);
+            if (discoveryMode)
+              for (const track of data.tracks ?? [])
+                discoveries.set(track.id, { video: track, inLibrary: true });
+          }
+          if (!result.isError && call.function.name === "youtube_search") {
+            const data = JSON.parse(text);
+            for (const item of data.results ?? [])
+              discoveries.set(item.video.id, item);
           }
           messages.push({
             role: "tool",
@@ -246,6 +279,22 @@ export async function djTurn(
           "Le DJ n’a pas renvoyé une sélection lisible. Réessaie.",
           502,
         );
+      }
+      if (discoveryMode) {
+        const ids = output.discoveryIds?.length
+          ? output.discoveryIds
+          : [...discoveries.keys()].slice(0, 8);
+        if (ids.some((id) => !discoveries.has(id)))
+          throw new DjUnavailable(
+            "Résultat de découverte non vérifié. Réessaie.",
+            502,
+          );
+        return {
+          reply: output.reply,
+          action: "keep" as const,
+          tracks: [],
+          discoveries: ids.map((id) => discoveries.get(id)!),
+        };
       }
       if (output.trackIds.some((id) => !candidates.has(id)))
         throw new DjUnavailable(

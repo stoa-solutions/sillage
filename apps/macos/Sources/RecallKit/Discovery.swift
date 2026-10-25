@@ -1,0 +1,62 @@
+import Foundation
+
+public enum DiscoveryScope: String, CaseIterable, Identifiable, Sendable {
+  case all, youtube, library
+  public var id: Self { self }
+  public var title: String {
+    switch self {
+    case .all: "Partout"
+    case .youtube: "YouTube"
+    case .library: "Mes playlists"
+    }
+  }
+}
+public struct DiscoveryItem: Codable, Identifiable, Sendable {
+  public let video: Track
+  public let inLibrary: Bool
+  public var id: String { video.id }
+  private enum CodingKeys: String, CodingKey { case video, inLibrary }
+  public init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+    video = try values.decode(Track.self, forKey: .video)
+    inLibrary = try values.decode(Bool.self, forKey: .inLibrary)
+    guard video.id.range(of: "^[A-Za-z0-9_-]{11}$", options: .regularExpression) != nil else {
+      throw DecodingError.dataCorruptedError(
+        forKey: .video, in: values, debugDescription: "Invalid video ID")
+    }
+  }
+}
+public struct DiscoveryPage: Decodable, Sendable {
+  public let results: [DiscoveryItem]
+  public let nextPageToken: String?
+}
+public struct GeminiCheck: Decodable, Sendable {
+  public let ok: Bool
+  public let voice: Bool
+  public let message: String
+}
+extension HTTPClient {
+  public func discover(_ connection: Connection, query: String, pageToken: String = "") async throws
+    -> DiscoveryPage
+  {
+    let object = try await server(
+      connection, path: "discover/search", body: ["query": query, "pageToken": pageToken])
+    return try JSONDecoder().decode(
+      DiscoveryPage.self, from: JSONSerialization.data(withJSONObject: object))
+  }
+  public func addDiscovery(_ connection: Connection, id: String) async throws {
+    guard id.range(of: "^[A-Za-z0-9_-]{11}$", options: .regularExpression) != nil else {
+      throw RecallError.message("Vidéo invalide.")
+    }
+    _ = try await server(connection, path: "discover/add", body: ["videoId": id])
+  }
+  public func checkGemini(
+    _ connection: Connection, model: String, key: String? = nil, voice: Bool = false
+  ) async throws -> GeminiCheck {
+    var body: [String: Any] = ["model": model, "voice": voice]
+    if let key { body["apiKey"] = key }
+    let object = try await server(connection, path: "dj/check", body: body)
+    return try JSONDecoder().decode(
+      GeminiCheck.self, from: JSONSerialization.data(withJSONObject: object))
+  }
+}

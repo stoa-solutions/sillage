@@ -29,7 +29,13 @@ public struct HTTPClient: Sendable {
         http.statusCode == 429
         ? "Quota atteint ou IA occupée. Vérifie le quota du projet Google."
         : "Le service ne répond pas (\(http.statusCode)). Vérifie les réglages."
-      throw HTTPServiceError(status: http.statusCode, message: message)
+      // Own server routes return bounded user-facing errors, never raw Google payloads.
+      let serverError =
+        headers["Authorization"]?.hasPrefix("Bearer ") == true
+        ? (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+        : nil
+      throw HTTPServiceError(
+        status: http.statusCode, message: serverError.map { String($0.prefix(350)) } ?? message)
     }
     guard data.count <= 45 * 1024 * 1024,
       let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]

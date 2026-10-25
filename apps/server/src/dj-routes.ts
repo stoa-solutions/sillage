@@ -1,3 +1,4 @@
+import { checkDj } from "./dj-check.ts";
 import { Hono } from "hono";
 import { z } from "zod";
 import { hash } from "./content.ts";
@@ -47,6 +48,36 @@ export function createDjRoutes(db: Database) {
     return c.json({ saved: true });
   });
   const djActive = new Set<string>();
+  app.post("/check", async (c) => {
+    const input = djSettingsInput
+      .extend({ voice: z.boolean().default(false) })
+      .parse(await c.req.json());
+    const user = c.get("userId");
+    if (djActive.has(user) || djActive.size >= 2)
+      return c.json(
+        { error: "Le DJ est occupé. Réessaie après sa réponse." },
+        429,
+      );
+    djActive.add(user);
+    try {
+      const stored = await personalDjConfig(db, user);
+      const config = {
+        ...stored,
+        model: input.model,
+        ...(input.apiKey
+          ? {
+              key: input.apiKey,
+              configured: true,
+              baseUrl:
+                "https://generativelanguage.googleapis.com/v1beta/openai",
+            }
+          : {}),
+      };
+      return c.json(await checkDj(db, config, user, input.voice));
+    } finally {
+      djActive.delete(user);
+    }
+  });
   app.post("/chat", async (c) => {
     const input = djInput.parse(await c.req.json());
     const installation = c.get("userId");

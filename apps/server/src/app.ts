@@ -1,3 +1,4 @@
+import { discoveryRoutes } from "./discovery.ts";
 import { accountRoutes } from "./account-routes.ts";
 import { authRoutes, type IdentityProvider } from "./auth.ts";
 import { LEGACY_USER, ownsPlaylist, accountProfile } from "./accounts.ts";
@@ -126,6 +127,7 @@ export function createApp(
     return c.json({ saved: true });
   });
   app.route("/v1/account", accountRoutes(db));
+  app.route("/v1/discover", discoveryRoutes(db));
   app.route("/v1/dj", createDjRoutes(db));
   app.all("/v1/mcp", (c) => handleMusicMcp(db, c.req.raw, c.get("userId")));
   app.get("/v1/status", async (c) => {

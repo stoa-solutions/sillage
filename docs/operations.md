@@ -73,3 +73,13 @@ Le modèle d’accès reste celui d’un serveur privé : tous ses jetons peuven
 Un compte peut aussi avoir `{ "limit": 1000, "unlimitedUntil": "2026-10-25T23:00:00Z" }` : aucun plafond Recall avant cette échéance UTC explicite, puis retour au plafond indiqué. La consommation reste comptée. Cette dérogation est réservée à la configuration administrateur ; elle ne change pas les limites du fournisseur.
 
 Pour supprimer définitivement le plafond Recall d’un seul compte, utiliser `{ "unlimited": true }`. Seul le booléen strict `true` active cette exception administrateur, sans date d’expiration. Le compteur de consommation reste conservé et les limites Google continuent de s’appliquer ; les autres comptes ne changent pas.
+
+## Découvrir et test Gemini — 1.5
+
+`POST /v1/discover/search` recherche sur YouTube avec la clé du serveur, après authentification. Le cache de cinq minutes contient uniquement les métadonnées publiques ; les indicateurs « dans ma bibliothèque » sont recalculés pour chaque compte. La pagination utilise le jeton opaque renvoyé par YouTube. Un échec YouTube ne bloque pas la recherche dans les playlists.
+
+`POST /v1/discover/add` relit les métadonnées auprès de YouTube et ajoute le morceau dans une collection privée « Mes découvertes ». Cette collection n'est jamais synchronisée comme une playlist YouTube (`sync_enabled=false`). L'ajout et les travaux d'indexation sont transactionnels ; répéter un ajout ne crée pas de doublon.
+
+Le DJ dispose de `youtube_search` uniquement pour une demande de découverte. Il renvoie des cartes de résultats vérifiés, sans import ni remplacement automatique de la file. L'utilisateur choisit Écouter, Ajouter, ou À suivre. La recherche par playlist reste filtrée par propriété côté serveur.
+
+`POST /v1/dj/check` vérifie le modèle et, sur demande, la synthèse vocale avec une clé provisoire ou enregistrée. Ce test ne stocke aucune clé et ne renvoie jamais les erreurs brutes du fournisseur. Les appels réels consomment le quota Google. L'app vérifie une nouvelle clé avant de remplacer la précédente.
