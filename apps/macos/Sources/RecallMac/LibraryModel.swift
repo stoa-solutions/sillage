@@ -22,7 +22,8 @@ final class LibraryModel: ObservableObject {
   var pageCount: Int { max(1, (totalResults + pageSize - 1) / pageSize) }
   var visiblePages: [Int] {
     let anchor = min(currentPage, pageCount)
-    return Array(Set([1, pageCount] + Array(max(1, anchor - 2)...min(pageCount, anchor + 2)))).sorted()
+    return Array(Set([1, pageCount] + Array(max(1, anchor - 2)...min(pageCount, anchor + 2))))
+      .sorted()
   }
   var resultRange: String {
     guard totalResults > 0 else { return "Aucun résultat" }
@@ -93,19 +94,26 @@ final class LibraryModel: ObservableObject {
         try await Task.sleep(nanoseconds: 250_000_000)
         let found: LibrarySearchPage
         if source == .server, let connection, playlist == nil, !value.isEmpty {
-          found = try await HTTPClient().searchPage(connection, query: value, offset: offset, limit: size)
+          found = try await HTTPClient().searchPage(
+            connection, query: value, offset: offset, limit: size)
         } else {
           found = try await Task.detached {
-            try store.searchPage(value, source: source, playlist: playlist, offset: offset, limit: size)
+            try store.searchPage(
+              value, source: source, playlist: playlist, offset: offset, limit: size)
           }.value
         }
         try Task.checkCancellation()
         guard session.generation == generation else { return }
         totalResults = found.total
         let lastPage = max(1, (found.total + size - 1) / size)
-        if requestedPage > lastPage { search(page: lastPage); return }
+        if requestedPage > lastPage {
+          search(page: lastPage)
+          return
+        }
         currentPage = requestedPage
-        results = found.tracks.enumerated().map { LibraryRow(id: offset + $0.offset, track: $0.element) }
+        results = found.tracks.enumerated().map {
+          LibraryRow(id: offset + $0.offset, track: $0.element)
+        }
       } catch { if !Task.isCancelled { session.error = error.localizedDescription } }
     }
   }

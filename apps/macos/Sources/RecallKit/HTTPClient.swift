@@ -39,8 +39,10 @@ public struct HTTPClient: Sendable {
   public func search(_ connection: Connection, query: String) async throws -> [Track] {
     try await searchPage(connection, query: query).tracks
   }
-  public func searchPage(_ connection: Connection, query: String, offset: Int = 0,
-                         limit: Int = 50) async throws -> LibrarySearchPage {
+  public func searchPage(
+    _ connection: Connection, query: String, offset: Int = 0,
+    limit: Int = 50
+  ) async throws -> LibrarySearchPage {
     let object = try await server(
       connection, path: "search",
       body: ["query": query, "mode": "text", "sort": "relevance", "offset": offset, "limit": limit])

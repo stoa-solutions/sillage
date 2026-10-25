@@ -97,8 +97,10 @@ public struct LibraryStore: Sendable {
     _ query: String, source: Source, playlist: String? = nil, offset: Int = 0,
     limit: Int = 100, excluded: Set<String> = []
   ) throws -> [Track] {
-    try searchPage(query, source: source, playlist: playlist, offset: offset,
-                   limit: limit, excluded: excluded).tracks
+    try searchPage(
+      query, source: source, playlist: playlist, offset: offset,
+      limit: limit, excluded: excluded
+    ).tracks
   }
   public func searchPage(
     _ query: String, source: Source, playlist: String? = nil, offset: Int = 0,
