@@ -24,7 +24,13 @@ it("uses recent positive history and ignores skips", () => {
       ...history,
       { ...history[0], channel: "Skipped", outcome: "skipped" },
     ]),
-  ).toEqual([{ query: "Artist", reason: "Parce que tu as écouté Artist" }]);
+  ).toEqual([
+    {
+      query: "Artist",
+      reason: "Parce que tu as écouté Artist",
+      kind: "artist",
+    },
+  ]);
 });
 it("queries only this account, excludes heard titles and owned tracks and labels its recommendation", async () => {
   const query = vi.fn().mockResolvedValue({ rows: history });
@@ -60,11 +66,9 @@ it("does not invent personal recommendations for an empty account, and does not 
   expect(result.emptyReason).toContain("Écoute quelques morceaux");
 });
 it("keeps available suggestions when another seed fails", async () => {
-  const query = vi
-    .fn()
-    .mockResolvedValue({
-      rows: [...history, { ...history[0], channel: "Second" }],
-    });
+  const query = vi.fn().mockResolvedValue({
+    rows: [...history, { ...history[0], channel: "Second" }],
+  });
   const search = vi
     .fn()
     .mockResolvedValueOnce({
@@ -78,4 +82,40 @@ it("keeps available suggestions when another seed fails", async () => {
   );
   expect(result.suggestions).toHaveLength(1);
   expect(result.notice).toContain("Une recherche");
+});
+
+it("distinguishes an artist credit from a homonymous song title", async () => {
+  const query = vi
+    .fn()
+    .mockResolvedValue({ rows: [{ ...history[0], channel: "The Alchemist" }] });
+  const search = vi.fn().mockResolvedValue({
+    results: [
+      {
+        video: {
+          ...video(
+            "wrong000001",
+            'Blue Öyster Cult - "The Alchemist" - Official Music Video',
+          ),
+          channel: "Blue Öyster Cult",
+        },
+        inLibrary: false,
+      },
+      {
+        video: {
+          ...video(
+            "right000001",
+            "Freddie Gibbs & The Alchemist - A Thousand Mountains",
+          ),
+          channel: "Freddie Gibbs",
+        },
+        inLibrary: false,
+      },
+    ],
+  });
+  const result = await discoveryHome(
+    { query } as unknown as Database,
+    "alice",
+    { search },
+  );
+  expect(result.suggestions.map((r) => r.video.id)).toEqual(["right000001"]);
 });

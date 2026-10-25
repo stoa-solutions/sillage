@@ -1,5 +1,6 @@
 import type { Database } from "./db.ts";
 import type { Discovery } from "./discovery.ts";
+import { normalizeMusic } from "./music-matching.ts";
 import type { MusicMetadata } from "@playlist-recall/core/types";
 
 type HistoryRow = {
@@ -12,6 +13,7 @@ type HistoryRow = {
 export interface DiscoverySeed {
   query: string;
   reason: string;
+  kind: "artist" | "genre";
 }
 const titleKey = (value: string) =>
   value
@@ -26,14 +28,18 @@ const titleKey = (value: string) =>
 export function discoverySeeds(history: HistoryRow[]): DiscoverySeed[] {
   const seeds: DiscoverySeed[] = [];
   const seen = new Set<string>();
-  const add = (query: string | undefined, reason: string) => {
+  const add = (
+    query: string | undefined,
+    reason: string,
+    kind: DiscoverySeed["kind"],
+  ) => {
     query = query
       ?.replace(/\s*[-–]\s*Topic$/i, "")
       .trim()
       .slice(0, 120);
     if (!query || query.length < 2 || seen.has(query.toLowerCase())) return;
     seen.add(query.toLowerCase());
-    seeds.push({ query, reason });
+    seeds.push({ query, reason, kind });
   };
   for (const row of history
     .filter((row) => ["finished", "replaced"].includes(row.outcome))
@@ -51,11 +57,30 @@ export function discoverySeeds(history: HistoryRow[]): DiscoverySeed[] {
       add(
         genres[0],
         `Pour explorer ${genres[0]}, autour de tes écoutes récentes`,
+        "genre",
       );
-    add(artist, `Parce que tu as écouté ${artist ?? row.title}`);
+    add(artist, `Parce que tu as écouté ${artist ?? row.title}`, "artist");
     if (seeds.length >= 3) break;
   }
   return seeds.slice(0, 3);
+}
+
+/** An artist name in a song title is not an artist credit (e.g. a song called The Alchemist). */
+function matchesArtistSeed(
+  seed: DiscoverySeed,
+  title: string,
+  channel: string,
+) {
+  if (seed.kind === "genre") return true;
+  const artist = normalizeMusic(seed.query);
+  const contains = (value: string) =>
+    (" " + normalizeMusic(value) + " ").includes(" " + artist + " ");
+  if (contains(channel)) return true;
+  const credit = title.split(/\s+[-–—]\s+/)[0];
+  if (contains(credit)) return true;
+  return ["feat ", "ft ", "featuring ", "avec "].some((marker) =>
+    normalizeMusic(title).includes(marker + artist),
+  );
 }
 
 /** Per-account history is always reread; only the public source's catalog cache is shared. */
@@ -84,6 +109,11 @@ export async function discoveryHome(
       const candidates = page.value.results.filter(
         (item) =>
           !item.inLibrary &&
+          matchesArtistSeed(
+            seeds[seedIndex],
+            item.video.title ?? "",
+            item.video.channel ?? "",
+          ) &&
           !/\b(type beat|backing track|tutorial|audiobook|podcast|for drummers?|bpm)\b/i.test(
             item.video.title ?? "",
           ),
