@@ -46,3 +46,21 @@ public struct ServerDJ: DJ {
       DJResponse.self, from: JSONSerialization.data(withJSONObject: object))
   }
 }
+
+/// Only unambiguous transport commands bypass a provider; named songs still use search.
+public enum DJTransportCommand: Sendable {
+  case next
+  public static func parse(_ text: String) -> Self? {
+    let normalized = text.folding(
+      options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "fr_FR")
+    )
+    .components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }.joined(
+      separator: " ")
+    let command = normalized.replacingOccurrences(of: " s il te plait", with: "")
+      .replacingOccurrences(of: " stp", with: "")
+    return [
+      "next", "suivant", "suivante", "morceau suivant", "titre suivant", "passe au suivant",
+      "passe au morceau suivant", "change de morceau", "skip",
+    ].contains(command) ? .next : nil
+  }
+}

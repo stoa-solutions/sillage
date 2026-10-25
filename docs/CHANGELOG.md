@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Chat DJ : la source (YouTube / playlists / Partout) est indépendante de l’intention. Une demande de lecture lance maintenant, « à la suite » ajoute sans interrompre, « cherche » propose des cartes. « Suivant » agit immédiatement sans attendre l’IA ; une recherche tardive ne remplace plus ce choix. Les recherches seules ne changent pas la direction musicale des suites automatiques.
+
 - DJ Découvrir : conserve la sélection choisie par le modèle même s’il utilise le champ habituel de lecture ; ne réintroduit pas tous les candidats dans les cartes.
 
 - Découvrir : identité visuelle distincte pour un morceau présent dans les deux sources ; le filtre de playlist conserve la bonne ligne et ses actions.

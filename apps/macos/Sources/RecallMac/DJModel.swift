@@ -100,12 +100,18 @@ final class DJModel: ObservableObject {
       session.notice = "Connexion en cours. Ta demande reste prête à envoyer."
       return
     }
+    if !automatic, DJTransportCommand.parse(text) == .next, current != nil {
+      prompt = ""
+      microphone.stop()
+      messages.append(ChatMessage(role: "user", content: text))
+      next()
+      return
+    }
     if !automatic && busy { cancel() }
     microphone.stop()
     if !automatic {
       voice.stop()
       voice.clearPreparation()
-      composition.direct(text)
       unavailableCount = 0
     }
     continuationNotice = ""
@@ -133,6 +139,9 @@ final class DJModel: ObservableObject {
         try Task.checkCancellation()
         guard requestID == id else { return }
         if automatic { response = playback.freshContinuation(response) }
+        if !automatic, response.action != "keep", !response.tracks.isEmpty {
+          composition.direct(text)
+        }
         messages.append(
           ChatMessage(role: "assistant", content: response.reply, discoveries: response.discoveries)
         )
@@ -264,7 +273,11 @@ final class DJModel: ObservableObject {
   }
   func next(outcome: PlaybackOutcome = .skipped, userInitiated: Bool = true) {
     guard current != nil else { return }
-    if userInitiated { unavailableCount = 0 }
+    if userInitiated {
+      unavailableCount = 0
+      // A late manual search must not undo a more recent Next. Keep automatic refill alive.
+      if busy && !automaticRequest { cancel() }
+    }
     voice.stop()
     if playback.requestNext(outcome: outcome) {
       playCurrent()

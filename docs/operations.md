@@ -80,6 +80,6 @@ Pour supprimer définitivement le plafond Recall d’un seul compte, utiliser `{
 
 `POST /v1/discover/add` relit les métadonnées auprès de YouTube et ajoute le morceau dans une collection privée « Mes découvertes ». Cette collection n'est jamais synchronisée comme une playlist YouTube (`sync_enabled=false`). L'ajout et les travaux d'indexation sont transactionnels ; répéter un ajout ne crée pas de doublon.
 
-Le DJ dispose de `youtube_search` uniquement pour une demande de découverte. Il renvoie des cartes de résultats vérifiés, sans import ni remplacement automatique de la file. L'utilisateur choisit Écouter, Ajouter, ou À suivre. La recherche par playlist reste filtrée par propriété côté serveur.
+Le DJ dispose de `youtube_search` quand la source YouTube ou Partout est sélectionnée, ou quand le message demande YouTube. La source est indépendante de l’intention : chercher produit des cartes sans changer la file ; jouer remplace la file ; ajouter à la suite conserve le morceau en cours. Les identifiants viennent uniquement des outils du tour. Une lecture externe n’importe rien ; l’ajout à la bibliothèque reste un clic explicite. La recherche par playlist reste filtrée par propriété côté serveur.
 
 `POST /v1/dj/check` vérifie le modèle et, sur demande, la synthèse vocale avec une clé provisoire ou enregistrée. Ce test ne stocke aucune clé et ne renvoie jamais les erreurs brutes du fournisseur. Les appels réels consomment le quota Google. L'app vérifie une nouvelle clé avant de remplacer la précédente.

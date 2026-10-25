@@ -410,3 +410,33 @@ it("preserves a model's chosen subset when it uses the ordinary trackIds field",
   expect(body.discoveries.map((x: any) => x.video.id)).toEqual(["newtrack001"]);
   expect(body.tracks).toEqual([]);
 });
+
+it.each([
+  ["Mets Real artist sur YouTube", "replace", "append"],
+  ["du Real artist stp", "replace", "append"],
+  ["Ajoute Real artist à la suite", "append", "replace"],
+  ["Cherche Real artist sur YouTube", "keep", "replace"],
+])("honors message intent for %s even if the provider proposes the wrong action", async (message, expected, proposed) => {
+  const normal = upstream.getMockImplementation() as (...args: any[]) => Promise<Response>;
+  upstream.mockImplementation(async (...args: any[]) => {
+    const response = await normal(...args);
+    if (String(args[0]).endsWith("/chat/completions")) {
+      const body = await response.clone().json();
+      if (body.choices?.[0]?.message?.content) {
+        return Response.json({ choices: [{ message: { content: JSON.stringify({
+          reply: "Sélection vérifiée", trackIds: ["newtrack001"], action: proposed,
+        }) } }] });
+      }
+    }
+    return response;
+  });
+  await req("/v1/dj/settings", tokenA, { apiKey: "test-gemini-personal-key", model: "gemini-3.5-flash-lite" });
+  const result = await req("/v1/dj/chat", tokenA, { message, scope: "all" });
+  expect(result.status).toBe(200);
+  const body = await result.json();
+  expect(body.action).toBe(expected);
+  expect(body.tracks.map((t: any) => t.id)).toEqual(expected === "keep" ? [] : ["newtrack001"]);
+  if (expected === "keep") expect(body.discoveries.map((t: any) => t.video.id)).toEqual(["newtrack001"]);
+  // Playback of a public result never silently adds it to either user's library.
+  expect((await db.query("SELECT * FROM memberships")).rowCount).toBe(0);
+});

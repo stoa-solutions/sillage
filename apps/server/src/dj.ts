@@ -1,3 +1,4 @@
+import { djIntent, playbackAction } from "./dj-intent.ts";
 import { LEGACY_USER } from "./accounts.ts";
 import { z } from "zod";
 import { djConfig, type DjConfig } from "./dj-config.ts";
@@ -93,12 +94,13 @@ export async function djTurn(
   config: DjConfig = djConfig(),
   userId = LEGACY_USER,
 ) {
-  const discoveryMode =
+  const intent = djIntent(input.message);
+  const externalSearch =
     input.scope === "youtube" ||
     input.scope === "all" ||
     /\byoutube\b/i.test(input.message);
   const requested =
-    discoveryMode || /\bplaylist\b/i.test(input.message)
+    externalSearch || intent === "browse" || /\bplaylist\b/i.test(input.message)
       ? null
       : await requestedTracks(db, input.message, userId);
   if (requested) {
@@ -124,7 +126,7 @@ export async function djTurn(
       };
     return {
       reply: `C’est parti : ${tracks.map((t) => t.title).join(", puis ")}.`,
-      action: requested.append ? ("append" as const) : ("replace" as const),
+      action: intent === "append" || requested.append ? ("append" as const) : ("replace" as const),
       tracks,
       source: "catalog" as const,
     };
@@ -138,7 +140,7 @@ export async function djTurn(
     db,
     input.excludeIds,
     userId,
-    discoveryMode,
+    externalSearch,
   );
   const candidates = new Map<string, DjTrack>();
   const discoveries = new Map<string, { video: DjTrack; inLibrary: boolean }>();
@@ -147,9 +149,10 @@ export async function djTurn(
       role: "system",
       content:
         system +
-        (discoveryMode
-          ? ` MODE DÉCOUVERTE : la personne cherche des résultats à examiner, ne lance ni ne remplace la musique. Renvoie action=keep et trackIds=[] et discoveryIds contenant au plus 8 IDs réellement vus dans les outils. Pour YouTube, utilise youtube_search ; pour une recherche partout, utilise aussi library_search. Pour une playlist nommée, identifie son ID avec library_overview puis passe playlistId à library_search. Les résultats externes sont des propositions à ajouter par un clic ; ne prétends jamais les avoir enregistrés. Source demandée : ${input.scope ?? "youtube"}.`
-          : " Pour chercher dans une playlist précise, appelle library_overview pour son ID, puis library_search avec playlistId."),
+        ` INTENTION DU TOUR : ${intent}. La source de recherche ne change jamais l'intention. replace = lance maintenant et remplace la file, y compris une simple envie comme « du Michael Jackson stp ». append = ajoute à la fin sans interrompre. browse = propose des cartes sans toucher à la lecture, action=keep, trackIds=[], discoveryIds avec les IDs sélectionnés. Respecte strictement les exclusions nommées (ex. « pas Rock With You »), même si l'outil les renvoie. Si aucun résultat ne convient ou si une précision est nécessaire, action=keep et aucune sélection. Pour une playlist nommée, identifie son ID avec library_overview puis passe playlistId à library_search.` +
+        (externalSearch
+          ? ` Source demandée : ${input.scope ?? "youtube"}. youtube_search est disponible ; utilise-le pour YouTube, et library_search aussi pour Partout. Tu peux lancer les résultats publics vérifiés par youtube_search sans les enregistrer dans la bibliothèque. Aucun ajout à la bibliothèque sans clic explicite. Pour replace/append, renvoie les IDs dans trackIds, pas discoveryIds. La réponse décrit cette action, ne dis pas seulement « voici des résultats » si tu lances la musique.`
+          : " Source : mes playlists uniquement. Consulte library_search."),
     },
     ...input.history,
     { role: "user", content: input.message },
@@ -254,14 +257,15 @@ export async function djTurn(
             const data = JSON.parse(text);
             for (const track of data.tracks ?? [])
               candidates.set(track.id, track);
-            if (discoveryMode)
-              for (const track of data.tracks ?? [])
-                discoveries.set(track.id, { video: track, inLibrary: true });
+            for (const track of data.tracks ?? [])
+              discoveries.set(track.id, { video: track, inLibrary: true });
           }
           if (!result.isError && call.function.name === "youtube_search") {
             const data = JSON.parse(text);
-            for (const item of data.results ?? [])
+            for (const item of data.results ?? []) {
               discoveries.set(item.video.id, item);
+              candidates.set(item.video.id, item.video);
+            }
           }
           messages.push({
             role: "tool",
@@ -280,7 +284,7 @@ export async function djTurn(
           502,
         );
       }
-      if (discoveryMode) {
+      if (intent === "browse") {
         // Some providers still use the ordinary selection field. Preserve that
         // selection; never expand it to every retrieved candidate (which can
         // reintroduce titles the user explicitly excluded).
@@ -304,14 +308,16 @@ export async function djTurn(
           "La sélection du DJ contenait un titre non vérifié. Réessaie.",
           502,
         );
-      const tracks = await musicTracks(
-        db,
-        output.action === "keep" ? [] : output.trackIds,
-        userId,
-      );
+      const action = playbackAction(intent, output.action);
+      const ids = action === "keep" ? [] : [...new Set(output.trackIds)];
+      // External tracks come only from this turn's authoritative tool results.
+      // Library-only turns still revalidate account ownership before playback.
+      const tracks = externalSearch
+        ? ids.map((id) => candidates.get(id)!)
+        : await musicTracks(db, ids, userId);
       return {
         reply: output.reply,
-        action: tracks.length ? output.action : "keep",
+        action: tracks.length ? action : "keep",
         tracks,
         source: "mcp" as const,
       };

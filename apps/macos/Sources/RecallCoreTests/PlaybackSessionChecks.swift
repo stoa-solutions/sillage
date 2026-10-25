@@ -1,6 +1,19 @@
 import RecallKit
 
 func playbackSessionChecks() throws {
+  for text in ["Next", "suivant stp", "Passe au morceau suivant !", "titre suivant s’il te plaît"] {
+    try expect(
+      DJTransportCommand.parse(text) == .next, "Transport command went through slow search")
+  }
+  for text in [
+    "joue Next de The Weeknd", "ajoute le morceau suivant à la file",
+    "change de morceau pour du jazz",
+  ] {
+    try expect(
+      DJTransportCommand.parse(text) == nil,
+      "A musical request was mistaken for a transport command")
+  }
+
   let a = Track(id: "aaaaaaaaaaa", title: "A")
   let b = Track(id: "bbbbbbbbbbb", title: "B")
   let c = Track(id: "ccccccccccc", title: "C")
