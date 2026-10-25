@@ -50,8 +50,12 @@ struct DiscoverView: View {
       }
       NowPlayingBar(model: dj, player: dj.player, openDJ: openDJ)
     }.padding(16)
+      .onAppear { dj.searchScope = discovery.scope }
       .onChange(of: discovery.submittedQuery) { _, _ in showAllLibrary = false }
-      .onChange(of: discovery.scope) { _, _ in if discovery.searched { discovery.search() } }
+      .onChange(of: discovery.scope) { _, source in
+        dj.searchScope = source
+        if discovery.searched { discovery.search() }
+      }
       .onChange(of: discovery.playlistID) { _, _ in
         if discovery.searched && discovery.scope != .youtube { discovery.search() }
       }

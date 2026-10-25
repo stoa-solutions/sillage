@@ -26,6 +26,9 @@ public struct TrackTitle: Equatable, Sendable {
     self.init(song: cleaned, artist: channel.map(Self.artist(fromChannel:)))
   }
 
+  public var spoken: String { artist.map { "\(title), de \($0)" } ?? title }
+  public var announcement: String { "On continue avec \(spoken)." }
+
   public init(_ track: Track) { self.init(title: track.title, channel: track.channel) }
 
   private init(song: String, artist: String?) {

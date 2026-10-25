@@ -83,7 +83,7 @@ struct MainView: View {
 }
 
 /// Every page sits on the same dark stage under a transparent toolbar: the clip in Studio
-/// (dimmed outside DJ), the blurred cover in Compact. Panels are the same glass in both.
+/// (blurred and dimmed outside DJ), the cover in Compact. Reading panels stay opaque.
 private struct Shell<Content: View>: View {
   @ObservedObject var player: Player
   let current: Track?
@@ -94,13 +94,13 @@ private struct Shell<Content: View>: View {
       .background {
         Group {
           if player.studio {
-            StageBackground(player: player, current: current, focused: focused)
+            StageBackground(player: player, current: current)
           } else {
             AmbientBackground(current: current)
           }
         }.ignoresSafeArea().allowsHitTesting(false).transition(.opacity)
       }
-      .environment(\.surface, .studio)
+      .environment(\.surface, focused ? .immersive : .reading)
       .toolbarBackground(.hidden, for: .windowToolbar)
       .animation(.easeInOut(duration: 0.3), value: player.studio)
   }

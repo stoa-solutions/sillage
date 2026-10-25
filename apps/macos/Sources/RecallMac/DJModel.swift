@@ -121,6 +121,7 @@ final class DJModel: ObservableObject {
     let id = UUID()
     requestID = id
     if !automatic { prompt = "" }
+    let source = searchScope
     let history = messages
     if !automatic {
       messages.append(ChatMessage(role: "user", content: text))
@@ -135,12 +136,12 @@ final class DJModel: ObservableObject {
       }
       do {
         var response = try await respond(
-          to: text, history: history, automatic: automatic)
+          to: text, history: history, automatic: automatic, source: source)
         try Task.checkCancellation()
         guard requestID == id else { return }
         if automatic { response = playback.freshContinuation(response) }
         if !automatic, response.action != "keep", !response.tracks.isEmpty {
-          composition.direct(text)
+          composition.direct(text, source: source)
         }
         messages.append(
           ChatMessage(role: "assistant", content: response.reply, discoveries: response.discoveries)
@@ -174,7 +175,7 @@ final class DJModel: ObservableObject {
   }
   /// Google accounts use their own encrypted server credential and scoped catalog.
   private func respond(
-    to text: String, history: [ChatMessage], automatic: Bool
+    to text: String, history: [ChatMessage], automatic: Bool, source: DiscoveryScope
   )
     async throws -> DJResponse
   {
@@ -184,15 +185,12 @@ final class DJModel: ObservableObject {
     }
     let dj = ServerDJ(connection: connection)
     if automatic {
-      let source = searchScope
       return try await composition.continueSession(history: history, queue: playback) {
-        var request = $0
-        request.scope = source
-        return try await dj.turn(request)
+        try await dj.turn($0)
       }
     }
     var request = composition.userRequest(text, history: history, queue: playback)
-    request.scope = searchScope
+    request.scope = source
     return try await dj.turn(request)
   }
   private func speak(_ text: String) {
@@ -233,7 +231,7 @@ final class DJModel: ObservableObject {
       let track = upcoming.first?.track, let connection = session.connection
     else { return }
     voice.prepare(
-      "On continue avec \(track.title).", context: connection.token, using: synthesis(connection))
+      TrackTitle(track).announcement, context: connection.token, using: synthesis(connection))
   }
 
   func cancel() {
@@ -251,7 +249,8 @@ final class DJModel: ObservableObject {
   }
   func play(_ track: Track) {
     cancel()
-    composition.direct("Des morceaux dans l’esprit de \(track.title), \(track.channel ?? "").")
+    composition.direct(
+      "Des morceaux dans l’esprit de \(TrackTitle(track).spoken).", source: searchScope)
     playback.replace([track])
     unavailableCount = 0
     playCurrent()
@@ -272,7 +271,7 @@ final class DJModel: ObservableObject {
     let changed = playback.apply(
       DJResponse(reply: "", action: "append", tracks: [track]), automatic: false)
     if changed { playCurrent() } else { player.prepareNext(upcoming.first?.track) }
-    session.notice = "À suivre : " + track.title
+    session.notice = "À suivre : " + TrackTitle(track).spoken
   }
   func next(outcome: PlaybackOutcome = .skipped, userInitiated: Bool = true) {
     guard current != nil else { return }
@@ -341,7 +340,7 @@ final class DJModel: ObservableObject {
   }
   private func announceCurrent() {
     guard spoken, let current else { return }
-    let announcement = "On continue avec \(current.title)."
+    let announcement = TrackTitle(current).announcement
     messages.append(ChatMessage(role: "assistant", content: announcement))
     messages = Array(messages.suffix(24))
     speak(announcement)

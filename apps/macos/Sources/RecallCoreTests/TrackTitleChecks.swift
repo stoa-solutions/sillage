@@ -27,5 +27,10 @@ func trackTitleChecks() throws {
       parsed.title == song && parsed.artist == artist,
       "Track title \"\(title)\" read as \"\(parsed.title)\" by \(parsed.artist ?? "nobody")")
   }
+  try expect(
+    TrackTitle(
+      title: "Midnight Oil - Beds Are Burning (Official Video)", channel: "MidnightOilVEVO"
+    ).announcement == "On continue avec Beds Are Burning, de Midnight Oil.",
+    "Announcement kept upload decorations")
   print("Track title checks passed: \(cases.count) YouTube titles")
 }

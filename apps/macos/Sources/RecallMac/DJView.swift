@@ -29,6 +29,11 @@ struct DJView: View {
         lyrics.show(
           model.current, next: model.upcoming.first?.track, connection: session.connection)
       }
+      .onChange(of: session.generation) { _, _ in
+        lyrics.reset()
+        lyrics.show(
+          model.current, next: model.upcoming.first?.track, connection: session.connection)
+      }
       .onChange(of: model.continuous) { _, _ in model.continuousChanged() }
   }
 
@@ -129,7 +134,11 @@ struct DJView: View {
         .help("À la fin de la file, le DJ ajoute de nouveaux morceaux dans la même ambiance")
       if player.studio {
         Toggle(isOn: $karaoke) { Label("Karaoké", systemImage: "music.mic") }
-          .help("Afficher les paroles en grand sur le clip")
+          .disabled(!player.studioReady)
+          .help(
+            player.studioReady
+              ? "Afficher les paroles en grand sur le clip"
+              : "Disponible quand le clip Studio est prêt")
       }
       if let current = model.current {
         Link(destination: current.url) { Image(systemName: "arrow.up.right.square") }
@@ -310,13 +319,15 @@ struct DJView: View {
 
   private var composer: some View {
     VStack(alignment: .leading, spacing: 8) {
-      Picker("Chercher dans", selection: $model.searchScope) {
-        Text("Mes playlists").tag(DiscoveryScope.library)
-        Text("YouTube").tag(DiscoveryScope.youtube)
-        Text("Partout").tag(DiscoveryScope.all)
-      }.pickerStyle(.segmented).labelsHidden().neutralSelection().help(
-        "Choisis où chercher. « Joue » lance maintenant ; « ajoute à la suite » conserve la lecture."
-      )
+      if !panelOnly {
+        Picker("Chercher dans", selection: $model.searchScope) {
+          Text("Mes playlists").tag(DiscoveryScope.library)
+          Text("YouTube").tag(DiscoveryScope.youtube)
+          Text("Partout").tag(DiscoveryScope.all)
+        }.pickerStyle(.segmented).labelsHidden().neutralSelection().help(
+          "Choisis où chercher. « Joue » lance maintenant ; « ajoute à la suite » conserve la lecture."
+        )
+      }
       if microphone.active {
         HStack(spacing: 8) {
           if microphone.starting || microphone.finishing { ProgressView().controlSize(.small) }

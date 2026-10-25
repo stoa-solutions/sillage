@@ -2,12 +2,14 @@ import Foundation
 
 /// Musical direction outlives the visible chat's rolling window. No persistence or credentials.
 public struct DJComposition: Sendable {
+  public private(set) var source: DiscoveryScope = .library
   public private(set) var directions: [String] = []
   public private(set) var needsDirection = false
   private var attemptedTail: String?
   public init() {}
   public mutating func reset() { self = Self() }
-  public mutating func direct(_ text: String) {
+  public mutating func direct(_ text: String, source: DiscoveryScope = .library) {
+    self.source = source
     directions.append(String(text.prefix(600)))
     directions = Array(directions.suffix(6))
     resume()
@@ -89,8 +91,10 @@ public struct DJComposition: Sendable {
       broaden
       ? " La première sélection n’a ajouté aucun nouveau morceau. Fais maintenant une recherche différente : si l’artiste est épuisé, cherche des artistes proches et des genres compatibles avec l’ambiance. Ne reste pas sur la même recherche. Respecte toute restriction explicite (uniquement cet artiste, langue, style, exclusions). N’utilise pas includeQueued pour recycler les titres."
       : " Préserve les titres déjà en file dans leur ordre. Compose une progression de quelques nouveaux titres, avec de la variété entre artistes compatibles si la demande le permet. Un morceau passé n’est pas nécessairement détesté."
-    return DJRequest(
+    var continuation = DJRequest(
       message: request.message + guidance,
       history: memory, queued: queue.excludedIDs)
+    continuation.scope = source
+    return continuation
   }
 }

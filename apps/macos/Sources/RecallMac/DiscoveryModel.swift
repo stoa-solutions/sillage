@@ -124,7 +124,7 @@ import RecallKit
         try Task.checkCancellation()
         guard session.generation == generation else { return }
         savedIDs.insert(item.id)
-        session.notice = "Ajouté à Mes découvertes : " + item.video.title
+        session.notice = "Ajouté à Mes découvertes : " + TrackTitle(item.video).spoken
         library.sync()
       } catch {
         if !Task.isCancelled && session.generation == generation {

@@ -12,7 +12,8 @@ struct LibraryView: View {
         PageHeader(
           title: "Bibliothèque",
           subtitle: session.hasServer
-            ? "\(library.libraryCount) vidéos sur ton compte" : "Connecte ton compte pour la retrouver"
+            ? "\(library.libraryCount) vidéos sur ton compte"
+            : "Connecte ton compte pour la retrouver"
         ) {
           if session.hasServer {
             Button {
@@ -31,11 +32,20 @@ struct LibraryView: View {
         }
         importRow
         ViewThatFits(in: .horizontal) {
-          HStack(spacing: 12) { search; playlistPicker.frame(maxWidth: 240) }
-          VStack(alignment: .leading) { search; playlistPicker }
+          HStack(spacing: 12) {
+            search
+            playlistPicker.frame(maxWidth: 240)
+          }
+          VStack(alignment: .leading) {
+            search
+            playlistPicker
+          }
         }
         List(library.results) { row in
-          TrackRow(track: row.track, detail: summary(row.track.description), onPlay: { play(row.track) }) {
+          TrackRow(
+            track: row.track, detail: summary(row.track.description), persistentActions: true,
+            onPlay: { play(row.track) }
+          ) {
             HStack(spacing: 6) {
               Button {
                 dj.enqueue(row.track)

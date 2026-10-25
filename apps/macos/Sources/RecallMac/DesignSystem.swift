@@ -3,66 +3,6 @@ import SwiftUI
 
 // Shared pieces for every page; docs/design.md explains the rules behind them.
 
-/// Studio dresses every page over the clip; Standard follows the system appearance.
-enum Surface { case standard, studio }
-
-private struct SurfaceKey: EnvironmentKey { static let defaultValue = Surface.standard }
-extension EnvironmentValues {
-  var surface: Surface {
-    get { self[SurfaceKey.self] }
-    set { self[SurfaceKey.self] = newValue }
-  }
-}
-
-/// A panel: dark glass over the clip in Studio, a quiet card on the system background otherwise.
-struct GlassPanel: ViewModifier {
-  @Environment(\.surface) private var surface
-  var radius: CGFloat = 20
-  func body(content: Content) -> some View {
-    let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-    content.background {
-      switch surface {
-      case .studio:
-        shape.fill(.black.opacity(0.35)).background(.ultraThinMaterial.opacity(0.5), in: shape)
-          .overlay(shape.strokeBorder(.white.opacity(0.1)))
-      case .standard:
-        shape.fill(.background.secondary).overlay(shape.strokeBorder(.separator.opacity(0.5)))
-      }
-    }.clipShape(shape)
-  }
-}
-extension View {
-  func glassPanel(radius: CGFloat = 20) -> some View { modifier(GlassPanel(radius: radius)) }
-}
-
-/// What sits behind every page in Studio: the clip itself, or its blurred cover while it prepares.
-/// On the DJ page the clip is the show; elsewhere it is dimmed so the page stays readable.
-struct StageBackground: View {
-  @ObservedObject var player: Player
-  let current: Track?
-  let focused: Bool
-  var body: some View {
-    ZStack {
-      Color.black
-      if player.studioReady {
-        StudioPlayerView(player: player.nativePlayer)
-          .frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
-      } else if let current {
-        Artwork.image(for: current, quality: "hqdefault").blur(radius: 40)
-          .opacity(focused && player.preparingStudio ? 1 : 0.55).clipped()
-      }
-      if focused {
-        LinearGradient(
-          colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
-      } else {
-        Color.black.opacity(0.55)
-      }
-    }.animation(.easeInOut(duration: 0.6), value: player.studioReady)
-      .animation(.easeInOut(duration: 0.4), value: focused)
-      .accessibilityHidden(true)
-  }
-}
-
 /// Large page title with a short line underneath, the same on every page.
 struct PageHeader<Trailing: View>: View {
   let title: String
@@ -342,23 +282,6 @@ struct SearchField: View {
       }
     }.padding(.horizontal, 12).padding(.vertical, 9)
       .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
-  }
-}
-
-/// Behind every page outside Studio: the current cover, blurred and dimmed, so Compact shares
-/// Studio's depth without playing the clip. A deep neutral gradient when nothing plays.
-struct AmbientBackground: View {
-  let current: Track?
-  var body: some View {
-    ZStack {
-      LinearGradient(
-        colors: [Color(white: 0.11), Color(white: 0.05)], startPoint: .top, endPoint: .bottom)
-      if let current {
-        Artwork.image(for: current, quality: "hqdefault").blur(radius: 60).opacity(0.45)
-          .clipped().transition(.opacity).id(current.id)
-      }
-      Color.black.opacity(0.35)
-    }.animation(.easeInOut(duration: 0.6), value: current?.id).accessibilityHidden(true)
   }
 }
 

@@ -102,6 +102,19 @@ func djCompositionChecks() async throws {
     _ = try await cancelled.value
     throw RecallError.message("Cancelled composition returned a selection")
   } catch is CancellationError {}
+  composition.direct("Du jazz", source: .youtube)
+  try expect(
+    composition.request(history: [], queue: queue).scope == .youtube,
+    "Continuation lost its musical direction source")
+  var browsing = composition.userRequest("Cherche sur YouTube", history: [], queue: queue)
+  browsing.scope = .all
+  try expect(
+    composition.request(history: [], queue: queue).scope == .youtube,
+    "Browsing changed the continuation source")
+  composition.direct("Maintenant mes playlists", source: .library)
+  try expect(
+    composition.request(history: [], queue: queue).scope == .library,
+    "New musical direction did not update its source")
   composition.reset()
   try expect(
     composition.directions.isEmpty && !composition.needsDirection,

@@ -1,67 +1,6 @@
 import RecallKit
 import SwiftUI
 
-/// Lyrics of the current track, the next one prepared ahead, and this account's timing correction.
-@MainActor
-final class LyricsModel: ObservableObject {
-  @Published private(set) var lyrics: Lyrics?
-  @Published private(set) var loading = false
-  private(set) var videoId: String?
-  private var cache: [String: Lyrics] = [:]
-  private var saving: Task<Void, Never>?
-
-  func show(_ track: Track?, next: Track?, connection: Connection?) {
-    guard let connection, let track else {
-      videoId = nil
-      lyrics = nil
-      return
-    }
-    if track.id != videoId {
-      videoId = track.id
-      lyrics = cache[track.id]
-      if lyrics == nil || lyrics?.status == .unavailable { load(track.id, connection) }
-    }
-    if let next, cache[next.id] == nil {
-      Task { [weak self] in
-        if let found = try? await HTTPClient().lyrics(connection, videoId: next.id) {
-          self?.cache[next.id] = found
-        }
-      }
-    }
-  }
-
-  func retry(connection: Connection?) {
-    guard let connection, let videoId else { return }
-    load(videoId, connection)
-  }
-
-  /// Moves the lyrics by `deltaMs`, at once on screen and shortly after on the server.
-  func nudge(by deltaMs: Int?, connection: Connection?) {
-    guard var current = lyrics, let videoId, let connection else { return }
-    current.offsetMs = deltaMs.map { min(30000, max(-30000, current.offsetMs + $0)) } ?? 0
-    lyrics = current
-    cache[videoId] = current
-    saving?.cancel()
-    let offset = current.offsetMs
-    saving = Task {
-      try? await Task.sleep(nanoseconds: 800_000_000)
-      guard !Task.isCancelled else { return }
-      try? await HTTPClient().setLyricsOffset(connection, videoId: videoId, offsetMs: offset)
-    }
-  }
-
-  private func load(_ id: String, _ connection: Connection) {
-    loading = true
-    Task { [weak self] in
-      let found = try? await HTTPClient().lyrics(connection, videoId: id)
-      guard let self, self.videoId == id else { return }
-      self.loading = false
-      self.lyrics = found ?? Lyrics(status: .unavailable, lines: [])
-      if let found, found.status != .unavailable { self.cache[id] = found }
-    }
-  }
-}
-
 /// The player reports its position about twice a second; between reports, time keeps flowing.
 private struct PlaybackClock {
   var elapsed: Double = 0
@@ -91,7 +30,8 @@ struct LyricsPanel: View {
 
   @ViewBuilder private var content: some View {
     if model.videoId == nil {
-      EmptyState(symbol: "quote.bubble", message: "Les paroles du morceau en cours s’afficheront ici.")
+      EmptyState(
+        symbol: "quote.bubble", message: "Les paroles du morceau en cours s’afficheront ici.")
     } else if model.loading && model.lyrics == nil {
       ProgressView("Recherche des paroles…").controlSize(.small)
     } else if let lyrics = model.lyrics {
@@ -183,7 +123,8 @@ struct LyricsPanel: View {
     offset == 0
       ? "Calage 0 s"
       : "Calage " + (offset > 0 ? "+" : "−")
-        + String(format: "%.1f s", Double(abs(offset)) / 1000).replacingOccurrences(of: ".", with: ",")
+        + String(format: "%.1f s", Double(abs(offset)) / 1000).replacingOccurrences(
+          of: ".", with: ",")
   }
 }
 
@@ -210,19 +151,23 @@ struct KaraokeOverlay: View {
               LyricsLineView(text: lyrics.lines[index + 1].text, state: .future, size: 30)
             }
           }.multilineTextAlignment(.center).shadow(color: .black.opacity(0.6), radius: 12)
-            .frame(maxWidth: 900).animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: index)
+            .frame(maxWidth: 900).animation(
+              reduceMotion ? nil : .easeOut(duration: 0.25), value: index)
         }
       } else {
         Color.clear
       }
     }.frame(maxWidth: .infinity, maxHeight: .infinity)
-      .onChange(of: player.elapsed) { _, value in clock = PlaybackClock(elapsed: value, at: Date()) }
+      .onChange(of: player.elapsed) { _, value in clock = PlaybackClock(elapsed: value, at: Date())
+      }
       .accessibilityHidden(true)
   }
 }
 
 enum LineState: Equatable {
-  case past, current(Double), future
+  case past
+  case current(Double)
+  case future
 }
 
 /// One line; the sung one fills from left to right in Recall green.
