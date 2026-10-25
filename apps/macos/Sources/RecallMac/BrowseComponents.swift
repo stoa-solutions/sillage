@@ -11,7 +11,6 @@ struct SongRow: View {
   let index: Int?
   let track: Track
   let playing: Bool
-  var saved = true
   let onPlay: () -> Void
   let onEnqueue: () -> Void
   @State private var hovering = false
@@ -43,20 +42,24 @@ struct SongRow: View {
           }
         }
       }.frame(maxWidth: .infinity, alignment: .leading)
+      // Hover actions leave the view when hidden, so keyboard focus never lands on them;
+      // the row's accessibility actions offer the same choices.
       HStack(spacing: 2) {
-        IconButton(symbol: "text.badge.plus", help: "Lire ensuite", action: onEnqueue)
-        Menu {
-          Button("Lire maintenant", systemImage: "play.fill", action: onPlay)
-          Button("Lire ensuite", systemImage: "text.badge.plus", action: onEnqueue)
-          Divider()
-          Button("Ouvrir sur YouTube", systemImage: "arrow.up.right.square") {
-            NSWorkspace.shared.open(track.url)
-          }
-        } label: {
-          Image(systemName: "ellipsis").frame(width: 26, height: 26).contentShape(Rectangle())
-        }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
-          .help("Plus d’actions").accessibilityLabel("Plus d’actions pour \(name.title)")
-      }.opacity(hovering ? 1 : 0).allowsHitTesting(hovering)
+        if hovering {
+          IconButton(symbol: "text.badge.plus", help: "Lire ensuite", action: onEnqueue)
+          Menu {
+            Button("Lire maintenant", systemImage: "play.fill", action: onPlay)
+            Button("Lire ensuite", systemImage: "text.badge.plus", action: onEnqueue)
+            Divider()
+            Button("Ouvrir sur YouTube", systemImage: "arrow.up.right.square") {
+              NSWorkspace.shared.open(track.url)
+            }
+          } label: {
+            Image(systemName: "ellipsis").frame(width: 26, height: 26).contentShape(Rectangle())
+          }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+            .help("Plus d’actions").accessibilityLabel("Plus d’actions pour \(name.title)")
+        }
+      }.frame(width: 54, alignment: .trailing)
       Text(track.durationSeconds.map(clock) ?? "").font(.callout.monospacedDigit())
         .foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
     }

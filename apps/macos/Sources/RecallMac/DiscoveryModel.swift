@@ -46,6 +46,20 @@ import RecallKit
     libraryError = ""
     youtubeError = ""
   }
+  /// Back to the screen before searching; scope and playlist stay as chosen.
+  func clearResults() {
+    task?.cancel()
+    requestID = UUID()
+    submittedQuery = ""
+    libraryTracks = []
+    youtube = []
+    searching = false
+    searched = false
+    nextPage = nil
+    libraryTotal = 0
+    libraryError = ""
+    youtubeError = ""
+  }
   func search(more: Bool = false) {
     let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
     guard text.count >= 2, let connection = session.connection else {

@@ -94,7 +94,7 @@ struct LibraryView: View {
         Button("Continuer avec Google") { session.showOnboarding = true }
           .buttonStyle(.borderedProminent).disabled(session.loadingCredentials)
       }.frame(maxWidth: .infinity, maxHeight: .infinity)
-    } else if library.libraryCount == 0 && !library.syncing {
+    } else if library.overviewLoaded && library.libraryCount == 0 && !library.syncing {
       VStack(alignment: .leading, spacing: 16) {
         Text("Ta bibliothèque est vide").font(.largeTitle.bold())
         Text("Colle le lien d’une playlist YouTube, publique ou non répertoriée.")

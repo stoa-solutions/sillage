@@ -16,6 +16,8 @@ final class LibraryModel: ObservableObject {
   @Published private(set) var totalResults = 0
   @Published private(set) var searching = false
   @Published private(set) var loadingMore = false
+  /// True once the server overview arrived; before that an empty count means unknown, not empty.
+  @Published private(set) var overviewLoaded = false
   @Published var query = ""
   @Published var selectedPlaylist = "" { didSet { search() } }
   @Published var playlistLink = ""
@@ -51,6 +53,7 @@ final class LibraryModel: ObservableObject {
     libraryCount = 0
     totalResults = 0
     loadingMore = false
+    overviewLoaded = false
     query = ""
     selectedPlaylist = ""
     playlistLink = ""
@@ -130,6 +133,7 @@ final class LibraryModel: ObservableObject {
     guard session.generation == generation else { return }
     libraryCount = overview.videoCount
     playlists = overview.playlists
+    overviewLoaded = true
     if !selectedPlaylist.isEmpty && !playlists.contains(where: { $0.id == selectedPlaylist }) {
       selectedPlaylist = ""
     }
@@ -194,7 +198,8 @@ final class LibraryModel: ObservableObject {
         try Task.checkCancellation()
         guard session.generation == generation else { return }
         if refreshYouTube { session.notice = "Playlists YouTube actualisées sur le serveur." }
-        if !searching { search() }
+        // Rows already loaded by scrolling stay; only a short list is refreshed from the top.
+        if !searching && results.count <= Self.pageSize { search() }
       } catch {
         if !Task.isCancelled {
           session.error = "Connexion au serveur indisponible. " + error.localizedDescription

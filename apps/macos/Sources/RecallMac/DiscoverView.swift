@@ -43,10 +43,7 @@ struct DiscoverView: View {
       NowPlayingBar(model: dj, player: dj.player, openDJ: openDJ)
     }.padding(16)
       .onChange(of: discovery.query) { _, text in searchWhileTyping(text) }
-      .onChange(of: discovery.submittedQuery) { _, query in
-        showAllLibrary = false
-        remember(query)
-      }
+      .onChange(of: discovery.submittedQuery) { _, _ in showAllLibrary = false }
       .onChange(of: discovery.scope) { _, _ in
         if discovery.searched { discovery.search() }
       }
@@ -83,8 +80,10 @@ struct DiscoverView: View {
     }
   }
 
+  /// Only a deliberate search (Return or a chip) is remembered, never a pause while typing.
   private func submit() {
     typing?.cancel()
+    remember(discovery.query.trimmingCharacters(in: .whitespacesAndNewlines))
     discovery.search()
   }
 
@@ -92,6 +91,10 @@ struct DiscoverView: View {
   private func searchWhileTyping(_ text: String) {
     typing?.cancel()
     let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    if value.isEmpty {
+      discovery.clearResults()
+      return
+    }
     guard value.count >= 2, value != discovery.submittedQuery, session.hasServer else { return }
     typing = Task {
       try? await Task.sleep(for: .milliseconds(450))
@@ -129,7 +132,8 @@ struct DiscoverView: View {
       if let artist = dj.current.flatMap({ TrackTitle($0).artist }) {
         VStack(alignment: .leading, spacing: 10) {
           Text("Autour de ce que tu écoutes").font(.headline)
-          FlowChips(items: [artist, "\(artist) live", "\(artist) remix"], symbol: "sparkles", action: run)
+          FlowChips(
+            items: [artist, "\(artist) live", "\(artist) remix"], symbol: "sparkles", action: run)
         }
       }
       VStack(alignment: .leading, spacing: 10) {
@@ -172,12 +176,16 @@ struct DiscoverView: View {
 
   // MARK: Results
 
-  private var libraryShown: [Track] {
-    showAllLibrary ? discovery.libraryTracks : Array(discovery.libraryTracks.prefix(4))
-  }
   private var best: Track? {
     discovery.scope == .youtube
-      ? discovery.youtube.first?.video : discovery.libraryTracks.first ?? discovery.youtube.first?.video
+      ? discovery.youtube.first?.video
+      : discovery.libraryTracks.first ?? discovery.youtube.first?.video
+  }
+  /// The best result shows once: the lists below leave it out while its card is visible.
+  private var bestShown: String? { showAllLibrary && discovery.scope != .youtube ? nil : best?.id }
+  private var libraryShown: [Track] {
+    let others = discovery.libraryTracks.filter { $0.id != bestShown }
+    return showAllLibrary ? others : Array(others.prefix(4))
   }
 
   private var results: some View {
@@ -212,8 +220,12 @@ struct DiscoverView: View {
           Text(name.artist ?? track.channel ?? "YouTube").foregroundStyle(.secondary).lineLimit(1)
         }
         HStack(spacing: 10) {
-          Button { dj.play(track, source: discovery.scope) } label: { PlayDisc(size: 44) }
-            .buttonStyle(.plain).accessibilityLabel("Lire " + name.title)
+          Button {
+            dj.play(track, source: discovery.scope)
+          } label: {
+            PlayDisc(size: 44)
+          }
+          .buttonStyle(.plain).accessibilityLabel("Lire " + name.title)
           IconButton(symbol: "text.badge.plus", help: "Lire ensuite") {
             dj.enqueue(track, source: discovery.scope)
           }.font(.title3)
@@ -225,7 +237,8 @@ struct DiscoverView: View {
   }
 
   @ViewBuilder private var songsSection: some View {
-    let tracks = discovery.scope == .youtube
+    let tracks =
+      discovery.scope == .youtube
       ? Array(discovery.youtube.dropFirst().prefix(4).map(\.video)) : libraryShown
     if discovery.scope != .youtube || !tracks.isEmpty {
       VStack(alignment: .leading, spacing: 8) {
@@ -258,7 +271,10 @@ struct DiscoverView: View {
   }
 
   private var youtubeSection: some View {
-    let items = discovery.scope == .youtube ? Array(discovery.youtube.dropFirst(5)) : discovery.youtube
+    let items =
+      discovery.scope == .youtube
+      ? Array(discovery.youtube.dropFirst(5))
+      : discovery.youtube.filter { $0.id != bestShown }
     return VStack(alignment: .leading, spacing: 12) {
       Text("Sur YouTube").font(.headline)
       if !discovery.youtubeError.isEmpty { error(discovery.youtubeError) }
@@ -279,6 +295,14 @@ struct DiscoverView: View {
             }
           }
         }
+      }
+      // Cards load more on scroll; the button covers a page too short to scroll.
+      if discovery.nextPage != nil && !discovery.searching {
+        Button("Plus de résultats") { discovery.search(more: true) }.buttonStyle(.plain)
+          .font(.callout.weight(.medium)).foregroundStyle(.secondary)
+          .disabled(
+            discovery.query.trimmingCharacters(in: .whitespacesAndNewlines)
+              != discovery.submittedQuery)
       }
       if discovery.youtube.isEmpty && !discovery.searching && discovery.youtubeError.isEmpty {
         Text("Aucun résultat YouTube. Essaie un titre ou un artiste plus précis.")
