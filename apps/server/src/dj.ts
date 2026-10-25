@@ -49,7 +49,12 @@ export function djDailyBudget(userId: string, now = Date.now()): number | null {
     /* Invalid overrides retain the shared default. */
   }
   if (override && typeof override === "object") {
-    const timed = override as { limit?: unknown; unlimitedUntil?: unknown };
+    const timed = override as {
+      limit?: unknown;
+      unlimitedUntil?: unknown;
+      unlimited?: unknown;
+    };
+    if (timed.unlimited === true) return null;
     if (
       typeof timed.unlimitedUntil === "string" &&
       Date.parse(timed.unlimitedUntil) > now

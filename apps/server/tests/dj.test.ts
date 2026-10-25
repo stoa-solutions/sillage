@@ -4,6 +4,20 @@ import { pcmToWav } from "../src/dj-voice.ts";
 import { djInput, djDailyBudget } from "../src/dj.ts";
 import { djPlayerJs } from "../src/dj-player.ts";
 afterEach(() => vi.unstubAllEnvs());
+it("keeps explicit unlimited access permanent and isolated to its account", () => {
+  vi.stubEnv("DJ_DAILY_REQUEST_LIMIT", "100");
+  vi.stubEnv("DJ_ACCOUNT_DAILY_LIMITS", JSON.stringify({
+    alice: { unlimited: true },
+    bob: { unlimited: "true" },
+    carol: { unlimited: false, limit: 200 },
+  }));
+  for (const date of ["2026-10-25T12:00:00Z", "2026-10-26T12:00:00Z", "2036-01-01T00:00:00Z"]) {
+    expect(djDailyBudget("alice", Date.parse(date))).toBeNull();
+    expect(djDailyBudget("bob", Date.parse(date))).toBe(100);
+    expect(djDailyBudget("carol", Date.parse(date))).toBe(200);
+    expect(djDailyBudget("other", Date.parse(date))).toBe(100);
+  }
+});
 it("expires an account's temporary unlimited access without affecting others", () => {
   vi.stubEnv("DJ_DAILY_REQUEST_LIMIT", "100");
   vi.stubEnv(

@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- DJ : possibilité administrateur de retirer durablement le plafond Recall pour un compte, sans modifier les limites des autres comptes ni celles du fournisseur IA.
+
 ### Correctif recherche et demandes DJ précises
 
 - Les correspondances artiste + titre et les morceaux de l’artiste passent avant les type beats, mixes, reprises et versions alternatives non demandées.
