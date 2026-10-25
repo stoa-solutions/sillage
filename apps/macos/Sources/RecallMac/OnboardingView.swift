@@ -55,7 +55,8 @@ struct OnboardingView: View {
   private var account: some View {
     StepPage(
       title: "Bienvenue dans Recall",
-      message: "Ton DJ personnel, nourri par tes playlists YouTube. Ta bibliothèque reste privée sur ton compte."
+      message:
+        "Ton DJ personnel, nourri par tes playlists YouTube. Ta bibliothèque reste privée sur ton compte."
     ) {
       Button(session.signingIn ? "Connexion…" : "Continuer avec Google") {
         Task { await session.connectGoogle() }
@@ -77,7 +78,8 @@ struct OnboardingView: View {
       title: "Active ton DJ",
       message: "Le DJ utilise ta clé Gemini, chiffrée sur ton compte. Tu ne la saisis qu’une fois."
     ) {
-      Label(session.accountEmail, systemImage: "person.crop.circle.fill").foregroundStyle(.secondary)
+      Label(session.accountEmail, systemImage: "person.crop.circle.fill").foregroundStyle(
+        .secondary)
       SecureField("Ta clé API Gemini", text: $key).textFieldStyle(.roundedBorder)
         .onSubmit(saveKey)
       HStack {
@@ -125,7 +127,7 @@ struct OnboardingView: View {
     Task {
       defer { busy = false }
       do {
-        try await session.saveGeminiKey(key)
+        try await session.saveGeminiKey(key, finishOnboarding: false)
         key = ""
       } catch { self.error = error.localizedDescription }
     }

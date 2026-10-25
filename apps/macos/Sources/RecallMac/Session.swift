@@ -85,7 +85,7 @@ final class Session: ObservableObject {
       }
     } catch { self.error = error.localizedDescription }
   }
-  func saveGeminiKey(_ value: String) async throws {
+  func saveGeminiKey(_ value: String, finishOnboarding: Bool = true) async throws {
     error = ""
     let key = value.trimmingCharacters(in: .whitespacesAndNewlines)
     guard (20...256).contains(key.count) else {
@@ -109,7 +109,7 @@ final class Session: ObservableObject {
         "La clé a été envoyée, mais sa confirmation a échoué. Vérifie ta connexion et réessaie.")
     }
     notice = "Ton DJ est activé. Ta clé Gemini est enregistrée sur ton compte."
-    if hasKey && hasServer && !canClaimLibrary { showOnboarding = false }
+    if finishOnboarding && hasKey && hasServer && !canClaimLibrary { showOnboarding = false }
   }
   func importConnection(_ url: URL) async throws {
     let connection = try await Task.detached {
