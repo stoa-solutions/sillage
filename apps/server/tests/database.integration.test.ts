@@ -514,6 +514,7 @@ it("searches available music through an MCP client and respects exclusions", asy
   const mcp = await connectMusicMcp(db);
   try {
     expect((await mcp.client.listTools()).tools.map((t) => t.name)).toEqual([
+      "seekInformation",
       "library_search",
       "library_overview",
     ]);

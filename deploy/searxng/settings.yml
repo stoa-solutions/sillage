@@ -2,7 +2,7 @@
 # SEARXNG_SECRET is injected by Dokploy, never committed.
 use_default_settings:
   engines:
-    keep_only: [youtube]
+    keep_only: [youtube, google, duckduckgo]
 server:
   limiter: false
   public_instance: false
@@ -16,5 +16,15 @@ engines:
   - name: youtube
     engine: youtube_noapi
     shortcut: yt
+    timeout: 12.0
+    disabled: false
+  - name: google
+    engine: google
+    shortcut: go
+    timeout: 12.0
+    disabled: false
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
     timeout: 12.0
     disabled: false

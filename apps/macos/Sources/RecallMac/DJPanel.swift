@@ -90,8 +90,19 @@ struct ChatBubble: View {
     } else {
       HStack(alignment: .top, spacing: 10) {
         DJAvatar()
-        Text(message.content).textSelection(.enabled).lineSpacing(2)
-          .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 3)
+        VStack(alignment: .leading, spacing: 8) {
+          Text(message.content).textSelection(.enabled).lineSpacing(2)
+          if let sources = message.sources, !sources.isEmpty {
+            ForEach(sources) { source in
+              if let url = source.safeURL {
+                Link(destination: url) {
+                  Label("[\(source.id)] \(source.title)", systemImage: "arrow.up.right.square")
+                    .font(.caption).lineLimit(2)
+                }.tint(Color.recall)
+              }
+            }
+          }
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 3)
       }
     }
   }

@@ -26,10 +26,20 @@ public struct Track: Codable, Identifiable, Hashable, Sendable {
     self.channelAvatarURL = channelAvatarURL
   }
 }
+public struct InformationSource: Codable, Identifiable, Sendable {
+  public let id: Int
+  public let title: String
+  public let url: URL
+  public var safeURL: URL? {
+    ["http", "https"].contains(url.scheme ?? "") && url.user == nil && url.password == nil
+      ? url : nil
+  }
+}
 public struct ChatMessage: Codable, Identifiable, Sendable {
   public var id = UUID()
   public let role: String
   public let content: String
+  public let sources: [InformationSource]?
   public let discoveries: [DiscoveryItem]?
   /// Preserve the visible candidates in provider context; catalog metadata is data, not instructions.
   public var contextContent: String {
@@ -46,7 +56,11 @@ public struct ChatMessage: Codable, Identifiable, Sendable {
     return String(content.prefix(250)) + "\nCartes proposées (métadonnées) : "
       + String(decoding: encoded, as: UTF8.self)
   }
-  public init(role: String, content: String, discoveries: [DiscoveryItem]? = nil) {
+  public init(
+    role: String, content: String, discoveries: [DiscoveryItem]? = nil,
+    sources: [InformationSource]? = nil
+  ) {
+    self.sources = sources
     self.discoveries = discoveries
     self.role = role
     self.content = content
@@ -56,8 +70,13 @@ public struct DJResponse: Codable, Sendable {
   public let reply: String
   public let action: String
   public let tracks: [Track]
+  public let sources: [InformationSource]?
   public let discoveries: [DiscoveryItem]?
-  public init(reply: String, action: String, tracks: [Track], discoveries: [DiscoveryItem]? = nil) {
+  public init(
+    reply: String, action: String, tracks: [Track], discoveries: [DiscoveryItem]? = nil,
+    sources: [InformationSource]? = nil
+  ) {
+    self.sources = sources
     self.discoveries = discoveries
     self.reply = reply
     self.action = action

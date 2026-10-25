@@ -48,7 +48,7 @@ it("deduplicates discovery IDs, verifies one metadata batch and keeps provider o
   expect(request).toHaveBeenCalledTimes(2);
   const query = new URL(String(request.mock.calls[0][0]));
   expect(query.searchParams.get("engines")).toBe("youtube");
-  expect(query.searchParams.get("q")).toBe("Acid Coco");
+  expect(query.searchParams.get("q")).toBe("!yt Acid Coco");
   expect(String(request.mock.calls[1][0])).not.toContain("private-key");
   await expect(source.search("Acid Coco", "PAGE2")).rejects.toMatchObject({
     reason: "search_unavailable",

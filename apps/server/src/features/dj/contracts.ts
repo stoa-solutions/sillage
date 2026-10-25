@@ -51,6 +51,7 @@ export const selection = z.object({
     .array(z.string().regex(/^[\w-]{11}$/))
     .max(8)
     .optional(),
+  citationIds: z.array(z.number().int().min(1).max(40)).max(5).optional(),
   reply: z.string().min(1).max(1500),
   trackIds: z.array(z.string().regex(/^[\w-]{11}$/)).max(8),
   action: z.enum(["replace", "append", "keep"]),

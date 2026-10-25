@@ -6,7 +6,7 @@ import type { ApiEnvironment } from "./dj-routes.ts";
 // Listening history: what each account played and how it ended. The Mac sends events in
 // batches with its own IDs, so a retried upload never counts a play twice. Title and channel
 // are copied because a played YouTube video need not be in the library. Kept for later taste
-// signals (Découvrir); nothing reads it automatically yet.
+// signals used by the account-scoped Discover home.
 const outcomes = ["finished", "skipped", "unavailable", "replaced"] as const;
 const historyEvent = z.object({
   id: z.string().uuid(),

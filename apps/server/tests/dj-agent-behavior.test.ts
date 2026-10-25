@@ -9,7 +9,8 @@ import {
 
 // The agent loop, MCP SDK, tool schemas and evidence validation are real.
 // Only search backends, SQL and the provider's HTTP responses are controlled.
-const boundaries = vi.hoisted(() => ({ search: vi.fn(), youtube: vi.fn() }));
+const boundaries = vi.hoisted(() => ({ search: vi.fn(), youtube: vi.fn(), information: vi.fn() }));
+vi.mock("../src/information.ts", () => ({ informationSearch: () => ({ search: boundaries.information }) }));
 vi.mock("../src/search.ts", () => ({ search: boundaries.search }));
 vi.mock("../src/discovery.ts", async (importOriginal) => ({
   ...await importOriginal<typeof import("../src/discovery.ts")>(),
@@ -426,4 +427,90 @@ it("clears a transient source warning after that source recovers in the same tur
   const result = await run({ message: "Propose un morceau de cumbia", scope: "all" });
   expect(result).toMatchObject({ discoveries: [{ video: { id: external[0].id } }] });
   expect(result.reply).not.toMatch(/indisponible|quota|refuse/);
+});
+
+it("answers an information question with sourced text and keeps the playing queue", async () => {
+  boundaries.information.mockResolvedValue({
+    status: "ok",
+    sources: [
+      {
+        id: 1,
+        title: "Artist interview",
+        url: "https://artist.test/interview",
+        snippet: "The artist explains the recording.",
+      },
+    ],
+  });
+  responses.push(
+    {
+      tool_calls: [
+        {
+          id: "info",
+          type: "function",
+          function: {
+            name: "seekInformation",
+            arguments: JSON.stringify({
+              query: "Acid Coco recording interview",
+            }),
+          },
+        },
+      ],
+    },
+    {
+      content: JSON.stringify({
+        reply: "L’artiste explique cet enregistrement dans une interview [1].",
+        action: "keep",
+        trackIds: [],
+        citationIds: [1],
+      }),
+    },
+  );
+  const result = await run({
+    message: "Raconte-moi une anecdote sourcée sur Acid Coco",
+    scope: "library",
+  });
+  expect(result.action).toBe("keep");
+  expect(result.tracks).toEqual([]);
+  expect(result.reply).toContain("interview [1]");
+  expect(result).toHaveProperty(
+    "sources.0.url",
+    "https://artist.test/interview",
+  );
+  expect(boundaries.search).not.toHaveBeenCalled();
+  expect(boundaries.youtube).not.toHaveBeenCalled();
+});
+it("does not fabricate an anecdote after an information search outage", async () => {
+  boundaries.information.mockResolvedValue({
+    status: "unavailable",
+    sources: [],
+  });
+  responses.push(
+    {
+      tool_calls: [
+        {
+          id: "info",
+          type: "function",
+          function: {
+            name: "seekInformation",
+            arguments: JSON.stringify({ query: "Acid Coco anecdote" }),
+          },
+        },
+      ],
+    },
+    {
+      content: JSON.stringify({
+        reply: "Invented anecdote",
+        action: "keep",
+        trackIds: [],
+        citationIds: [1],
+      }),
+    },
+  );
+  const result = await run({
+    message: "Une anecdote sur Acid Coco ?",
+    scope: "all",
+  });
+  expect(result.action).toBe("keep");
+  expect(result.reply).toContain("Web est momentanément indisponible");
+  expect(result.reply).not.toContain("Invented");
 });

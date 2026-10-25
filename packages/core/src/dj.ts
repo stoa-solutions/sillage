@@ -21,6 +21,7 @@ export interface DjMessage {
 }
 export interface DjResponse {
   reply: string;
+  sources?: { id: number; title: string; url: string }[];
   action: "replace" | "append" | "keep";
   tracks: DjTrack[];
 }

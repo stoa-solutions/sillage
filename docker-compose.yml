@@ -58,6 +58,8 @@ services:
       retries: 5
       start_period: 30s
   searxng:
+    labels:
+      recall.release: ${RELEASE_SHA:-local}
     image: searxng/searxng@sha256:23482d8ecf7ddf66029479468ea04c1bb11d2b65785a17a7e629e2ffd13296ca
     restart: unless-stopped
     environment:

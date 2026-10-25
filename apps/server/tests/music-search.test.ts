@@ -82,8 +82,8 @@ it.each(["library", "youtube", "all"] as const)(
     const names = (await client.listTools()).tools.map((tool) => tool.name);
     expect(names).toEqual(
       scope === "youtube"
-        ? ["music_search"]
-        : ["library_overview", "music_search"],
+        ? ["seekInformation", "music_search"]
+        : ["seekInformation", "library_overview", "music_search"],
     );
     const result = await query(scope);
     expect(mocks.search).toHaveBeenCalledTimes(scope === "youtube" ? 0 : 1);

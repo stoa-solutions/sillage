@@ -1,14 +1,9 @@
 import { z } from "zod";
 import type { YouTube } from "./youtube.ts";
 
-export class SearxngError extends Error {
-  constructor(
-    public reason:
-      "search_unavailable" | "search_blocked" = "search_unavailable",
-  ) {
-    super(reason);
-  }
-}
+export { SearxngError } from "./searxng-errors.ts";
+import { SearxngError } from "./searxng-errors.ts";
+import { boundedJson } from "./searxng-client.ts";
 
 const responseSchema = z.object({
   results: z.array(z.object({ url: z.string() })).max(200),
@@ -38,26 +33,6 @@ export function youtubeResultId(value: string): string | undefined {
   }
 }
 
-async function boundedJson(response: Response): Promise<unknown> {
-  const reader = response.body?.getReader();
-  if (!reader) throw new SearxngError();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > 1_048_576) throw new SearxngError();
-      chunks.push(value);
-    }
-    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
-  } finally {
-    await reader.cancel();
-    reader.releaseLock();
-  }
-}
-
 /** SearXNG discovers IDs; the official metadata endpoint remains authoritative. */
 export class SearxngDiscovery {
   constructor(
@@ -78,7 +53,7 @@ export class SearxngDiscovery {
     try {
       const url = new URL("/search", this.baseUrl);
       url.search = new URLSearchParams({
-        q: query,
+        q: "!yt " + query.replace(/(^|\s)![^\s]+/g, " "),
         format: "json",
         engines: "youtube",
         categories: "videos",

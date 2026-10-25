@@ -42,6 +42,7 @@ struct DiscoverView: View {
       }
       NowPlayingBar(model: dj, player: dj.player, openDJ: openDJ)
     }.padding(16)
+      .task(id: session.generation) { discovery.loadHome() }
       .onChange(of: discovery.query) { _, text in searchWhileTyping(text) }
       .onChange(of: discovery.submittedQuery) { _, _ in showAllLibrary = false }
       .onChange(of: discovery.scope) { _, _ in
@@ -118,6 +119,7 @@ struct DiscoverView: View {
 
   private var start: some View {
     VStack(alignment: .leading, spacing: 24) {
+      recommendations
       if !recent.isEmpty {
         VStack(alignment: .leading, spacing: 10) {
           HStack {
@@ -172,6 +174,51 @@ struct DiscoverView: View {
         }
       }
     }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+  }
+
+  private var recommendations: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack {
+        Text("À découvrir pour toi").font(.headline)
+        Spacer()
+        if discovery.homeLoading { ProgressView().controlSize(.small) }
+        Button("Actualiser") { discovery.loadHome(force: true) }
+          .buttonStyle(.plain).font(.callout).foregroundStyle(.secondary)
+          .disabled(discovery.homeLoading || !session.hasServer)
+      }
+      if let home = discovery.home {
+        LazyVGrid(
+          columns: [GridItem(.adaptive(minimum: 190, maximum: 280), spacing: 16, alignment: .top)],
+          alignment: .leading, spacing: 20
+        ) {
+          ForEach(home.suggestions) { suggestion in
+            VStack(alignment: .leading, spacing: 6) {
+              ResultCard(
+                track: suggestion.video, onPlay: { dj.play(suggestion.video, source: .all) }
+              ) {
+                HStack(spacing: 4) {
+                  IconButton(symbol: "text.badge.plus", help: "Lire ensuite") {
+                    dj.enqueue(suggestion.video, source: .all)
+                  }
+                  SaveButton(
+                    item: DiscoveryItem(video: suggestion.video, inLibrary: suggestion.inLibrary),
+                    source: .all)
+                }
+              }
+              Text(suggestion.reason).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            }
+          }
+        }
+        if let notice = home.notice { Text(notice).font(.callout).foregroundStyle(.secondary) }
+        if let empty = home.emptyReason { Text(empty).font(.callout).foregroundStyle(.secondary) }
+      }
+      if !discovery.homeError.isEmpty {
+        Text(discovery.homeError).font(.callout).foregroundStyle(.orange)
+      }
+      if !session.hasServer {
+        Text("Connecte-toi pour découvrir selon tes écoutes.").foregroundStyle(.secondary)
+      }
+    }
   }
 
   // MARK: Results

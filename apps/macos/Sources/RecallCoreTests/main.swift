@@ -10,6 +10,32 @@ func expectFailure(_ work: () throws -> Void) throws {
   try expect(failed, "Invalid input was accepted")
 }
 do {
+  let information = try JSONDecoder().decode(
+    DJResponse.self,
+    from: Data(
+      #"{"reply":"Une interview [1].","action":"keep","tracks":[],"sources":[{"id":1,"title":"Interview","url":"https://artist.test/interview"}]}"#
+        .utf8))
+  try expect(
+    information.action == "keep" && information.tracks.isEmpty,
+    "Information response changed playback")
+  try expect(information.sources?.first?.safeURL?.host == "artist.test", "Source link lost")
+  let unsafe = try JSONDecoder().decode(
+    DJResponse.self,
+    from: Data(
+      #"{"reply":"test","action":"keep","tracks":[],"sources":[{"id":1,"title":"Bad","url":"javascript:alert(1)"}]}"#
+        .utf8))
+  try expect(unsafe.sources?.first?.safeURL == nil, "Unsafe source link accepted")
+  let legacy = try JSONDecoder().decode(
+    DJResponse.self, from: Data(#"{"reply":"ok","action":"keep","tracks":[]}"#.utf8))
+  try expect(legacy.sources == nil, "Legacy response compatibility lost")
+  let home = try JSONDecoder().decode(
+    DiscoveryHome.self,
+    from: Data(
+      #"{"suggestions":[{"video":{"id":"newtrack001","title":"New song"},"inLibrary":false,"reason":"Parce que tu as écouté Artist"}],"basedOn":["Artist"],"notice":null,"emptyReason":null}"#
+        .utf8))
+  try expect(
+    home.suggestions.first?.video.title == "New song",
+    "Discovery home decoding lost recommendations")
   try listeningHistoryChecks()
   try checkAppearance()
   try checkEnrichmentProgress()

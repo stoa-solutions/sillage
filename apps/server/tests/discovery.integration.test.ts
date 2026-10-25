@@ -542,3 +542,17 @@ it("uses SearXNG through authenticated discovery and MCP, keeping cached ownersh
     await mcp.close();
   }
 });
+
+it("personalizes Discover only from this account's history and respects history deletion", async () => {
+  await db.query(`INSERT INTO listening_history(user_id,event_id,video_id,title,channel,outcome,played_at)
+    VALUES($1,$2,'played00001','Previous song','Real artist','finished',now())`, [alice,randomUUID()]);
+  expect((await req('/v1/discover/home','bad')).status).toBe(401);
+  const personal = await (await req('/v1/discover/home')).json();
+  expect(personal.basedOn).toEqual(['Real artist']);
+  expect(personal.suggestions).toHaveLength(2);
+  const other = await (await req('/v1/discover/home',tokenB)).json();
+  expect(other.suggestions).toEqual([]);expect(other.basedOn).toEqual([]);
+  await req('/v1/history',tokenA); // Reading history never consumes it.
+  await app.request('/v1/history',{method:'DELETE',headers:{Authorization:'Bearer '+tokenA}});
+  expect((await (await req('/v1/discover/home')).json()).suggestions).toEqual([]);
+});

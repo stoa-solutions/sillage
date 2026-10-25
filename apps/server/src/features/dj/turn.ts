@@ -7,6 +7,7 @@ import {
   discoveryReply,
   noSelectionReply,
 } from "./evidence.ts";
+import type { InformationSource } from "../../information.ts";
 import { selectionReply } from "../../dj-selection.ts";
 import { playbackAction } from "../../dj-intent.ts";
 import { LEGACY_USER } from "../../accounts.ts";
@@ -56,6 +57,10 @@ export async function djTurn(
   ]);
   let toolCalls = 0;
   let searched = false;
+  let informationRequested = false;
+  const information = new Map<number, InformationSource>();
+  let informationFailed = false;
+  let informationNotice = "";
   let failedSearches = 0;
   let reformulated = false;
   let youtubeDailyQuota = false;
@@ -119,6 +124,21 @@ export async function djTurn(
         );
         const evidence = readToolEvidence(name, result);
         text = evidence.text;
+        if (name === "seekInformation") {
+          informationRequested = true;
+          const data = JSON.parse(text);
+          informationFailed = data.status !== "ok";
+          informationNotice = data.notice ?? "";
+          const sources = (data.sources as InformationSource[]).map(
+            (source) => ({ ...source, id: information.size + source.id }),
+          );
+          for (const source of sources) information.set(source.id, source);
+          text = JSON.stringify({
+            status: data.status,
+            notice: informationNotice,
+            sources,
+          });
+        }
         for (const item of evidence.items) {
           candidates.set(item.video.id, item.video);
           discoveries.set(item.video.id, item);
@@ -133,6 +153,10 @@ export async function djTurn(
         visualUnsupported ||= evidence.visualUnsupported;
       } catch (error) {
         timeout.throwIfAborted();
+        if (name === "seekInformation") {
+          informationRequested = true;
+          informationFailed = true;
+        }
         if (isSearch) {
           searched = true;
           failedSearches++;
@@ -213,7 +237,7 @@ export async function djTurn(
       }
       // Some providers ignore required tool choice. One bounded reminder avoids
       // declaring music absent without ever searching the catalog.
-      if (!searched && turn < MAX_ROUNDS - 1) {
+      if (!searched && !informationRequested && turn < MAX_ROUNDS - 1) {
         messages.push({ role: "assistant", content: message.content ?? "" });
         messages.push({
           role: "user",
@@ -222,7 +246,7 @@ export async function djTurn(
         });
         continue;
       }
-      if (!searched)
+      if (!searched && !informationRequested)
         throw new DjUnavailable(
           "Je n’ai pas pu rechercher ces indices. Réessaie ; ta musique continue.",
           502,
@@ -235,6 +259,29 @@ export async function djTurn(
           "Le DJ n’a pas renvoyé une sélection lisible. Réessaie.",
           502,
         );
+      }
+      if (
+        informationRequested &&
+        output.action === "keep" &&
+        !output.trackIds.length &&
+        !output.discoveryIds?.length
+      ) {
+        const cited = [...new Set(output.citationIds ?? [])]
+          .filter((id) => information.has(id))
+          .map((id) => information.get(id)!);
+        return {
+          action: "keep" as const,
+          tracks: [],
+          reply:
+            information.size && cited.length
+              ? output.reply +
+                (informationNotice ? " " + informationNotice : "")
+              : informationFailed
+                ? "La recherche d’informations sur le Web est momentanément indisponible. Ta lecture continue ; réessaie dans un instant."
+                : "Je n’ai pas trouvé de source exploitable pour confirmer cette information. Ta lecture continue.",
+          sources: cited,
+          source: "web" as const,
+        };
       }
       // A partial-source failure can make the model ask for a choice even when
       // the listener requested playback. Let it reconsider once; never turn an

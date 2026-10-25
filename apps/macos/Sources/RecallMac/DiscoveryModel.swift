@@ -18,6 +18,11 @@ import RecallKit
   @Published private(set) var nextPage: String?
   @Published private(set) var submittedQuery = ""
   @Published private(set) var libraryTotal = 0
+  @Published private(set) var home: DiscoveryHome?
+  @Published private(set) var homeLoading = false
+  @Published private(set) var homeError = ""
+  private var homeTask: Task<Void, Never>?
+  private var homeLoadedAt: Date?
   private let session: Session
   private let library: LibraryModel
   private var task: Task<Void, Never>?
@@ -28,6 +33,12 @@ import RecallKit
     self.library = library
   }
   func reset() {
+    homeTask?.cancel()
+    homeTask = nil
+    home = nil
+    homeLoading = false
+    homeLoadedAt = nil
+    homeError = ""
     task?.cancel()
     additions.values.forEach { $0.cancel() }
     additions = [:]
@@ -117,6 +128,27 @@ import RecallKit
           }
           youtubeError = error.localizedDescription
         }
+      }
+    }
+  }
+  /// Short-lived view state; account switches cancel the request and discard its results.
+  func loadHome(force: Bool = false) {
+    guard let connection = session.connection, !homeLoading else { return }
+    guard force || homeLoadedAt.map({ Date().timeIntervalSince($0) > 300 }) ?? true else { return }
+    let generation = session.generation
+    homeLoading = true
+    homeError = ""
+    homeTask = Task {
+      defer { if session.generation == generation { homeLoading = false } }
+      do {
+        let result = try await HTTPClient().discoveryHome(connection)
+        try Task.checkCancellation()
+        guard session.generation == generation else { return }
+        home = result
+        homeLoadedAt = Date()
+      } catch {
+        guard !Task.isCancelled, session.generation == generation else { return }
+        homeError = error.localizedDescription
       }
     }
   }

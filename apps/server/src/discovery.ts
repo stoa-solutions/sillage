@@ -1,3 +1,4 @@
+import { discoveryHome } from "./discovery-home.ts";
 import { Hono } from "hono";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
@@ -190,6 +191,9 @@ export function discoveryFor(db: Database) {
 }
 export function discoveryRoutes(db: Database, service = discoveryFor(db)) {
   const routes = new Hono<ApiEnvironment>();
+  routes.get("/home", async (c) =>
+    c.json(await discoveryHome(db, c.get("userId"), service)),
+  );
   routes.post("/search", async (c) => {
     const input = discoveryInput.parse(await c.req.json());
     return c.json(

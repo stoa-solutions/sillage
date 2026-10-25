@@ -134,6 +134,23 @@ export function readToolEvidence(
     .map((part) => part.text)
     .join("\n");
   const data = JSON.parse(text);
+  if (name === "seekInformation") {
+    const sources = Array.isArray(data.sources) ? data.sources.slice(0, 5) : [];
+    return {
+      text: JSON.stringify({
+        status: data.status,
+        notice: shortText(data.notice, 200),
+        sources,
+      }),
+      items: [],
+      isSearch: false,
+      failedSources: 0,
+      failures: [],
+      recoveredSources: [],
+      youtubeDailyQuota: false,
+      visualUnsupported: false,
+    };
+  }
   const isSearch = [
     "library_search",
     "youtube_search",
