@@ -20,6 +20,16 @@ final class DJModel: ObservableObject {
   @Published private(set) var busy = false
   @Published var spoken = true
   @Published var continuous = true
+  @Published private(set) var continuationNotice = ""
+  @Published private(set) var waitingForNext = false
+  var history: [PlaybackHistoryEntry] { playback.history }
+  var allUpcoming: [QueueEntry] {
+    queue.indices.dropFirst(position + 1).map { QueueEntry(id: $0, track: queue[$0]) }
+  }
+  private var requestID = UUID()
+  private var automaticRequest = false
+  private var prefetchedPosition: Int?
+  private var unavailableCount = 0
   let player = Player()
   let microphone = Microphone()
   private let session: Session
@@ -35,7 +45,11 @@ final class DJModel: ObservableObject {
     self.session = session
     microphone.onText = { [weak self] text in self?.send(text) }
     microphone.onError = { [weak self] text in self?.session.error = text }
-    player.onProgress = { [weak self] in self?.prepareNextVoice() }
+    player.onProgress = { [weak self] in
+      if let self, player.playing, player.elapsed > 2 { unavailableCount = 0 }
+      self?.prepareNextVoice()
+      self?.prepareContinuation()
+    }
     player.onEnded = { [weak self] in
       guard let self else { return }
       playback.markEnded()
@@ -43,14 +57,19 @@ final class DJModel: ObservableObject {
     }
     player.onUnavailable = { [weak self] in
       guard let self else { return }
-      if position + 1 < queue.count {
-        playback.advance()
-        playCurrent()
+      unavailableCount += 1
+      if unavailableCount < 3 {
+        next(outcome: .unavailable, userInitiated: false)
       } else {
-        session.error =
-          "Ce titre est indisponible dans le lecteur. Ouvre-le sur YouTube ou choisis un autre morceau."
+        cancel()
+        playback.stop(outcome: .unavailable)
+        player.command("pause")
+        continuationNotice =
+          "Plusieurs clips sont indisponibles. Réessaie ou choisis un titre dans À suivre."
+        waitingForNext = false
       }
     }
+
     voice.onFallback = { [weak self] in
       self?.session.notice = "Voix locale macOS utilisée pour cette réponse."
     }
@@ -67,6 +86,8 @@ final class DJModel: ObservableObject {
     messages = []
     prompt = ""
     lastRequest = ""
+    continuationNotice = ""
+    prefetchedPosition = nil
     player.reset()
   }
   func send(_ text: String? = nil, automatic: Bool = false) {
@@ -78,27 +99,61 @@ final class DJModel: ObservableObject {
       return
     }
     microphone.stop()
-    voice.stop()
-    voice.clearPreparation()
+    if !automatic {
+      voice.stop()
+      voice.clearPreparation()
+      prefetchedPosition = nil
+      unavailableCount = 0
+    }
+    continuationNotice = ""
     session.error = ""
     busy = true
-    prompt = ""
+    automaticRequest = automatic
+    let id = UUID()
+    requestID = id
+    if !automatic { prompt = "" }
     let history = messages
     if !automatic {
       lastRequest = text
       messages.append(ChatMessage(role: "user", content: text))
     }
-    let excluded = Set(queue.suffix(100).map(\.id))
+    let excluded = Set((historyTracks + queue).suffix(100).map(\.id))
     work = Task {
-      defer { busy = false }
+      defer {
+        if requestID == id {
+          busy = false
+          waitingForNext = false
+          automaticRequest = false
+        }
+      }
       do {
         let response = try await respond(to: text, history: history, excluded: excluded)
         try Task.checkCancellation()
+        guard requestID == id else { return }
         messages.append(ChatMessage(role: "assistant", content: response.reply))
         messages = Array(messages.suffix(24))
-        if playback.apply(response, automatic: automatic) { playCurrent() }
-        if spoken { speak(response.reply) }
-      } catch { if !Task.isCancelled { session.error = error.localizedDescription } }
+        let oldCount = queue.count
+        let changed = playback.apply(response, automatic: automatic)
+        if changed {
+          playCurrent()
+        } else {
+          player.prepareNext(upcoming.first?.track)
+          prepareNextVoice()
+        }
+        if automatic && queue.count == oldCount && !changed {
+          continuationNotice =
+            "Pas de nouveau morceau trouvé. Réessaie ou précise ton envie dans DJ."
+        } else if waitingForNext && !changed {
+          continuationNotice = "Aucune suite ajoutée. Précise un titre ou réessaie."
+        }
+        // A background refill must not interrupt the current song with a premature announcement.
+        if spoken && (!automatic || changed) { speak(response.reply) }
+      } catch {
+        if !Task.isCancelled && requestID == id {
+          session.error = error.localizedDescription
+          continuationNotice = "La recherche n’a pas abouti. Tu peux réessayer."
+        }
+      }
     }
   }
   /// Google accounts use their own encrypted server credential and scoped catalog.
@@ -152,39 +207,94 @@ final class DJModel: ObservableObject {
     voice.prepare(
       "On continue avec \(track.title).", context: connection.token, using: synthesis(connection))
   }
+  private var historyTracks: [Track] { playback.history.map(\.track) }
+
   func cancel() {
-    voice.clearPreparation()
+    requestID = UUID()
     work?.cancel()
+    work = nil
+    prefetchedPosition = position
+    busy = false
+    automaticRequest = false
+    if waitingForNext { continuationNotice = "Recherche annulée. Réessaie quand tu veux." }
+    waitingForNext = false
+    voice.clearPreparation()
     microphone.stop()
     voice.stop()
   }
   func play(_ track: Track) {
-    voice.clearPreparation()
+    cancel()
+    lastRequest = "Des morceaux dans l’esprit de \(track.title), \(track.channel ?? "")."
     playback.replace([track])
+    unavailableCount = 0
     playCurrent()
   }
   private func playCurrent() {
+    continuationNotice = ""
+    waitingForNext = false
+    prefetchedPosition = nil
     if let current {
       player.cue(current)
       player.prepareNext(upcoming.first?.track)
     }
   }
-  func next() {
+  func next(outcome: PlaybackOutcome = .skipped, userInitiated: Bool = true) {
+    guard current != nil else { return }
+    if userInitiated { unavailableCount = 0 }
     voice.stop()
-    if playback.advance() {
+    if playback.requestNext(outcome: outcome) {
       playCurrent()
-      if spoken, let current {
-        let announcement = "On continue avec \(current.title)."
-        messages.append(ChatMessage(role: "assistant", content: announcement))
-        messages = Array(messages.suffix(24))
-        speak(announcement)
-      }
-    } else if !queue.isEmpty {
-      playback.markEnded()
-      send(
-        "Continue ma demande : \(lastRequest). Cherche de nouveaux vrais morceaux dans la bibliothèque, sans répétition. Ajoute-les à la file. Exclue les type beats et hommages sauf si je les ai demandés.",
-        automatic: true)
+      announceCurrent()
+    } else {
+      player.command("pause")
+      waitingForNext = true
+      if !busy { requestContinuation() }
     }
+  }
+  func retryContinuation() {
+    guard !busy else { return }
+    waitingForNext = playback.ended
+    requestContinuation()
+  }
+  private func requestContinuation() {
+    let context = lastRequest.isEmpty ? (current?.title ?? "la même ambiance") : lastRequest
+    send(
+      "Continue ma demande : \(context). Cherche de nouveaux vrais morceaux dans la bibliothèque, sans répétition. Si la recherche ne donne rien, essaie une formulation plus courte de la même ambiance ou du même artiste, sans inventer de titre ni remplacer un titre précis absent. Ajoute-les à la file. Exclue les type beats et hommages sauf demande explicite.",
+      automatic: true)
+  }
+  private func prepareContinuation() {
+    guard continuous, player.playing, !busy, current != nil, allUpcoming.isEmpty,
+      player.duration > 0, player.duration - player.elapsed > 0,
+      player.duration - player.elapsed <= 30, prefetchedPosition != position
+    else { return }
+    prefetchedPosition = position
+    requestContinuation()
+  }
+  func continuousChanged() {
+    if !continuous && automaticRequest && !waitingForNext { cancel() }
+  }
+  func moveUpcoming(from source: Int, to destination: Int) {
+    guard playback.moveUpcoming(from: source, to: destination) else { return }
+    voice.clearPreparation()
+    player.prepareNext(upcoming.first?.track)
+    prepareNextVoice()
+  }
+  func playUpcoming(at index: Int) {
+    guard index > position, queue.indices.contains(index) else { return }
+    cancel()
+    guard playback.playUpcoming(at: index) else { return }
+    voice.stop()
+    voice.clearPreparation()
+    unavailableCount = 0
+    playCurrent()
+    announceCurrent()
+  }
+  private func announceCurrent() {
+    guard spoken, let current else { return }
+    let announcement = "On continue avec \(current.title)."
+    messages.append(ChatMessage(role: "assistant", content: announcement))
+    messages = Array(messages.suffix(24))
+    speak(announcement)
   }
   func toggleMicrophone() {
     voice.stop()

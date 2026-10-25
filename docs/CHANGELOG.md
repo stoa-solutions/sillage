@@ -2,6 +2,9 @@
 
 ## Non publié
 
+- App Mac 1.4.7 (21) : panneau Compact/Studio repliable, onglets DJ / À suivre / Historique, file complète réordonnable par flèches sans changer le titre en cours. Lecture immédiate d’un titre futur sans perdre les autres ; historique de session des titres terminés, passés, remplacés et indisponibles.
+- Suivant reste disponible pendant une recherche : la demande attend la réponse si la file est vide. La suite est recherchée une fois dans les trente dernières secondes du dernier titre ; une réponse vide ou une erreur propose de réessayer. Les clips indisponibles sont passés avec une limite de trois échecs consécutifs. Annulation et changement de compte ignorent les réponses tardives ; préchargement du clip et de la voix actualisé après réordonnancement.
+
 - App Mac 1.4.6 (20) : recherche directe artiste/titre sans inférence, tolérance aux petites fautes et préfixes, rejet des correspondances partielles inventées, vérification des genres pour les recherches d’ambiance ; les souvenirs décrits en langage naturel restent orientés vers la recherche sémantique.
 - Voix : une seule annonce suivante préparée en mémoire dans les vingt dernières secondes, si la voix et l’enchaînement sont actifs ; réutilisée au passage suivant, effacée au changement de compte ou de demande.
 - Studio : 1080p par défaut, option jusqu’à 4K sur les Mac décodant l’AV1 ; cache séparé par qualité (2/6 Go), pochette plein cadre et indicateur de préparation conservés jusqu’à la lecture native, sans petit lecteur intermédiaire. Le morceau suivant est préchargé. Changer de mode ou de qualité conserve la position et la pause. Design Compact/Studio conservé ; résolution réellement décodée affichée dans Réglages. Les annotations [4K] ne bloquent plus les demandes de titres exacts.

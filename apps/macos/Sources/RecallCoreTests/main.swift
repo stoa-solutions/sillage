@@ -57,7 +57,10 @@ do {
     "New request did not replace the finished queue")
   queue.markEnded()
   try expect(
-    queue.apply(DJResponse(reply: "suite", action: "replace", tracks: [long]), automatic: true)
+    queue.apply(
+      DJResponse(
+        reply: "suite", action: "replace", tracks: [Track(id: "new12345678", title: "New")]),
+      automatic: true)
       && queue.position == 1, "Automatic continuation discarded queue history")
   let untitled = try Catalog.parse(Data(#"{"videos":[{"id":"abcdefghijk","title":null}]}"#.utf8))
   try expect(
@@ -124,6 +127,7 @@ do {
     avatars[0].channelAvatarURL?.host == "yt3.ggpht.com" && avatars[1].channelAvatarURL == nil,
     "Channel photo accepted from a host other than Google's")
   print("30 native behavior checks passed")
+  try playbackSessionChecks()
   try await studioCacheChecks()
   try await preparedSpeechChecks()
 } catch {

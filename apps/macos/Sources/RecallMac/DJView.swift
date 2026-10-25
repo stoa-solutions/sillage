@@ -4,6 +4,8 @@ import SwiftUI
 
 /// Compact: one column beside your work. Studio: the clip fills the window, chat floats on glass.
 struct DJView: View {
+  @AppStorage("djPanelCollapsed") private var panelCollapsed = false
+  @State private var panelTab = SessionPanelTab.dj
   @ObservedObject var model: DJModel
   @EnvironmentObject var session: Session
   @ObservedObject var player: Player
@@ -19,6 +21,7 @@ struct DJView: View {
     Group {
       if player.studio { studio } else { compact }
     }.onChange(of: model.spoken) { _, value in if !value { model.stopVoice() } }
+      .onChange(of: model.continuous) { _, _ in model.continuousChanged() }
   }
 
   private var compact: some View {
@@ -32,8 +35,12 @@ struct DJView: View {
         playerStatus
       }.padding(16).layoutPriority(1)
       Divider()
-      conversation.padding(.horizontal, 16)
-      composer.padding([.horizontal, .bottom], 12)
+      if panelCollapsed {
+        reopenPanel.padding(12)
+        Spacer(minLength: 0)
+      } else {
+        sessionPanel
+      }
     }.frame(maxWidth: 560).frame(maxWidth: .infinity)
   }
 
@@ -58,15 +65,16 @@ struct DJView: View {
         upNext
         playerStatus
       }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
-      VStack(spacing: 0) {
-        conversation.padding(.horizontal, 16)
-        composer.padding(12)
-      }.frame(width: 360).background {
-        // Translucent so the clip stays visible behind the conversation.
-        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
-        shape.fill(.black.opacity(0.35)).background(.ultraThinMaterial.opacity(0.5), in: shape)
-          .overlay(shape.strokeBorder(.white.opacity(0.1)))
-      }.padding(16)
+      if panelCollapsed {
+        reopenPanel.padding(16)
+      } else {
+        sessionPanel.frame(width: 360).background {
+          // Translucent so the clip stays visible behind the conversation.
+          let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+          shape.fill(.black.opacity(0.35)).background(.ultraThinMaterial.opacity(0.5), in: shape)
+            .overlay(shape.strokeBorder(.white.opacity(0.1)))
+        }.padding(16)
+      }
     }
     .background {
       ZStack {
@@ -76,7 +84,8 @@ struct DJView: View {
         } else if player.preparingStudio, let current = model.current {
           // While the clip downloads, its cover sets the mood instead of an empty player.
           AsyncImage(url: URL(string: "https://i.ytimg.com/vi/\(current.id)/hqdefault.jpg")) {
-            image in image.resizable().scaledToFill()
+            image in
+            image.resizable().scaledToFill()
           } placeholder: {
             Color.black
           }.blur(radius: 40).overlay(Color.black.opacity(0.35)).clipped()
@@ -136,7 +145,7 @@ struct DJView: View {
       } label: {
         Image(systemName: "forward.fill").font(.title3).frame(width: 32, height: 32)
       }.buttonStyle(.plain).help("Morceau suivant").accessibilityLabel("Morceau suivant")
-        .disabled(model.current == nil || model.busy)
+        .disabled(model.current == nil)
       VolumeControl(player: player)
       Spacer(minLength: 8)
       Toggle(isOn: $model.spoken) { Label("Voix du DJ", systemImage: "person.wave.2") }
@@ -159,10 +168,142 @@ struct DJView: View {
   }
 
   @ViewBuilder private var playerStatus: some View {
+    if model.waitingForNext && model.busy {
+      HStack {
+        ProgressView().controlSize(.small)
+        Text("Recherche du prochain morceau…")
+        Button("Annuler") { model.cancel() }.buttonStyle(.link)
+      }.font(.caption)
+    }
+    if !model.continuationNotice.isEmpty {
+      VStack(alignment: .leading, spacing: 4) {
+        Text(model.continuationNotice).font(.caption).foregroundStyle(.secondary)
+        Button("Réessayer la suite") { model.retryContinuation() }
+          .buttonStyle(.bordered).disabled(model.busy)
+      }
+    }
     if !player.failure.isEmpty {
       Label(player.failure, systemImage: "exclamationmark.triangle").font(.caption)
         .foregroundStyle(.orange)
     }
+  }
+
+  private var reopenPanel: some View {
+    Button {
+      panelCollapsed = false
+    } label: {
+      Label("DJ et file", systemImage: "sidebar.right")
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: Capsule())
+    }.buttonStyle(.plain).accessibilityLabel("Afficher le panneau DJ et la file")
+  }
+
+  private var sessionPanel: some View {
+    VStack(spacing: 0) {
+      HStack(spacing: 8) {
+        Picker("Vue de la session", selection: $panelTab) {
+          ForEach(SessionPanelTab.allCases) { tab in Text(tab.rawValue).tag(tab) }
+        }.pickerStyle(.segmented).labelsHidden()
+        Button {
+          panelCollapsed = true
+        } label: {
+          Image(systemName: "sidebar.right").frame(width: 24, height: 24)
+        }.buttonStyle(.plain).help("Replier le panneau")
+          .accessibilityLabel("Replier le panneau")
+      }.padding(12)
+      switch panelTab {
+      case .dj:
+        conversation.padding(.horizontal, 16)
+        composer.padding(12)
+      case .queue:
+        queuePanel
+      case .history:
+        historyPanel
+      }
+    }
+  }
+
+  private var queuePanel: some View {
+    ScrollView {
+      LazyVStack(alignment: .leading, spacing: 14) {
+        if let current = model.current {
+          Text("EN COURS").font(.caption).foregroundStyle(.secondary)
+          trackLabel(current)
+          Divider().padding(.vertical, 4)
+        }
+        Text("À SUIVRE · \(model.allUpcoming.count)").font(.caption).foregroundStyle(.secondary)
+        if model.allUpcoming.isEmpty {
+          Text(
+            model.busy ? "Le DJ prépare la suite…" : "La file est vide. Demande une suite au DJ."
+          )
+          .foregroundStyle(.secondary)
+          Button("Préparer la suite") { model.retryContinuation() }
+            .disabled(model.busy || model.current == nil)
+        }
+        ForEach(model.allUpcoming) { entry in
+          VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 8) {
+              Text("\(entry.id - model.position)").font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary).frame(width: 18)
+              trackLabel(entry.track)
+            }
+            HStack(spacing: 14) {
+              Button {
+                model.playUpcoming(at: entry.id)
+              } label: {
+                Label("Lire", systemImage: "play.fill")
+              }.accessibilityLabel("Lire maintenant : \(entry.track.title)")
+              Spacer()
+              Button {
+                model.moveUpcoming(from: entry.id, to: entry.id - 1)
+              } label: {
+                Image(systemName: "arrow.up")
+              }.disabled(entry.id == model.position + 1)
+                .accessibilityLabel("Monter : \(entry.track.title)")
+              Button {
+                model.moveUpcoming(from: entry.id, to: entry.id + 1)
+              } label: {
+                Image(systemName: "arrow.down")
+              }.disabled(entry.id == model.queue.count - 1)
+                .accessibilityLabel("Descendre : \(entry.track.title)")
+            }.font(.caption).buttonStyle(.borderless)
+          }
+          Divider()
+        }
+        Text(
+          "L’ordre affiché est l’ordre de lecture. Les flèches déplacent les titres sans interrompre le clip."
+        )
+        .font(.caption).foregroundStyle(.secondary)
+      }.padding(16)
+    }
+  }
+
+  private var historyPanel: some View {
+    ScrollView {
+      LazyVStack(alignment: .leading, spacing: 14) {
+        Text("CETTE SESSION").font(.caption).foregroundStyle(.secondary)
+        if model.history.isEmpty {
+          Text("Les morceaux terminés, passés ou indisponibles apparaîtront ici.")
+            .foregroundStyle(.secondary)
+        }
+        ForEach(model.history.reversed()) { entry in
+          VStack(alignment: .leading, spacing: 4) {
+            trackLabel(entry.track)
+            Text(entry.outcome.rawValue).font(.caption).foregroundStyle(.secondary)
+          }
+          Divider()
+        }
+      }.padding(16)
+    }
+  }
+
+  private func trackLabel(_ track: Track) -> some View {
+    VStack(alignment: .leading, spacing: 3) {
+      Text(track.title).fontWeight(.medium).fixedSize(horizontal: false, vertical: true)
+      if let channel = track.channel, !channel.isEmpty {
+        Text(channel).font(.caption).foregroundStyle(.secondary)
+      }
+    }.frame(maxWidth: .infinity, alignment: .leading)
   }
 
   private var conversation: some View {
@@ -247,6 +388,13 @@ struct DJView: View {
   private var canSend: Bool {
     !model.busy && !model.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
+}
+
+private enum SessionPanelTab: String, CaseIterable, Identifiable {
+  case dj = "DJ"
+  case queue = "À suivre"
+  case history = "Historique"
+  var id: Self { self }
 }
 
 /// 3:07, or 1:02:45 past an hour: the same clock in the player and the library.
