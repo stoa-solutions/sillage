@@ -48,6 +48,14 @@ func lyricsAccountChecks() async throws {
     returning:
       Lyrics(status: .plain, lines: [], text: "B next"))
   try await waitFor { model.lyrics?.text == "B next" }
+  let uncached = Track(id: "cdefghijklm", title: "Uncached")
+  model.show(uncached, next: nil, connection: b)
+  try await waitFor { pending[b.token + uncached.id] != nil }
+  model.show(next, next: nil, connection: b)
+  try expect(
+    !model.loading && model.lyrics?.text == "B next", "Cached song kept old loading indicator")
+  pending.removeValue(forKey: b.token + uncached.id)?.resume(
+    returning: Lyrics(status: .plain, lines: [], text: "late"))
   model.nudge(by: 500, connection: b)
   model.reset()
   try await Task.sleep(nanoseconds: 900_000_000)

@@ -59,6 +59,9 @@ public final class LyricsModel: ObservableObject {
       return
     }
     if track.id != videoId {
+      loadingTask?.cancel()
+      requestID = UUID()
+      loading = false
       videoId = track.id
       lyrics = cache[track.id]
       if lyrics == nil || lyrics?.status == .unavailable { load(track.id, connection) }
