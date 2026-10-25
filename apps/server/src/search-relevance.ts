@@ -6,7 +6,7 @@ export function lookupTokens(query: string): string[] {
 }
 export function isDescriptiveQuery(query: string): boolean {
   if (/^(jazz|classique|classical|reggae|metal|techno)$/.test(normalizeMusic(query))) return true;
-  return /\b(ambiance|mood|doux|douce|calme|soiree|soir|relax|chill|energi\w*|triste|joyeux|pour|ressemble|similaire|cherche|souvenir|quiet|evening|relaxing|happy|sad)\b/.test(normalizeMusic(query));
+  return /\b(ambiance|mood|doux|douce|calme|soiree|soir|relax|chill|energi\w*|triste|joyeux|romantique|romantic|melancolique|pour|ressemble|similaire|cherche|souvenir|souviens|avec|dans|qui|dont|ou|quiet|evening|relaxing|happy|sad|with|about|remember)\b/.test(normalizeMusic(query));
 }
 function nearWord(a: string, b: string): boolean {
   if (a === b || (a.length >= 4 && b.startsWith(a))) return true;

@@ -10,6 +10,9 @@ it("accepts complete artist/title matches and bounded typos, rejects partial or 
 it("distinguishes descriptive requests from artist and title lookups", () => {
  expect(isDescriptiveQuery("jazz doux pour une soirée calme")).toBe(true);
  expect(isDescriptiveQuery("quiet evening")).toBe(true);
+ expect(isDescriptiveQuery("un morceau avec un saxophone dans la nuit")).toBe(true);
+ expect(isDescriptiveQuery("romantic piano")).toBe(true);
+ expect(isDescriptiveQuery("zzzxqv chanson inexistante 987654")).toBe(false);
  expect(isDescriptiveQuery("Mac Miller Self Care")).toBe(false);
 });
 it("does not confuse an artist name with genre evidence", () => {
