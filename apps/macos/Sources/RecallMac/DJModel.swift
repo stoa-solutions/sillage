@@ -119,13 +119,15 @@ final class DJModel: ObservableObject {
     voice.speak(text) { text in
       guard let connection else { throw RecallError.message("Voix indisponible.") }
       var object: [String: Any] = [:]
+      let started = Date()
       for attempt in 0..<3 {
         do {
           object = try await HTTPClient().server(
             connection, path: "dj/speech", body: ["text": String(text.prefix(600))])
           break
         } catch let error as HTTPServiceError
-          where [429, 503].contains(error.status) && attempt < 2
+          where [429, 502, 503].contains(error.status) && attempt < 2
+          && Date().timeIntervalSince(started) < 8
         {
           // A cancelled previous utterance may still hold the server's per-account lease briefly.
           try await Task.sleep(nanoseconds: UInt64(attempt + 1) * 1_000_000_000)

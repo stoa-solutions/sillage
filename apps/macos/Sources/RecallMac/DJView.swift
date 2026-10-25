@@ -42,6 +42,7 @@ struct DJView: View {
             )
           Button {
             cinema.toggle()
+            if !cinema && player.studio { player.setStudio(false) }
           } label: {
             Label(
               cinema ? "Vue compacte" : "Mode cinéma",
