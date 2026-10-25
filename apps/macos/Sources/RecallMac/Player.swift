@@ -1,6 +1,7 @@
 import AVKit
 import RecallKit
 import SwiftUI
+import VideoToolbox
 import WebKit
 
 @MainActor
@@ -20,6 +21,16 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
       applyVolume()
     }
   }
+  static var supports4K: Bool { VTIsHardwareDecodeSupported(kCMVideoCodecType_AV1) }
+  @Published private(set) var quality: StudioQuality = {
+    let saved =
+      StudioQuality(rawValue: UserDefaults.standard.string(forKey: "studioQuality") ?? "") ?? .hd
+    return saved == .ultra && !Player.supports4K ? .hd : saved
+  }()
+  @Published private(set) var downloadingStudio = false
+  @Published private(set) var videoHeight: Int = 0
+  var onProgress: (() -> Void)?
+  private var wantsPlayback = true
   let nativePlayer = AVPlayer()
   private let studioCache = StudioVideoCache()
   private var studioTask: Task<Void, Never>?
@@ -33,7 +44,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
   private var voiceDucked = false
   var onEnded: (() -> Void)?
   var onUnavailable: (() -> Void)?
-  private var pending: Track?
+  private var pending: (track: Track, start: Double, autoplay: Bool)?
   private var canEnd = false
   let webView: WKWebView
   private static let origin = "https://recall.stoa.solutions"
@@ -87,6 +98,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
         self.elapsed = time.seconds.isFinite ? time.seconds : 0
         let length = self.nativePlayer.currentItem?.duration.seconds ?? 0
         self.duration = length.isFinite ? length : 0
+        self.onProgress?()
       }
     }
     configuration.userContentController.add(self, name: "player")
@@ -106,13 +118,23 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
       applyVolume()
       if let pending {
         self.pending = nil
-        cue(pending)
+        cueWeb(pending.track, start: pending.start, autoplay: pending.autoplay)
       }
+    case "progress":
+      guard !studioReady, value["id"] as? String == currentTrack?.id else { return }
+      if let time = value["elapsed"] as? Double, time.isFinite { elapsed = time }
+      if let length = value["duration"] as? Double, length.isFinite { duration = length }
+      onProgress?()
     case "state":
+      if let id = value["id"] as? String, id != currentTrack?.id { return }
       guard !studioReady && !preparingStudio else { return }
       let state = value["state"] as? Int
       playing = state == 1
-      if state == 1 { canEnd = true }
+      if state == 1 {
+        canEnd = true
+        wantsPlayback = true
+      }
+      if state == 2 { wantsPlayback = false }
       if state == 0, canEnd {
         canEnd = false
         onEnded?()
@@ -121,6 +143,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
       guard !studioReady && !preparingStudio else { return }
       failure = "Clique sur Lecture pour lancer l’écoute."
     case "error":
+      if let id = value["id"] as? String, id != currentTrack?.id { return }
       guard !studioReady && !preparingStudio else { return }
       failure = "YouTube bloque l’intégration de ce titre."
       onUnavailable?()
@@ -151,7 +174,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     }
     decisionHandler(.allow)
   }
-  func cue(_ track: Track) {
+  func cue(_ track: Track, start: Double = 0, autoplay: Bool = true) {
     currentTrack = track
     canEnd = false
     failure = ""
@@ -159,15 +182,18 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     nativePlayer.pause()
     nativePlayer.replaceCurrentItem(with: nil)
     studioReady = false
-    elapsed = 0
+    elapsed = start
     duration = 0
+    videoHeight = 0
+    wantsPlayback = autoplay
     if studio {
-      sendWebCommand("pause")
-      playing = false
-      preparingStudio = true
+      // Keep the visible YouTube player active until the native file is ready.
+      preparingStudio = false
+      downloadingStudio = true
+      cueWeb(track, start: start, autoplay: autoplay)
       studioTask = Task {
         do {
-          let file = try await studioCache.file(for: track.id)
+          let file = try await studioCache.file(for: track.id, quality: quality)
           try Task.checkCancellation()
           guard currentTrack?.id == track.id, studio else { return }
           let item = AVPlayerItem(url: file)
@@ -179,25 +205,34 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
               self.nativePlayer.pause()
               self.studioReady = false
               self.failure = "Lecture locale indisponible. Retour au lecteur YouTube."
-              self.cueWeb(track)
+              self.cueWeb(track, start: self.elapsed, autoplay: self.wantsPlayback)
             }
           }
           nativePlayer.replaceCurrentItem(with: item)
+          let resume = elapsed
+          await nativePlayer.seek(
+            to: CMTime(seconds: resume, preferredTimescale: 600), toleranceBefore: .zero,
+            toleranceAfter: .zero)
+          try Task.checkCancellation()
+          guard currentTrack?.id == track.id, studio else { return }
+          videoHeight = Int(item.presentationSize.height)
           applyVolume()
-          preparingStudio = false
+          downloadingStudio = false
           studioReady = true
-          nativePlayer.play()
-          studioCache.trim(keeping: Set([track.id, nextTrack?.id].compactMap { $0 }))
+          sendWebCommand("pause")
+          if wantsPlayback { nativePlayer.play() }
+          studioCache.trim(
+            keeping: Set([track.id, nextTrack?.id].compactMap { $0 }), quality: quality)
         } catch {
           guard !Task.isCancelled, currentTrack?.id == track.id else { return }
-          preparingStudio = false
+          downloadingStudio = false
           failure = error.localizedDescription
-          cueWeb(track)
         }
       }
     } else {
       preparingStudio = false
-      cueWeb(track)
+      downloadingStudio = false
+      cueWeb(track, start: start, autoplay: autoplay)
     }
   }
   func prepareNext(_ track: Track?) {
@@ -206,7 +241,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     studioCache.cancel(except: keep)
     prefetchTask?.cancel()
     guard studio, let track else { return }
-    prefetchTask = Task { _ = try? await studioCache.file(for: track.id) }
+    prefetchTask = Task { _ = try? await studioCache.file(for: track.id, quality: quality) }
   }
   func setStudio(_ value: Bool) {
     studio = value
@@ -216,7 +251,18 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
       prefetchTask?.cancel()
     }
     if let currentTrack {
-      cue(currentTrack)
+      cue(currentTrack, start: elapsed, autoplay: wantsPlayback)
+      prepareNext(nextTrack)
+    }
+  }
+  func setQuality(_ value: StudioQuality) {
+    let value: StudioQuality = value == .ultra && !Self.supports4K ? .hd : value
+    guard quality != value else { return }
+    quality = value
+    UserDefaults.standard.set(value.rawValue, forKey: "studioQuality")
+    studioCache.cancel()
+    if studio, let currentTrack {
+      cue(currentTrack, start: elapsed, autoplay: wantsPlayback)
       prepareNext(nextTrack)
     }
   }
@@ -232,19 +278,24 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     nativePlayer.replaceCurrentItem(with: nil)
     studioReady = false
     preparingStudio = false
+    downloadingStudio = false
+    elapsed = 0
+    duration = 0
     currentTrack = nil
     nextTrack = nil
     pending = nil
     sendWebCommand("pause")
   }
-  private func cueWeb(_ track: Track) {
+  private func cueWeb(_ track: Track, start: Double = 0, autoplay: Bool = true) {
     guard ready else {
-      pending = track
+      pending = (track, start, autoplay)
       return
     }
-    sendWebCommand("cue", extra: ["id": track.id, "autoplay": true])
+    sendWebCommand("cue", extra: ["id": track.id, "autoplay": autoplay, "start": start])
   }
   func command(_ name: String, extra: [String: Any] = [:]) {
+    if name == "play" { wantsPlayback = true }
+    if name == "pause" { wantsPlayback = false }
     if name == "duck" || name == "restore" {
       voiceDucked = name == "duck"
       nativePlayer.volume = nativeVolume

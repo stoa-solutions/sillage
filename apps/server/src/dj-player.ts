@@ -10,7 +10,7 @@ export const djPlayerJs = String.raw`(() => {
   const cue=(value)=>{
     if(!ready){pending=value;return;}
     hint.textContent='';play.hidden=true;
-    if(value.autoplay) player.loadVideoById(value.id); else player.cueVideoById(value.id);
+    if(value.autoplay) player.loadVideoById({videoId:value.id,startSeconds:Math.max(0,Number(value.start)||0)}); else player.cueVideoById({videoId:value.id,startSeconds:Math.max(0,Number(value.start)||0)});
   };
   window.addEventListener('message',(event)=>{
     if(event.source!==parent || !(/^chrome-extension:\/\/[a-p]{32}$/.test(event.origin) || /^http:\/\/(127\.0\.0\.1|localhost):[0-9]+$/.test(event.origin) || (parent===window && event.origin===location.origin))) return;
@@ -25,13 +25,14 @@ export const djPlayerJs = String.raw`(() => {
     if(ready && value.command==='restore' && duckedVolume!==null){player.setVolume(duckedVolume);duckedVolume=null;}
     if(ready && value.command==='volume' && Number.isFinite(value.value))player.setVolume(Math.max(0,Math.min(100,value.value)));
   });
+  setInterval(()=>{if(ready)emit('progress',{id:player.getVideoData()?.video_id,elapsed:player.getCurrentTime(),duration:player.getDuration()});},500);
   play.addEventListener('click',()=>{if(ready)player.playVideo();});
   window.onYouTubeIframeAPIReady=()=>{
     player=new YT.Player('player',{width:'100%',height:'250',playerVars:{playsinline:1,origin:location.origin},events:{
       onReady:()=>{ready=true;emit('ready');if(pending){cue(pending);pending=null;}},
-      onStateChange:(e)=>{emit('state',{state:e.data});if(e.data===1){play.hidden=true;hint.textContent='';}},
+      onStateChange:(e)=>{emit('state',{state:e.data,id:player.getVideoData()?.video_id});if(e.data===1){play.hidden=true;hint.textContent='';}},
       onAutoplayBlocked:()=>{play.hidden=false;hint.textContent='Clique pour démarrer la musique.';emit('blocked');},
-      onError:(e)=>{hint.textContent='Ce morceau ne peut pas être lu ici. Essaie le suivant ou ouvre-le sur YouTube.';emit('error',{code:e.data});}
+      onError:(e)=>{hint.textContent='Ce morceau ne peut pas être lu ici. Essaie le suivant ou ouvre-le sur YouTube.';emit('error',{code:e.data,id:player.getVideoData()?.video_id});}
     }});
   };
   const script=document.createElement('script');script.src='https://www.youtube.com/iframe_api';document.head.append(script);

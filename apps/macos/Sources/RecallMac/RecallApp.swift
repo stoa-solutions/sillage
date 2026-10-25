@@ -130,7 +130,7 @@ import SwiftUI
       }
     }
     Settings {
-      SettingsView().environmentObject(session).environmentObject(library)
+      SettingsView().environmentObject(session).environmentObject(library).environmentObject(dj)
         .onOpenURL { session.receiveGoogleCallback($0) }
         .tint(.recall)
     }

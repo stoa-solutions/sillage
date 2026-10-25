@@ -35,6 +35,7 @@ final class DJModel: ObservableObject {
     self.session = session
     microphone.onText = { [weak self] text in self?.send(text) }
     microphone.onError = { [weak self] text in self?.session.error = text }
+    player.onProgress = { [weak self] in self?.prepareNextVoice() }
     player.onEnded = { [weak self] in
       guard let self else { return }
       playback.markEnded()
@@ -78,6 +79,7 @@ final class DJModel: ObservableObject {
     }
     microphone.stop()
     voice.stop()
+    voice.clearPreparation()
     session.error = ""
     busy = true
     prompt = ""
@@ -116,7 +118,10 @@ final class DJModel: ObservableObject {
       return
     }
     let connection = session.connection
-    voice.speak(text) { text in
+    voice.speak(text, context: connection?.token ?? "", using: synthesis(connection))
+  }
+  private func synthesis(_ connection: Connection?) -> (String) async throws -> Data {
+    return { text in
       guard let connection else { throw RecallError.message("Voix indisponible.") }
       var object: [String: Any] = [:]
       let started = Date()
@@ -138,12 +143,23 @@ final class DJModel: ObservableObject {
       return bytes
     }
   }
+  private func prepareNextVoice() {
+    guard continuous, spoken, session.cloudVoice, player.playing,
+      player.duration > 0, player.duration - player.elapsed > 0,
+      player.duration - player.elapsed <= 20,
+      let track = upcoming.first?.track, let connection = session.connection
+    else { return }
+    voice.prepare(
+      "On continue avec \(track.title).", context: connection.token, using: synthesis(connection))
+  }
   func cancel() {
+    voice.clearPreparation()
     work?.cancel()
     microphone.stop()
     voice.stop()
   }
   func play(_ track: Track) {
+    voice.clearPreparation()
     playback.replace([track])
     playCurrent()
   }

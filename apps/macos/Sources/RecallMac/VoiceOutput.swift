@@ -11,6 +11,9 @@ final class VoiceOutput: NSObject, ObservableObject, AVAudioPlayerDelegate,
   @Published private(set) var status = ""
   private let player: Player
   private var task: Task<Void, Never>?
+  private let prepared = PreparedSpeech()
+  private var preparation: Task<Void, Never>?
+  private var preparationKey: String?
   private var audio: AVAudioPlayer?
   private let synthesizer = AVSpeechSynthesizer()
   private var currentUtterance: AVSpeechUtterance?
@@ -22,12 +25,17 @@ final class VoiceOutput: NSObject, ObservableObject, AVAudioPlayerDelegate,
     super.init()
     synthesizer.delegate = self
   }
-  func speak(_ text: String, using synthesize: @escaping (String) async throws -> Data) {
+  func speak(
+    _ text: String, context: String, using synthesize: @escaping (String) async throws -> Data
+  ) {
     stop()
     status = "Le DJ prépare sa voix…"
     task = Task {
       do {
-        let data = try await synthesize(text)
+        let key = context + ":" + text
+        let cached = try await prepared.take(key: key)
+        let data: Data
+        if let cached { data = cached } else { data = try await synthesize(text) }
         try Task.checkCancellation()
         let sound = try AVAudioPlayer(data: data)
         sound.delegate = self
@@ -42,6 +50,27 @@ final class VoiceOutput: NSObject, ObservableObject, AVAudioPlayerDelegate,
         onFallback?()
       }
     }
+  }
+  func prepare(
+    _ text: String, context: String, using synthesize: @escaping (String) async throws -> Data
+  ) {
+    let key = context + ":" + text
+    guard preparationKey != key else { return }
+    clearPreparation()
+    preparationKey = key
+    let active = task
+    preparation = Task {
+      // Serialize provider calls; the account permits one speech request at a time.
+      await active?.value
+      guard !Task.isCancelled else { return }
+      prepared.prepare(key: key) { try await synthesize(text) }
+    }
+  }
+  func clearPreparation() {
+    preparation?.cancel()
+    preparation = nil
+    preparationKey = nil
+    prepared.clear()
   }
   func speakLocally(_ text: String) {
     stop()

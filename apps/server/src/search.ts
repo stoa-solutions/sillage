@@ -6,6 +6,7 @@ import { infer } from "./inference-client.ts";
 import { TEXT_KEY, VISION_KEY } from "./indexing.ts";
 import { videoFromRow } from "./library.ts";
 import { vectorSql } from "./content.ts";
+import { hasGenreEvidence, isDescriptiveQuery, lookupTokens, matchesLookup, genreNameCollision, descriptiveRank } from "./search-relevance.ts";
 import { musicMatchRank } from "./music-matching.ts";
 export interface SearchInput {
   query: string;
@@ -28,6 +29,8 @@ export async function search(
   userId = LEGACY_USER,
 ) {
   const parsed = parseQuery(input.query);
+  const descriptive = isDescriptiveQuery(parsed.text);
+  let direct = false;
   const lexicalQuery =
     [...new Set(tokenize(parsed.text))].join(" OR ") || parsed.text;
   const min = Math.max(
@@ -66,19 +69,33 @@ export async function search(
   let degraded: string | null = null;
   if (parsed.text) {
     if (input.mode === "text") {
+      // Complete metadata matches need neither model startup nor vector inference.
+      const precise = !descriptive && lookupTokens(parsed.text).length
+        ? await db.query(
+          `SELECT v.id FROM videos v WHERE ${filter}
+          AND to_tsvector('recall_simple',coalesce(v.title,'') || ' ' || coalesce(v.channel,'')) @@ plainto_tsquery('recall_simple',$${params.length + 1})
+          ORDER BY v.id LIMIT 200`, [...params, lookupTokens(parsed.text).join(" ")])
+        : { rows: [] };
+      direct = precise.rows.length > 0;
+      for (const row of precise.rows) { exact.add(row.id); lexical.push(row.id); }
       const matches = await db.query(
         `SELECT v.id FROM videos v WHERE ${filter} AND unaccent(lower(v.title)) LIKE unaccent(lower($${params.length + 1})) ORDER BY length(v.title),v.id LIMIT 200`,
         [...params, "%" + parsed.text.replace(/[\\%_]/g, "\\$&") + "%"],
       );
       for (const row of matches.rows) exact.add(row.id);
+      if (!descriptive && matches.rows.length) direct = true;
       const result = await db.query(
-        `SELECT v.id,ts_rank_cd(search_document,websearch_to_tsquery('recall_simple',$${params.length + 1})) AS score
+        `SELECT v.id,v.title,v.channel,ts_rank_cd(search_document,websearch_to_tsquery('recall_simple',$${params.length + 1})) AS score
         FROM videos v WHERE ${filter} AND search_document @@ websearch_to_tsquery('recall_simple',$${params.length + 1}) ORDER BY score DESC,v.id LIMIT 200`,
         [...params, lexicalQuery],
       );
-      lexical.push(...result.rows.map((r) => r.id));
+      const corrected = !descriptive ? result.rows.filter(r => matchesLookup(parsed.text, r)) : [];
+      if (!direct && corrected.length) {
+        direct = true;
+        lexical.push(...corrected.map(r => r.id));
+      } else if (!direct) lexical.push(...result.rows.map((r) => r.id));
     }
-    try {
+    if (!direct) try {
       const cacheKey = `${input.mode}:${parsed.text}`;
       let vector = cache.get(cacheKey);
       if (!vector) {
@@ -101,12 +118,14 @@ export async function search(
         semantic.push(...result.rows.map((r) => r.id));
       } else {
         const result = await db.query(
-          `SELECT id,text FROM (SELECT DISTINCT ON(v.id) v.id,p.text,p.embedding <=> $${params.length + 2}::vector AS distance
+          `SELECT id,text,distance FROM (SELECT DISTINCT ON(v.id) v.id,p.text,p.embedding <=> $${params.length + 2}::vector AS distance
           FROM videos v JOIN passages p ON p.video_id=v.id WHERE ${filter} AND p.model_key=$${params.length + 1} AND p.source_hash=v.content_hash
           ORDER BY v.id,distance) ranked ORDER BY distance,id LIMIT 200`,
           [...params, TEXT_KEY, vectorSql(vector, 384)],
         );
         for (const r of result.rows) {
+          // E5 cosine distance: abstain from weak nearest neighbours.
+          if (Number(r.distance) > 0.24) continue;
           semantic.push(r.id);
           reasons.set(r.id, r.text.slice(0, 220));
         }
@@ -155,7 +174,11 @@ export async function search(
     candidates.rows.map((row) => [row.id, row]),
   );
   const ordered = [...rows.values()]
-    .filter((v) => !parsed.text || scores.has(v.id) || exact.has(v.id))
+    .filter((v) => {
+      if (!parsed.text || input.mode === "image") return true;
+      if (descriptive) return hasGenreEvidence(parsed.text, v);
+      return matchesLookup(parsed.text, v);
+    })
     .sort((a, b) => {
       if (input.sort === "duration")
         return (
@@ -165,7 +188,7 @@ export async function search(
       if (parsed.text && input.sort === "relevance")
         return (
           (input.mode === "text"
-            ? musicMatchRank(parsed.text, b) - musicMatchRank(parsed.text, a)
+            ? (descriptive ? descriptiveRank(parsed.text, b) - descriptiveRank(parsed.text, a) : musicMatchRank(parsed.text, b) - musicMatchRank(parsed.text, a))
             : 0) ||
           Number(exact.has(b.id)) - Number(exact.has(a.id)) ||
           (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0) ||

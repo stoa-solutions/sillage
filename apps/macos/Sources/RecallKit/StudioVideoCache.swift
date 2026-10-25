@@ -1,9 +1,24 @@
 import Foundation
 
+public enum StudioQuality: String, CaseIterable, Sendable {
+  case hd = "1080"
+  case ultra = "2160"
+  public var label: String { self == .hd ? "1080p" : "Jusqu’à 4K" }
+  public var maximumBytes: Int { (self == .hd ? 400 : 1200) * 1024 * 1024 }
+  public var cacheBytes: Int { (self == .hd ? 2048 : 6144) * 1024 * 1024 }
+  public var timeout: UInt64 { self == .hd ? 150 : 300 }
+  public var format: String {
+    let hd =
+      "bv*[height<=1080][vcodec^=avc1]+ba[acodec^=mp4a]/b[height<=1080][ext=mp4][vcodec^=avc1]"
+    return self == .hd ? hd : "bv*[height<=2160][vcodec^=av01]+ba[acodec^=mp4a]/" + hd
+  }
+}
+
 /// Opt-in home Studio cache. No browser cookies, account credentials, or shell interpolation.
 @MainActor
 public final class StudioVideoCache {
   private var jobs: [String: Task<URL, Error>] = [:]
+  private var generations: [String: UUID] = [:]
   private var processes: [String: Process] = [:]
   private let directory: URL
   private let executableOverride: String?
@@ -15,30 +30,45 @@ public final class StudioVideoCache {
     directory = override ?? root.appendingPathComponent("Playlist Recall/Studio", isDirectory: true)
   }
   public func cancel(except keep: Set<String> = []) {
-    for (id, job) in jobs where !keep.contains(id) {
+    for (id, job) in jobs where !keep.contains(String(id.prefix(11))) {
       job.cancel()
       if let process = processes[id], process.isRunning { process.terminate() }
+      jobs[id] = nil
+      processes[id] = nil
+      generations[id] = nil
     }
   }
-  public func file(for id: String) async throws -> URL {
+  public func file(for id: String, quality: StudioQuality = .hd) async throws -> URL {
     guard id.range(of: #"^[A-Za-z0-9_-]{11}$"#, options: .regularExpression) != nil else {
       throw RecallError.message("Identifiant vidéo invalide.")
     }
     try FileManager.default.createDirectory(
       at: directory, withIntermediateDirectories: true,
       attributes: [.posixPermissions: 0o700])
-    let destination = directory.appendingPathComponent(id + ".mp4")
-    if FileManager.default.fileExists(atPath: destination.path) { return destination }
-    if let job = jobs[id] { return try await job.value }
-    let job = Task { try await download(id, to: destination) }
-    jobs[id] = job
+    let key = id + "-" + quality.rawValue
+    let destination = directory.appendingPathComponent(key + ".mp4")
+    if FileManager.default.fileExists(atPath: destination.path) {
+      try? FileManager.default.setAttributes(
+        [.modificationDate: Date()], ofItemAtPath: destination.path)
+      return destination
+    }
+    if let job = jobs[key] { return try await job.value }
+    let generation = UUID()
+    generations[key] = generation
+    let job = Task { try await download(id, key: key, quality: quality, to: destination) }
+    jobs[key] = job
     defer {
-      jobs[id] = nil
-      processes[id] = nil
+      if generations[key] == generation {
+        jobs[key] = nil
+        processes[key] = nil
+        generations[key] = nil
+      }
     }
     return try await job.value
   }
-  private func download(_ id: String, to destination: URL) async throws -> URL {
+  private func download(_ id: String, key: String, quality: StudioQuality, to destination: URL)
+    async throws -> URL
+  {
     guard
       let executable =
         (executableOverride.map { [$0] } ?? ["/opt/homebrew/bin/yt-dlp", "/usr/local/bin/yt-dlp"])
@@ -58,8 +88,9 @@ public final class StudioVideoCache {
       "--ignore-config", "--no-playlist", "--no-cache-dir", "--no-progress",
       "--quiet", "--no-warnings", "--retries", "1", "--fragment-retries", "1", "--socket-timeout",
       "15",
-      "--max-filesize", "180M", "--match-filters", "duration <= 1200 & !is_live",
-      "--format", "bv*[height<=720][vcodec^=avc1]+ba[acodec^=mp4a]/b[height<=720][ext=mp4]",
+      "--max-filesize", String(quality.maximumBytes), "--match-filters",
+      "duration <= 1200 & !is_live",
+      "--format", quality.format,
       "--merge-output-format", "mp4", "--output", output.path,
       "--", "https://www.youtube.com/watch?v=" + id,
     ]
@@ -68,9 +99,9 @@ public final class StudioVideoCache {
     process.environment = environment
     process.standardOutput = FileHandle.nullDevice
     process.standardError = FileHandle.nullDevice
-    processes[id] = process
+    processes[key] = process
     let deadline = Task {
-      try? await Task.sleep(nanoseconds: 90_000_000_000)
+      try? await Task.sleep(nanoseconds: quality.timeout * 1_000_000_000)
       if !Task.isCancelled, process.isRunning { process.terminate() }
     }
     defer { deadline.cancel() }
@@ -87,14 +118,14 @@ public final class StudioVideoCache {
         "Ce clip n’est pas disponible en Studio. Lecture YouTube conservée.")
     }
     let size = (try output.resourceValues(forKeys: [.fileSizeKey])).fileSize ?? 0
-    guard size > 0, size <= 200 * 1024 * 1024 else {
+    guard size > 0, size <= quality.maximumBytes else {
       throw RecallError.message("Ce clip dépasse la limite du cache Studio.")
     }
     try FileManager.default.moveItem(at: output, to: destination)
     // Keep a small recoverable cache, preserving any files currently in use by the player.
     return destination
   }
-  public func trim(keeping ids: Set<String>) {
+  public func trim(keeping ids: Set<String>, quality: StudioQuality = .hd) {
     guard
       let files = try? FileManager.default.contentsOfDirectory(
         at: directory,
@@ -110,8 +141,7 @@ public final class StudioVideoCache {
       $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
     }
     for file in videos
-    where bytes > 800 * 1024 * 1024 && !ids.contains(file.deletingPathExtension().lastPathComponent)
-    {
+    where bytes > quality.cacheBytes && !ids.contains(String(file.lastPathComponent.prefix(11))) {
       let size = (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
       if (try? FileManager.default.removeItem(at: file)) != nil { bytes -= size }
     }

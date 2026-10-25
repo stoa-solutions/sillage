@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
   @EnvironmentObject var session: Session
   @EnvironmentObject var library: LibraryModel
+  @EnvironmentObject var dj: DJModel
   @State private var key = ""
   @State private var busy = false
   @State private var message = ""
@@ -87,6 +88,9 @@ struct SettingsView: View {
         Text("Micro au clic. Dictée Apple ; voix Gemini avec ta clé, voix macOS en secours.").font(
           .caption)
       }
+      Section("Vidéo Studio") {
+        StudioQualitySettings(player: dj.player)
+      }
       Section("Mises à jour") {
         Text(
           "Les archives de mise à jour doivent être signées. Cette version utilise une signature locale ; la distribution sans avertissement macOS attend la notarisation Apple."
@@ -96,5 +100,24 @@ struct SettingsView: View {
       if !session.error.isEmpty { Text(session.error).font(.caption).foregroundStyle(.red) }
     }.formStyle(.grouped).frame(width: 650, height: 700)
       .task { await session.refreshCredentials() }
+  }
+}
+
+private struct StudioQualitySettings: View {
+  @ObservedObject var player: Player
+  var body: some View {
+    Picker("Qualité", selection: Binding(get: { player.quality }, set: { player.setQuality($0) })) {
+      Text("1080p").tag(StudioQuality.hd)
+      if Player.supports4K { Text("Jusqu’à 4K").tag(StudioQuality.ultra) }
+    }
+    Text(
+      Player.supports4K
+        ? "La résolution dépend du clip disponible. Cache Studio : 2 Go en 1080p, 6 Go en 4K."
+        : "1080p sur ce Mac. La 4K nécessite le décodage matériel AV1. Cache Studio : 2 Go."
+    ).font(.caption)
+    if player.downloadingStudio {
+      Text("Le clip Studio se prépare ; YouTube continue la lecture.").font(.caption)
+    }
+    if player.videoHeight > 0 { Text("Clip en cours : \(player.videoHeight)p").font(.caption) }
   }
 }

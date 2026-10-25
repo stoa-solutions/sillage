@@ -125,6 +125,7 @@ do {
     "Channel photo accepted from a host other than Google's")
   print("30 native behavior checks passed")
   try await studioCacheChecks()
+  try await preparedSpeechChecks()
 } catch {
   fputs("Native tests failed: \(error.localizedDescription)\n", stderr)
   exit(1)

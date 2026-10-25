@@ -27,6 +27,13 @@ func studioCacheChecks() async throws {
   let first = try await cache.file(for: "abcdefghijk")
   try expect(
     try Data(contentsOf: first) == Data("test-video".utf8), "Studio output not promoted atomically")
+  let ultra = try await cache.file(for: "abcdefghijk", quality: .ultra)
+  try expect(
+    ultra != first && first.lastPathComponent == "abcdefghijk-1080.mp4",
+    "Quality reused another resolution")
+  try expect(
+    StudioQuality.ultra.format.contains("av01") && !StudioQuality.hd.format.contains("720"),
+    "Unsupported video selector")
   try FileManager.default.removeItem(at: helper)
   let reused = try await cache.file(for: "abcdefghijk")
   try expect(first == reused, "Studio redownloaded a cached clip")
@@ -40,7 +47,7 @@ func studioCacheChecks() async throws {
   try expect(cancelled, "Studio cancellation did not stop the downloader")
   try expect(
     !FileManager.default.fileExists(
-      atPath: root.appendingPathComponent("cache/12345678901.mp4").path),
+      atPath: root.appendingPathComponent("cache/12345678901-1080.mp4").path),
     "Cancelled download became a playable cache entry")
   print("Studio cache checks passed: invalid ID, atomic download, reuse, cancellation.")
 }

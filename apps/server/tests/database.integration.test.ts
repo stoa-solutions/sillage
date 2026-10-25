@@ -690,3 +690,17 @@ it("refuses credential storage without a valid encryption key", async () => {
       .n,
   ).toBe(0);
 });
+
+it("resolves a complete metadata lookup without inference and rejects invented songs", async () => {
+  await importLibrary(db, fixture);
+  const request = (query: string) => app.request("/v1/search", {
+    method: "POST", headers: {Authorization: `Bearer ${token}`, "Content-Type":"application/json"}, body: JSON.stringify({query})
+  });
+  const direct = await (await request("Blue saxophone")).json();
+  expect(direct.results[0].video.id).toBe("abcdefghijk");
+  expect(infer).not.toHaveBeenCalled();
+  vi.mocked(infer).mockResolvedValue({vector:Array(384).fill(0.01)});
+  const missing = await (await request("Blue nonexistent987")).json();
+  expect(missing.total).toBe(0);
+  expect(missing.results).toEqual([]);
+});
