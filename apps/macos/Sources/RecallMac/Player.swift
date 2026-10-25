@@ -13,6 +13,13 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
   @Published private(set) var preparingStudio = false
   @Published private(set) var elapsed: Double = 0
   @Published private(set) var duration: Double = 0
+  /// Music volume from 0 to 1, shared by both players; the DJ's voice lowers it temporarily.
+  @Published var volume = UserDefaults.standard.object(forKey: "musicVolume") as? Double ?? 1 {
+    didSet {
+      UserDefaults.standard.set(volume, forKey: "musicVolume")
+      applyVolume()
+    }
+  }
   let nativePlayer = AVPlayer()
   private let studioCache = StudioVideoCache()
   private var studioTask: Task<Void, Never>?
@@ -96,6 +103,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     switch value["event"] as? String {
     case "ready":
       ready = true
+      applyVolume()
       if let pending {
         self.pending = nil
         cue(pending)
@@ -175,7 +183,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
             }
           }
           nativePlayer.replaceCurrentItem(with: item)
-          nativePlayer.volume = voiceDucked ? 0.18 : 1
+          applyVolume()
           preparingStudio = false
           studioReady = true
           nativePlayer.play()
@@ -237,13 +245,9 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     sendWebCommand("cue", extra: ["id": track.id, "autoplay": true])
   }
   func command(_ name: String, extra: [String: Any] = [:]) {
-    if name == "duck" {
-      voiceDucked = true
-      nativePlayer.volume = 0.18
-    }
-    if name == "restore" {
-      voiceDucked = false
-      nativePlayer.volume = 1
+    if name == "duck" || name == "restore" {
+      voiceDucked = name == "duck"
+      nativePlayer.volume = nativeVolume
     }
     if studioReady {
       if name == "play" { nativePlayer.play() }
@@ -251,6 +255,13 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
       return
     }
     sendWebCommand(name, extra: extra)
+    // The web player restores its pre-duck volume; the slider may have moved meanwhile.
+    if name == "restore" { applyVolume() }
+  }
+  private var nativeVolume: Float { Float(voiceDucked ? min(volume, 0.18) : volume) }
+  private func applyVolume() {
+    nativePlayer.volume = nativeVolume
+    if !voiceDucked { sendWebCommand("volume", extra: ["value": Int(volume * 100)]) }
   }
   private func sendWebCommand(_ name: String, extra: [String: Any] = [:]) {
     var value = extra

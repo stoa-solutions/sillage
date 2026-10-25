@@ -137,18 +137,18 @@ struct DJView: View {
         Image(systemName: "forward.fill").font(.title3).frame(width: 32, height: 32)
       }.buttonStyle(.plain).help("Morceau suivant").accessibilityLabel("Morceau suivant")
         .disabled(model.current == nil || model.busy)
-      Spacer()
-      Toggle(isOn: $model.spoken) {
-        Image(systemName: model.spoken ? "speaker.wave.2.fill" : "speaker.slash")
-      }.help("Le DJ répond à voix haute").accessibilityLabel("Réponses à voix haute")
-      Toggle(isOn: $model.continuous) { Image(systemName: "infinity") }
-        .help("Enchaîner la musique automatiquement").accessibilityLabel("Enchaîner")
+      VolumeControl(player: player)
+      Spacer(minLength: 8)
+      Toggle(isOn: $model.spoken) { Label("Voix du DJ", systemImage: "person.wave.2") }
+        .help("Le DJ te répond et annonce les morceaux à voix haute")
+      Toggle(isOn: $model.continuous) { Label("Enchaîner", systemImage: "infinity") }
+        .help("À la fin de la file, le DJ ajoute de nouveaux morceaux dans la même ambiance")
       if let current = model.current {
         Link(destination: current.url) { Image(systemName: "arrow.up.right.square") }
           .foregroundStyle(.secondary)
           .help("Ouvrir sur YouTube").accessibilityLabel("Ouvrir sur YouTube")
       }
-    }.toggleStyle(.button)
+    }.toggleStyle(PillToggleStyle())
   }
 
   @ViewBuilder private var upNext: some View {
@@ -273,5 +273,51 @@ private struct MessageRow: View {
     } else {
       Text(message.content).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
     }
+  }
+}
+
+/// On: filled in Recall green. Off: outlined and muted. The state reads at a glance.
+private struct PillToggleStyle: ToggleStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    Button {
+      configuration.isOn.toggle()
+    } label: {
+      configuration.label.labelStyle(.titleAndIcon).font(.caption.weight(.medium))
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .foregroundStyle(
+          configuration.isOn ? Color(nsColor: .windowBackgroundColor) : Color.secondary
+        )
+        .background {
+          if configuration.isOn {
+            Capsule().fill(Color.recall)
+          } else {
+            Capsule().strokeBorder(Color.secondary.opacity(0.5))
+          }
+        }.contentShape(Capsule())
+    }.buttonStyle(.plain).accessibilityValue(configuration.isOn ? "Activé" : "Désactivé")
+  }
+}
+
+/// Music volume; the speaker mutes and restores the previous level.
+private struct VolumeControl: View {
+  @ObservedObject var player: Player
+  @State private var beforeMute = 1.0
+  var body: some View {
+    HStack(spacing: 6) {
+      Button {
+        if player.volume > 0 {
+          beforeMute = player.volume
+          player.volume = 0
+        } else {
+          player.volume = max(beforeMute, 0.1)
+        }
+      } label: {
+        Image(systemName: player.volume == 0 ? "speaker.slash.fill" : "speaker.wave.2.fill")
+          .frame(width: 20)
+      }.buttonStyle(.plain).foregroundStyle(.secondary)
+        .accessibilityLabel(player.volume == 0 ? "Remettre le son" : "Couper le son")
+      Slider(value: $player.volume, in: 0...1).frame(width: 90).controlSize(.small)
+        .accessibilityLabel("Volume de la musique")
+    }.help("Volume de la musique")
   }
 }
