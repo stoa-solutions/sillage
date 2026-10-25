@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- App 1.5.1 : intégration du design commun de Claude (surfaces translucides, vidéo Studio dans tous les onglets, lignes de morceaux partagées et accueil en trois étapes). Découvrir s’ouvre assez large pour garder recherche et chat lisibles ; les commandes du chat expliquent la différence entre lancer et ajouter à la suite.
+
 - Chat DJ : la source (YouTube / playlists / Partout) est indépendante de l’intention. Une demande de lecture lance maintenant, « à la suite » ajoute sans interrompre, « cherche » propose des cartes. « Suivant » agit immédiatement sans attendre l’IA ; une recherche tardive ne remplace plus ce choix. Les recherches seules ne changent pas la direction musicale des suites automatiques. Les suites respectent la source choisie, avec exclusion des morceaux déjà joués/en file aussi sur YouTube et au plus deux tentatives.
 
 - DJ Découvrir : conserve la sélection choisie par le modèle même s’il utilise le champ habituel de lecture ; ne réintroduit pas tous les candidats dans les cartes.

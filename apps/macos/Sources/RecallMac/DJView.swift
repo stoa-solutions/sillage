@@ -43,7 +43,10 @@ struct DJView: View {
         playerStatus
       }.padding(14).glassPanel().layoutPriority(1)
       if panelCollapsed {
-        HStack { reopenPanel; Spacer() }
+        HStack {
+          reopenPanel
+          Spacer()
+        }
         Spacer(minLength: 0)
       } else {
         sessionPanel.glassPanel()
@@ -212,7 +215,9 @@ struct DJView: View {
               ? nil : ("Préparer la suite", { model.retryContinuation() }))
         }
         ForEach(model.allUpcoming) { entry in
-          TrackRow(track: entry.track, artworkWidth: 72, onPlay: { model.playUpcoming(at: entry.id) }) {
+          TrackRow(
+            track: entry.track, artworkWidth: 72, onPlay: { model.playUpcoming(at: entry.id) }
+          ) {
             Menu {
               Button("Lire maintenant") { model.playUpcoming(at: entry.id) }
               Button("Monter") { model.moveUpcoming(from: entry.id, to: entry.id - 1) }
@@ -309,7 +314,8 @@ struct DJView: View {
         Text("YouTube").tag(DiscoveryScope.youtube)
         Text("Partout").tag(DiscoveryScope.all)
       }.pickerStyle(.segmented).labelsHidden().neutralSelection().help(
-        "YouTube et Partout proposent des résultats sans remplacer la file.")
+        "Choisis où chercher. « Joue » lance maintenant ; « ajoute à la suite » conserve la lecture."
+      )
       if microphone.active {
         HStack(spacing: 8) {
           if microphone.starting || microphone.finishing { ProgressView().controlSize(.small) }
@@ -390,5 +396,3 @@ private struct MessageRow: View {
     }
   }
 }
-
-

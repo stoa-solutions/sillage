@@ -33,16 +33,25 @@ struct MainView: View {
         }.pickerStyle(.segmented).fixedSize().neutralSelection()
       }
       ToolbarItemGroup(placement: .primaryAction) {
-        DisplayPicker(player: dj.player)
+        DisplayPicker(player: dj.player, wide: section == .discover)
         SettingsLink { Image(systemName: "gearshape") }
           .help("Réglages").accessibilityLabel("Réglages")
       }
     }
-    .background(WindowAppearance(player: dj.player))
+    .background(WindowAppearance(player: dj.player, discovery: section == .discover))
     .tint(.recall)
     .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: section)
     .sheet(isPresented: $session.showOnboarding) {
       OnboardingView().environmentObject(session).environmentObject(library)
+    }
+    .onChange(of: section) { _, destination in
+      guard destination == .discover, let window = NSApp.keyWindow,
+        !window.styleMask.contains(.fullScreen), window.frame.width < 1180
+      else { return }
+      var frame = window.frame
+      frame.size.width = 1180
+      if let screen = window.screen { frame = window.constrainFrameRect(frame, to: screen) }
+      window.setFrame(frame, display: true, animate: true)
     }
     .onChange(of: session.showOnboarding) { _, showing in
       if !showing && session.hasServer && library.libraryCount == 0 { section = .library }
@@ -117,6 +126,7 @@ private struct Banner: View {
 /// Off: the compact player beside your work. On: Studio, the clip behind every page.
 private struct DisplayPicker: View {
   @ObservedObject var player: Player
+  let wide: Bool
   var body: some View {
     Toggle(
       isOn: Binding(
@@ -128,12 +138,14 @@ private struct DisplayPicker: View {
     ) {
       Label("Studio", systemImage: "play.rectangle.on.rectangle")
     }.toggleStyle(ToolbarToggleStyle())
-      .help("Studio : le clip en plein cadre derrière chaque page, lu depuis un cache privé quand c’est possible.")
+      .help(
+        "Studio : le clip en plein cadre derrière chaque page, lu depuis un cache privé quand c’est possible."
+      )
   }
   private func fitWindow(studio: Bool) {
     guard let window = NSApp.keyWindow, !window.styleMask.contains(.fullScreen) else { return }
     var frame = window.frame
-    frame.size.width = studio ? max(frame.width, 1180) : min(frame.width, 600)
+    frame.size.width = studio || wide ? max(frame.width, 1180) : min(frame.width, 600)
     if let screen = window.screen { frame = window.constrainFrameRect(frame, to: screen) }
     window.setFrame(frame, display: true, animate: true)
   }
@@ -142,13 +154,14 @@ private struct DisplayPicker: View {
 /// The app is dark in both modes; Studio needs at least 900 points of width.
 private struct WindowAppearance: NSViewRepresentable {
   @ObservedObject var player: Player
+  let discovery: Bool
   func makeNSView(context: Context) -> NSView { NSView() }
   func updateNSView(_ view: NSView, context: Context) {
     let studio = player.studio
     DispatchQueue.main.async {
       guard let window = view.window else { return }
       window.appearance = NSAppearance(named: .darkAqua)
-      window.contentMinSize.width = studio ? 900 : 600
+      window.contentMinSize.width = studio || discovery ? 900 : 600
       guard window.frame.width < window.contentMinSize.width,
         !window.styleMask.contains(.fullScreen)
       else { return }

@@ -279,7 +279,10 @@ final class DJModel: ObservableObject {
     if userInitiated {
       unavailableCount = 0
       // A late manual search must not undo a more recent Next. Keep automatic refill alive.
-      if busy && !automaticRequest { cancel() }
+      if busy && !automaticRequest {
+        cancel()
+        composition.resume()
+      }
     }
     voice.stop()
     if playback.requestNext(outcome: outcome) {

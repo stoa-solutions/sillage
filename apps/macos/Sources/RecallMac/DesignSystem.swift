@@ -66,11 +66,12 @@ struct StageBackground: View {
 struct PageHeader<Trailing: View>: View {
   let title: String
   let subtitle: String?
+  var titleFont: Font = .largeTitle.bold()
   @ViewBuilder var trailing: Trailing
   var body: some View {
     HStack(alignment: .firstTextBaseline) {
       VStack(alignment: .leading, spacing: 2) {
-        Text(title).font(.largeTitle.bold())
+        Text(title).font(titleFont)
         if let subtitle { Text(subtitle).foregroundStyle(.secondary) }
       }
       Spacer()
@@ -79,8 +80,8 @@ struct PageHeader<Trailing: View>: View {
   }
 }
 extension PageHeader where Trailing == EmptyView {
-  init(title: String, subtitle: String?) {
-    self.init(title: title, subtitle: subtitle) { EmptyView() }
+  init(title: String, subtitle: String?, titleFont: Font = .largeTitle.bold()) {
+    self.init(title: title, subtitle: subtitle, titleFont: titleFont) { EmptyView() }
   }
 }
 
@@ -183,7 +184,8 @@ struct TrackHeadline: View {
     .id(track?.id)
     .transition(
       reduceMotion
-        ? .opacity : .asymmetric(insertion: .push(from: .bottom), removal: .push(from: .bottom)))
+        ? .opacity : .asymmetric(insertion: .push(from: .bottom), removal: .push(from: .bottom))
+    )
     .animation(.easeOut(duration: 0.25), value: track?.id)
     .accessibilityElement(children: .combine)
   }

@@ -17,7 +17,9 @@ struct DiscoverView: View {
     VStack(spacing: 12) {
       HStack(spacing: 12) {
         VStack(alignment: .leading, spacing: 16) {
-          PageHeader(title: "Découvrir", subtitle: "Cherche dans tes playlists et sur YouTube.")
+          PageHeader(
+            title: "Découvrir", subtitle: "Une recherche, deux horizons.",
+            titleFont: .system(size: 42, weight: .bold))
           HStack(spacing: 8) {
             SearchField(
               prompt: "Un titre, un artiste, une envie…", text: $discovery.query,
@@ -44,10 +46,7 @@ struct DiscoverView: View {
           }
           results
         }.padding(20).frame(maxWidth: .infinity).glassPanel()
-        ViewThatFits(in: .horizontal) {
-          DJView(model: dj, panelOnly: true).frame(width: 350).glassPanel()
-          EmptyView()
-        }.frame(maxWidth: 350)
+        DJView(model: dj, panelOnly: true).frame(width: 350).glassPanel()
       }
       NowPlayingBar(model: dj, player: dj.player, openDJ: openDJ)
     }.padding(16)
@@ -64,7 +63,8 @@ struct DiscoverView: View {
         if !discovery.searched {
           EmptyState(
             symbol: "sparkle.magnifyingglass",
-            message: "Cherche un morceau : tes playlists, YouTube, ou les deux. La musique continue.")
+            message:
+              "Cherche un morceau : tes playlists, YouTube, ou les deux. La musique continue.")
         }
         if discovery.searched && discovery.scope != .youtube {
           SectionHeader("Dans tes playlists", count: discovery.libraryTotal)
@@ -106,7 +106,8 @@ struct DiscoverView: View {
               .disabled(
                 discovery.searching
                   || discovery.query.trimmingCharacters(in: .whitespacesAndNewlines)
-                    != discovery.submittedQuery)
+                    != discovery.submittedQuery
+              )
           }
         }
         if discovery.searching {
@@ -148,7 +149,7 @@ struct DiscoveryTrackRow: View {
   var body: some View {
     TrackRow(
       track: item.video, detail: saved ? "Dans ta bibliothèque" : nil,
-      artworkWidth: compact ? 72 : 96, persistentActions: true, onPlay: { dj.play(item.video) }
+      artworkWidth: compact ? 72 : 140, persistentActions: true, onPlay: { dj.play(item.video) }
     ) {
       HStack(spacing: 6) {
         Button {
