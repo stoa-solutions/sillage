@@ -25,7 +25,7 @@ import SwiftUI
     let session = Session()
     let library = LibraryModel(session: session)
     let dj = DJModel(session: session)
-    session.onSourceChange = { [weak library, weak dj] in
+    session.onConnectionChange = { [weak library, weak dj] in
       dj?.reset()
       library?.reset()
     }
@@ -64,11 +64,9 @@ import SwiftUI
         session.model = UserDefaults.standard.string(forKey: "djModel") ?? "gemini-3.5-flash-lite"
       } catch { session.error = error.localizedDescription }
     }
-    if session.useServer || !session.localDJ || session.cloudVoice {
-      await session.refreshCredentials()
-    }
+    await session.refreshCredentials()
     if CommandLine.arguments.contains("--verify-quality") {
-      let report = session.store.directory.appendingPathComponent("quality-verification.json")
+      let report = FileManager.default.temporaryDirectory.appendingPathComponent("recall-quality-verification.json")
       do {
         let started = Date()
         guard let connection = session.connection, !session.geminiKey.isEmpty else {
@@ -101,8 +99,8 @@ import SwiftUI
         session.error = error.localizedDescription
       }
     }
-    session.showOnboarding = !session.localDJ && !session.hasKey && !session.hasServer
-    if session.useServer { library.sync() }
+    session.showOnboarding = !session.hasServer
+    if session.hasServer { library.sync() }
   }
   var body: some Scene {
     WindowGroup("Playlist Recall") {
@@ -116,7 +114,7 @@ import SwiftUI
           }
           while !Task.isCancelled {
             do { try await Task.sleep(nanoseconds: 60_000_000_000) } catch { break }
-            if session.useServer { library.sync() }
+            if session.hasServer { library.sync() }
           }
         }
         .onDisappear {
@@ -131,9 +129,7 @@ import SwiftUI
           .disabled(delegate.updater == nil)
       }
       CommandGroup(replacing: .newItem) {
-        Button("Importer une bibliothèque…") { library.importFile() }.keyboardShortcut("o")
-        Button("Exporter la bibliothèque…") { library.export() }.keyboardShortcut(
-          "e", modifiers: [.command, .shift])
+        Button("Actualiser la bibliothèque") { library.sync() }.keyboardShortcut("r")
       }
     }
     Settings {

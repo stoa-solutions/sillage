@@ -15,6 +15,57 @@ struct LoggedSearch: LibrarySearch {
 @main struct Diagnostics {
   static func main() async {
     do {
+      if CommandLine.arguments.count == 3, CommandLine.arguments[1] == "--server-library" {
+        let connection = try JSONDecoder().decode(
+          Connection.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[2])))
+        let client = HTTPClient()
+        let overview = try await client.libraryOverview(connection)
+        let first = try await client.searchPage(connection, query: "", limit: 25)
+        let second = try await client.searchPage(connection, query: "", offset: 25, limit: 25)
+        guard first.total == overview.videoCount,
+          Set(first.tracks.map(\.id)).isDisjoint(with: second.tracks.map(\.id))
+        else {
+          throw RecallError.message("Server pagination mismatch")
+        }
+        for playlist in overview.playlists {
+          let page = try await client.searchPage(
+            connection, query: "", limit: 25, playlist: playlist.id)
+          print(
+            "Server playlist:", playlist.title, "entries", playlist.entries, "distinct", page.total,
+            "page", page.tracks.count)
+        }
+        let candidates = try await client.djCandidates(
+          connection, query: "Mac Miller", excluded: [])
+        guard !candidates.isEmpty else { throw RecallError.message("No server DJ candidates") }
+        let excluded = Set(candidates.prefix(10).map(\.id))
+        let continued = try await client.djCandidates(
+          connection, query: "Mac Miller", excluded: excluded)
+        guard !continued.isEmpty, continued.allSatisfy({ !excluded.contains($0.id) }) else {
+          throw RecallError.message("Server DJ exclusion failed")
+        }
+        print(
+          "Server-only verification passed:", overview.videoCount, "videos;",
+          overview.playlists.count, "playlists;", candidates.count,
+          "DJ candidates. No local store used.")
+        return
+      }
+      if CommandLine.arguments.count == 4, CommandLine.arguments[1] == "--server-sync" {
+        let connection = try JSONDecoder().decode(
+          Connection.self,
+          from:
+            Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[2])))
+        let id = try await ServerPlaylistImporter(connection: connection).synchronize(
+          link: CommandLine.arguments[3])
+        let overview = try await HTTPClient().libraryOverview(connection)
+        guard let playlist = overview.playlists.first(where: { $0.id == id }) else {
+          throw RecallError.message("Synchronized playlist missing")
+        }
+        print(
+          "Server-only import confirmed:", playlist.title, playlist.entries, "entries;",
+          overview.playlists.count, "playlists;", overview.videoCount,
+          "unique videos. No local export or database.")
+        return
+      }
       if CommandLine.arguments.count == 4, CommandLine.arguments[1] == "--server-import" {
         let data = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[2]))
         let raw = try JSONDecoder().decode(Connection.self, from: data)

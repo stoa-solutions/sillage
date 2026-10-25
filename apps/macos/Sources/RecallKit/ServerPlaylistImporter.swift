@@ -13,7 +13,21 @@ public struct ServerPlaylistImporter: Sendable {
     self.call = call
     self.pause = pause
   }
+  /// Compatibility export for diagnostics; the Mac app only calls synchronize.
   public func load(link: String) async throws -> LibraryDocument {
+    let id = try await synchronize(link: link)
+    let exported = try await call("export", nil)
+    let document = try LibraryDocument.parse(JSONSerialization.data(withJSONObject: exported))
+    guard let selected = document.playlists.first(where: { $0.id == id }) else {
+      throw RecallError.message(
+        "La playlist synchronisée n’est pas encore disponible dans l’export.")
+    }
+    let ids = Set(selected.videoIDs)
+    return LibraryDocument(
+      tracks: document.tracks.filter { ids.contains($0.id) }, playlists: [selected])
+  }
+  /// Wait for a fresh server commit without downloading or storing the library.
+  public func synchronize(link: String) async throws -> String {
     try Task.checkCancellation()
     let id = try YouTubePlaylistLink.id(from: link)
     let status = try await call("status", nil)
@@ -41,15 +55,7 @@ public struct ServerPlaylistImporter: Sendable {
       if playlist?["status"] as? String == "ready",
         let synced = playlist?["last_sync_at"] as? String, synced != previous
       {
-        let exported = try await call("export", nil)
-        let document = try LibraryDocument.parse(JSONSerialization.data(withJSONObject: exported))
-        guard let selected = document.playlists.first(where: { $0.id == id }) else {
-          throw RecallError.message(
-            "La playlist synchronisée n’est pas encore disponible dans l’export.")
-        }
-        let ids = Set(selected.videoIDs)
-        return LibraryDocument(
-          tracks: document.tracks.filter { ids.contains($0.id) }, playlists: [selected])
+        return id
       }
     }
     throw RecallError.message(

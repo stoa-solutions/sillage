@@ -11,7 +11,7 @@ struct OnboardingView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
       Text("Bienvenue dans Recall.").font(.largeTitle)
-      Text("Ta musique, ton DJ. Une clé Gemini suffit pour le chat et la voix expressive.")
+      Text("Connecte ton serveur pour retrouver toutes tes playlists. Ajoute ta clé Gemini pour personnaliser ton DJ et sa voix.")
       SecureField("Ta clé API Gemini", text: $key).textFieldStyle(.roundedBorder)
       Text(
         "Conservée dans le Trousseau de ce Mac. Seuls tes demandes et les titres sélectionnés sont transmis à Google. Les appels utilisent ton quota Gemini."
@@ -37,7 +37,7 @@ struct OnboardingView: View {
       ).font(.callout)
       Button("Importer ma connexion serveur…") { importConnection() }
       if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.red) }
-      Button("Explorer ma bibliothèque d’abord") { session.showOnboarding = false }.buttonStyle(
+      Button(session.hasServer ? "Ouvrir ma bibliothèque" : "Configurer plus tard") { session.showOnboarding = false }.buttonStyle(
         .plain
       ).font(.caption)
     }.padding(32).frame(width: 540).interactiveDismissDisabled()

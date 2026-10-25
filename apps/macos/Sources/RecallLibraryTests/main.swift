@@ -61,6 +61,7 @@ actor Fixture {
 actor ServerFixture {
   var polls = 0
   var posted = false
+  var exports = 0
   func call(_ path: String, _ body: [String: String]?) throws -> [String: Any] {
     if path == "status" { return ["youtubeConfigured": true] }
     if path == "playlists", body != nil {
@@ -80,6 +81,7 @@ actor ServerFixture {
       ]
     }
     if path == "export" {
+      exports += 1
       return [
         "collections": [
           [
@@ -301,6 +303,26 @@ actor ServerFixture {
             afterPlaylists.contains { $0.id == old.id && $0.videoIDs == old.videoIDs }
           },
         "Adding playlists replaced an existing playlist")
+      let directFixture = ServerFixture()
+      let synchronizedID = try await ServerPlaylistImporter(
+        call: { path, body in try await directFixture.call(path, body) }, pause: {}
+      ).synchronize(link: "https://www.youtube.com/playlist?list=PL1234567890")
+      let exportCalls = await directFixture.exports
+      try check(
+        synchronizedID == "PL1234567890" && exportCalls == 0,
+        "Server-only import downloaded a local library")
+      let overview = try ServerLibraryOverview(
+        status: ["counts": ["videos": 15]],
+        collections: [
+          "playlists": [
+            ["id": "one", "title": "One", "entries": 13],
+            ["id": "two", "title": "Two", "entries": 5],
+          ]
+        ])
+      try check(
+        overview.videoCount == 15 && overview.playlists.map(\.entries) == [13, 5],
+        "Server summary lost distinct total or playlist counts")
+      try rejects { _ = try ServerLibraryOverview(status: [:], collections: [:]) }
       let serverFixture = ServerFixture()
       let serverImporter = ServerPlaylistImporter(
         call: { path, body in try await serverFixture.call(path, body) }, pause: {})

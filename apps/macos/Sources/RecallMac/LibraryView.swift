@@ -11,32 +11,26 @@ struct LibraryView: View {
       HStack {
         Text("Ta bibliothèque.").font(.largeTitle)
         Spacer()
-        Button("Importer JSON…") { library.importFile() }.disabled(library.importing)
-        if session.hasServer && session.useServer {
+        if session.hasServer {
           Button(library.syncing ? "Synchronisation…" : "Actualiser YouTube") {
             library.sync(refreshYouTube: true)
           }.disabled(
             library.syncing || library.importing)
         }
       }
-      if session.hasServer {
-        Picker("Bibliothèque", selection: $session.useServer) {
-          Text("Sur ce Mac").tag(false)
-          Text("Mon serveur").tag(true)
-        }.pickerStyle(.segmented).disabled(library.importing)
-      }
-      if session.useServer {
-        Button("Garder une copie sur ce Mac") { library.copyServerLocally() }.disabled(
-          library.importing || library.syncing)
+      if !session.hasServer {
+        if session.loadingCredentials {
+          Text("Connexion au serveur en cours…").font(.caption)
+        } else {
+          Button("Connecter mon serveur") { session.showOnboarding = true }
+        }
       }
       Text("Ajouter une playlist YouTube").font(.headline)
       HStack {
         TextField("Coller le lien d’une playlist YouTube…", text: $library.playlistLink)
           .textFieldStyle(.roundedBorder)
           .onSubmit { library.importPlaylist() }
-        Button(session.useServer ? "Ajouter au serveur" : "Ajouter sur ce Mac") {
-          library.importPlaylist()
-        }.disabled(
+        Button("Ajouter au serveur") { library.importPlaylist() }.disabled(
           library.importing || library.playlistLink.isEmpty || session.loadingCredentials)
       }
       if library.importing {
@@ -60,18 +54,15 @@ struct LibraryView: View {
         Picker("Playlist", selection: $library.selectedPlaylist) {
           Text("Toutes les playlists").tag("")
           ForEach(library.playlists) { playlist in
-            Text("\(playlist.title) · \(playlist.videoIDs.count)").tag(playlist.id)
+            Text("\(playlist.title) · \(playlist.entries)").tag(playlist.id)
           }
         }
       }
       TextField("Un artiste, un titre, un souvenir…", text: $library.query).textFieldStyle(
         .roundedBorder
       ).onChange(of: library.query) { _, _ in library.search() }
-      Text(
-        session.useServer
-          ? "Recherche hybride sur ton serveur privé."
-          : "Recherche locale dans les titres et métadonnées."
-      ).font(.caption).foregroundStyle(.secondary)
+      Text("Recherche sur le serveur · aucune bibliothèque enregistrée sur ce Mac.")
+        .font(.caption).foregroundStyle(.secondary)
       List(library.results) { row in
         HStack {
           VStack(alignment: .leading) {
@@ -125,7 +116,7 @@ struct LibraryView: View {
       }
       if library.libraryCount == 0 {
         Text(
-          "Colle une playlist YouTube ou importe un export Recall / yt-dlp. Tes playlists existantes sont conservées."
+          "Colle le lien d’une playlist YouTube pour l’ajouter à ton serveur."
         ).foregroundStyle(.secondary)
       }
     }.padding(28)
