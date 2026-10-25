@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- DJ : les références aux cartes (« le trois », « les trois ») pilotent directement les titres affichés, dans leur ordre. Le contexte conserve les propositions ; « joue directement » prime sur « ajoute ». Une sélection vide ne peut plus annoncer un démarrage. Commandes « mets Play » et « mets la suivante » locales, design conservé.
+
 - MusicBrainz : extension progressive par compte, file bornée à dix tâches et correspondances prudentes conservées. Bibliothèque affiche les morceaux traités, enrichis, ambigus, sans correspondance et les reprises ; suivi actualisé sans interrompre la lecture.
 
 - Apparence : fond Stoa au repos, image personnelle copiée sur ce Mac, voile sombre réglable et aperçu. Réglages organisés en Apparence, DJ et voix, Lecture, Compte ; aucun changement de fond pendant un morceau.

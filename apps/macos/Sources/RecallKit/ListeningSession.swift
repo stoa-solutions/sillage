@@ -96,7 +96,8 @@ public struct ListeningSession: Sendable {
     case .ask(let text, let source): ask(text, source: source, into: &effects)
     case .play(let track, let source):
       cancelPending(into: &effects)
-      composition.direct("Des morceaux dans l’esprit de \(TrackTitle(track).spoken).", source: source)
+      composition.direct(
+        "Des morceaux dans l’esprit de \(TrackTitle(track).spoken).", source: source)
       queue.replace([track])
       unavailableCount = 0
       startCurrent(into: &effects)
@@ -174,6 +175,35 @@ public struct ListeningSession: Sendable {
   private mutating func ask(_ text: String, source: DiscoveryScope, into effects: inout [Effect]) {
     let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !text.isEmpty else { return }
+    let cards = messages.last(where: { !($0.discoveries?.isEmpty ?? true) })?.discoveries ?? []
+    if let command = DJSuggestionCommand.parse(text, count: cards.count) {
+      cancelPending(into: &effects)
+      effects += [.stopSpeech, .clearPreparedSpeech]
+      say(user: text)
+      guard !command.indices.isEmpty, command.indices.allSatisfy({ cards.indices.contains($0) })
+      else {
+        say(
+          assistant:
+            "Ce numéro ne correspond à aucune proposition. Choisis une carte affichée ou demande une nouvelle recherche."
+        )
+        return
+      }
+      let selected = command.indices.map { cards[$0] }
+      let tracks = selected.map(\.video)
+      let titles = tracks.map { TrackTitle($0).spoken }.joined(separator: ", puis ")
+      // Remember the actual choice, not a reference such as "the third", for future refills.
+      lastRequest += 1
+      pending = Pending(
+        id: lastRequest, automatic: false,
+        text: "Des morceaux dans l’esprit de " + titles,
+        source: selected.allSatisfy(\.inLibrary) ? .library : .all)
+      answer(
+        lastRequest,
+        DJResponse(
+          reply: (command.append ? "J’ajoute à la suite : " : "C’est parti : ") + titles,
+          action: command.append ? "append" : "replace", tracks: tracks), into: &effects)
+      return
+    }
     if let command = DJTransportCommand.parse(text) {
       say(user: text)
       guard current != nil else {
@@ -230,7 +260,9 @@ public struct ListeningSession: Sendable {
           id: lastRequest, automatic: true, text: request.text, source: request.source,
           broadened: true)
         effects.append(
-          .send(request: lastRequest, composition.request(history: messages, queue: queue, broaden: true)))
+          .send(
+            request: lastRequest,
+            composition.request(history: messages, queue: queue, broaden: true)))
         return
       }
     } else if response.action != "keep", !response.tracks.isEmpty {

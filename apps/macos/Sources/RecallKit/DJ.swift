@@ -39,7 +39,9 @@ public struct ServerDJ: DJ {
       connection, path: "dj/chat",
       body: [
         "message": String(request.message.prefix(1500)), "scope": request.scope.rawValue,
-        "history": request.history.suffix(12).map { ["role": $0.role, "content": $0.content] },
+        "history": request.history.suffix(12).map {
+          ["role": $0.role, "content": String($0.contextContent.prefix(2000))]
+        },
         "excludeIds": Array(request.queued.prefix(100)),
       ])
     return try JSONDecoder().decode(
@@ -61,7 +63,8 @@ public enum DJTransportCommand: Sendable {
     if [
       "next", "suivant", "suivante", "morceau suivant", "titre suivant", "passe au suivant",
       "passe au morceau suivant", "change de morceau", "skip",
-      "passe a la suivante", "passe au prochain", "chanson suivante",
+      "passe a la suivante", "mets la suivante", "mets le suivant", "passe la musique",
+      "passe au prochain", "chanson suivante",
     ].contains(command) {
       return .next
     }
@@ -73,7 +76,8 @@ public enum DJTransportCommand: Sendable {
     }
     if [
       "reprends", "reprend", "reprends la musique", "reprends la lecture", "relance la lecture",
-      "lecture", "play", "resume", "continue la lecture",
+      "lecture", "play", "mets play", "met play", "tu peux mettre play", "resume",
+      "continue la lecture",
     ].contains(command) {
       return .resume
     }

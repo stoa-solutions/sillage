@@ -57,3 +57,12 @@ it("bounds a provider that never searches and does not claim the music is absent
   expect(bodies).toHaveLength(5);
   expect(mocks.close).toHaveBeenCalledOnce();
 });
+it("immediate correction overrides append while keeping the verified external track", async () => {
+  provider([tool, { content: JSON.stringify({ reply: "Je lance", action: "append", trackIds: [track.id] }) }]);
+  const result = await djTurn(db, djInput.parse({ scope: "all", message: "Non je t'ai dit ajoute du Omer Adam et mets-la directement et fais passe les musiques" }), undefined, config, "alice");
+  expect(result).toMatchObject({ action: "replace", tracks: [track] });
+});
+it("does not announce playback with an empty executable selection", async () => {
+  provider([tool, { content: JSON.stringify({ reply: "C'est parti, je lance Omer Adam", action: "replace", trackIds: [] }) }]);
+  await expect(djTurn(db, djInput.parse({ scope: "all", message: "lance Omer Adam" }), undefined, config, "alice")).rejects.toThrow("pas obtenu de morceau");
+});

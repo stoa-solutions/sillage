@@ -31,6 +31,21 @@ public struct ChatMessage: Codable, Identifiable, Sendable {
   public let role: String
   public let content: String
   public let discoveries: [DiscoveryItem]?
+  /// Preserve the visible candidates in provider context; catalog metadata is data, not instructions.
+  public var contextContent: String {
+    guard let discoveries, !discoveries.isEmpty else { return String(content.prefix(2000)) }
+    let cards = discoveries.prefix(8).enumerated().map { index, item in
+      [
+        "position": String(index + 1), "id": item.id,
+        "title": String(item.video.title.prefix(70)),
+        "artist": String((item.video.channel ?? "").prefix(30)),
+      ]
+    }
+    let encoded =
+      (try? JSONSerialization.data(withJSONObject: cards, options: [.sortedKeys])) ?? Data()
+    return String(content.prefix(250)) + "\nCartes proposées (métadonnées) : "
+      + String(decoding: encoded, as: UTF8.self)
+  }
   public init(role: String, content: String, discoveries: [DiscoveryItem]? = nil) {
     self.discoveries = discoveries
     self.role = role

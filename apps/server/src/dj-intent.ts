@@ -2,6 +2,10 @@
 export type DJIntent = "replace" | "append" | "browse";
 export function djIntent(message: string): DJIntent {
   const text = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  // An explicit immediate correction wins over an earlier "ajoute".
+  if (/\b(maintenant|directement|tout de suite|immediatement)\b/.test(text)
+    && /\b(joue|mets|met|lance|ecoute|passe|remplace)\b/.test(text)
+    && !/\b(ne|pas|sans|apres|plus tard)\b/.test(text)) return "replace";
   // Deferred listening wins over an imperative such as "joue après ce titre".
   if (/\b(a la suite|dans la (file|queue)|en (file|queue)|apres (ce|le|la) (titre|morceau|chanson)|plus tard|sans (couper|interrompre|changer))\b/.test(text)
     || /\b(continue|poursuis|prolonge|prepare(?:r)? la suite|ajoute|rajoute|enqueue)\b/.test(text))

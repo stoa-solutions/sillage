@@ -1,6 +1,10 @@
 import { expect, it } from "vitest";
 import { djIntent, playbackAction } from "./dj-intent.ts";
 it.each([
+  ["Non je t'ai dit ajoute du Omer Adam et mets-la directement et fais passe les musiques", "replace"],
+  ["ajoute Omer Adam et joue-le maintenant", "replace"],
+  ["Mets le trois en file d'attente", "append"],
+  ["ne le joue pas maintenant, ajoute à la suite", "append"],
   ["un morceau avec Edge en feat", "browse"],
   ["une musique avec Edge qui fait un feat", "browse"],
   ["la pochette est bleue avec un visage", "browse"],

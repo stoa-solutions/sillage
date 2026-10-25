@@ -8,7 +8,9 @@ func playbackSessionChecks() throws {
   for text in ["Pause", "mets en pause stp", "Stop !", "arrête"] {
     try expect(DJTransportCommand.parse(text) == .pause, "Pause must bypass generation")
   }
-  for text in ["Reprends", "reprends la musique", "Play", "continue la lecture"] {
+  for text in [
+    "Reprends", "reprends la musique", "Play", "continue la lecture", "Mets Play s’il te plaît",
+  ] {
     try expect(DJTransportCommand.parse(text) == .resume, "Resume must bypass generation")
   }
   for text in [

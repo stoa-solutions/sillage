@@ -332,6 +332,9 @@ export async function djTurn(
       const tracks = externalSearch
         ? ids.map((id) => candidates.get(id)!)
         : await musicTracks(db, ids, userId);
+      // Never announce a start when the provider supplied no executable selection.
+      if (action !== "keep" && !tracks.length)
+        throw new DjUnavailable("Je n’ai pas obtenu de morceau à lancer. Choisis une carte proposée ou réessaie ; ta file est conservée.", 502);
       return {
         reply: output.reply,
         action: tracks.length ? action : "keep",
