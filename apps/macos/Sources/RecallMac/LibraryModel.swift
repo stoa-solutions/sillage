@@ -113,37 +113,30 @@ final class LibraryModel: ObservableObject {
   func importPlaylist() {
     guard !importing else { return }
     Task {
-      if !session.hasYouTubeKey { await session.refreshCredentials() }
+      if session.connection == nil { await session.refreshCredentials() }
       startPlaylistImport()
     }
   }
   private func startPlaylistImport() {
     guard !importing else { return }
-    guard session.hasYouTubeKey else {
-      session.error = "Ajoute ta clé YouTube dans Réglages pour importer une playlist par lien."
-      return
-    }
     let link = playlistLink
     do { _ = try YouTubePlaylistLink.id(from: link) } catch {
       session.error = error.localizedDescription
       return
     }
-    session.error = ""
-    let key = session.youtubeKey
-    let importer = YouTubePlaylistImporter(
-      directory: store.directory.appendingPathComponent("imports"))
-    runImport("Connexion à YouTube…") { [weak self] generation in
-      let result = try await importer.load(link: link, key: key) { count in
-        if self?.session.generation == generation {
-          self?.importProgress = "\(count) entrées récupérées…"
-        }
-      }
+    guard let connection = session.connection else {
+      session.error =
+        "Connecte ton serveur dans Réglages ou importe ton fichier de connexion privé. Aucune clé YouTube n’est nécessaire sur le Mac."
+      return
+    }
+    let importer = ServerPlaylistImporter(connection: connection)
+    runImport("YouTube est actualisé par ton serveur…") { _ in
+      let document = try await importer.load(link: link)
       return (
-        result.document,
-        "Playlist importée sur ce Mac : \(result.document.tracks.count) vidéos. \(result.skipped) indisponibles ignorées."
+        document,
+        "Playlist importée sur ce Mac : \(document.tracks.count) vidéos. Clé YouTube conservée sur ton serveur."
       )
     } completed: { [weak self] in
-      try? importer.finish(link: link)
       self?.playlistLink = ""
     }
   }
@@ -176,7 +169,8 @@ final class LibraryModel: ObservableObject {
   }
   func cancelImport() {
     importTask?.cancel()
-    importProgress = "Import interrompu. Recolle le même lien dans les 24 h pour reprendre."
+    importProgress =
+      "Attente interrompue sur ce Mac. Le serveur peut terminer la synchronisation ; réimporte le même lien pour récupérer la playlist."
   }
   func export() {
     let panel = NSSavePanel()
@@ -191,7 +185,7 @@ final class LibraryModel: ObservableObject {
       } catch { session.error = error.localizedDescription }
     }
   }
-  func sync() {
+  func sync(refreshYouTube: Bool = false) {
     guard !syncing, let connection = session.connection else { return }
     session.useServer = true
     syncing = true
@@ -201,6 +195,14 @@ final class LibraryModel: ObservableObject {
     syncTask = Task {
       defer { if session.generation == generation { syncing = false } }
       do {
+        if refreshYouTube {
+          let overview = try await HTTPClient().server(connection, path: "playlists")
+          for row in overview["playlists"] as? [[String: Any]] ?? [] {
+            guard let id = row["id"] as? String else { continue }
+            _ = try await ServerPlaylistImporter(connection: connection).load(
+              link: "https://www.youtube.com/playlist?list=" + id)
+          }
+        }
         let object = try await HTTPClient().server(connection, path: "export")
         let data = try JSONSerialization.data(withJSONObject: object)
         let document = try await Task.detached { try LibraryDocument.parse(data) }.value

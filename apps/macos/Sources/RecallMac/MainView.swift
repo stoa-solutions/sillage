@@ -62,5 +62,6 @@ struct MainView: View {
         }
       }.background(cream)
     }.tint(forest)
+      .sheet(isPresented: $session.showOnboarding) { OnboardingView().environmentObject(session) }
   }
 }

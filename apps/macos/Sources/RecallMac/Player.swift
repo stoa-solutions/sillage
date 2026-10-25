@@ -10,6 +10,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
   var onEnded: (() -> Void)?
   var onUnavailable: (() -> Void)?
   private var pending: Track?
+  private var canEnd = false
   let webView: WKWebView
   private static let origin = "https://recall.stoa.solutions"
   override init() {
@@ -48,7 +49,11 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     case "state":
       let state = value["state"] as? Int
       playing = state == 1
-      if state == 0 { onEnded?() }
+      if state == 1 { canEnd = true }
+      if state == 0, canEnd {
+        canEnd = false
+        onEnded?()
+      }
     case "blocked": failure = "Clique sur Lecture pour lancer l’écoute."
     case "error":
       failure = "YouTube bloque l’intégration de ce titre."
@@ -81,6 +86,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     decisionHandler(.allow)
   }
   func cue(_ track: Track) {
+    canEnd = false
     failure = ""
     guard ready else {
       pending = track

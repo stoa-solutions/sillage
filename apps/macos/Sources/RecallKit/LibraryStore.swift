@@ -183,6 +183,7 @@ public struct LibraryStore: Sendable {
     var row: [String: Any] = [
       "id": track.id, "title": track.title, "description": track.description ?? "",
     ]
+    row["metadataUnavailable"] = track.metadataUnavailable
     row["channel"] = track.channel
     row["duration_seconds"] = track.durationSeconds
     return row
@@ -211,7 +212,7 @@ public struct LibraryStore: Sendable {
           id: incoming.id, title: incoming.title, channel: incoming.channel ?? previous.channel,
           durationSeconds: incoming.durationSeconds ?? previous.durationSeconds,
           description: (incoming.description?.isEmpty == false
-            ? incoming.description : previous.description))
+            ? incoming.description : previous.description), metadataUnavailable: incoming.metadataUnavailable)
       }
       guard track.id.range(of: "^[A-Za-z0-9_-]{11}$", options: .regularExpression) != nil else {
         throw RecallError.message("Vidéo invalide.")

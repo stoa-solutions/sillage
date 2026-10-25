@@ -13,7 +13,9 @@ struct LibraryView: View {
         Spacer()
         Button("Importer JSON…") { library.importFile() }.disabled(library.importing)
         if session.hasServer && session.useServer {
-          Button(library.syncing ? "Synchronisation…" : "Synchroniser") { library.sync() }.disabled(
+          Button(library.syncing ? "Synchronisation…" : "Actualiser YouTube") {
+            library.sync(refreshYouTube: true)
+          }.disabled(
             library.syncing)
         }
       }
@@ -40,10 +42,12 @@ struct LibraryView: View {
           Text(library.importProgress).font(.caption)
           Button("Annuler") { library.cancelImport() }
         }
-      } else if !session.hasYouTubeKey {
+      } else {
         HStack {
-          Text("Pour importer par lien, ajoute ta clé YouTube une seule fois.").font(.caption)
-            .foregroundStyle(.secondary)
+          Text("Import YouTube via ton serveur personnel · aucune clé YouTube à saisir.").font(
+            .caption
+          )
+          .foregroundStyle(.secondary)
           SettingsLink { Text("Configurer") }
         }
       }

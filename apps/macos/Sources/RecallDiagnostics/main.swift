@@ -4,6 +4,23 @@ import RecallKit
 @main struct Diagnostics {
   static func main() async {
     do {
+      if CommandLine.arguments.count == 4, CommandLine.arguments[1] == "--server-import" {
+        let data = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[2]))
+        let raw = try JSONDecoder().decode(Connection.self, from: data)
+        let connection = try Connection(url: raw.url, token: raw.token)
+        let start = Date()
+        let document = try await ServerPlaylistImporter(connection: connection).load(
+          link: CommandLine.arguments[3])
+        let store = LibraryStore(
+          directory: FileManager.default.urls(
+            for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent(
+              "Playlist Recall"))
+        try store.commit(document, source: .local)
+        print(
+          "Real server import committed: \(document.playlists.count) playlist, \(document.tracks.count) videos, \(document.playlists.first?.videoIDs.count ?? 0) entries in \(Date().timeIntervalSince(start))s"
+        )
+        return
+      }
       if CommandLine.arguments.contains("--apple") {
         if let reason = AppleDJ.availability {
           print("Apple DJ unavailable: \(reason)")
@@ -61,6 +78,12 @@ import RecallKit
       }
       print("Native voice verified: \(wav.count) bytes of WAV audio")
     } catch {
+      let info = error as NSError
+      print(
+        "Network diagnostic:", info.domain, info.code, info.userInfo["_NSURLErrorNWPathKey"] ?? "")
+      if let underlying = info.userInfo[NSUnderlyingErrorKey] as? NSError {
+        print("Underlying:", underlying.domain, underlying.code)
+      }
       fputs("Native verification failed: \(error.localizedDescription)\n", stderr)
       exit(1)
     }

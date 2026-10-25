@@ -1,5 +1,7 @@
+import AppKit
 import RecallKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
   @EnvironmentObject var session: Session
@@ -45,19 +47,24 @@ struct SettingsView: View {
           ).font(.caption)
         }
       }
-      Section("Import YouTube sur ce Mac") {
-        SecureField(
-          session.hasYouTubeKey
-            ? "Nouvelle clé YouTube (vide pour conserver)" : "Clé YouTube Data API",
-          text: $youtubeKey)
+      Section("Import YouTube") {
         Text(
-          "Une seule saisie, conservée dans le Trousseau. Importe les playlists publiques ou non répertoriées. La clé Gemini ne remplace pas une clé autorisée pour YouTube."
-        ).font(.caption).foregroundStyle(.secondary)
-        Link(
-          "Créer une clé YouTube",
-          destination: URL(string: "https://console.cloud.google.com/apis/credentials")!)
+          "Colle un lien dans Bibliothèque. Ton serveur récupère la playlist, puis l’app en conserve une copie locale. La clé YouTube reste sur le serveur."
+        ).font(.caption)
       }
       Section("Bibliothèque") {
+        Button("Importer ma connexion serveur…") {
+          let panel = NSOpenPanel()
+          panel.allowedContentTypes = [.json]
+          if panel.runModal() == .OK, let url = panel.url {
+            Task {
+              do {
+                try await session.importConnection(url)
+                serverURL = session.connectedURL
+              } catch { message = error.localizedDescription }
+            }
+          }
+        }
         Toggle("Utiliser mon serveur vectoriel", isOn: $session.useServer)
         TextField("Adresse HTTPS du serveur (facultatif)", text: $serverURL)
         SecureField("Jeton personnel (laisser vide pour conserver)", text: $token)
@@ -75,8 +82,12 @@ struct SettingsView: View {
         ).font(.caption).foregroundStyle(.secondary)
       }
       Section("Micro et voix") {
+        Toggle("Voix Gemini expressive", isOn: $session.cloudVoice)
         Text(
-          "Le micro fonctionne uniquement au clic. La dictée française utilise la reconnaissance Apple, sur l’appareil lorsque disponible, sinon via le service Apple. Le DJ Apple utilise la voix macOS. En mode Gemini, la voix macOS sert de secours."
+          "La voix est indépendante du modèle du DJ. Gemini utilise ta clé enregistrée ; la voix macOS reste disponible en secours."
+        ).font(.caption)
+        Text(
+          "Le micro fonctionne uniquement au clic. La dictée française utilise la reconnaissance Apple, sur l’appareil lorsque disponible, sinon via le service Apple. La voix Gemini expressive est indépendante du modèle ; macOS sert de secours."
         ).font(.caption)
       }
       Section("Mises à jour") {

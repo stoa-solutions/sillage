@@ -1,18 +1,16 @@
 PLAYLIST RECALL — VERSION LOCALE
 
 1. Copiez Playlist Recall.app dans Applications, puis ouvrez-la.
-2. Dans Bibliothèque, collez un lien de playlist YouTube et cliquez sur Importer sur ce Mac.
-   L’import officiel exige une clé YouTube Data API : ajoutez-la une seule fois dans Réglages.
-   Cette clé reste dans votre Trousseau, elle n’est jamais fournie par un autre utilisateur.
-   Vous pouvez aussi importer un export JSON Recall sans clé YouTube.
-3. Sur un Mac compatible avec Apple Intelligence, sous macOS 26 ou ultérieur,
-   le DJ utilise le modèle Apple et la voix macOS sans clé Gemini.
-   Activez Apple Intelligence dans Réglages Système si nécessaire et attendez le téléchargement.
-   Sur les autres Mac (macOS 14+), la bibliothèque fonctionne et Gemini reste facultatif.
+2. Au premier lancement, ajoutez votre clé Gemini pour le DJ et sa voix expressive.
+   Elle est conservée dans le Trousseau. Aucune clé du développeur n’est distribuée.
+3. Importez le fichier de connexion privé de votre serveur Recall, puis collez un lien
+   de playlist dans Bibliothèque. Le serveur gère YouTube, sans clé YouTube sur le Mac.
+   La connexion donne accès à la bibliothèque de ce serveur privé ; ne la publiez pas.
+   La bibliothèque locale reste consultable et les exports JSON peuvent être importés.
 4. Autorisez le micro et la reconnaissance vocale pour parler au DJ.
 
 Votre bibliothèque est conservée sur votre Mac. YouTube reste nécessaire pour importer
-et lire les vidéos. Le modèle Apple travaille sur les titres et les métadonnées :
+et lire les vidéos. Le modèle Apple reste une option sur Mac compatible sous macOS 26+. Il travaille sur les titres et les métadonnées :
 il n’écoute pas les morceaux. La recherche d’ambiances dépend de ces métadonnées.
 Les playlists privées ne sont pas prises en charge par cet import par clé.
 

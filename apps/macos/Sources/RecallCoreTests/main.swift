@@ -57,7 +57,35 @@ do {
   try expect(
     AppleDJ.namedMatches([long], query: "ete cafe") == [long],
     "Named matching lost accent normalization")
-  print("14 native behavior checks passed")
+  var queue = PlaybackQueue()
+  queue.replace([long])
+  let add = DJResponse(reply: "suite", action: "append", tracks: tracks)
+  try expect(!queue.apply(add), "Appending interrupted active playback")
+  queue.markEnded()
+  try expect(
+    queue.advance() && queue.position == 1, "Ended player did not advance to a queued song")
+  queue.replace([long])
+  queue.markEnded()
+  try expect(
+    queue.apply(add) && queue.position == 1 && !queue.ended,
+    "Append after end stayed stuck on finished track")
+  queue.markEnded()
+  try expect(
+    !queue.apply(DJResponse(reply: "aucun", action: "keep", tracks: [])) && queue.ended,
+    "Empty response restarted ended song")
+  try expect(
+    queue.apply(DJResponse(reply: "jazz", action: "replace", tracks: [baker]))
+      && queue.position == 0 && queue.tracks == [baker],
+    "New request did not replace the finished queue")
+  queue.markEnded()
+  try expect(
+    queue.apply(DJResponse(reply: "suite", action: "replace", tracks: [long]), automatic: true)
+      && queue.position == 1, "Automatic continuation discarded queue history")
+  let untitled = try Catalog.parse(Data(#"{"videos":[{"id":"abcdefghijk","title":null}]}"#.utf8))
+  try expect(
+    untitled.count == 1 && untitled[0].metadataUnavailable == true,
+    "Untitled YouTube entries were silently lost")
+  print("21 native behavior checks passed")
 } catch {
   fputs("Native tests failed: \(error.localizedDescription)\n", stderr)
   exit(1)
