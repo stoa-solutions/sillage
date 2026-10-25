@@ -9,6 +9,7 @@ final class Session: ObservableObject {
   @Published private(set) var googleAccount = false
   @Published private(set) var signingIn = false
   @Published private(set) var canClaimLibrary = false
+  @Published private(set) var claimingLibrary = false
   private var legacyConnection: Connection?
   private let signIn = GoogleSignIn()
   @Published var showOnboarding = false
@@ -85,6 +86,7 @@ final class Session: ObservableObject {
     } catch { self.error = error.localizedDescription }
   }
   func saveGeminiKey(_ value: String) async throws {
+    error = ""
     let key = value.trimmingCharacters(in: .whitespacesAndNewlines)
     guard (20...256).contains(key.count) else {
       throw RecallError.message("Vérifie ta clé Gemini.")
@@ -96,6 +98,11 @@ final class Session: ObservableObject {
       connection, path: "dj/settings", body: ["apiKey": key, "model": model])
     cloudVoice = true
     await refreshCredentials()
+    guard hasKey else {
+      throw RecallError.message(
+        "La clé a été envoyée, mais sa confirmation a échoué. Vérifie ta connexion et réessaie.")
+    }
+    notice = "Ton DJ est activé. Ta clé Gemini est enregistrée sur ton compte."
     if hasKey && hasServer && !canClaimLibrary { showOnboarding = false }
   }
   func importConnection(_ url: URL) async throws {
@@ -135,7 +142,10 @@ final class Session: ObservableObject {
     } catch { self.error = error.localizedDescription }
   }
   func claimLibrary() async {
-    guard let connection, let legacyConnection, googleAccount else { return }
+    guard !claimingLibrary, let connection, let legacyConnection, googleAccount else { return }
+    claimingLibrary = true
+    error = ""
+    defer { claimingLibrary = false }
     do {
       _ = try await HTTPClient().server(
         connection, path: "account/claim-library", body: ["legacyToken": legacyConnection.token])
@@ -145,6 +155,7 @@ final class Session: ObservableObject {
       generation = UUID()
       onConnectionChange?()
       notice = "Tes playlists existantes sont maintenant rattachées à " + accountEmail
+      if hasKey { showOnboarding = false }
     } catch { self.error = error.localizedDescription }
   }
   func saveModel() async throws {

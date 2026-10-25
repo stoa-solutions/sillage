@@ -24,27 +24,41 @@ struct OnboardingView: View {
         Text("Recall demande uniquement ton identité Google et ton adresse e-mail.").font(.caption)
       } else {
         Label(session.accountEmail, systemImage: "person.crop.circle.fill")
-        SecureField("Ta clé API Gemini", text: $key).textFieldStyle(.roundedBorder)
-        Text(
-          "Ta clé est chiffrée sur le serveur et réservée à ton compte. Ton chat et les titres proposés sont envoyés à Google avec ton quota Gemini."
-        ).font(.caption).foregroundStyle(.secondary)
-        Link(
-          "Obtenir ma clé Gemini", destination: URL(string: "https://aistudio.google.com/api-keys")!
-        )
-        Button(busy ? "Enregistrement…" : "Activer mon DJ") {
-          busy = true
-          Task {
-            defer { busy = false }
-            do {
-              try await session.saveGeminiKey(key)
-              key = ""
-            } catch { self.error = error.localizedDescription }
-          }
-        }.buttonStyle(.borderedProminent).disabled(busy || key.isEmpty)
+        if session.hasKey {
+          Label("Ton DJ est activé. Ta clé est enregistrée.", systemImage: "checkmark.circle.fill")
+            .foregroundStyle(.green)
+          Text("Tu peux modifier ta clé dans Réglages.").font(.caption).foregroundStyle(.secondary)
+        } else {
+          SecureField("Ta clé API Gemini", text: $key).textFieldStyle(.roundedBorder)
+          Text(
+            "Ta clé est chiffrée sur le serveur et réservée à ton compte. Ton chat et les titres proposés sont envoyés à Google avec ton quota Gemini."
+          ).font(.caption).foregroundStyle(.secondary)
+          Link(
+            "Obtenir ma clé Gemini",
+            destination: URL(string: "https://aistudio.google.com/api-keys")!
+          )
+          Button(busy ? "Enregistrement…" : "Activer mon DJ") {
+            error = ""
+            busy = true
+            Task {
+              defer { busy = false }
+              do {
+                try await session.saveGeminiKey(key)
+                key = ""
+              } catch { self.error = error.localizedDescription }
+            }
+          }.buttonStyle(.borderedProminent).disabled(
+            busy || key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
         if session.canClaimLibrary {
-          Button("Récupérer mes playlists existantes sur ce compte") {
+          Text("Dernière étape : récupère tes playlists existantes dans ton compte Google.")
+            .font(.callout)
+          Button(
+            session.claimingLibrary
+              ? "Récupération…" : "Récupérer mes playlists existantes sur ce compte"
+          ) {
             Task { await session.claimLibrary() }
-          }
+          }.disabled(busy || session.claimingLibrary)
         }
       }
       if !error.isEmpty { Text(error).foregroundStyle(.red).font(.caption) }
@@ -52,7 +66,7 @@ struct OnboardingView: View {
       Button(session.hasServer ? "Ouvrir ma bibliothèque" : "Plus tard") {
         session.showOnboarding = false
       }
-      .buttonStyle(.plain).font(.caption)
+      .buttonStyle(.plain).font(.caption).disabled(busy || session.claimingLibrary)
     }.padding(32).frame(width: 540).interactiveDismissDisabled()
   }
 }
