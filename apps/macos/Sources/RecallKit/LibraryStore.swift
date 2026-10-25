@@ -97,6 +97,13 @@ public struct LibraryStore: Sendable {
     _ query: String, source: Source, playlist: String? = nil, offset: Int = 0,
     limit: Int = 100, excluded: Set<String> = []
   ) throws -> [Track] {
+    try searchPage(query, source: source, playlist: playlist, offset: offset,
+                   limit: limit, excluded: excluded).tracks
+  }
+  public func searchPage(
+    _ query: String, source: Source, playlist: String? = nil, offset: Int = 0,
+    limit: Int = 100, excluded: Set<String> = []
+  ) throws -> LibrarySearchPage {
     let words = query.components(separatedBy: CharacterSet.alphanumerics.inverted).filter {
       !$0.isEmpty
     }.prefix(20).map { "\"" + $0 + "\"*" }
@@ -135,10 +142,12 @@ public struct LibraryStore: Sendable {
       let (from, args) = filtered(match)
       // Playlist rows keep repeated positions; callers identify rows by position.
       let order = playlist != nil ? "m.position" : match.isEmpty ? "v.rowid" : "rank"
-      return try decode(
+      let total = Int(try db.rows("SELECT count(*) " + from, args)[0][0]) ?? 0
+      let tracks = try decode(
         db.rows(
           "SELECT v.payload " + from + "ORDER BY " + order + " LIMIT ? OFFSET ?",
           args + [String(min(max(limit, 1), 200)), String(max(offset, 0))]))
+      return LibrarySearchPage(tracks: tracks, total: total)
     }
   }
   public func export(_ source: Source) throws -> Data {
@@ -244,5 +253,14 @@ public struct LibraryStore: Sendable {
   private func database<T>(_ operation: (SQLiteConnection) throws -> T) throws -> T {
     let db = try SQLiteConnection(url: databaseURL)
     return try operation(db)
+  }
+}
+
+public struct LibrarySearchPage: Sendable {
+  public let tracks: [Track]
+  public let total: Int
+  public init(tracks: [Track], total: Int) {
+    self.tracks = tracks
+    self.total = total
   }
 }

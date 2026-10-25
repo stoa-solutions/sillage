@@ -261,6 +261,32 @@ actor ServerFixture {
       try check(
         try store.search("", source: .server, offset: 100, limit: 100).count == 100,
         "Bounded page failed")
+      let firstPage = try store.searchPage("", source: .server, limit: 100)
+      let secondPage = try store.searchPage("", source: .server, offset: 100, limit: 100)
+      let lastPage = try store.searchPage("", source: .server, offset: 9900, limit: 100)
+      let beyond = try store.searchPage("", source: .server, offset: 10_000, limit: 100)
+      try check(firstPage.total == 10_000 && secondPage.total == 10_000 && lastPage.tracks.count == 100,
+                "Page totals or exact final page incorrect")
+      try check(Set(firstPage.tracks.map(\.id)).isDisjoint(with: secondPage.tracks.map(\.id)),
+                "Adjacent pages overlap")
+      try check(beyond.total == 10_000 && beyond.tracks.isEmpty, "Past-end page incorrect")
+      let repeatedPage = try store.searchPage("", source: .local, playlist: "p1", offset: 2, limit: 2)
+      try check(repeatedPage.total == 3 && repeatedPage.tracks.map(\.id) == [b.id],
+                "Playlist total must count repeated positions")
+      let filteredPage = try store.searchPage("jazz doux cafe", source: .local, limit: 1)
+      try check(filteredPage.total == 1 && filteredPage.tracks.first?.id == b.id,
+                "Search total diverges from broadened FTS results")
+      let beforePlaylists = try store.playlists(.server)
+      try store.commit(LibraryDocument(tracks: [a, b], playlists: [
+        LibraryPlaylist(id: "added-one", title: "Added one", videoIDs: [a.id]),
+      ]), source: .server)
+      try store.commit(LibraryDocument(tracks: [a, b], playlists: [
+        LibraryPlaylist(id: "added-two", title: "Added two", videoIDs: [b.id, a.id]),
+      ]), source: .server)
+      let afterPlaylists = try store.playlists(.server)
+      try check(afterPlaylists.count == beforePlaylists.count + 2 &&
+                beforePlaylists.allSatisfy { old in afterPlaylists.contains { $0.id == old.id && $0.videoIDs == old.videoIDs } },
+                "Adding playlists replaced an existing playlist")
       let serverFixture = ServerFixture()
       let serverImporter = ServerPlaylistImporter(
         call: { path, body in try await serverFixture.call(path, body) }, pause: {})
