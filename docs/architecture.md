@@ -20,7 +20,7 @@ Le serveur peut accueillir plusieurs comptes ; cela ne prouve pas une capacité 
 | `apps/server/src/dj-config.ts` | Configuration par défaut du déploiement. |
 | `apps/server/src/dj-settings.ts` | Configuration personnelle, chiffrement et persistance. |
 | `apps/server/src/dj-prompt.ts` | Règles de sélection et de dialogue, indépendantes du transport fournisseur. |
-| `apps/server/src/dj.ts` | Orchestration Gemini et outils MCP, configuration injectée par requête. |
+| `apps/server/src/dj.ts` | Façade publique stable du DJ ; détails dans `features/dj/`. |
 | `apps/server/src/music-mcp.ts` | Recherche dans la bibliothèque, lecture seule. |
 | `apps/server/src/dj-voice.ts` | Adaptateur de synthèse vocale Gemini. |
 | `apps/server/src/search.ts` | Classement lexical/vectoriel et pagination SQL. |
@@ -65,3 +65,34 @@ Sources : https://sparkle-project.org/documentation/ et https://developer.apple.
 Ne pas ajouter un framework d’agents ou un fournisseur pour une règle déterministe. Un nouveau fournisseur de classement doit rester derrière une interface, avec délai maximal, repli, mesures de pertinence et tests de séparation des comptes. Le modèle ne modifie jamais directement la file ni la base.
 
 Démarrage et parcours de contribution : [developing.md](developing.md).
+
+
+## Organisation interne du DJ serveur
+
+```text
+apps/server/src/
+├── dj.ts                    # API publique conservée pour routes, tests et consommateurs
+├── dj-routes.ts             # HTTP, authentification déjà établie, concurrence
+├── dj-settings.ts           # secrets personnels et persistance
+├── dj-voice.ts              # synthèse vocale ; ne charge pas la composition
+└── features/dj/
+    ├── contracts.ts         # schémas Zod d'entrée et de sélection
+    ├── context.ts           # intention, référence musicale, messages du tour
+    ├── catalog.ts           # résolution de titres précis, ordre et propriété
+    ├── provider.ts          # format Gemini, validation de réponse, transport
+    ├── quota.ts             # réservation atomique du budget par compte
+    ├── errors.ts            # erreurs publiques sans secrets
+    └── turn.ts              # orchestration bornée MCP → sélection → réponse
+```
+
+`turn` compose ces modules. `provider` connaît le format fournisseur, mais ne décide pas de la file ; `context` calcule les règles sans réseau ; `catalog` relit les titres pour le compte authentifié. Les modules internes n'importent jamais `dj.ts`, afin d'éviter une dépendance circulaire. Les points d'entrée existants restent stables : un rangement de fichiers ne doit pas imposer une migration aux clients.
+
+La séparation est progressive. Les domaines recherche, comptes, playlists et paroles gardent leurs modules actuels tant qu'un changement concret ne justifie pas leur déplacement. Ne pas multiplier les dossiers `utils`, services génériques ou interfaces à une seule implémentation sans besoin de test ou d'évolution.
+
+## Garde-fous automatisés
+
+`npm run check:architecture` lit la syntaxe TypeScript : contrats partagés autonomes, aucun import serveur dans l'extension, aucun import client dans le serveur, pas d'effet réseau/configuration globale dans les règles pures du DJ, pas de retour des modules internes vers leur façade et pas de `any` dans cette feature. Le contrôle est intégré à `check`, donc à `verify:node` et à la CI. Ses propres tests vérifient notamment les imports dynamiques et les réexports.
+
+La CI exécute trois validations distinctes : Node (frontières, types, comportement, build), Mac (compilation et scénarios natifs), PostgreSQL jetable (migrations, isolation des comptes et opérations persistantes). Les réponses tardives, les exclusions, les sélections partielles et les erreurs fournisseur restent des scénarios de comportement ; ne pas les remplacer par des tests qui recopient l'implémentation.
+
+Ces contrôles ciblent des régressions connues ; ils ne prouvent ni l'absence de tout défaut, ni la qualité musicale d'une réponse réelle. Les changements de lecteur, de voix ou de parcours demandent toujours un essai dans l'app. Le déploiement reste une étape séparée.

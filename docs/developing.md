@@ -20,7 +20,7 @@ Pour les tests SQL, créer un PostgreSQL jetable avec pgvector, définir `TEST_D
 | --- | --- | --- |
 | Connexion et clé | `Session`, `GoogleSignIn`, `SettingsView` | `accounts.ts`, `auth.ts`, `dj-settings.ts`, tests comptes |
 | Chercher une musique | `DiscoveryModel`, `LibraryModel` | `search.ts`, `search-relevance.ts`, MCP ; filtrage propriétaire obligatoire |
-| Comprendre une demande | `DJModel.send` | commandes locales puis `dj-intent.ts`, `dj-prompt.ts`, `dj.ts` |
+| Comprendre une demande | `DJModel.send` | commandes locales puis `dj-intent.ts`, `dj-prompt.ts`, `features/dj/context.ts` et `turn.ts` |
 | Ordre et suite | `DJModel` | `PlaybackQueue`, `DJComposition`, tests session/composition |
 | Voix | `VoiceOutput` | `PreparedSpeech`, `dj-voice.ts` ; annuler l’annonce d’un titre sauté |
 | Vidéo et paroles | `Player`, `LyricsPanel` | `PlaybackClock`, `Lyrics`, `LyricsModel`, `dj-player.ts` |
@@ -40,3 +40,19 @@ Les noms Swift correspondent aux fichiers de `apps/macos/Sources/RecallKit` (rè
 ## Avant de vouloir scaler
 
 Garder API, worker et inférence séparés. Mesurer latence p50/p95, pertinence des dix premiers résultats et coût fournisseur avant de changer d’architecture. Pour plusieurs instances API, déplacer les limites/concurrences en mémoire vers un mécanisme partagé. Les tâches longues restent dans la file PostgreSQL. Aucun objectif de charge n’est encore qualifié.
+
+
+## Lire le projet et contribuer
+
+1. Lire `GLOSSARY.md` pour distinguer catalogue, playlist, file d'écoute et historique.
+2. Lire `docs/architecture.md`, puis suivre un seul parcours de bout en bout. Pour le chat : `dj-routes.ts` → `dj.ts` → `features/dj/turn.ts` → MCP/provider → réponse validée → `ListeningSession` sur Mac.
+3. Trouver un test du même comportement avant d'ajouter une fonctionnalité. `dj-retrieval.test.ts` simule les recherches et les décisions ; `dj-provider.test.ts` vérifie la frontière Gemini ; `accounts.integration.test.ts` utilise PostgreSQL pour prouver la séparation des comptes.
+4. Garder la façade publique stable. Un module porte un nom de responsabilité (contrat, contexte, catalogue, fournisseur), pas un nom générique comme `helpers`.
+
+## Lisibilité et commentaires
+
+L'indentation, les fins de ligne et le nettoyage des espaces sont définis par `.editorconfig`. Le Swift suit la configuration `apps/macos/.swift-format`. Suivre le style TypeScript du module touché ; éviter un reformatage global mêlé à une correction.
+
+Un commentaire explique une contrainte, une décision ou un invariant : pourquoi le dernier tour du modèle n'a plus d'outils, pourquoi un titre est revalidé pour le compte, pourquoi une réponse tardive est ignorée. Il ne paraphrase pas chaque affectation. Les fonctions et les types portent le sens ; les entrées externes sont `unknown` puis validées, plutôt que `any`.
+
+Pour un refactoring, conserver les tests de comportement existants et ajouter seulement les scénarios manquants aux frontières modifiées. Vérifier `npm run verify:node`, `npm run verify:macos` selon la zone, puis `npm run test:integration` sur une base jetable. Distinguer clairement : code intégré, tests locaux, CI distante, version installée et version serveur.

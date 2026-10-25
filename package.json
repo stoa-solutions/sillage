@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "npm run dev -w @playlist-recall/extension",
     "build": "npm run build -w @playlist-recall/extension",
-    "check": "npm run check --workspaces --if-present",
+    "check": "npm run check:architecture && npm run check --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "prepare:model": "node scripts/prepare-model.mjs",
     "prepare:seed": "node scripts/seed-vectors.mjs",
@@ -26,6 +26,7 @@
     "verify": "npm run verify:node && npm run verify:macos",
     "verify:node": "npm run check && npm test && npm run build",
     "verify:macos": "npm run test:macos",
-    "board": "sh scripts/board.sh"
+    "board": "sh scripts/board.sh",
+    "check:architecture": "node --test scripts/check-architecture.test.mjs && node scripts/check-architecture.mjs"
   }
 }
