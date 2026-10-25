@@ -69,3 +69,5 @@ Le modèle d’accès reste celui d’un serveur privé : tous ses jetons peuven
 ### Plafond DJ par compte
 
 `DJ_ACCOUNT_DAILY_LIMITS` accepte un objet JSON associant un identifiant utilisateur à un plafond journalier de 1 à 1000 requêtes (chat et voix). Les autres comptes conservent `DJ_DAILY_REQUEST_LIMIT` (100 par défaut). Une configuration invalide conserve ce défaut. Modifier un plafond ne réinitialise pas la consommation et ne modifie aucun quota Google. Les demandes de titres résolues directement dans le catalogue ne consomment pas de génération de sélection ; leur annonce vocale reste comptée.
+
+Un compte peut aussi avoir `{ "limit": 1000, "unlimitedUntil": "2026-10-25T23:00:00Z" }` : aucun plafond Recall avant cette échéance UTC explicite, puis retour au plafond indiqué. La consommation reste comptée. Cette dérogation est réservée à la configuration administrateur ; elle ne change pas les limites du fournisseur.

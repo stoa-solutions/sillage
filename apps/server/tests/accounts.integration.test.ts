@@ -306,6 +306,31 @@ it("raises only the configured account's limit and keeps its usage history", asy
     vi.stubEnv("DJ_ACCOUNT_DAILY_LIMITS", "{}");
   }
 });
+it("lets a temporarily unlimited account keep counting beyond its budget", async () => {
+  vi.stubEnv("DJ_DAILY_REQUEST_LIMIT", "1");
+  vi.stubEnv(
+    "DJ_ACCOUNT_DAILY_LIMITS",
+    JSON.stringify({
+      [alice]: { limit: 1, unlimitedUntil: "2099-01-01T00:00:00Z" },
+    }),
+  );
+  try {
+    await reserveDj(db, alice);
+    await reserveDj(db, alice);
+    expect(
+      (
+        await db.query(
+          "SELECT requests FROM account_dj_usage WHERE user_id=$1",
+          [alice],
+        )
+      ).rows[0].requests,
+    ).toBe(2);
+    await reserveDj(db, bob);
+    await expect(reserveDj(db, bob)).rejects.toThrow("plafond");
+  } finally {
+    vi.stubEnv("DJ_ACCOUNT_DAILY_LIMITS", "{}");
+  }
+});
 async function loginStart() {
   const verifier = randomBytes(32).toString("base64url"),
     appState = randomBytes(32).toString("base64url");
