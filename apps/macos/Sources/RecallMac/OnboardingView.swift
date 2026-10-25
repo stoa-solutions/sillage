@@ -10,6 +10,12 @@ struct OnboardingView: View {
     VStack(alignment: .leading, spacing: 20) {
       Text("Bienvenue dans Recall.").font(.largeTitle)
       Text("Tes playlists, ton DJ, ton compte.")
+      Text(
+        !session.googleAccount
+          ? "1 · Connecte ton compte Google"
+          : (session.hasKey ? "Ton compte est prêt" : "2 · Active ton DJ")
+      )
+      .font(.headline)
       if !session.googleAccount {
         Text(
           "Connecte-toi avec Google. Ta bibliothèque reste privée sur le serveur ; colle ensuite les liens de tes playlists YouTube."
@@ -37,6 +43,10 @@ struct OnboardingView: View {
             "Obtenir ma clé Gemini",
             destination: URL(string: "https://aistudio.google.com/api-keys")!
           )
+          Text(
+            "Crée une clé dans Google AI Studio, puis colle-la ici. Tu n’auras pas à la ressaisir à chaque lancement."
+          )
+          .font(.caption).foregroundStyle(.secondary)
           Button(busy ? "Enregistrement…" : "Activer mon DJ") {
             error = ""
             busy = true
@@ -63,10 +73,10 @@ struct OnboardingView: View {
       }
       if !error.isEmpty { Text(error).foregroundStyle(.red).font(.caption) }
       if !session.error.isEmpty { Text(session.error).foregroundStyle(.red).font(.caption) }
-      Button(session.hasServer ? "Ouvrir ma bibliothèque" : "Plus tard") {
+      Button(session.hasServer ? "Aller à mes playlists" : "Plus tard") {
         session.showOnboarding = false
       }
       .buttonStyle(.plain).font(.caption).disabled(busy || session.claimingLibrary)
-    }.padding(32).frame(width: 540).interactiveDismissDisabled()
+    }.padding(32).frame(width: 540).interactiveDismissDisabled().preferredColorScheme(.light)
   }
 }

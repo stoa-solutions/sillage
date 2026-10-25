@@ -94,13 +94,13 @@ import SwiftUI
         session.error = error.localizedDescription
       }
     }
-    session.showOnboarding = !session.hasServer
+    session.showOnboarding =
+      !session.hasServer || (session.googleAccount && (!session.hasKey || session.canClaimLibrary))
     if session.hasServer { library.sync() }
   }
   var body: some Scene {
     WindowGroup("Playlist Recall") {
       MainView().environmentObject(session).environmentObject(library).environmentObject(dj)
-        .preferredColorScheme(.light)
         .frame(minWidth: 1000, minHeight: 700)
         .task {
           if !didBootstrap {

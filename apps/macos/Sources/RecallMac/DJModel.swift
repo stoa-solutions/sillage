@@ -23,7 +23,7 @@ final class DJModel: ObservableObject {
   let player = Player()
   let microphone = Microphone()
   private let session: Session
-  private lazy var voice = VoiceOutput(player: player)
+  lazy var voice = VoiceOutput(player: player)
   private var work: Task<Void, Never>?
   private var lastRequest = ""
   var current: Track? { queue.indices.contains(position) ? queue[position] : nil }
@@ -36,8 +36,9 @@ final class DJModel: ObservableObject {
     microphone.onText = { [weak self] text in self?.send(text) }
     microphone.onError = { [weak self] text in self?.session.error = text }
     player.onEnded = { [weak self] in
-      self?.playback.markEnded()
-      self?.next()
+      guard let self else { return }
+      playback.markEnded()
+      if continuous { next() }
     }
     player.onUnavailable = { [weak self] in
       guard let self else { return }
@@ -132,8 +133,15 @@ final class DJModel: ObservableObject {
     if let current { player.cue(current) }
   }
   func next() {
+    voice.stop()
     if playback.advance() {
       playCurrent()
+      if spoken, let current {
+        let announcement = "On continue avec \(current.title)."
+        messages.append(ChatMessage(role: "assistant", content: announcement))
+        messages = Array(messages.suffix(24))
+        speak(announcement)
+      }
     } else if continuous, !queue.isEmpty {
       playback.markEnded()
       send(

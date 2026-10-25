@@ -3,23 +3,40 @@ import RecallKit
 import SwiftUI
 
 struct DJView: View {
+  @AppStorage("cinemaMode") private var cinema = true
   @ObservedObject var model: DJModel
   @EnvironmentObject var session: Session
   @ObservedObject var player: Player
   @ObservedObject var microphone: Microphone
+  @ObservedObject var voice: VoiceOutput
   init(model: DJModel) {
     self.model = model
     player = model.player
     microphone = model.microphone
+    voice = model.voice
   }
   var body: some View {
     HSplitView {
       VStack(alignment: .leading, spacing: 18) {
-        Text("À TON RYTHME").font(.system(size: 10, design: .monospaced)).tracking(2)
-        Text("Un mood.\nLa bonne musique.").font(.system(size: 40, weight: .medium, design: .serif))
-        Text("Parle-moi de ta soirée. On trouve la suite ensemble.").foregroundStyle(.secondary)
-        PlayerView(player: player).frame(minHeight: 250, maxHeight: .infinity).clipShape(
-          RoundedRectangle(cornerRadius: 16))
+        HStack {
+          Label("À TON RYTHME", systemImage: "waveform").font(
+            .system(size: 10, design: .monospaced)
+          ).tracking(2)
+          Spacer()
+          Button {
+            cinema.toggle()
+          } label: {
+            Label(
+              cinema ? "Vue compacte" : "Mode cinéma",
+              systemImage: cinema ? "rectangle.compress.vertical" : "rectangle.expand.vertical")
+          }.buttonStyle(.bordered).controlSize(.small)
+        }
+        if !cinema {
+          Text("Un mood.\nLa bonne musique.").font(
+            .system(size: 40, weight: .medium, design: .serif))
+          Text("Parle-moi de ta soirée. On trouve la suite ensemble.").foregroundStyle(.secondary)
+        }
+        PlayerView(player: player).frame(minHeight: 270, maxHeight: .infinity)
         Text(model.current?.title ?? "Prêt quand tu l’es").font(.title3).bold().lineLimit(2)
         Text(model.current?.channel ?? "Une ambiance, un artiste, une sensation…").foregroundStyle(
           .secondary)
@@ -34,6 +51,7 @@ struct DJView: View {
           } label: {
             Image(systemName: "forward.end.fill")
           }.disabled(model.current == nil || model.busy)
+            .help("Morceau suivant").accessibilityLabel("Morceau suivant")
           if let current = model.current {
             Link("YouTube ↗", destination: current.url).font(.caption)
           }
@@ -46,7 +64,7 @@ struct DJView: View {
             Text(entry.track.title).font(.caption).lineLimit(1)
           }
         }
-      }.padding(28).frame(minWidth: 380, idealWidth: 440)
+      }.padding(cinema ? 20 : 28).frame(minWidth: 380, idealWidth: cinema ? 680 : 440)
       VStack(spacing: 16) {
         HStack {
           Text("Ton DJ personnel").font(.title2)
@@ -54,6 +72,9 @@ struct DJView: View {
         }
         Toggle("Me répondre à voix haute", isOn: $model.spoken).onChange(of: model.spoken) {
           _, value in if !value { model.stopVoice() }
+        }
+        if !voice.status.isEmpty {
+          Text(voice.status).font(.caption).foregroundStyle(.secondary)
         }
         ScrollViewReader { proxy in
           ScrollView {
@@ -70,7 +91,7 @@ struct DJView: View {
                 }
                 if session.loadingCredentials {
                   Text(
-                    "Autorise l’accès au Trousseau dans la fenêtre macOS pour retrouver tes clés déjà enregistrées."
+                    "Connexion à ton compte…"
                   ).font(.caption)
                 } else if !session.hasServer {
                   Text(
@@ -85,7 +106,11 @@ struct DJView: View {
                   ).foregroundStyle(.secondary)
                   Text(message.content).textSelection(.enabled)
                 }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                  .background(message.role == "user" ? Color.white : Color.green.opacity(0.08))
+                  .background(
+                    message.role == "user"
+                      ? (cinema ? Color.white.opacity(0.08) : Color.white)
+                      : Color.green.opacity(cinema ? 0.16 : 0.08)
+                  )
                   .clipShape(RoundedRectangle(cornerRadius: 14)).id(message.id)
               }
               if model.busy {
@@ -124,10 +149,12 @@ struct DJView: View {
           }.disabled(
             model.busy || model.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
           ).keyboardShortcut(.return, modifiers: [.command])
-        }.padding(14).background(.white).clipShape(RoundedRectangle(cornerRadius: 20))
+        }.padding(14).background(cinema ? Color.white.opacity(0.08) : Color.white).clipShape(
+          RoundedRectangle(cornerRadius: 20))
         Text("Micro au clic. Les réponses du DJ sont des suggestions issues de ta bibliothèque.")
           .font(.system(size: 10)).foregroundStyle(.secondary)
-      }.padding(28).frame(minWidth: 340)
+      }.padding(24).frame(minWidth: 320, idealWidth: 360, maxWidth: cinema ? 420 : .infinity)
+        .background(.ultraThinMaterial)
     }
   }
 }

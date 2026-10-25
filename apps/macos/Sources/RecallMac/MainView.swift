@@ -9,6 +9,7 @@ struct MainView: View {
   @EnvironmentObject var library: LibraryModel
   @EnvironmentObject var dj: DJModel
   @State private var tab = "dj"
+  @AppStorage("cinemaMode") private var cinema = true
   var body: some View {
     NavigationSplitView {
       VStack(alignment: .leading, spacing: 24) {
@@ -29,8 +30,13 @@ struct MainView: View {
         }
         Spacer()
         Text("\(library.libraryCount) vidéos").font(.headline)
-        Text(session.hasServer ? "Bibliothèque sur ton serveur" : "Serveur à connecter").font(.caption).foregroundStyle(.secondary)
+        Text(session.hasServer ? "Bibliothèque sur ton serveur" : "Serveur à connecter").font(
+          .caption
+        ).foregroundStyle(.secondary)
         SettingsLink { Label("Réglages", systemImage: "slider.horizontal.3") }
+        ShareLink(item: URL(string: "https://recall.stoa.solutions/macos/")!) {
+          Label("Partager Recall", systemImage: "square.and.arrow.up").font(.caption)
+        }
       }.padding(24).buttonStyle(.plain).navigationSplitViewColumnWidth(220)
     } detail: {
       VStack(spacing: 0) {
@@ -58,8 +64,22 @@ struct MainView: View {
         } else {
           LibraryView(onPlay: { tab = "dj" })
         }
-      }.background(cream)
-    }.tint(forest)
+      }.background {
+        if cinema && tab == "dj" {
+          LinearGradient(
+            colors: [
+              Color(red: 0.08, green: 0.15, blue: 0.14),
+              Color(red: 0.035, green: 0.045, blue: 0.07),
+            ], startPoint: .topLeading, endPoint: .bottomTrailing)
+        } else {
+          cream
+        }
+      }
+    }.tint(cinema && tab == "dj" ? Color(red: 0.55, green: 0.88, blue: 0.7) : forest)
+      .preferredColorScheme(cinema && tab == "dj" ? .dark : .light)
       .sheet(isPresented: $session.showOnboarding) { OnboardingView().environmentObject(session) }
+      .onChange(of: session.showOnboarding) { _, showing in
+        if !showing && session.hasServer && library.libraryCount == 0 { tab = "library" }
+      }
   }
 }
