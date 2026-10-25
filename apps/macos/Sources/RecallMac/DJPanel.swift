@@ -91,7 +91,7 @@ struct ChatBubble: View {
       HStack(alignment: .top, spacing: 10) {
         DJAvatar()
         VStack(alignment: .leading, spacing: 8) {
-          MarkdownMessage(message.content)
+          MarkdownMessage(message.content, sources: message.sources ?? [])
           if let sources = message.sources, !sources.isEmpty {
             ForEach(sources) { source in
               if let url = source.safeURL {

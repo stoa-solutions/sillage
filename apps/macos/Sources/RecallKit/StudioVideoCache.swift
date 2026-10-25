@@ -69,6 +69,12 @@ public final class StudioVideoCache {
   private func download(_ id: String, key: String, quality: StudioQuality, to destination: URL)
     async throws -> URL
   {
+    let staging = directory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(
+      at: staging, withIntermediateDirectories: true,
+      attributes: [.posixPermissions: 0o700])
+    defer { try? FileManager.default.removeItem(at: staging) }
+    let output = staging.appendingPathComponent("video.mp4")
     guard
       let executable =
         (executableOverride.map { [$0] } ?? ["/opt/homebrew/bin/yt-dlp", "/usr/local/bin/yt-dlp"])
@@ -76,17 +82,12 @@ public final class StudioVideoCache {
           FileManager.default.isExecutableFile(atPath: $0)
         })
     else { throw RecallError.message("Le téléchargement Studio n’est pas installé sur ce Mac.") }
-    let staging = directory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-    try FileManager.default.createDirectory(
-      at: staging, withIntermediateDirectories: true,
-      attributes: [.posixPermissions: 0o700])
-    defer { try? FileManager.default.removeItem(at: staging) }
-    let output = staging.appendingPathComponent("video.mp4")
     let process = Process()
     process.executableURL = URL(fileURLWithPath: executable)
     process.arguments = [
       "--ignore-config", "--no-playlist", "--no-cache-dir", "--no-progress",
-      "--quiet", "--no-warnings", "--concurrent-fragments", "4", "--retries", "1", "--fragment-retries", "1", "--socket-timeout",
+      "--quiet", "--no-warnings", "--concurrent-fragments", "4", "--retries", "1",
+      "--fragment-retries", "1", "--socket-timeout",
       "15",
       "--max-filesize", String(quality.maximumBytes), "--match-filters",
       "duration <= 1200 & !is_live",
@@ -98,11 +99,21 @@ public final class StudioVideoCache {
     environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
     process.environment = environment
     process.standardOutput = FileHandle.nullDevice
-    process.standardError = FileHandle.nullDevice
+    // Keep stderr private and short-lived; expose only its classified cause, never raw text.
+    let diagnostic = staging.appendingPathComponent("diagnostic.txt")
+    FileManager.default.createFile(
+      atPath: diagnostic.path, contents: nil, attributes: [.posixPermissions: 0o600])
+    let diagnosticOutput = try FileHandle(forWritingTo: diagnostic)
+    defer { try? diagnosticOutput.close() }
+    process.standardError = diagnosticOutput
+    var timedOut = false
     processes[key] = process
     let deadline = Task {
       try? await Task.sleep(nanoseconds: quality.timeout * 1_000_000_000)
-      if !Task.isCancelled, process.isRunning { process.terminate() }
+      if !Task.isCancelled, process.isRunning {
+        timedOut = true
+        process.terminate()
+      }
     }
     defer { deadline.cancel() }
     try Task.checkCancellation()
@@ -114,8 +125,11 @@ public final class StudioVideoCache {
     }
     try Task.checkCancellation()
     guard status == 0, FileManager.default.fileExists(atPath: output.path) else {
-      throw RecallError.message(
-        "Ce clip n’est pas disponible en Studio. Lecture YouTube conservée.")
+      let input = try? FileHandle(forReadingFrom: diagnostic)
+      defer { try? input?.close() }
+      let data = (try? input?.read(upToCount: 32 * 1024)) ?? Data()
+      throw PlaybackFailure.downloadDiagnostic(
+        String(decoding: data, as: UTF8.self), timedOut: timedOut)
     }
     let size = (try output.resourceValues(forKeys: [.fileSizeKey])).fileSize ?? 0
     guard size > 0, size <= quality.maximumBytes else {

@@ -14,7 +14,7 @@ public struct MessageMarkdown {
     public var text: AttributedString
   }
   public let blocks: [Block]
-  public init(_ source: String) {
+  public init(_ source: String, citations: [Int: URL] = [:]) {
     let parsed = (try? AttributedString(markdown: source)) ?? AttributedString(source)
     var result: [Block] = []
     for run in parsed.runs {
@@ -51,6 +51,21 @@ public struct MessageMarkdown {
     for index in result.indices where result[index].kind != .code {
       var text = result[index].text
       let plain = String(text.characters)
+      // Numeric citations returned by seekInformation use the supplied, verified source map.
+      // Existing Markdown destinations and inline code always take precedence.
+      let references = try? NSRegularExpression(pattern: #"\[(\d+)\]"#)
+      for match in references?.matches(in: plain, range: NSRange(plain.startIndex..., in: plain))
+        ?? []
+      {
+        guard let numberRange = Range(match.range(at: 1), in: plain),
+          let number = Int(plain[numberRange]), let url = citations[number], Self.isWebLink(url),
+          let range = Range(match.range, in: plain),
+          let start = AttributedString.Index(range.lowerBound, within: text),
+          let end = AttributedString.Index(range.upperBound, within: text),
+          Self.canLink(text[start..<end])
+        else { continue }
+        text[start..<end].link = url
+      }
       for match in detector?.matches(in: plain, range: NSRange(plain.startIndex..., in: plain))
         ?? []
       {
@@ -59,11 +74,16 @@ public struct MessageMarkdown {
           let end = AttributedString.Index(range.upperBound, within: text)
         else { continue }
         // Preserve Markdown links that already have a chosen label and destination.
-        if text[start..<end].runs.allSatisfy({ $0.link == nil }) { text[start..<end].link = url }
+        if Self.canLink(text[start..<end]) { text[start..<end].link = url }
       }
       result[index].text = text
     }
     blocks = result
+  }
+  private static func canLink(_ text: AttributedSubstring) -> Bool {
+    text.runs.allSatisfy {
+      $0.link == nil && $0.inlinePresentationIntent?.contains(.code) != true
+    }
   }
   public static func isWebLink(_ url: URL) -> Bool {
     ["https", "http"].contains(url.scheme ?? "") && url.host != nil

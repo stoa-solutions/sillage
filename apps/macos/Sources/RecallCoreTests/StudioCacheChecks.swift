@@ -49,5 +49,28 @@ func studioCacheChecks() async throws {
     !FileManager.default.fileExists(
       atPath: root.appendingPathComponent("cache/12345678901-1080.mp4").path),
     "Cancelled download became a playable cache entry")
+  // Real subprocess stderr is classified without leaking URLs or credentials to the UI.
+  try Data(
+    "#!/bin/sh\nprintf '%s' 'ERROR: Sign in to confirm you are not a bot https://signed.invalid/?token=private' >&2\nexit 1\n"
+      .utf8
+  ).write(to: helper)
+  try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: helper.path)
+  do {
+    _ = try await cache.file(for: "zzzzzzzzzzz")
+    throw RecallError.message("A failed download was accepted")
+  } catch let failure as PlaybackFailure {
+    try expect(
+      failure.kind == .authentication && !failure.message.contains("private")
+        && !failure.message.contains("signed.invalid"), "Raw extractor diagnostics leaked")
+  }
+  try expect(
+    PlaybackFailure.youtube(code: 153).kind == .configuration
+      && PlaybackFailure.youtube(code: 150).kind == .embeddingDenied
+      && PlaybackFailure.youtube(code: 100).kind == .videoUnavailable,
+    "YouTube error codes were flattened")
+  try expect(
+    PlaybackFailure.downloadDiagnostic("HTTP Error 429").kind == .rateLimited
+      && PlaybackFailure.downloadDiagnostic("request timed out").kind == .network,
+    "Download service failures were classified as unavailable videos")
   print("Studio cache checks passed: invalid ID, atomic download, reuse, cancellation.")
 }

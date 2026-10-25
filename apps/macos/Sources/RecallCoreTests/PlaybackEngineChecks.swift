@@ -164,6 +164,32 @@ func playbackEngineChecks() async throws {
   clips.fail(song.id)
   try await settle { heard == [.unavailable] }
 
+  // The extractor's authentication diagnostic wins over a generic embed refusal.
+  youtube = FakePlayer()
+  clip = FakePlayer()
+  clips = FakeClips()
+  engine = PlaybackEngine(youtube: youtube, clip: clip, clips: clips, fadeDuration: 0)
+  heard = []
+  engine.onSignal = { heard.append($0) }
+  engine.cue(song)
+  try await settle { clips.waiting[song.id] != nil }
+  youtube.onSignal?(.failed(.youtube(code: 150)))
+  clips.waiting.removeValue(forKey: song.id)?.resume(throwing: PlaybackFailure(.authentication))
+  try await settle { !heard.isEmpty }
+  try expect(
+    heard == [.failed(PlaybackFailure(.authentication))]
+      && engine.failure.contains("connexion"), "Authentication diagnosis was discarded")
+  youtube.onSignal?(.failed(.youtube(code: 150)))
+  youtube.onSignal?(.ended)
+  youtube.onSignal?(.playing(true))
+  try expect(heard.count == 1 && !engine.playing, "Duplicate/late signals escaped a failed cue")
+  engine.cue(other)
+  try await settle { clips.waiting[other.id] != nil }
+  youtube.onSignal?(.playing(true))
+  try expect(engine.playing, "A new cue inherited the previous terminal failure")
+  clips.fail(other.id)
+  try await settle { !engine.preparingClip }
+
   // A clip failing mid-song falls back to YouTube at the same instant.
   youtube = FakePlayer()
   clip = FakePlayer()

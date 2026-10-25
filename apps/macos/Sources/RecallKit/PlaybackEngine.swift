@@ -68,6 +68,8 @@ public final class PlaybackEngine: ObservableObject {
   private var wantsPlayback = true
   private var ducked = false
   private var heldUnavailable = false
+  private var heldSignal: PlaybackSignal = .unavailable
+  private var failureDelivered = false
   private var clock = PlaybackClock()
 
   public init(
@@ -102,6 +104,7 @@ public final class PlaybackEngine: ObservableObject {
     duration = 0
     failure = ""
     heldUnavailable = false
+    failureDelivered = false
     wantsPlayback = autoplay
     clock.sample(0, playing: false)
     youtube.setVolume(level)
@@ -153,6 +156,8 @@ public final class PlaybackEngine: ObservableObject {
   public func reloadClip() {
     guard let track else { return }
     generation += 1
+    failureDelivered = false
+    heldUnavailable = false
     clipTask?.cancel()
     fading = false
     if active == .clip {
@@ -174,6 +179,7 @@ public final class PlaybackEngine: ObservableObject {
     youtubeTask = nil
     youtube.stop()
     clip.stop()
+    clips.keep([])
     track = nil
     active = .youtube
     playing = false
@@ -203,7 +209,7 @@ public final class PlaybackEngine: ObservableObject {
         if !wantsPlayback { youtube.pause() }
       } catch {
         guard !Task.isCancelled, generation == expectedGeneration else { return }
-        receive(.unavailable, from: .youtube)
+        receive(.failed(PlaybackFailure(.network)), from: .youtube)
       }
     }
   }
@@ -218,7 +224,7 @@ public final class PlaybackEngine: ObservableObject {
         try Task.checkCancellation()
         await self?.handOver(to: url, generation: generation)
       } catch {
-        self?.clipFailed(generation: generation)
+        self?.clipFailed(generation: generation, error: error)
       }
     }
   }
@@ -262,12 +268,18 @@ public final class PlaybackEngine: ObservableObject {
     preparingClip = false
   }
 
-  private func clipFailed(generation: Int) {
+  private func clipFailed(generation: Int, error: Error? = nil) {
     guard generation == self.generation else { return }
     preparingClip = false
     if heldUnavailable {
       heldUnavailable = false
-      onSignal?(.unavailable)
+      // An explicit service failure explains both paths better than a generic iframe refusal.
+      let cause = error as? PlaybackFailure
+      let signal =
+        cause.map {
+          !$0.mayTryAnotherTrack && $0.kind != .download ? PlaybackSignal.failed($0) : heldSignal
+        } ?? heldSignal
+      deliverFailure(signal)
     }
   }
 
@@ -275,21 +287,16 @@ public final class PlaybackEngine: ObservableObject {
 
   private func receive(_ signal: PlaybackSignal, from player: Player) {
     guard player == active else { return }
+    if case .failed = signal {
+      handleFailure(signal, from: player)
+      return
+    }
+    if case .unavailable = signal {
+      handleFailure(signal, from: player)
+      return
+    }
+    guard !failureDelivered else { return }
     switch signal {
-    case .unavailable where player == .youtube && preparingClip:
-      // YouTube refuses to embed this video, but the downloaded clip may still come.
-      heldUnavailable = true
-      return
-    case .unavailable where player == .clip:
-      // A downloaded clip that fails mid-song: carry on with YouTube from the same instant.
-      guard let track else { return }
-      let resume = clip.position
-      clip.stop()
-      active = .youtube
-      failure = "Lecture locale indisponible. Retour au lecteur YouTube."
-      youtube.setVolume(level)
-      loadYouTube(track, at: resume)
-      return
     case .playing(let value):
       if playing != value { playing = value }
       clock.setPlaying(value)
@@ -298,9 +305,35 @@ public final class PlaybackEngine: ObservableObject {
       if abs(seconds - elapsed) >= 0.25 || !playing { elapsed = seconds }
       if length > 0, abs(length - duration) > 0.01 { duration = length }
       clock.sample(seconds, playing: playing)
-    case .ended, .unavailable:
+    case .ended, .unavailable, .failed:
       playing = false
     }
+    onSignal?(signal)
+  }
+
+  private func handleFailure(_ signal: PlaybackSignal, from player: Player) {
+    guard !failureDelivered else { return }
+    if player == .youtube && preparingClip {
+      heldUnavailable = true
+      heldSignal = signal
+    } else if player == .clip, let track {
+      let resume = clip.position
+      clip.stop()
+      active = .youtube
+      failure = "Lecture locale indisponible. Retour au lecteur YouTube."
+      youtube.setVolume(level)
+      loadYouTube(track, at: resume)
+    } else {
+      deliverFailure(signal)
+    }
+  }
+
+  private func deliverFailure(_ signal: PlaybackSignal) {
+    guard !failureDelivered else { return }
+    failureDelivered = true
+    playing = false
+    clock.setPlaying(false)
+    if case .failed(let cause) = signal { failure = cause.message }
     onSignal?(signal)
   }
 

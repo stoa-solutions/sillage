@@ -137,8 +137,44 @@ func listeningSessionChecks() throws {
   _ = session.handle(.playback(.unavailable))
   let stopped = session.handle(.playback(.unavailable))
   try expect(
-    stopped.pauses && session.notice.contains("indisponibles"),
+    stopped.pauses && session.playbackBlocked && session.upcoming.map(\.id) == [d.id],
     "Repeated unavailable clips did not stop with a notice")
+
+  // Service failures do not consume the current track, mark it unavailable, or search again.
+  for failure in [
+    PlaybackFailure(.authentication), PlaybackFailure(.network),
+    PlaybackFailure.youtube(code: 153), PlaybackFailure.youtube(code: 999),
+  ] {
+    session = playingAlone(a)
+    for song in [b, c, d] { _ = session.handle(.enqueue(song, source: .all)) }
+    let previousHistory = session.queue.history.count
+    let failureEffects = session.handle(.playback(.failed(failure)))
+    try expect(
+      session.current?.id == a.id && session.upcoming.map(\.id) == [b.id, c.id, d.id]
+        && session.queue.history.count == previousHistory && failureEffects.pauses
+        && failureEffects.cued.isEmpty && session.playbackBlocked,
+      "A provider failure consumed the queue")
+    _ = session.handle(.playback(.progress(elapsed: 199, duration: 200)))
+    _ = session.handle(.playback(.ended))
+    _ = session.handle(.playback(.failed(failure)))
+    try expect(
+      session.current?.id == a.id && !session.busy, "Stale signals restarted a blocked session")
+    let retry = session.handle(.resume)
+    try expect(
+      retry.cued.first == a.id && !session.playbackBlocked
+        && session.upcoming.count == 3, "Retry did not keep the current selection")
+  }
+
+  session = playingAlone(a)
+  let pendingChoice = session.handle(.ask("Joue un autre titre", source: .all)).requests[0]
+  _ = session.handle(.playback(.failed(PlaybackFailure(.network))))
+  let recovered = session.handle(
+    .answer(
+      request: pendingChoice,
+      DJResponse(reply: "Le suivant", action: "replace", tracks: [b])))
+  try expect(
+    recovered.cued == [b.id] && recovered.autoplay == [true] && !session.playbackBlocked,
+    "A provider error cancelled the person's pending selection or manufactured a Pause")
 
   // Duplicates stay out of the File, with a banner rather than a silent no-op.
   session = playingAlone(a)

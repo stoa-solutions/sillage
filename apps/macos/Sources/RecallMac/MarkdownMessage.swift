@@ -4,10 +4,15 @@ import SwiftUI
 /// Use Foundation's real Markdown parser, with native selection and safe clickable web links.
 struct MarkdownMessage: View {
   private let source: String
+  private let citations: [Int: URL]
   @StateObject private var rendered: MarkdownContent
-  init(_ source: String) {
+  init(_ source: String, sources: [InformationSource] = []) {
     self.source = source
-    _rendered = StateObject(wrappedValue: MarkdownContent(source))
+    let citations = sources.reduce(into: [Int: URL]()) { result, item in
+      if let url = item.safeURL { result[item.id] = url }
+    }
+    self.citations = citations
+    _rendered = StateObject(wrappedValue: MarkdownContent(source, citations: citations))
   }
   var body: some View {
     VStack(alignment: .leading, spacing: 9) {
@@ -35,7 +40,8 @@ struct MarkdownMessage: View {
         }
       }
     }.textSelection(.enabled).lineSpacing(2).tint(.recall)
-      .onChange(of: source) { _, value in rendered.update(value) }
+      .onChange(of: source) { _, value in rendered.update(value, citations: citations) }
+      .onChange(of: citations) { _, value in rendered.update(source, citations: value) }
       .environment(
         \.openURL,
         OpenURLAction { url in
@@ -48,13 +54,16 @@ struct MarkdownMessage: View {
 @MainActor private final class MarkdownContent: ObservableObject {
   @Published private(set) var blocks: [MessageMarkdown.Block]
   private var source: String
-  init(_ source: String) {
+  private var citations: [Int: URL]
+  init(_ source: String, citations: [Int: URL]) {
     self.source = source
-    blocks = MessageMarkdown(source).blocks
+    self.citations = citations
+    blocks = MessageMarkdown(source, citations: citations).blocks
   }
-  func update(_ value: String) {
-    guard value != source else { return }
+  func update(_ value: String, citations: [Int: URL]) {
+    guard value != source || self.citations != citations else { return }
     source = value
-    blocks = MessageMarkdown(value).blocks
+    self.citations = citations
+    blocks = MessageMarkdown(value, citations: citations).blocks
   }
 }

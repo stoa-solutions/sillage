@@ -245,8 +245,7 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
       onFailure?("Clique sur Lecture pour lancer l’écoute.")
     case "error":
       if let id = value["id"] as? String, id != currentID { return }
-      onFailure?("YouTube bloque l’intégration de ce titre.")
-      onSignal?(.unavailable)
+      onSignal?(.failed(PlaybackFailure.youtube(code: value["code"] as? Int)))
     default: break
     }
   }
@@ -254,7 +253,7 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
   func webView(
     _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
     withError error: Error
-  ) { onFailure?("Le lecteur ne peut pas joindre YouTube. Vérifie ta connexion.") }
+  ) { onSignal?(.failed(PlaybackFailure(.network))) }
   func webView(
     _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void

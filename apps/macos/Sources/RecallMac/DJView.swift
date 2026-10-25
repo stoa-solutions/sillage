@@ -61,7 +61,13 @@ struct DJView: View {
       VStack(alignment: .leading, spacing: 12) {
         VideoSurface(player: player).aspectRatio(16 / 9, contentMode: .fit)
           .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-          .frame(maxWidth: .infinity).overlay { if model.current == nil { idleScreen } }
+          .frame(maxWidth: .infinity).overlay {
+            if model.current == nil {
+              idleScreen
+            } else if player.preparingClip && !player.playing {
+              preparation
+            }
+          }
         TrackHeadline(track: model.current, titleFont: .title3.weight(.semibold), detailFont: .body)
         transport
         playerStatus
@@ -119,53 +125,86 @@ struct DJView: View {
   }
 
   private var transport: some View {
-    HStack(spacing: 12) {
-      Button {
-        model.togglePlayback()
-      } label: {
-        Image(systemName: player.playing ? "pause.fill" : "play.fill").font(.title3)
-          .frame(width: 40, height: 40)
-          .foregroundStyle(Color(nsColor: .windowBackgroundColor))
-          .background(Circle().fill(Color.recall))
-      }.buttonStyle(.plain).accessibilityLabel(player.playing ? "Pause" : "Lecture")
-        .disabled(model.current == nil)
-      Button {
-        model.next()
-      } label: {
-        Image(systemName: "forward.fill").font(.title3).frame(width: 32, height: 32)
-      }.buttonStyle(.plain).help("Morceau suivant").accessibilityLabel("Morceau suivant")
-        .disabled(model.current == nil)
-      VolumeControl(player: player)
-      Spacer(minLength: 8)
-      Toggle(isOn: $model.spoken) { Label("Voix du DJ", systemImage: "person.wave.2") }
-        .help("Le DJ te répond et annonce les morceaux à voix haute")
-      Toggle(isOn: $model.continuous) { Label("Enchaîner", systemImage: "infinity") }
-        .help("À la fin de la file, le DJ ajoute de nouveaux morceaux dans la même ambiance")
-      if player.studio {
-        Toggle(
-          isOn: Binding(
-            get: { !panelCollapsed && panelTab == .lyrics },
-            set: { visible in
-              if visible {
-                panelCollapsed = false
-                panelTab = .lyrics
-              } else {
-                panelTab = .dj
-              }
-            }
-          )
-        ) { Label("Paroles", systemImage: "music.note.list") }
-        .help("Afficher les paroles synchronisées dans le panneau latéral")
+    ViewThatFits(in: .horizontal) {
+      HStack(spacing: 12) {
+        playbackControls
+        Spacer(minLength: 8)
+        sessionControls
       }
-      if let current = model.current {
-        Link(destination: current.url) { Image(systemName: "arrow.up.right.square") }
-          .foregroundStyle(.secondary)
-          .help("Ouvrir sur YouTube").accessibilityLabel("Ouvrir sur YouTube")
+      VStack(alignment: .leading, spacing: 12) {
+        HStack(spacing: 12) {
+          playbackControls
+          Spacer(minLength: 0)
+        }
+        HStack(spacing: 12) {
+          sessionControls
+          Spacer(minLength: 0)
+        }
       }
     }.toggleStyle(GlassToggleStyle())
   }
 
+  @ViewBuilder private var playbackControls: some View {
+    Button {
+      model.togglePlayback()
+    } label: {
+      Image(systemName: player.playing ? "pause.fill" : "play.fill").font(.title3)
+        .frame(width: 40, height: 40)
+        .foregroundStyle(Color(nsColor: .windowBackgroundColor))
+        .background(Circle().fill(Color.recall))
+    }.buttonStyle(.plain).accessibilityLabel(player.playing ? "Pause" : "Lecture")
+      .disabled(model.current == nil)
+    Button {
+      model.next()
+    } label: {
+      Image(systemName: "forward.fill").font(.title3).frame(width: 32, height: 32)
+    }.buttonStyle(.plain).help("Morceau suivant").accessibilityLabel("Morceau suivant")
+      .disabled(model.current == nil)
+    VolumeControl(player: player)
+  }
+
+  @ViewBuilder private var sessionControls: some View {
+    Toggle(isOn: $model.spoken) { Label("Voix du DJ", systemImage: "person.wave.2") }
+      .help("Le DJ te répond et annonce les morceaux à voix haute")
+    Toggle(isOn: $model.continuous) { Label("Enchaîner", systemImage: "infinity") }
+      .help("À la fin de la file, le DJ ajoute de nouveaux morceaux dans la même ambiance")
+    if player.studio {
+      Toggle(
+        isOn: Binding(
+          get: { !panelCollapsed && panelTab == .lyrics },
+          set: { visible in
+            if visible {
+              panelCollapsed = false
+              panelTab = .lyrics
+            } else {
+              panelTab = .dj
+            }
+          }
+        )
+      ) { Label("Paroles", systemImage: "music.note.list") }
+      .help("Afficher les paroles synchronisées dans le panneau latéral")
+    }
+    if let current = model.current {
+      Link(destination: current.url) { Image(systemName: "arrow.up.right.square") }
+        .foregroundStyle(.secondary)
+        .help("Ouvrir sur YouTube").accessibilityLabel("Ouvrir sur YouTube")
+    }
+  }
+
+  private var preparation: some View {
+    VStack(spacing: 10) {
+      ProgressView().controlSize(.small)
+      Text("Préparation du clip…").font(.caption).foregroundStyle(.secondary)
+    }.frame(maxWidth: .infinity, maxHeight: .infinity).background(.black.opacity(0.25))
+  }
+
   @ViewBuilder private var playerStatus: some View {
+    if player.preparingClip && !player.playing && player.studio {
+      HStack(spacing: 8) {
+        ProgressView().controlSize(.small)
+        Text("Préparation du clip…").font(.caption).foregroundStyle(.secondary)
+      }
+    }
     if model.waitingForNext && model.busy {
       HStack {
         ProgressView().controlSize(.small)
@@ -176,11 +215,16 @@ struct DJView: View {
     if !model.continuationNotice.isEmpty {
       VStack(alignment: .leading, spacing: 4) {
         Text(model.continuationNotice).font(.caption).foregroundStyle(.secondary)
-        Button("Réessayer la suite") { model.retryContinuation() }
-          .buttonStyle(.bordered).disabled(model.busy)
+        Button(model.playbackBlocked ? "Réessayer ce titre" : "Réessayer la suite") {
+          if model.playbackBlocked { model.retryPlayback() } else { model.retryContinuation() }
+        }
+        .buttonStyle(.bordered).disabled(model.busy)
+        if model.playbackBlocked, let current = model.current {
+          Link("Ouvrir YouTube", destination: current.url).font(.caption)
+        }
       }
     }
-    if !player.failure.isEmpty {
+    if !player.failure.isEmpty && !model.playbackBlocked {
       Label(player.failure, systemImage: "exclamationmark.triangle").font(.caption)
         .foregroundStyle(.orange)
     }

@@ -6,6 +6,7 @@ public enum PlaybackSignal: Sendable, Equatable {
   case progress(elapsed: Double, duration: Double)
   case ended
   case unavailable
+  case failed(PlaybackFailure)
 }
 
 /// Session d'écoute: the File, the musical direction and the automatic continuation of one
@@ -64,6 +65,7 @@ public struct ListeningSession: Sendable {
   public private(set) var messages: [ChatMessage] = []
   /// Why the music stopped or why no continuation came; empty when all is well.
   public private(set) var notice = ""
+  public private(set) var playbackBlocked = false
   public private(set) var waitingForNext = false
   public private(set) var continuous = true
   public private(set) var spoken = true
@@ -151,7 +153,13 @@ public struct ListeningSession: Sendable {
       effects += [.pause, .stopSpeech]
     case .resume:
       setPlaybackIntent(true)
-      effects.append(.play)
+      if playbackBlocked {
+        unavailableCount = 0
+        composition.resume()
+        startCurrent(into: &effects)
+      } else {
+        effects.append(.play)
+      }
     case .retryContinuation:
       guard pending == nil else { break }
       waitingForNext = queue.ended
@@ -269,7 +277,13 @@ public struct ListeningSession: Sendable {
         say(assistant: "Musique en pause.")
       case .resume:
         setPlaybackIntent(true)
-        effects.append(.play)
+        if playbackBlocked {
+          unavailableCount = 0
+          composition.resume()
+          startCurrent(into: &effects)
+        } else {
+          effects.append(.play)
+        }
         say(assistant: "La lecture reprend.")
       }
       return
@@ -381,6 +395,7 @@ public struct ListeningSession: Sendable {
   }
 
   private mutating func requestContinuation(retry: Bool, into effects: inout [Effect]) {
+    guard !playbackBlocked else { return }
     guard accountReady else {
       // Signing in: keep the continuation for later without spending its attempt.
       deferredContinuation = true
@@ -408,6 +423,7 @@ public struct ListeningSession: Sendable {
     if userInitiated {
       setPlaybackIntent(true)
       unavailableCount = 0
+      composition.resume()
       // A late manual search must not undo a more recent Next; an automatic refill keeps going.
       if let request = pending, !request.automatic {
         cancelPending(into: &effects)
@@ -428,8 +444,10 @@ public struct ListeningSession: Sendable {
   private mutating func playback(_ signal: PlaybackSignal, into effects: inout [Effect]) {
     switch signal {
     case .playing(let value):
+      guard !playbackBlocked else { return }
       playing = value
     case .progress(let elapsed, let duration):
+      guard !playbackBlocked else { return }
       self.elapsed = elapsed
       self.duration = duration
       if playing && elapsed > 2 { unavailableCount = 0 }
@@ -447,21 +465,34 @@ public struct ListeningSession: Sendable {
         requestContinuation(retry: false, into: &effects)
       }
     case .ended:
+      guard !playbackBlocked else { return }
       playing = false
       queue.markEnded()
       if continuous { next(userInitiated: false, into: &effects) }
-    case .unavailable:
-      unavailableCount += 1
-      if unavailableCount < 3 {
-        next(outcome: .unavailable, userInitiated: false, into: &effects)
-      } else {
-        cancelPending(into: &effects)
-        queue.stop(outcome: .unavailable)
-        effects.append(.pause)
-        notice = "Plusieurs clips sont indisponibles. Réessaie ou choisis un titre dans À suivre."
-        waitingForNext = false
-      }
+    case .unavailable: recover(PlaybackFailure(.videoUnavailable), into: &effects)
+    case .failed(let failure): recover(failure, into: &effects)
     }
+  }
+
+  private mutating func recover(_ failure: PlaybackFailure, into effects: inout [Effect]) {
+    guard !playbackBlocked else { return }
+    unavailableCount += 1
+    // Only a confirmed per-video refusal can justify skipping. Authentication, network,
+    // player configuration and unknown failures keep the current song and all upcoming tracks.
+    if failure.mayTryAnotherTrack && unavailableCount < 3 && !upcoming.isEmpty {
+      next(outcome: .unavailable, userInitiated: false, into: &effects)
+      return
+    }
+    playbackBlocked = true
+    playing = false
+    // A provider failure pauses the device, not the person's playback intent. A manual
+    // selection already in flight may still recover it; only automatic refills are stopped.
+    if pending?.automatic == true { cancelPending(into: &effects) }
+    composition.cancel()
+    deferredContinuation = false
+    waitingForNext = false
+    effects += [.pause, .stopSpeech, .clearPreparedSpeech]
+    notice = failure.message + " Ta file est conservée. Réessaie ce titre ou choisis le suivant."
   }
 
   private mutating func setPlaybackIntent(_ value: Bool) {
@@ -472,6 +503,7 @@ public struct ListeningSession: Sendable {
   private var prepared: [Track] { Array(upcoming.prefix(Self.preparedAhead)) }
 
   private mutating func startCurrent(into effects: inout [Effect]) {
+    playbackBlocked = false
     notice = ""
     waitingForNext = false
     preparedSpeechFor = nil

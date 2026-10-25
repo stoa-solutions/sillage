@@ -35,6 +35,7 @@ final class DJModel: ObservableObject {
   var history: [PlaybackHistoryEntry] { listening.queue.history }
   var busy: Bool { listening.busy }
   var waitingForNext: Bool { listening.waitingForNext }
+  var playbackBlocked: Bool { listening.playbackBlocked }
   var continuationNotice: String { listening.notice }
   var current: Track? { listening.current }
   var allUpcoming: [QueueEntry] {
@@ -141,6 +142,7 @@ final class DJModel: ObservableObject {
     dispatch(.moveUpcoming(from: source, to: destination))
   }
   func retryContinuation() { dispatch(.retryContinuation) }
+  func retryPlayback() { dispatch(.resume) }
   /// "Annuler": stops the search in progress, the dictation and the voice.
   func cancel() {
     microphone.stop()

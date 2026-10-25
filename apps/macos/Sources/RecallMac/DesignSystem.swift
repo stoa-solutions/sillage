@@ -289,6 +289,7 @@ struct GlassToggleStyle: ToggleStyle {
       configuration.isOn.toggle()
     } label: {
       configuration.label.labelStyle(.titleAndIcon).font(.callout.weight(.medium))
+        .lineLimit(1).fixedSize(horizontal: true, vertical: false)
         .foregroundStyle(configuration.isOn ? Color.primary : Color.secondary)
         .padding(.horizontal, 12).padding(.vertical, 6)
         .background {

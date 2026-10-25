@@ -44,6 +44,19 @@ func studioPresentationChecks() throws {
   try expect(
     !markdown.blocks[5].text.runs.contains { $0.link != nil },
     "Code sample gained an interactive link")
+  let cited = MessageMarkdown(
+    "Une info **vérifiée** [1], une autre [99]. `https://example.com/code [1]`.",
+    citations: [1: URL(string: "https://example.com/source")!])
+  let citationLinks = cited.blocks.flatMap { Array($0.text.runs) }.filter { $0.link != nil }
+  try expect(
+    citationLinks.count == 1
+      && String(citationLinks[0].link!.absoluteString) == "https://example.com/source",
+    "Source citation was not linked or inline code became interactive")
+  let reference = MessageMarkdown(
+    "[Une source][ref] et *italique*.\n\n[ref]: https://example.com/reference")
+  try expect(
+    reference.blocks.flatMap { Array($0.text.runs) }.contains { $0.link?.path == "/reference" },
+    "Reference-style Markdown link was lost")
   print(
     "Studio presentation checks passed: inactivity, restore, pause, Markdown semantics and safe links"
   )

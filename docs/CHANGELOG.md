@@ -2,6 +2,9 @@
 
 ## Non publié
 
+- Lecture : erreurs YouTube conservées avec leur code ; les problèmes d’accès, de réseau ou de configuration arrêtent la cascade et gardent le titre et la file. « Réessayer ce titre » relance la sélection actuelle ; les signaux tardifs d’un échec ne passent plus plusieurs morceaux. Le cache Studio classe ses erreurs sans exposer la sortie brute du téléchargeur. Aucun proxy activé.
+- Chat : citations numériques reliées aux sources vérifiées, liens Markdown de référence et code respectés ; le texte reste sélectionnable. Préparation du clip affichée discrètement ; boutons sur une ligne ou deux rangées selon la place, sans libellés cassés ; fondu Studio conservé. App Mac 1.7.2.
+
 - Studio : efface aussi les fonds de verre partagés de la barre d’outils macOS pendant le fondu, sans déplacer le clip.
 
 - Studio : commandes, titre, navigation et boutons de fenêtre s’effacent en douceur après trois secondes sans interaction, puis reviennent à la souris ou au clavier ; pause, chargement et pages de lecture gardent les commandes. Le chat ouvert reste visible, le dégradé du clip s’atténue et les animations respectent Réduire les animations.
