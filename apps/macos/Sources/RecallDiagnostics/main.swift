@@ -1,17 +1,6 @@
 import Foundation
 import RecallKit
 
-/// Prints each search the DJ runs and what the library returned.
-struct LoggedSearch: LibrarySearch {
-  let base: any LibrarySearch
-  func search(_ query: String, excluding: Set<String>, limit: Int) async throws -> [Track] {
-    let found = try await base.search(query, excluding: excluding, limit: limit)
-    print(
-      "Query: \(query) → \(found.count) [\(found.prefix(5).map(\.title).joined(separator: " | "))]")
-    return found
-  }
-}
-
 @main struct Diagnostics {
   static func main() async {
     do {
@@ -34,19 +23,21 @@ struct LoggedSearch: LibrarySearch {
             "Server playlist:", playlist.title, "entries", playlist.entries, "distinct", page.total,
             "page", page.tracks.count)
         }
-        let candidates = try await client.djCandidates(
-          connection, query: "Mac Miller", excluded: [])
-        guard !candidates.isEmpty else { throw RecallError.message("No server DJ candidates") }
-        let excluded = Set(candidates.prefix(10).map(\.id))
-        let continued = try await client.djCandidates(
-          connection, query: "Mac Miller", excluded: excluded)
-        guard !continued.isEmpty, continued.allSatisfy({ !excluded.contains($0.id) }) else {
-          throw RecallError.message("Server DJ exclusion failed")
+        // Two DJ turns on the server: the second must not replay what the first queued.
+        let dj = ServerDJ(connection: connection)
+        let opening = try await dj.turn(
+          DJRequest(message: "Mets-moi du Mac Miller", history: [], queued: []))
+        guard !opening.tracks.isEmpty else { throw RecallError.message("No server DJ selection") }
+        let queued = Set(opening.tracks.map(\.id))
+        let next = try await dj.turn(
+          DJRequest(message: "D’autres titres de Mac Miller, pas ceux déjà en file", history: [], queued: queued))
+        guard next.tracks.allSatisfy({ !queued.contains($0.id) }) else {
+          throw RecallError.message("Server DJ replayed a queued track")
         }
         print(
           "Server-only verification passed:", overview.videoCount, "videos;",
-          overview.playlists.count, "playlists;", candidates.count,
-          "DJ candidates. No local store used.")
+          overview.playlists.count, "playlists; DJ picked", opening.tracks.count, "then",
+          next.tracks.count, "new tracks. No local store used.")
         return
       }
       if CommandLine.arguments.count == 4, CommandLine.arguments[1] == "--server-sync" {
@@ -66,80 +57,9 @@ struct LoggedSearch: LibrarySearch {
           "unique videos. No local export or database.")
         return
       }
-      if CommandLine.arguments.count == 4, CommandLine.arguments[1] == "--server-import" {
-        let data = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[2]))
-        let raw = try JSONDecoder().decode(Connection.self, from: data)
-        let connection = try Connection(url: raw.url, token: raw.token)
-        let start = Date()
-        let document = try await ServerPlaylistImporter(connection: connection).load(
-          link: CommandLine.arguments[3])
-        let store = LibraryStore(
-          directory: FileManager.default.urls(
-            for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent(
-              "Playlist Recall"))
-        try store.commit(document, source: .local)
-        print(
-          "Real server import committed: \(document.playlists.count) playlist, \(document.tracks.count) videos, \(document.playlists.first?.videoIDs.count ?? 0) entries in \(Date().timeIntervalSince(start))s"
-        )
-        return
-      }
-      if CommandLine.arguments.contains("--apple") {
-        if let reason = AppleDJ.availability {
-          print("Apple DJ unavailable: \(reason)")
-          return
-        }
-        let store = LibraryStore(
-          directory: FileManager.default.urls(
-            for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent(
-              "Playlist Recall"))
-        let start = Date()
-        let request = CommandLine.arguments.dropFirst(2).joined(separator: " ")
-        let response = try await LocalDJ(
-          model: AppleDJ(),
-          library: LoggedSearch(base: LocalLibrarySearch(store: store, source: .local))
-        ).turn(
-          DJRequest(
-            message: request.isEmpty ? "Mets-moi du Mac Miller" : request, history: [], queued: []))
-        print(response.reply)
-        print(response.tracks.map(\.title).joined(separator: "\n"))
-        if request.isEmpty {
-          guard !response.tracks.isEmpty,
-            response.tracks.allSatisfy({
-              ($0.title + " " + ($0.channel ?? "")).localizedCaseInsensitiveContains("Mac Miller")
-            })
-          else { throw RecallError.message("Apple did not select Mac Miller tracks") }
-        }
-        print(
-          "Apple DJ: \(response.tracks.count) verified local tracks in \(Date().timeIntervalSince(start))s"
-        )
-        return
-      }
-
-      guard CommandLine.arguments.count >= 2 else {
-        throw RecallError.message("Provide the path to a private test configuration.")
-      }
-      let data = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
-      guard let value = try JSONSerialization.jsonObject(with: data) as? [String: String],
-        let key = value["apiKey"], let url = value["url"], let token = value["token"]
-      else { throw RecallError.message("Invalid private test configuration") }
-      let connection = try Connection(url: url, token: token)
-      let start = Date()
-      let selectedModel =
-        CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "gemini-3.8-flash"
-      let response = try await LocalDJ(
-        model: GeminiDJ(key: key, model: selectedModel),
-        library: ServerLibrarySearch(connection: connection)
-      ).turn(DJRequest(message: "Mets-moi Self Care de Mac Miller.", history: [], queued: []))
-      let seconds = Date().timeIntervalSince(start)
-      print(
-        "Native DJ verified in \(String(format: "%.2f", seconds)) seconds: \(response.tracks.map(\.title).joined(separator: ", "))"
+      throw RecallError.message(
+        "Usage: RecallDiagnostics --server-library <connexion.json> | --server-sync <connexion.json> <lien>"
       )
-      let wav = try await GeminiDJ(key: key, model: "gemini-3.8-flash").speech(
-        "Salut Samuel. Je suis prêt pour une nouvelle session.")
-      guard wav.starts(with: Data("RIFF".utf8)) else {
-        throw RecallError.message("Invalid voice WAV")
-      }
-      print("Native voice verified: \(wav.count) bytes of WAV audio")
     } catch {
       let info = error as NSError
       print(

@@ -1,6 +1,6 @@
 # 0001 — Bibliothèque native locale et import YouTube
 
-Statut : accepté le 25 octobre 2026, demande explicite de Samuel : base locale puis import par lien, redistribution simple.
+Statut : remplacée le 25 octobre 2026 par [0002](0002-server-only-mac-library.md) (bibliothèque exclusivement sur le serveur). Acceptée initialement le même jour, demande explicite de Samuel : base locale puis import par lien, redistribution simple.
 
 SQLite livré par macOS assure la persistance, les transactions et la recherche FTS5. Aucun processus de base de données, paquet de vecteurs ou compte Stoa n’est requis pour conserver/rechercher les vidéos. `LibraryStore` possède migrations, fiches, playlists, appartenance ordonnée et source explicite. Une connexion SQLite est détenue par opération, sans handle partagé entre tâches. Les imports et recherches longs s’exécutent hors du thread de l’interface.
 

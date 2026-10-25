@@ -62,56 +62,14 @@ public struct HTTPClient: Sendable {
     let collections = try await server(connection, path: "playlists")
     return try ServerLibraryOverview(status: status, collections: collections)
   }
-  /// Supplement MCP's short list from server pages, including when earlier tracks are queued.
-  public func djCandidates(_ connection: Connection, query: String, excluded: Set<String>)
-    async throws -> [Track]
-  {
-    let primary = try await mcpSearch(connection, query: query)
-    var seen = Set<String>()
-    var tracks = primary.filter { !excluded.contains($0.id) && seen.insert($0.id).inserted }
-    for offset in stride(from: 0, to: 300, by: 100) {
-      let page = try await searchPage(connection, query: query, offset: offset, limit: 100)
-      tracks += page.tracks.filter { !excluded.contains($0.id) && seen.insert($0.id).inserted }
-      if tracks.count >= 30 || offset + 100 >= page.total { break }
-    }
-    return Array(tracks.prefix(80))
-  }
-  public func mcpSearch(_ connection: Connection, query: String, includeQueued: Bool = false)
-    async throws -> [Track]
-  {
-    let endpoint = URL(string: connection.url + "/v1/mcp")!
-    let headers = [
-      "Authorization": "Bearer " + connection.token,
-      "Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2025-03-26",
-    ]
-    let initialized = try await json(
-      url: endpoint,
-      body: [
-        "jsonrpc": "2.0", "id": 1, "method": "initialize",
-        "params": [
-          "protocolVersion": "2025-03-26", "capabilities": [:],
-          "clientInfo": ["name": "recall-macos", "version": "1.0.0"],
-        ],
-      ], headers: headers)
-    guard initialized["result"] != nil else {
-      throw RecallError.message("Le serveur MCP n’a pas accepté la connexion.")
-    }
-    let response = try await json(
-      url: endpoint,
-      body: [
-        "jsonrpc": "2.0", "id": 2, "method": "tools/call",
-        "params": [
-          "name": "library_search", "arguments": ["query": query, "includeQueued": includeQueued],
-        ],
-      ], headers: headers)
-    guard let result = response["result"] as? [String: Any], result["isError"] as? Bool != true,
-      let content = result["content"] as? [[String: Any]],
-      let text = content.first?["text"] as? String,
-      let data = text.data(using: .utf8),
-      let catalog = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-      let tracks = catalog["tracks"] as? [[String: Any]]
-    else { throw RecallError.message("La recherche MCP n’a pas renvoyé de bibliothèque valide.") }
-    return try Catalog.parse(JSONSerialization.data(withJSONObject: ["videos": tracks]))
-  }
 
+}
+/// One page of server search results and the total number of matches.
+public struct LibrarySearchPage: Sendable {
+  public let tracks: [Track]
+  public let total: Int
+  public init(tracks: [Track], total: Int) {
+    self.tracks = tracks
+    self.total = total
+  }
 }

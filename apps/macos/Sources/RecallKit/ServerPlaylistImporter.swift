@@ -1,5 +1,20 @@
 import Foundation
 
+public enum YouTubePlaylistLink {
+  public static func id(from text: String) throws -> String {
+    let raw = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let url = URLComponents(string: raw), url.scheme == "https",
+      ["youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com"].contains(
+        url.host?.lowercased() ?? ""),
+      url.user == nil, url.password == nil, url.port == nil,
+      ["/playlist", "/watch"].contains(url.path),
+      let id = url.queryItems?.first(where: { $0.name == "list" })?.value,
+      id.range(of: "^[A-Za-z0-9_-]{10,150}$", options: .regularExpression) != nil
+    else { throw RecallError.message("Colle un lien HTTPS de playlist YouTube contenant list=…") }
+    return id
+  }
+}
+
 /// Uses the user's authenticated private server. The YouTube key never leaves that server.
 public struct ServerPlaylistImporter: Sendable {
   public typealias Call = @Sendable (String, [String: String]?) async throws -> [String: Any]
@@ -12,19 +27,6 @@ public struct ServerPlaylistImporter: Sendable {
   public init(call: @escaping Call, pause: @escaping @Sendable () async throws -> Void) {
     self.call = call
     self.pause = pause
-  }
-  /// Compatibility export for diagnostics; the Mac app only calls synchronize.
-  public func load(link: String) async throws -> LibraryDocument {
-    let id = try await synchronize(link: link)
-    let exported = try await call("export", nil)
-    let document = try LibraryDocument.parse(JSONSerialization.data(withJSONObject: exported))
-    guard let selected = document.playlists.first(where: { $0.id == id }) else {
-      throw RecallError.message(
-        "La playlist synchronisée n’est pas encore disponible dans l’export.")
-    }
-    let ids = Set(selected.videoIDs)
-    return LibraryDocument(
-      tracks: document.tracks.filter { ids.contains($0.id) }, playlists: [selected])
   }
   /// Wait for a fresh server commit without downloading or storing the library.
   public func synchronize(link: String) async throws -> String {

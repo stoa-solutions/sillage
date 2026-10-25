@@ -2,7 +2,7 @@
 
 ## Produit et limites
 
-Recall comprend une app Mac avec bibliothèque locale, une extension et un serveur privé facultatif. Chaque déploiement serveur possède une bibliothèque partagée par ses jetons autorisés. Un jeton représente un accès à cette bibliothèque, pas un compte utilisateur isolé. La redistribution du client ne donne aucun accès à Stoa : chaque destinataire doit fournir son propre serveur et son jeton, ou utiliser la bibliothèque locale.
+Recall comprend une app Mac et une extension, clientes d’un serveur privé qui détient la bibliothèque. Chaque déploiement serveur possède une bibliothèque partagée par ses jetons autorisés. Un jeton représente un accès à cette bibliothèque, pas un compte utilisateur isolé. La redistribution du client ne donne aucun accès à Stoa : chaque destinataire doit fournir son propre serveur et son jeton, ou utiliser la bibliothèque locale.
 
 Cette version ne transforme pas Stoa en service public multiutilisateur. Il faudrait avant cela isoler playlists, vidéos, tâches, exports et quotas par propriétaire. Les réglages Gemini sont déjà isolés par jeton, mais la bibliothèque et le plafond quotidien restent ceux du serveur.
 
@@ -41,9 +41,9 @@ Les limites de concurrence et de débit HTTP sont encore propres à chaque proce
 
 ## App Mac native
 
-L’app SwiftUI existe dans `apps/macos`. Son noyau `RecallKit` sépare les formats, la recherche, le stockage local, le client HTTP/MCP et Gemini. Le module `RecallMac` contient les adaptateurs Trousseau, micro Apple, WebKit et Sparkle. Voir [le guide Mac](macos.md).
+L’app SwiftUI existe dans `apps/macos`. Son noyau `RecallKit` contient le client HTTP du serveur, la file de lecture et la session. Le module `RecallMac` contient les adaptateurs Trousseau, micro Apple, WebKit et Sparkle. Voir [le guide Mac](macos.md).
 
-Le serveur vectoriel est facultatif : la version Mac 1.1 stocke vidéos et playlists dans SQLite avec recherche FTS5. Elle importe JSON et liens YouTube publics/non répertoriés avec clé personnelle. Le module Import récupère les pages et leur reprise, puis le module Bibliothèque valide une écriture atomique. Le cache serveur est une source séparée. Aucune inférence vectorielle locale ni OAuth pour playlists privées dans cette version. Voir la décision [0001](adr/0001-native-local-library.md).
+Depuis la version 1.3, le Mac ne garde aucune bibliothèque : recherche, imports et tours de DJ passent par le serveur. Voir la décision [0002](adr/0002-server-only-mac-library.md), qui remplace [0001](adr/0001-native-local-library.md).
 
 Le lecteur public accepte maintenant son propre parent HTTPS lorsqu’il est chargé au premier niveau dans la WebView native. Le pont natif ne traite que les événements de ce lecteur et n’expose aucune fonction de lecture des secrets.
 

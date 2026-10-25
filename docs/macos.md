@@ -24,24 +24,21 @@ Chaque serveur garde une bibliothèque commune à ses jetons, pas un compte isol
 
 | Module | Rôle |
 | --- | --- |
-| `RecallKit/Models.swift` | Contrats, validation des imports et des sélections IA. |
-| `RecallKit/LibraryStore.swift` | SQLite, FTS5, playlists, transactions et sources séparées. Tous les mots d’abord, puis n’importe lequel si rien ne correspond. |
-| `RecallKit/SQLiteConnection.swift` | Connexion par opération, transactions, erreurs SQLite détaillées. |
-| `RecallKit/YouTubePlaylistImporter.swift` | Liens, pages YouTube, quota et reprise sans secrets, valable 24 h. |
-| `RecallKit/HTTPClient.swift` | API privée et client MCP HTTP authentifié. |
-| `RecallKit/DJ.swift` | Tour de DJ : interface `DJ`, `LocalDJ` (règles, prompts, recherche, vérification) et `ServerDJ`. |
-| `RecallKit/LibrarySearch.swift` | Recherche d’une bibliothèque avec exclusion et plafond : SQLite local ou `/v1/search` du serveur. |
-| `RecallKit/GeminiDJ.swift` / `AppleDJ.swift` | Adapters de modèle du tour de DJ ; voix Gemini. |
-| `RecallMac/KeychainStore.swift` | Secrets natifs. |
+| `RecallKit/HTTPClient.swift` | API privée authentifiée, pages de recherche et résumé de la bibliothèque. |
+| `RecallKit/DJ.swift` | Tour de DJ : `DJRequest` et `ServerDJ`, qui délègue le tour au serveur. |
+| `RecallKit/ServerPlaylistImporter.swift` | Liens YouTube validés, import par le serveur et attente d’une synchronisation fraîche. |
+| `RecallKit/ServerLibraryOverview.swift` | Nombre de vidéos et playlists du serveur. |
+| `RecallKit/PlaybackQueue.swift` | File de lecture : remplacement, ajout, fin de morceau, continuation. |
+| `RecallKit/CredentialFile.swift` / `GoogleCallback.swift` | Session privée hors Trousseau ; retour de connexion Google à usage unique. |
+| `RecallKit/Models.swift` | Contrats et décodage des vidéos renvoyées par le serveur. |
 | `RecallAudio/Microphone.swift` | Autorisation, capture, dictée et arrêt. |
+| `RecallMac/Session.swift` / `SessionStore.swift` / `GoogleSignIn.swift` | Compte, connexion serveur et session. |
+| `RecallMac/LibraryModel.swift` | Pages de la bibliothèque serveur, recherche et import par lien. |
+| `RecallMac/DJModel.swift` / `VoiceOutput.swift` | Conversation, file, micro ; voix du serveur ou voix macOS de secours. |
 | `RecallMac/Player.swift` | WebKit et messages du lecteur strictement contrôlés. |
-| `RecallMac/Session.swift` | Clés, source active (Mac ou serveur), messages d’erreur et d’information. |
-| `RecallMac/LibraryModel.swift` | Navigation, imports, synchronisation serveur et export. |
-| `RecallMac/DJModel.swift` | Conversation, file de lecture, micro. |
-| `RecallMac/VoiceOutput.swift` | Voix Gemini, voix macOS de secours, atténuation du lecteur. |
-| `RecallMac/RecallApp.swift` | Cycle de vie, fenêtres, Sparkle ; relie les modèles au changement de source. |
+| `RecallMac/RecallApp.swift` | Cycle de vie, fenêtres et Sparkle. |
 
-Seule `Session` change la source. Ce changement annule les imports, synchronisations et réponses du DJ en cours ; leurs résultats tardifs sont ignorés. Les lignes de résultats et de file sont identifiées par position, car une playlist ou la file peut répéter une vidéo.
+La bibliothèque réside uniquement sur le serveur (décision [0002](adr/0002-server-only-mac-library.md)). Les lignes de résultats et de file sont identifiées par position, car une playlist ou la file peut répéter une vidéo.
 
 Les accès au Trousseau sont lancés hors du thread de l’interface, afin qu’une demande macOS ne bloque pas la fenêtre. Une compilation locale ad hoc peut nécessiter de réautoriser le nouveau binaire à lire les clés existantes. Une identité Developer ID stable sera nécessaire pour rendre la distribution publique plus fluide.
 
