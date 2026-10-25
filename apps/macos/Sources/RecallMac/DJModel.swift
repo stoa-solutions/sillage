@@ -105,7 +105,7 @@ final class DJModel: ObservableObject {
     if !session.googleAccount, !session.geminiKey.isEmpty {
       return try await LocalDJ(
         model: GeminiDJ(key: session.geminiKey, model: session.model),
-        search: ServerLibrarySearch(connection: connection)
+        library: ServerLibrarySearch(connection: connection)
       ).turn(request)
     }
     return try await ServerDJ(connection: connection).turn(request)

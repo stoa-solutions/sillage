@@ -64,12 +64,12 @@ final class Session: ObservableObject {
       if let connection {
         do {
           let profile = try await HTTPClient().server(connection, path: "me")
-          guard self.connection?.token == connection.token else { return }
+          guard refreshAttempt == attempt, self.connection?.token == connection.token else { return }
           googleAccount = profile["google"] as? Bool == true
           accountEmail = profile["email"] as? String ?? ""
           if !googleAccount { geminiKey = credentials.0 }
           let settings = try await HTTPClient().server(connection, path: "dj/status")
-          guard self.connection?.token == connection.token else { return }
+          guard refreshAttempt == attempt, self.connection?.token == connection.token else { return }
           hasKey = settings["personal"] as? Bool == true || !geminiKey.isEmpty
           if googleAccount, let selected = settings["model"] as? String, hasKey { model = selected }
         } catch {
