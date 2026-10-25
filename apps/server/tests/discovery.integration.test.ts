@@ -440,3 +440,14 @@ it.each([
   // Playback of a public result never silently adds it to either user's library.
   expect((await db.query("SELECT * FROM memberships")).rowCount).toBe(0);
 });
+
+it("excludes queued public tracks from automatic discovery but permits explicit replay", async () => {
+  const mcp = await connectMusicMcp(db, ["newtrack001"], alice, true);
+  try {
+    for (const includeQueued of [false, true]) {
+      const result = await mcp.client.callTool({ name: "youtube_search", arguments: { query: "Real artist", includeQueued } });
+      const text = (result.content as {text: string}[])[0].text;
+      expect(JSON.parse(text).results.map((r: any) => r.video.id)).toEqual(includeQueued ? ["newtrack001", "newtrack002"] : ["newtrack002"]);
+    }
+  } finally { await mcp.close(); }
+});

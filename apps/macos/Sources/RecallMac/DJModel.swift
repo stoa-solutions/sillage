@@ -184,8 +184,11 @@ final class DJModel: ObservableObject {
     }
     let dj = ServerDJ(connection: connection)
     if automatic {
+      let source = searchScope
       return try await composition.continueSession(history: history, queue: playback) {
-        try await dj.turn($0)
+        var request = $0
+        request.scope = source
+        return try await dj.turn(request)
       }
     }
     var request = composition.userRequest(text, history: history, queue: playback)

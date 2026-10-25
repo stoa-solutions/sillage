@@ -20,7 +20,7 @@ public struct DJRequest: Sendable {
       role: "user", content: "Mon envie musicale de référence : " + context)
     return DJRequest(
       message:
-        "Continue cette session avec de nouveaux vrais morceaux dans la même ambiance ou du même artiste. Consulte la bibliothèque avec des recherches courtes et plusieurs formulations si nécessaire. Ajoute une petite suite sans répéter les titres déjà joués ou en file. Ne rejoue pas la liste précédente. Si aucun morceau ne convient, explique-le sans inventer. Exclue les type beats et hommages sauf demande explicite.",
+        "Continue cette session avec de nouveaux vrais morceaux dans la même ambiance ou du même artiste. Consulte les sources autorisées avec des recherches courtes et plusieurs formulations si nécessaire. Ajoute une petite suite sans répéter les titres déjà joués ou en file. Ne rejoue pas la liste précédente. Si aucun morceau ne convient, explique-le sans inventer. Exclue les type beats et hommages sauf demande explicite.",
       history: Array(history.suffix(10)) + [contextMessage], queued: queued)
   }
   public init(message: String, history: [ChatMessage], queued: Set<String>) {
