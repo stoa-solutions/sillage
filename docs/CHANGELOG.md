@@ -13,6 +13,8 @@
 ### App Mac : affichages Compact et Studio
 
 - App Mac : deux affichages du DJ, Compact et Studio, dans la barre d’outils (le mode cinéma disparaît). Navigation DJ / Bibliothèque dans la barre d’outils, apparence du système hors Studio, chat translucide sur le clip, boutons Voix et Enchaîner visibles, bibliothèque avec miniatures, durée, avatar de chaîne et début de description ; Studio n’active plus la voix ni l’enchaînement. Pendant la préparation du clip, sa pochette floutée remplit l’écran avec un indicateur discret, puis le clip apparaît en fondu.
+- App Mac : volume de la musique (curseur et coupure, commun aux deux lecteurs, rétabli après la voix du DJ) ; boutons « Voix du DJ » et « Enchaîner » nommés et remplis lorsqu’ils sont actifs.
+- Photos de chaîne : l’enrichissement garde l’identifiant de chaîne, les photos sont récupérées par lots de 50 (une unité de quota YouTube) et conservées 30 jours ; la recherche renvoie `channelAvatarUrl`. L’app Mac ne les charge que depuis les hôtes d’images Google et garde l’initiale colorée en secours. Nécessite un redéploiement du serveur (migration additive : colonne `videos.channel_id`, table `channels`).
 
 ### Antérieur
 
