@@ -290,7 +290,9 @@ it("tests draft Gemini keys without persisting them and reports invalid/quota fa
 });
 
 it("rejects invented discovery IDs and never stores an unverified selection", async () => {
-  const normal = upstream.getMockImplementation()!;
+  const normal = upstream.getMockImplementation() as (
+    ...args: any[]
+  ) => Promise<Response>;
   upstream.mockImplementation(async (...args: any[]) => {
     const response = await normal(...args);
     if (String(args[0]).endsWith("/chat/completions")) {
