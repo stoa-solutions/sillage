@@ -37,6 +37,7 @@ it("recovers when a provider asks for an exact title before searching, then retu
   const bodies = provider([answer([]), tool, answer()]);
   const result = await djTurn(db, djInput.parse({ message: "un morceau avec Edge en feat" }), undefined, config, "alice");
   expect(bodies[0].tool_choice).toBe("required");
+    expect(bodies[0].response_format).toBeUndefined();
   expect(mocks.call).toHaveBeenCalledWith({ name: "library_search", arguments: { query: "Edge", mode: "text" } }, undefined, expect.anything());
   expect(result).toMatchObject({ action: "keep", tracks: [], discoveries: [{ video: track, inLibrary: true }] });
   expect(mocks.close).toHaveBeenCalledOnce();

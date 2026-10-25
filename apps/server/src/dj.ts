@@ -195,7 +195,8 @@ export async function djTurn(
           )
             ? { reasoning_effort: "low" }
             : {}),
-          response_format: { type: "json_object" },
+          // Gemini rejects JSON response mode when function calling is forced.
+          ...(turn > 0 ? { response_format: { type: "json_object" } } : {}),
         }),
       });
       if (!response.ok)

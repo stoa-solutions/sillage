@@ -16,6 +16,8 @@ La documentation annonce jev-1.14.0 et 0,042 $/million de tokens entrants, sorti
 
 MusicBrainz propose enregistrements, crédits d’artistes, albums, ISRC, genres et tags ; lecture sans clé pour les données publiques, User-Agent identifié et au plus une requête par seconde. API gratuite pour usage non commercial ; vérifier les conditions commerciales avant distribution payante : https://musicbrainz.org/doc/MusicBrainz_API
 
+Les données centrales MusicBrainz sont CC0 ; les genres/tags et autres données supplémentaires relèvent de CC BY-NC-SA 3.0. Ne pas confondre accès API sans clé et licence commerciale libre. Sources : https://musicbrainz.org/doc/About/Data_License et https://musicbrainz.org/doc/Development/JSON_Data_Dumps
+
 Cover Art Archive fournit les pochettes rattachées aux releases MusicBrainz : https://musicbrainz.org/doc/Cover_Art_Archive/API. Une pochette n’est pas automatiquement l’image du clip YouTube ; garder les deux sources distinctes. Accessibilité technique ne signifie pas liberté de redistribution de toutes les images.
 
 Proposition de V1 (non implémentée) :
