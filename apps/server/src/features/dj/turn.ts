@@ -55,6 +55,7 @@ export async function djTurn(
   let failedSearches = 0;
   let reformulated = false;
   let youtubeDailyQuota = false;
+  let clarifiedPartialIntent = false;
   const withSourceNote = (reply: string) =>
     youtubeDailyQuota
       ? `${reply} YouTube a atteint son quota quotidien de recherche ; je m’appuie sur les résultats disponibles.`
@@ -217,6 +218,25 @@ export async function djTurn(
           "Le DJ n’a pas renvoyé une sélection lisible. Réessaie.",
           502,
         );
+      }
+      // A partial-source failure can make the model ask for a choice even when
+      // the listener requested playback. Let it reconsider once; never turn an
+      // ambiguous proposal into playback without a new, validated selection.
+      if (
+        youtubeDailyQuota &&
+        intent !== "browse" &&
+        output.action === "keep" &&
+        (output.discoveryIds?.length || output.trackIds.length) &&
+        !clarifiedPartialIntent &&
+        turn < MAX_ROUNDS - 1
+      ) {
+        clarifiedPartialIntent = true;
+        messages.push({ role: "assistant", content: message.content ?? null });
+        messages.push({
+          role: "user",
+          content: `L’intention de la demande est ${intent}. Le quota d’une source ne transforme pas cette demande en recherche de cartes. Si les candidats retenus correspondent à l’envie, renvoie une sélection partielle avec action=${intent} et trackIds pour l’exécuter. Garde keep seulement si une vraie ambiguïté musicale nécessite mon choix ou si aucun candidat ne convient. N’invente aucun titre.`,
+        });
+        continue;
       }
       if (
         intent === "browse" ||

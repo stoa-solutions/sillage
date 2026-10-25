@@ -2,7 +2,7 @@
 
 ## Non publié
 
-- DJ : distingue le quota quotidien YouTube des pannes temporaires, continue les recherches courtes dans les playlists en mode Partout et explique les résultats partiels. Les recherches YouTube épuisées ne sont plus répétées jusqu’au renouvellement du quota ; les imports et métadonnées restent indépendants.
+- DJ : distingue le quota quotidien YouTube des pannes temporaires, continue les recherches courtes dans les playlists en mode Partout et explique les résultats partiels. Une sélection partielle reste une demande de lecture ou d’ajout, sans devenir automatiquement des cartes à choisir. Les recherches YouTube épuisées ne sont plus répétées jusqu’au renouvellement du quota ; les imports et métadonnées restent indépendants.
 
 - Qualité du DJ : banc de régression sans interface (intentions, vrai circuit MCP, sources et exclusions), évaluations HTTP du modèle réel avec rapports privés, durées et distinction entre échec comportemental et quota fournisseur.
 - DJ : corrige une demande ordonnée séparée par « maintenant, puis » qui pouvait créer un morceau vide et empêcher le lancement malgré deux titres trouvés ; défaut reproduit par l’évaluation HTTP.

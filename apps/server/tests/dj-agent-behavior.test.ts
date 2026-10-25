@@ -389,3 +389,23 @@ it("explains daily YouTube exhaustion truthfully when no authorized source has c
   expect(result.reply).not.toContain("dans un instant");
   expect(boundaries.search).not.toHaveBeenCalled();
 });
+
+it("reconsiders quota-driven browse without silently converting an ambiguous proposal into playback", async () => {
+  boundaries.youtube.mockRejectedValue(Object.assign(new Error("private"), { status: 429, reason: "daily_quota" }));
+  responses.push(searchCall("afro"), cards([library[0].id]), selection([library[0].id], "replace"));
+  const result = await run({ message: "Fais-moi une playlist afro", scope: "all" });
+  expect(result.action).toBe("replace");
+  expect(result.tracks[0].id).toBe(library[0].id);
+  expect(requests).toHaveLength(3);
+  expect(JSON.stringify(requests[2].messages)).toContain("quota d’une source ne transforme pas");
+});
+
+it("keeps a genuinely ambiguous proposal after one reconsideration even with a source quota", async () => {
+  boundaries.youtube.mockRejectedValue(Object.assign(new Error("private"), { status: 429, reason: "daily_quota" }));
+  responses.push(searchCall("feat"), cards([library[0].id]), cards([library[0].id]));
+  const result = await run({ message: "Joue le morceau avec le featuring", scope: "all" });
+  expect(result.action).toBe("keep");
+  expect(result.tracks).toEqual([]);
+  expect(result).toMatchObject({ discoveries: [{ video: { id: library[0].id } }] });
+  expect(requests).toHaveLength(3);
+});
