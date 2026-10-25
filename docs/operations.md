@@ -6,7 +6,7 @@ API : `https://recall.stoa.solutions`. Projet Dokploy autonome, PostgreSQL 17/pg
 
 Les modèles sont préparés avec `python3 scripts/prepare-server-models.py` puis copiés et vérifiés dans `/srv/playlist-recall/models`. Ils ne sont ni versionnés ni téléchargés à chaque redémarrage. Le script vérifie les empreintes des poids SigLIP et réutilise les ressources E5 épinglées. Les images téléchargées sont bornées à 2 Mio et restent uniquement en mémoire ; seules leurs empreintes et vecteurs persistent.
 
-Plafonds : API 192 Mio/0,5 CPU, worker 192 Mio/0,5 CPU, inférence 1 408 Mio/1,5 CPU, PostgreSQL 384 Mio/0,5 CPU. Total maximal déclaré : 2 176 Mio. L’inférence charge un seul encodeur à la fois dans un processus enfant et le libère après 60 secondes d’inactivité. Ce plafond remplace l’estimation initiale de la spécification après qualification locale. Vérifier aussi les mesures Linux avant activation.
+Plafonds : API 192 Mio/0,5 CPU, worker 192 Mio/0,5 CPU, inférence 1 408 Mio/1,5 CPU, PostgreSQL 384 Mio/0,5 CPU. SearXNG : 384 Mio/0,5 CPU. Total maximal déclaré : 2 560 Mio. L’inférence charge un seul encodeur à la fois dans un processus enfant et le libère après 60 secondes d’inactivité. Ce plafond remplace l’estimation initiale de la spécification après qualification locale. Vérifier aussi les mesures Linux avant activation.
 
 ## Configuration privée
 
@@ -76,10 +76,23 @@ Pour supprimer définitivement le plafond Recall d’un seul compte, utiliser `{
 
 ## Découvrir et test Gemini — 1.5
 
-`POST /v1/discover/search` recherche sur YouTube avec la clé du serveur, après authentification. Le cache de cinq minutes contient uniquement les métadonnées publiques ; les indicateurs « dans ma bibliothèque » sont recalculés pour chaque compte. La pagination utilise le jeton opaque renvoyé par YouTube. Un échec YouTube ne bloque pas la recherche dans les playlists.
+`POST /v1/discover/search` recherche sur YouTube après authentification, via SearXNG si `SEARXNG_URL` est défini, sinon via l’API officielle. Le cache de cinq minutes contient uniquement les métadonnées publiques ; les indicateurs « dans ma bibliothèque » sont recalculés pour chaque compte. Avec le fournisseur officiel, la pagination utilise le jeton opaque renvoyé par YouTube. SearXNG JSON ne fournit pas le curseur de continuation YouTube : une recherche renvoie son premier lot (au plus 50 vidéos vérifiées), sans faux bouton de page suivante. Affiner la requête permet une autre sélection. Un échec YouTube ne bloque pas la recherche dans les playlists.
 
 `POST /v1/discover/add` relit les métadonnées auprès de YouTube et ajoute le morceau dans une collection privée « Mes découvertes ». Cette collection n'est jamais synchronisée comme une playlist YouTube (`sync_enabled=false`). L'ajout et les travaux d'indexation sont transactionnels ; répéter un ajout ne crée pas de doublon.
 
 Le DJ utilise `music_search`, routé par le serveur selon les trois sources : Mes playlists, YouTube ou Partout. Partout interroge les deux sources en parallèle et conserve leurs résultats distincts en cas d’échec partiel. Les anciens outils `library_search` et `youtube_search` restent disponibles pour les autres clients MCP ; la source explicitement choisie dans le DJ prime sur les mots du message. Voir [dj-behavior.md](dj-behavior.md). La source est indépendante de l’intention : chercher produit des cartes sans changer la file ; jouer remplace la file ; ajouter à la suite conserve le morceau en cours. Les identifiants viennent uniquement des outils du tour. Une lecture externe n’importe rien ; l’ajout à la bibliothèque reste un clic explicite. La recherche par playlist reste filtrée par propriété côté serveur.
 
 `POST /v1/dj/check` vérifie le modèle et, sur demande, la synthèse vocale avec une clé provisoire ou enregistrée. Ce test ne stocke aucune clé et ne renvoie jamais les erreurs brutes du fournisseur. Les appels réels consomment le quota Google. L'app vérifie une nouvelle clé avant de remplacer la précédente.
+
+
+## Recherche SearXNG privée
+
+Le service `searxng` est épinglé au digest validé par le pilote. Il ne publie aucun port et ne rejoint pas le proxy Dokploy ; seul le réseau Compose `search` le relie à l’API. Ce réseau permet la sortie vers YouTube. Aucun compte utilisateur, clé Gemini ou clé YouTube n’est transmis à SearXNG. Son moteur `youtube_noapi` reçoit uniquement la requête de recherche.
+
+Configuration Dokploy : `SEARXNG_URL=http://searxng:8080` et `SEARXNG_SECRET` généré une seule fois avec 32 octets aléatoires en hexadécimal. Le fichier versionné `deploy/searxng/settings.yml` active uniquement YouTube et JSON ; limiter et proxy d’images désactivés. Le secret ne figure jamais dans ce fichier. La clé YouTube existante reste nécessaire pour `videos.list`, les imports et les ajouts. La recherche SearXNG ne consomme pas `search.list` ; cela ne rend ni YouTube ni Gemini illimités.
+
+Le contrat de `music_search` et les trois sources restent inchangés. L’adaptateur ne retient que des identifiants de vidéos YouTube, déduplique, puis relit au plus 50 métadonnées en un appel officiel. Les vidéos absentes ou non intégrables sont exclues. Délai SearXNG : 15 secondes, réponse maximale : 1 Mio ; cache public 5 minutes/100 requêtes, au plus 4 recherches simultanées. Les appartenances aux bibliothèques sont relues par compte même en cas de cache partagé.
+
+Un CAPTCHA, une limitation ou une panne du moteur est transmis comme `search_blocked` ou `search_unavailable`, jamais comme une recherche vide ni comme un quota Gemini. Partout conserve les résultats des playlists si la source externe échoue. Aucun repli caché vers `search.list` : pour revenir au fournisseur officiel, vider `SEARXNG_URL` dans Dokploy et redéployer (ses quotas restent applicables).
+
+Validation après déploiement : contrôler `/health` et les SHA API/worker, la santé de SearXNG, l’absence de port publié, une recherche exacte et une vague via l’API authentifiée, l’ajout privé et la progression du worker. Vérifier ensuite les cartes et la lecture dans Recall. Lors d’une mise à jour courante, ne pas restaurer une sauvegarde dans la base de production ; l’étape de restauration ci-dessus ne concerne que l’installation initiale ou une reprise explicite.

@@ -174,6 +174,8 @@ export function readToolEvidence(
                 "not_configured",
                 "access_denied",
                 "local_budget",
+                "search_unavailable",
+                "search_blocked",
               ].includes(source.reason ?? "")
                 ? (source.reason as SearchFailure["reason"])
                 : "unavailable",

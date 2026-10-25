@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Recherche YouTube : SearXNG privé partagé par Découvrir et le DJ, sans appel au quota Google de recherche. Les métadonnées et la disponibilité restent vérifiées par YouTube ; cache public avec appartenance recalculée par compte et erreurs explicites du moteur. Aucun changement du design.
+
 - Recherche : erreurs explicites dans Découvrir et le chat DJ (source, quota quotidien, débit, configuration ou panne), heure prévue de renouvellement YouTube et distinction avec la clé Gemini personnelle. Les résultats partiels restent utilisables et leur limite est annoncée.
 
 - DJ : distingue le quota quotidien YouTube des pannes temporaires, continue les recherches courtes dans les playlists en mode Partout et explique les résultats partiels. Une sélection partielle reste une demande de lecture ou d’ajout, sans devenir automatiquement des cartes à choisir. Les identifiants de playlists inventés sont signalés comme paramètres invalides, sans effacer les candidats déjà trouvés. Les recherches YouTube épuisées ne sont plus répétées jusqu’au renouvellement du quota ; les imports et métadonnées restent indépendants.

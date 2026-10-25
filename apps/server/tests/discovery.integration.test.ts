@@ -489,3 +489,56 @@ it("switches from playlists to Partout on the next chat request without retainin
   expect(youtubeSearches()).toBe(1);
   expect((await everywhere.json()).discoveries[0].video.id).toBe("newtrack001");
 });
+
+it("uses SearXNG through authenticated discovery and MCP, keeping cached ownership private", async () => {
+  // A fresh service is constructed after selecting the provider.
+  vi.stubEnv("SEARXNG_URL", "http://searxng:8080");
+  await db.end();
+  db = createPool();
+  const original = upstream.getMockImplementation() as (input: string | URL, init?: RequestInit) => Promise<Response>;
+  upstream.mockImplementation(
+    async (input: string | URL, init?: RequestInit) => {
+      const address = new URL(String(input));
+      if (address.hostname === "searxng")
+        return Response.json({
+          results: [
+            { url: "https://www.youtube.com/watch?v=newtrack001" },
+            { url: "https://www.youtube.com/watch?v=newtrack002" },
+          ],
+          unresponsive_engines: [],
+        });
+      if (address.pathname.endsWith("/search"))
+        throw new Error("Official search quota must not be used");
+      return original(input, init);
+    },
+  );
+  app = createApp(db);
+  expect(
+    (await req("/v1/discover/add", tokenA, { videoId: "newtrack001" })).status,
+  ).toBe(200);
+  const first = await (
+    await req("/v1/discover/search", tokenA, { query: "Searx fixture" })
+  ).json();
+  const count = upstream.mock.calls.length;
+  const second = await (
+    await req("/v1/discover/search", tokenB, { query: "Searx fixture" })
+  ).json();
+  expect(first.results.map((r: any) => r.video.id)).toEqual([
+    "newtrack001",
+    "newtrack002",
+  ]);
+  expect(first.results[0].inLibrary).toBe(true);
+  expect(second.results[0].inLibrary).toBe(false);
+  expect(first.nextPageToken).toBeNull();
+  expect(upstream.mock.calls.length).toBe(count);
+  const mcp = await connectMusicMcp(db, [], bob, true, "all");
+  try {
+    const result = await mcp.client.callTool({
+      name: "music_search",
+      arguments: { query: "Searx fixture" },
+    });
+    expect(JSON.stringify(result)).toContain("newtrack002");
+  } finally {
+    await mcp.close();
+  }
+});

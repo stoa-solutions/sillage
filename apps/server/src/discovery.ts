@@ -6,6 +6,7 @@ import { ownsPlaylist } from "./accounts.ts";
 import { upsertVideo } from "./library.ts";
 import { documentText, hash } from "./content.ts";
 import { YouTube } from "./youtube.ts";
+import { SearxngDiscovery, SearxngError } from "./searxng.ts";
 import {
   searchFailureMessage,
   type SearchFailureReason,
@@ -22,6 +23,11 @@ export const discoveryInput = z.object({
     .default(""),
 });
 export type DiscoverySource = Pick<YouTube, "search" | "videos">;
+function discoverySource(db: Database): DiscoverySource {
+  const youtube = new YouTube(process.env.YOUTUBE_API_KEY ?? "", db);
+  const url = process.env.SEARXNG_URL?.trim();
+  return url ? new SearxngDiscovery(url, youtube) : youtube;
+}
 export class DiscoveryError extends Error {
   constructor(
     message: string,
@@ -44,10 +50,7 @@ export class Discovery {
   >();
   constructor(
     private db: Database,
-    private source: DiscoverySource = new YouTube(
-      process.env.YOUTUBE_API_KEY ?? "",
-      db,
-    ),
+    private source: DiscoverySource = discoverySource(db),
   ) {}
   async search(user: string, query: string, pageToken = "") {
     const parsed = discoveryInput.parse({ query, pageToken });
@@ -147,17 +150,20 @@ export class Discovery {
 }
 function providerError(error: unknown): DiscoveryError {
   const message = error instanceof Error ? error.message : "";
-  const reason: SearchFailureReason = /Budget/.test(message)
-    ? "local_budget"
-    : error instanceof YouTubeError
-      ? error.kind === "rate_limit"
-        ? "rate_or_quota"
-        : error.kind
-      : /quotaExceeded|dailyLimit/i.test(message)
-        ? "daily_quota"
-        : /Clé YouTube absente/.test(message)
-          ? "not_configured"
-          : "unavailable";
+  const reason: SearchFailureReason =
+    error instanceof SearxngError
+      ? error.reason
+      : /Budget/.test(message)
+        ? "local_budget"
+        : error instanceof YouTubeError
+          ? error.kind === "rate_limit"
+            ? "rate_or_quota"
+            : error.kind
+          : /quotaExceeded|dailyLimit/i.test(message)
+            ? "daily_quota"
+            : /Clé YouTube absente/.test(message)
+              ? "not_configured"
+              : "unavailable";
   const now = Date.now();
   return new DiscoveryError(
     searchFailureMessage({ source: "youtube", reason }, now) +

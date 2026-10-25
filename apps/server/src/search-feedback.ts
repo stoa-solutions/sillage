@@ -4,6 +4,8 @@ export type SearchFailureReason =
   | "daily_quota"
   | "rate_or_quota"
   | "unavailable"
+  | "search_unavailable"
+  | "search_blocked"
   | "not_configured"
   | "access_denied"
   | "local_budget";
@@ -22,6 +24,10 @@ export function searchFailureMessage(
   if (failure.source === "search")
     return "L’outil de recherche n’a pas répondu correctement. Réessaie dans un instant.";
   switch (failure.reason) {
+    case "search_blocked":
+      return "Le moteur de recherche YouTube de Recall est temporairement bloqué (limitation ou vérification anti-robot). Réessaie plus tard ; ta clé Gemini n’est pas en cause.";
+    case "search_unavailable":
+      return "Le moteur de recherche YouTube de Recall ne répond pas correctement. Réessaie dans un instant ; aucun quota Google épuisé n’a été confirmé.";
     case "daily_quota": {
       const reset = new Intl.DateTimeFormat("fr-FR", {
         timeZone: "Europe/Paris",

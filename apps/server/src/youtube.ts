@@ -136,6 +136,7 @@ export class YouTube {
   }
   async videos(
     ids: string[],
+    playableOnly = false,
   ): Promise<(Video & { channelId: string | null })[]> {
     if (!ids.length) return [];
     if (ids.length > 50) throw new Error("Maximum 50 vidéos par lot.");
@@ -143,20 +144,30 @@ export class YouTube {
       part: "snippet,contentDetails,status",
       id: ids.join(","),
     });
-    return data.items.map((v: any) => ({
-      id: v.id,
-      title: v.snippet.title,
-      channel: v.snippet.channelTitle,
-      channelId: v.snippet.channelId ?? null,
-      durationSeconds: isoDuration(v.contentDetails.duration),
-      description: v.snippet.description ?? "",
-      tags: v.snippet.tags ?? [],
-      publishedAt: v.snippet.publishedAt ?? null,
-      thumbnailUrl:
-        v.snippet.thumbnails?.high?.url ??
-        `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
-      url: `https://www.youtube.com/watch?v=${v.id}`,
-    }));
+    return data.items
+      .filter(
+        (v: any) =>
+          !playableOnly ||
+          (v.status?.embeddable === true &&
+            v.status?.privacyStatus !== "private" &&
+            !["deleted", "failed", "rejected"].includes(
+              v.status?.uploadStatus,
+            )),
+      )
+      .map((v: any) => ({
+        id: v.id,
+        title: v.snippet.title,
+        channel: v.snippet.channelTitle,
+        channelId: v.snippet.channelId ?? null,
+        durationSeconds: isoDuration(v.contentDetails.duration),
+        description: v.snippet.description ?? "",
+        tags: v.snippet.tags ?? [],
+        publishedAt: v.snippet.publishedAt ?? null,
+        thumbnailUrl:
+          v.snippet.thumbnails?.high?.url ??
+          `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
+        url: `https://www.youtube.com/watch?v=${v.id}`,
+      }));
   }
   /** Channel photos (88 px), at most 50 channels per call and one quota unit. */
   async channelAvatars(ids: string[]): Promise<Map<string, string>> {

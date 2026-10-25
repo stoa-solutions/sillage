@@ -4,6 +4,7 @@ import {
   searchFailureSummary,
 } from "../src/search-feedback.ts";
 import { Discovery, discoveryRoutes } from "../src/discovery.ts";
+import { SearxngError } from "../src/searxng.ts";
 import { YouTubeError, youtubeError } from "../src/youtube-errors.ts";
 import {
   readToolEvidence,
@@ -135,5 +136,42 @@ it.each([
     expect(body).toMatchObject({ source: "youtube", reason });
     expect(body).not.toHaveProperty("retryAt");
     expect(JSON.stringify(body)).not.toContain("private");
+  },
+);
+
+it.each(["search_blocked", "search_unavailable"] as const)(
+  "preserves %s through Discover and DJ evidence",
+  async (reason) => {
+    const routes = discoveryRoutes(
+      {} as Database,
+      new Discovery({} as Database, {
+        search: vi.fn().mockRejectedValue(new SearxngError(reason)),
+        videos: vi.fn(),
+      }),
+    );
+    const response = await routes.request("/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: "afro" }),
+    });
+    expect(response.status).toBe(502);
+    const body = await response.json();
+    expect(body.reason).toBe(reason);
+    expect(body.retryAt).toBeUndefined();
+    const evidence = readToolEvidence("music_search", {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            results: [],
+            sources: [{ source: "youtube", status: "error", reason }],
+          }),
+        },
+      ],
+    });
+    expect(evidence.failures).toEqual([{ source: "youtube", reason }]);
+    expect(searchFailureSummary(evidence.failures, now)).toContain(
+      "moteur de recherche YouTube",
+    );
   },
 );
