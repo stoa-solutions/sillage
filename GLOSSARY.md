@@ -7,3 +7,4 @@
 - **File** : morceaux à jouer, dans l’ordre ; une même vidéo peut y figurer plusieurs fois.
 - **Paroles** : texte d’une vidéo, venu de LRCLIB par le serveur ; synchronisé par ligne (et parfois par mot), simple texte, instrumental ou introuvable.
 - **Calage** : décalage propre à un compte entre les paroles et une vidéo, par exemple pour l’intro d’un clip ; positif, il retarde les paroles.
+- **Session d’écoute** : la File, la direction musicale et la suite automatique d’un compte, du premier titre à la déconnexion. Tous les gestes (clics, chat, fin d’un titre) y passent, pour que la suite reste synchronisée.
