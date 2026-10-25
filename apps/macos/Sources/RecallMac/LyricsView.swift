@@ -91,7 +91,7 @@ struct LyricsPanel: View {
 
   @ViewBuilder private var content: some View {
     if model.videoId == nil {
-      message("Les paroles du morceau en cours s’afficheront ici.")
+      EmptyState(symbol: "quote.bubble", message: "Les paroles du morceau en cours s’afficheront ici.")
     } else if model.loading && model.lyrics == nil {
       ProgressView("Recherche des paroles…").controlSize(.small)
     } else if let lyrics = model.lyrics {
@@ -102,19 +102,16 @@ struct LyricsPanel: View {
           Text(lyrics.text ?? "").textSelection(.enabled).padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-      case .instrumental: message("Morceau instrumental.")
-      case .missing: message("Pas de paroles trouvées pour ce titre.")
+      case .instrumental: EmptyState(symbol: "pianokeys", message: "Morceau instrumental.")
+      case .missing:
+        EmptyState(symbol: "text.badge.xmark", message: "Pas de paroles trouvées pour ce titre.")
       case .unavailable:
-        VStack(spacing: 10) {
-          message("Le service de paroles ne répond pas pour le moment.")
-          Button("Réessayer") { model.retry(connection: connection) }
-        }
+        EmptyState(
+          symbol: "wifi.exclamationmark",
+          message: "Le service de paroles ne répond pas pour le moment.",
+          action: ("Réessayer", { model.retry(connection: connection) }))
       }
     }
-  }
-
-  private func message(_ text: String) -> some View {
-    Text(text).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(24)
   }
 
   private func synced(_ lyrics: Lyrics) -> some View {

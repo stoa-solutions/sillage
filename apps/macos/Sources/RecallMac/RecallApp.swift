@@ -106,7 +106,7 @@ import SwiftUI
     WindowGroup("Playlist Recall") {
       MainView().environmentObject(session).environmentObject(library).environmentObject(dj)
         .environmentObject(discovery)
-        .frame(minWidth: 540, minHeight: 640)
+        .frame(minWidth: 600, minHeight: 640)
         .task {
           if !didBootstrap {
             didBootstrap = true
@@ -123,7 +123,7 @@ import SwiftUI
           dj.player.command("pause")
         }
     }
-    .defaultSize(width: 540, height: 840)
+    .defaultSize(width: 600, height: 840)
     .windowToolbarStyle(.unified(showsTitle: false))
     .commands {
       CommandGroup(after: .appInfo) {

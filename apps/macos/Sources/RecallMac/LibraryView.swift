@@ -7,83 +7,100 @@ struct LibraryView: View {
   @EnvironmentObject var library: LibraryModel
   @EnvironmentObject var dj: DJModel
   var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      HStack(alignment: .firstTextBaseline) {
-        VStack(alignment: .leading, spacing: 2) {
-          Text("Bibliothèque").font(.largeTitle.bold())
-          Text(
-            session.hasServer
-              ? "\(library.libraryCount) vidéos sur ton serveur" : "Serveur à connecter"
-          ).foregroundStyle(.secondary)
-        }
-        Spacer()
-        if session.hasServer {
-          Button {
-            library.sync(refreshYouTube: true)
-          } label: {
-            Label(
-              library.syncing ? "Synchronisation…" : "Actualiser YouTube",
-              systemImage: "arrow.clockwise")
-          }.disabled(library.syncing || library.importing)
-        }
-      }
-      if !session.hasServer {
-        if session.loadingCredentials {
-          Text("Connexion au serveur en cours…").font(.caption)
-        } else {
-          Button("Connecter mon serveur") { session.showOnboarding = true }
-            .buttonStyle(.borderedProminent)
-        }
-      }
-      VStack(alignment: .leading, spacing: 6) {
-        HStack {
-          TextField("Lien d’une playlist YouTube", text: $library.playlistLink)
-            .textFieldStyle(.roundedBorder)
-            .onSubmit { library.importPlaylist() }
-          Button("Ajouter") { library.importPlaylist() }.disabled(
-            library.importing || library.playlistLink.isEmpty || session.loadingCredentials)
-        }
-        if library.importing {
-          HStack {
-            ProgressView().controlSize(.small)
-            Text(library.importProgress)
-            Button("Annuler") { library.cancelImport() }.buttonStyle(.link)
-          }.font(.caption)
-        } else {
-          Text("Playlists publiques ou non répertoriées. Aucune clé YouTube à saisir.")
-            .font(.caption).foregroundStyle(.secondary)
-        }
-      }
-      Divider()
-      ViewThatFits(in: .horizontal) {
-        HStack { search; playlistPicker.frame(maxWidth: 240) }
-        VStack(alignment: .leading) { search; playlistPicker }
-      }
-      List(library.results) { row in
-        TrackRow(track: row.track) {
-          dj.play(row.track)
-          onPlay()
-        }
-      }.scrollContentBackground(.hidden)
-        .id("\(library.currentPage)-\(library.pageSize)-\(library.selectedPlaylist)")
-        .overlay {
-          if library.searching {
-            ProgressView().padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
-          } else if library.libraryCount == 0 && session.hasServer {
-            Text("Colle le lien d’une playlist YouTube pour remplir ta bibliothèque.")
-              .foregroundStyle(.secondary)
+    VStack(spacing: 12) {
+      VStack(alignment: .leading, spacing: 16) {
+        PageHeader(
+          title: "Bibliothèque",
+          subtitle: session.hasServer
+            ? "\(library.libraryCount) vidéos sur ton compte" : "Connecte ton compte pour la retrouver"
+        ) {
+          if session.hasServer {
+            Button {
+              library.sync(refreshYouTube: true)
+            } label: {
+              Label(
+                library.syncing ? "Synchronisation…" : "Actualiser", systemImage: "arrow.clockwise")
+            }.buttonStyle(GlassButtonStyle(emphasized: true))
+              .disabled(library.syncing || library.importing)
+              .help("Récupérer les nouveautés de tes playlists YouTube")
           }
         }
-      ViewThatFits(in: .horizontal) {
-        HStack { pages(numbered: true) }
-        HStack { pages(numbered: false) }
+        if !session.hasServer && !session.loadingCredentials {
+          Button("Continuer avec Google") { session.showOnboarding = true }
+            .buttonStyle(.borderedProminent)
+        }
+        importRow
+        ViewThatFits(in: .horizontal) {
+          HStack(spacing: 12) { search; playlistPicker.frame(maxWidth: 240) }
+          VStack(alignment: .leading) { search; playlistPicker }
+        }
+        List(library.results) { row in
+          TrackRow(track: row.track, detail: summary(row.track.description), onPlay: { play(row.track) }) {
+            HStack(spacing: 6) {
+              Button {
+                dj.enqueue(row.track)
+              } label: {
+                Image(systemName: "text.badge.plus")
+              }.help("Lire ensuite").accessibilityLabel("Lire ensuite : \(row.track.title)")
+              Button {
+                play(row.track)
+              } label: {
+                Image(systemName: "play.fill")
+              }.help("Lire maintenant").accessibilityLabel("Lire " + row.track.title)
+            }.buttonStyle(.borderless)
+          }.listRowSeparator(.visible)
+        }.listStyle(.plain).scrollContentBackground(.hidden)
+          .id("\(library.currentPage)-\(library.pageSize)-\(library.selectedPlaylist)")
+          .overlay {
+            if library.searching {
+              ProgressView().padding().glassPanel(radius: 10)
+            } else if library.libraryCount == 0 && session.hasServer {
+              EmptyState(
+                symbol: "music.note.list",
+                message: "Colle le lien d’une playlist YouTube pour remplir ta bibliothèque.")
+            } else if library.results.isEmpty && !library.query.isEmpty {
+              EmptyState(symbol: "magnifyingglass", message: "Aucun morceau ne correspond.")
+            }
+          }
+        ViewThatFits(in: .horizontal) {
+          HStack { pages(numbered: true) }
+          HStack { pages(numbered: false) }
+        }
+      }.padding(20).glassPanel()
+      NowPlayingBar(model: dj, player: dj.player, openDJ: onPlay)
+    }.padding(16)
+  }
+
+  private func play(_ track: Track) {
+    dj.play(track)
+    onPlay()
+  }
+
+  private var importRow: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      HStack(spacing: 8) {
+        HStack(spacing: 8) {
+          Image(systemName: "link").foregroundStyle(.secondary)
+          TextField("Coller le lien d’une playlist YouTube", text: $library.playlistLink)
+            .textFieldStyle(.plain).onSubmit { library.importPlaylist() }
+        }.padding(.horizontal, 12).padding(.vertical, 9)
+          .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
+        Button("Ajouter") { library.importPlaylist() }.buttonStyle(.borderedProminent)
+          .disabled(
+            library.importing || library.playlistLink.isEmpty || session.loadingCredentials)
+      }.help("Playlists publiques ou non répertoriées ; aucune clé YouTube à saisir.")
+      if library.importing {
+        HStack {
+          ProgressView().controlSize(.small)
+          Text(library.importProgress)
+          Button("Annuler") { library.cancelImport() }.buttonStyle(.link)
+        }.font(.caption)
       }
-    }.padding(20)
+    }
   }
 
   private var search: some View {
-    TextField("Un artiste, un titre, un souvenir…", text: $library.query)
-      .textFieldStyle(.roundedBorder)
+    SearchField(prompt: "Un artiste, un titre, un souvenir…", text: $library.query)
       .onChange(of: library.query) { _, _ in library.search() }
   }
 
@@ -112,7 +129,7 @@ struct LibraryView: View {
         if index > 0 && page > library.visiblePages[index - 1] + 1 { Text("…") }
         Button("\(page)") { library.goToPage(page) }
           .fontWeight(page == library.currentPage ? .bold : .regular)
-          .tint(page == library.currentPage ? Color.accentColor : Color.secondary)
+          .tint(page == library.currentPage ? Color.recall : Color.secondary)
           .accessibilityLabel("Page \(page) sur \(library.pageCount)")
           .disabled(library.searching)
       }
@@ -133,87 +150,14 @@ struct LibraryView: View {
   }
 }
 
-/// A library video: YouTube thumbnail, channel with its avatar, start of the description.
-private struct TrackRow: View {
-  let track: Track
-  let play: () -> Void
-  @State private var hovering = false
-  var body: some View {
-    HStack(alignment: .top, spacing: 12) {
-      Button(action: play) {
-        AsyncImage(url: URL(string: "https://i.ytimg.com/vi/\(track.id)/mqdefault.jpg")) {
-          image in image.resizable().scaledToFill()
-        } placeholder: {
-          Color.secondary.opacity(0.15)
-        }
-        .frame(width: 128, height: 72).clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay {
-          if hovering {
-            Image(systemName: "play.fill").font(.title2).foregroundStyle(.white)
-              .frame(maxWidth: .infinity, maxHeight: .infinity)
-              .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
-          }
-        }
-        .overlay(alignment: .bottomTrailing) {
-          if let duration = track.durationSeconds, duration > 0 {
-            Text(clock(duration)).font(.caption2.monospacedDigit().weight(.medium))
-              .foregroundStyle(.white).padding(.horizontal, 4).padding(.vertical, 1)
-              .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 4)).padding(4)
-          }
-        }
-      }.buttonStyle(.plain).onHover { hovering = $0 }.accessibilityLabel("Lire " + track.title)
-      VStack(alignment: .leading, spacing: 5) {
-        Text(track.title).fontWeight(.medium).lineLimit(2)
-        if let channel = track.channel, !channel.isEmpty {
-          HStack(spacing: 6) {
-            ChannelAvatar(name: channel, photo: track.channelAvatarURL)
-            Text(channelName(channel)).font(.callout).foregroundStyle(.secondary).lineLimit(1)
-          }
-        }
-        if let summary = summary(track.description) {
-          Text(summary).font(.caption).foregroundStyle(.tertiary).lineLimit(2)
-        }
-      }
-    }.padding(.vertical, 4).contentShape(Rectangle()).onTapGesture(count: 2, perform: play)
-  }
-  /// Skips YouTube's "Provided to YouTube by" line and links, and keeps the first real sentences.
-  private func summary(_ description: String?) -> String? {
-    let lines = (description ?? "").split(whereSeparator: \.isNewline)
-      .filter { !$0.hasPrefix("Provided to YouTube by") }
-      .map { line in
-        line.split(separator: " ").filter { !$0.contains("http") && !$0.hasPrefix("www.") }
-          .joined(separator: " ")
-      }.filter { !$0.isEmpty }
-    let text = lines.prefix(3).joined(separator: " ")
-    return text.isEmpty ? nil : text
-  }
-}
-
-/// YouTube's auto-generated artist channels end in " - Topic"; the artist name is what matters.
-private func channelName(_ channel: String) -> String {
-  channel.hasSuffix(" - Topic") ? String(channel.dropLast(8)) : channel
-}
-
-/// The channel's photo when the server has it; otherwise its initial on a colour derived from the
-/// name, so a channel keeps its colour everywhere.
-private struct ChannelAvatar: View {
-  let name: String
-  let photo: URL?
-  var body: some View {
-    AsyncImage(url: photo) { image in
-      image.resizable().scaledToFill().frame(width: 20, height: 20).clipShape(Circle())
-    } placeholder: {
-      monogram
-    }.accessibilityHidden(true)
-  }
-  private var monogram: some View {
-    let label = channelName(name)
-    let seed = label.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
-    return Circle().fill(Color(hue: Double(seed % 360) / 360, saturation: 0.45, brightness: 0.62))
-      .frame(width: 20, height: 20)
-      .overlay {
-        Text(label.first.map { String($0).uppercased() } ?? "?")
-          .font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
-      }
-  }
+/// Start of a YouTube description without the "Provided to YouTube by" line and links.
+private func summary(_ description: String?) -> String? {
+  let lines = (description ?? "").split(whereSeparator: \.isNewline)
+    .filter { !$0.hasPrefix("Provided to YouTube by") }
+    .map { line in
+      line.split(separator: " ").filter { !$0.contains("http") && !$0.hasPrefix("www.") }
+        .joined(separator: " ")
+    }.filter { !$0.isEmpty }
+  let text = lines.prefix(3).joined(separator: " ")
+  return text.isEmpty ? nil : text
 }

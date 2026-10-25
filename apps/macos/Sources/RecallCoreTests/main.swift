@@ -129,6 +129,7 @@ do {
   print("30 native behavior checks passed")
   try playbackSessionChecks()
   try lyricsChecks()
+  try trackTitleChecks()
   try await djCompositionChecks()
   try await studioCacheChecks()
   try await preparedSpeechChecks()

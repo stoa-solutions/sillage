@@ -8,7 +8,8 @@ Référence commune pour toute nouvelle vue Mac, Découvrir comprise. Plan valid
 - **Le titre, pas le nom de fichier.** On affiche « Beds Are Burning » et « Midnight Oil », jamais « Midnight Oil - Beds Are Burning » au-dessus de « MidnightOilVEVO ». Le découpage artiste et titre suit les mêmes règles que les paroles côté serveur (`lyrics.ts`).
 - **Une action principale par écran.** Les explications longues vont dans l’aide au survol (`.help`), pas sous chaque champ.
 - **Le mouvement montre ce qui change** : un nouveau morceau, un changement de mode ou d’onglet. Pas d’animation décorative. Avec « Réduire les animations », tout passe en fondu court ou sans animation.
-- **Le système d’abord.** SF Pro, couleurs sémantiques et matériaux macOS, une seule couleur d’accent (`Color.recall`). Hors Studio, l’app suit l’apparence du système ; Studio est toujours sombre.
+- **Une seule scène, deux profondeurs.** L’app est sombre dans les deux modes. Toutes les pages reposent sur la même scène, sous une barre d’outils transparente : en Studio, le clip (atténué hors de la page DJ) ; en Compact, la pochette floutée du morceau. Les panneaux sont le même verre sombre partout (`glassPanel`).
+- **Le vert est une action, pas une décoration.** `Color.recall` sert au bouton de lecture, à la progression, à la ligne chantée et aux boutons principaux. Les bascules (Studio, Voix du DJ, Enchaîner), les suggestions et les sélecteurs segmentés restent neutres : blanc quand actif, gris sinon (`GlassToggleStyle`, `ToolbarToggleStyle`, `neutralSelection`).
 
 ## Repères
 
@@ -49,7 +50,7 @@ Pas de libellés en capitales, pas de points médians en séparateur, pas de num
 
   Une étape déjà faite est sautée. « Plus tard » reste discret en bas. Les erreurs s’affichent sous le champ concerné.
 - **Bibliothèque → DJ** : lire un morceau bascule sur DJ. Le titre arrive avec l’animation NowPlaying, la file s’ouvre sur « À suivre ».
-- **Compact ⇄ Studio** : fondu enchaîné de 300 ms entre les deux mises en page, pendant que la fenêtre s’anime à sa nouvelle largeur. Le panneau de session garde son onglet.
+- **Compact ⇄ Studio** : bouton « Studio » sobre dans la barre d’outils, visible sur toutes les pages. Fondu de 300 ms entre les scènes pendant que la fenêtre s’anime à sa nouvelle largeur ; l’onglet courant ne change pas.
 - **Onglets du panneau** (DJ, À suivre, Historique, Paroles) : fondu court. Chaque onglet garde sa position de défilement.
 - **À suivre** : réordonner en glissant les lignes (`onMove`), et retirer au balayage ou par le menu « ⋯ ». La ligne « Ensuite : … » sous le lecteur disparaît, puisque l’onglet fait le même travail.
 - **Réglages** : quatre sections courtes (Compte, DJ, Voix, Studio). Une phrase au plus par section ; le reste passe en aide au survol.

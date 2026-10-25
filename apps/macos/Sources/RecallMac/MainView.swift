@@ -19,7 +19,38 @@ struct MainView: View {
   @EnvironmentObject var library: LibraryModel
   @EnvironmentObject var dj: DJModel
   @State private var section = Destination.dj
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   var body: some View {
+    Shell(player: dj.player, current: dj.current, focused: section == .dj) {
+      page
+    }
+    .toolbar {
+      ToolbarItem(placement: .principal) {
+        Picker("Vue", selection: $section) {
+          Text("DJ").tag(Destination.dj)
+          Text("Bibliothèque").tag(Destination.library)
+          Text("Découvrir").tag(Destination.discover)
+        }.pickerStyle(.segmented).fixedSize().neutralSelection()
+      }
+      ToolbarItemGroup(placement: .primaryAction) {
+        DisplayPicker(player: dj.player)
+        SettingsLink { Image(systemName: "gearshape") }
+          .help("Réglages").accessibilityLabel("Réglages")
+      }
+    }
+    .background(WindowAppearance(player: dj.player))
+    .tint(.recall)
+    .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: section)
+    .sheet(isPresented: $session.showOnboarding) {
+      OnboardingView().environmentObject(session).environmentObject(library)
+    }
+    .onChange(of: session.showOnboarding) { _, showing in
+      if !showing && session.hasServer && library.libraryCount == 0 { section = .library }
+    }
+  }
+
+  /// Banners on top, then the page; pages fade into each other.
+  @ViewBuilder private var page: some View {
     VStack(spacing: 0) {
       if !session.error.isEmpty {
         Banner(text: session.error, symbol: "exclamationmark.triangle.fill", color: .orange) {
@@ -31,33 +62,38 @@ struct MainView: View {
           session.notice = ""
         }
       }
-      switch section {
-      case .discover: DiscoverView()
-      case .dj: DJView(model: dj)
-      case .library: LibraryView(onPlay: { section = .dj })
-      }
+      ZStack {
+        switch section {
+        case .discover: DiscoverView(openDJ: { section = .dj }).transition(.opacity)
+        case .dj: DJView(model: dj).transition(.opacity)
+        case .library: LibraryView(onPlay: { section = .dj }).transition(.opacity)
+        }
+      }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    .toolbar {
-      ToolbarItem(placement: .principal) {
-        Picker("Vue", selection: $section) {
-          Text("DJ").tag(Destination.dj)
-          Text("Bibliothèque").tag(Destination.library)
-          Text("Découvrir").tag(Destination.discover)
-        }.pickerStyle(.segmented).fixedSize()
+  }
+}
+
+/// Every page sits on the same dark stage under a transparent toolbar: the clip in Studio
+/// (dimmed outside DJ), the blurred cover in Compact. Panels are the same glass in both.
+private struct Shell<Content: View>: View {
+  @ObservedObject var player: Player
+  let current: Track?
+  let focused: Bool
+  @ViewBuilder var content: Content
+  var body: some View {
+    content
+      .background {
+        Group {
+          if player.studio {
+            StageBackground(player: player, current: current, focused: focused)
+          } else {
+            AmbientBackground(current: current)
+          }
+        }.ignoresSafeArea().allowsHitTesting(false).transition(.opacity)
       }
-      ToolbarItemGroup(placement: .primaryAction) {
-        if section == .dj { DisplayPicker(player: dj.player) }
-        SettingsLink { Label("Réglages", systemImage: "gearshape") }.help("Réglages")
-      }
-    }
-    .background(
-      WindowAppearance(player: dj.player, dj: section == .dj, discovery: section == .discover)
-    )
-    .tint(.recall)
-    .sheet(isPresented: $session.showOnboarding) { OnboardingView().environmentObject(session) }
-    .onChange(of: session.showOnboarding) { _, showing in
-      if !showing && session.hasServer && library.libraryCount == 0 { section = .library }
-    }
+      .environment(\.surface, .studio)
+      .toolbarBackground(.hidden, for: .windowToolbar)
+      .animation(.easeInOut(duration: 0.3), value: player.studio)
   }
 }
 
@@ -78,45 +114,41 @@ private struct Banner: View {
   }
 }
 
-/// Compact keeps the official YouTube player; Studio plays the private local clip when ready.
+/// Off: the compact player beside your work. On: Studio, the clip behind every page.
 private struct DisplayPicker: View {
   @ObservedObject var player: Player
   var body: some View {
-    Picker(
-      "Affichage",
-      selection: Binding(
+    Toggle(
+      isOn: Binding(
         get: { player.studio },
         set: { studio in
           player.setStudio(studio)
           fitWindow(studio: studio)
         })
     ) {
-      Text("Compact").tag(false)
-      Text("Studio").tag(true)
-    }.pickerStyle(.segmented).fixedSize()
-      .help("Studio : clip plein cadre, lu depuis un cache privé sur ce Mac quand c’est possible.")
+      Label("Studio", systemImage: "play.rectangle.on.rectangle")
+    }.toggleStyle(ToolbarToggleStyle())
+      .help("Studio : le clip en plein cadre derrière chaque page, lu depuis un cache privé quand c’est possible.")
   }
   private func fitWindow(studio: Bool) {
     guard let window = NSApp.keyWindow, !window.styleMask.contains(.fullScreen) else { return }
     var frame = window.frame
-    frame.size.width = studio ? max(frame.width, 1180) : min(frame.width, 540)
+    frame.size.width = studio ? max(frame.width, 1180) : min(frame.width, 600)
     if let screen = window.screen { frame = window.constrainFrameRect(frame, to: screen) }
     window.setFrame(frame, display: true, animate: true)
   }
 }
 
-/// Studio is always dark and at least 900 points wide; everything else follows the system.
+/// The app is dark in both modes; Studio needs at least 900 points of width.
 private struct WindowAppearance: NSViewRepresentable {
   @ObservedObject var player: Player
-  let dj: Bool
-  let discovery: Bool
   func makeNSView(context: Context) -> NSView { NSView() }
   func updateNSView(_ view: NSView, context: Context) {
-    let studio = discovery || (dj && player.studio)
+    let studio = player.studio
     DispatchQueue.main.async {
       guard let window = view.window else { return }
-      window.appearance = studio ? NSAppearance(named: .darkAqua) : nil
-      window.contentMinSize.width = studio ? 900 : 540
+      window.appearance = NSAppearance(named: .darkAqua)
+      window.contentMinSize.width = studio ? 900 : 600
       guard window.frame.width < window.contentMinSize.width,
         !window.styleMask.contains(.fullScreen)
       else { return }
