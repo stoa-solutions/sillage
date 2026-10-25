@@ -34,7 +34,7 @@ struct MainView: View {
           .caption
         ).foregroundStyle(.secondary)
         SettingsLink { Label("Réglages", systemImage: "slider.horizontal.3") }
-        ShareLink(item: URL(string: "https://recall.stoa.solutions/macos/")!) {
+        ShareLink(item: URL(string: "https://recall.stoa.solutions/macos")!) {
           Label("Partager Recall", systemImage: "square.and.arrow.up").font(.caption)
         }
       }.padding(24).buttonStyle(.plain).navigationSplitViewColumnWidth(220)
