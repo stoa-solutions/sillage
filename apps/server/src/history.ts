@@ -17,15 +17,19 @@ const historyEvent = z.object({
   playedAt: z.string().datetime({ offset: true }),
 });
 const upload = z.object({ events: z.array(historyEvent).min(1).max(100) });
-const page = z.object({
-  limit: z.coerce.number().int().min(1).max(200).default(50),
-  before: z.string().datetime({ offset: true }).optional(),
-});
+// Keyset cursor: plays seen together share a date, so the event ID breaks ties.
+const page = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(200).default(50),
+    before: z.string().datetime({ offset: true }).optional(),
+    beforeId: z.string().uuid().optional(),
+  })
+  .refine((p) => !p.beforeId || p.before);
 
 export function historyRoutes(db: Database) {
   const app = new Hono<ApiEnvironment>();
   app.post("/", async (c) => {
-    const { events } = upload.parse(await c.req.json());
+    const { events } = upload.parse(await c.req.json().catch(() => null));
     const result = await db.query(
       `INSERT INTO listening_history(user_id,event_id,video_id,title,channel,outcome,played_at)
        SELECT $1,e.id::uuid,e.video_id,e.title,e.channel,e.outcome,e.played_at::timestamptz
@@ -48,13 +52,14 @@ export function historyRoutes(db: Database) {
     return c.json({ recorded: result.rowCount ?? 0 });
   });
   app.get("/", async (c) => {
-    const { limit, before } = page.parse(c.req.query());
+    const { limit, before, beforeId } = page.parse(c.req.query());
     const rows = (
       await db.query(
         `SELECT event_id AS id,video_id AS "videoId",title,channel,outcome,played_at AS "playedAt"
-         FROM listening_history WHERE user_id=$1 AND ($2::timestamptz IS NULL OR played_at<$2)
-         ORDER BY played_at DESC,event_id LIMIT $3`,
-        [c.get("userId"), before ?? null, limit],
+         FROM listening_history WHERE user_id=$1
+           AND ($2::timestamptz IS NULL OR ($3::uuid IS NULL AND played_at<$2) OR (played_at,event_id)<($2,$3::uuid))
+         ORDER BY played_at DESC,event_id DESC LIMIT $4`,
+        [c.get("userId"), before ?? null, beforeId ?? null, limit],
       )
     ).rows;
     return c.json({ events: rows });

@@ -175,17 +175,26 @@ final class LibraryModel: ObservableObject {
   }
   /// Removes a playlist from this account (YouTube is untouched), then refreshes the library.
   func deletePlaylist(_ playlist: ServerPlaylistSummary) {
-    guard let connection = session.connection, !importing else { return }
+    guard let connection = session.connection else { return }
     let generation = session.generation
     Task {
       do {
         try await HTTPClient().deletePlaylist(connection, id: playlist.id)
         guard session.generation == generation else { return }
-        if selectedPlaylist == playlist.id { selectedPlaylist = "" }
+        // Only the lists that contained it reload; another playlist keeps its scrolled rows.
+        let shown = selectedPlaylist == playlist.id || selectedPlaylist.isEmpty
         playlists.removeAll { $0.id == playlist.id }
         session.notice = "Playlist retirée de ta bibliothèque : \(playlist.title)."
-        results = []
-        sync()
+        if shown { results = [] }
+        if selectedPlaylist == playlist.id { selectedPlaylist = "" }
+        // A sync started before the removal could bring the playlist back: start a fresh one.
+        if !importing {
+          syncTask?.cancel()
+          syncing = false
+          sync()
+        } else if shown {
+          search()
+        }
       } catch {
         guard session.generation == generation else { return }
         session.error = "Impossible de retirer la playlist. " + error.localizedDescription

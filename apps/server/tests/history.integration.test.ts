@@ -5,6 +5,8 @@ import { migrate } from "../src/migrate.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import type { IdentityProvider } from "../src/auth.ts";
+import { LEGACY_USER } from "../src/accounts.ts";
+import { schedule } from "../src/queue.ts";
 vi.mock("../src/inference-client.ts", () => ({
   infer: vi.fn().mockResolvedValue({ vector: Array(384).fill(0.01) }),
 }));
@@ -51,7 +53,7 @@ beforeAll(async () => {
   await migrate(db);
 });
 beforeEach(async () => {
-  await db.query("TRUNCATE users,tokens,playlists,videos CASCADE");
+  await db.query("TRUNCATE users,tokens,playlists,videos,jobs CASCADE");
   await db.query(
     `INSERT INTO users(id,google_sub,email) VALUES($1,'google-alice','alice@example.test'),($2,'google-bob','bob@example.test')`,
     [alice, bob],
@@ -61,7 +63,7 @@ beforeEach(async () => {
     [randomUUID(), hash(tokenA), alice, randomUUID(), hash(tokenB), bob],
   );
   await db.query(
-    `INSERT INTO playlists(id,title,source_url) VALUES('PLalice12345','Alice','https://www.youtube.com/playlist?list=PLalice12345'),('PLbob1234567','Bob','https://www.youtube.com/playlist?list=PLbob1234567'),($1,'Mes découvertes','')`,
+    `INSERT INTO playlists(id,title,source_url,sync_enabled) VALUES('PLalice12345','Alice','https://www.youtube.com/playlist?list=PLalice12345',true),('PLbob1234567','Bob','https://www.youtube.com/playlist?list=PLbob1234567',true),($1,'Mes découvertes','',false)`,
     [`recall-discoveries:${alice}`],
   );
   await db.query(
@@ -194,4 +196,71 @@ it("removes a playlist from one account without touching YouTube or other accoun
     [`recall-discoveries:${alice}`],
   );
   expect(kept.rows[0].n).toBe(0);
+});
+
+it("pages through plays recorded at the same moment without skipping any", async () => {
+  const events = Array.from({ length: 5 }, () =>
+    event({ playedAt: "2026-10-25T11:00:00.000Z" }),
+  );
+  await req("POST", "/v1/history", tokenA, { events });
+  const seen: string[] = [];
+  let query = "/v1/history?limit=2";
+  for (let i = 0; i < 4; i++) {
+    const page = (await (await req("GET", query)).json()).events;
+    if (!page.length) break;
+    seen.push(...page.map((e: any) => e.id));
+    const last = page[page.length - 1];
+    query = `/v1/history?limit=2&before=${last.playedAt}&beforeId=${last.id}`;
+  }
+  expect(new Set(seen)).toEqual(new Set(events.map((e) => e.id)));
+  expect(seen).toHaveLength(5);
+});
+
+it("answers malformed JSON with a client error", async () => {
+  const response = await app.request("/v1/history", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + tokenA,
+      "Content-Type": "application/json",
+    },
+    body: "{not json",
+  });
+  expect(response.status).toBe(400);
+});
+
+it("moves the legacy account's history with its library when claimed", async () => {
+  const legacyToken = "legacy-history-session-token-123";
+  await db.query(
+    "INSERT INTO users(id,google_sub,email) VALUES($1,NULL,NULL)",
+    [LEGACY_USER],
+  );
+  await db.query(
+    "INSERT INTO tokens(id,name,hash,user_id) VALUES($1,'L',$2,$3)",
+    [randomUUID(), hash(legacyToken), LEGACY_USER],
+  );
+  await req("POST", "/v1/history", legacyToken, { events: [event()] });
+  expect(
+    (await req("POST", "/v1/account/claim-library", tokenA, { legacyToken }))
+      .status,
+  ).toBe(200);
+  expect((await (await req("GET", "/v1/history")).json()).events).toHaveLength(
+    1,
+  );
+});
+
+it("stops synchronising a playlist once no account holds it", async () => {
+  process.env.SYNC_ENABLED = "true";
+  try {
+    await db.query(
+      "UPDATE playlists SET sync_enabled=true,next_sync_at=now()-interval '1 minute' WHERE id LIKE 'PL%'",
+    );
+    await req("DELETE", "/v1/playlists/PLalice12345");
+    await schedule(db);
+    const jobs = await db.query(
+      "SELECT payload->>'playlistId' AS id FROM jobs WHERE kind='sync' ORDER BY 1",
+    );
+    expect(jobs.rows.map((r) => r.id)).toEqual(["PLbob1234567"]);
+  } finally {
+    delete process.env.SYNC_ENABLED;
+  }
 });

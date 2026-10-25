@@ -34,6 +34,10 @@ export function accountRoutes(db: Database) {
       await client.query("DELETE FROM user_playlists WHERE user_id=$1", [
         LEGACY_USER,
       ]);
+      await client.query(
+        "UPDATE listening_history SET user_id=$1 WHERE user_id=$2",
+        [user, LEGACY_USER],
+      );
       await client.query("UPDATE tokens SET user_id=$1 WHERE user_id=$2", [
         user,
         LEGACY_USER,

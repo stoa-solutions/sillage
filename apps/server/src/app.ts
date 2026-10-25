@@ -11,7 +11,7 @@ import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import { hash, parsePlaylistId } from "./content.ts";
-import type { Database } from "./db.ts";
+import { transaction, type Database } from "./db.ts";
 import { enqueue } from "./queue.ts";
 import { search } from "./search.ts";
 import {
@@ -189,17 +189,26 @@ export function createApp(
   // videos leave the library unless another of the account's playlists holds them.
   app.delete("/v1/playlists/:id", async (c) => {
     const id = z.string().min(1).max(160).parse(c.req.param("id"));
-    const removed = await db.query(
-      "DELETE FROM user_playlists WHERE playlist_id=$1 AND user_id=$2",
-      [id, c.get("userId")],
-    );
-    if (!removed.rowCount) return c.json({ error: "Playlist inconnue." }, 404);
-    // Mes découvertes belongs to this account alone: emptied, so a later addition starts afresh.
-    if (id === `recall-discoveries:${c.get("userId")}`)
-      await db.query(
-        "UPDATE memberships SET active=false WHERE playlist_id=$1",
-        [id],
+    const user = c.get("userId");
+    const removed = await transaction(db, async (client) => {
+      const link = await client.query(
+        "DELETE FROM user_playlists WHERE playlist_id=$1 AND user_id=$2",
+        [id, user],
       );
+      // Mes découvertes belongs to this account alone: emptied, so a later addition starts
+      // afresh. The row lock serialises with a concurrent discovery addition.
+      if (link.rowCount && id === `recall-discoveries:${user}`) {
+        await client.query("SELECT id FROM playlists WHERE id=$1 FOR UPDATE", [
+          id,
+        ]);
+        await client.query(
+          "UPDATE memberships SET active=false WHERE playlist_id=$1",
+          [id],
+        );
+      }
+      return Boolean(link.rowCount);
+    });
+    if (!removed) return c.json({ error: "Playlist inconnue." }, 404);
     return c.json({ removed: id });
   });
   app.post("/v1/playlists/:id/sync", async (c) => {

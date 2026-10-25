@@ -12,8 +12,8 @@ public struct ListeningEvent: Sendable, Equatable {
   init(_ entry: PlaybackHistoryEntry, at date: Date) {
     id = entry.id
     videoId = entry.track.id
-    title = String(entry.track.title.prefix(300))
-    channel = entry.track.channel.map { String($0.prefix(200)) }
+    title = Self.clip(entry.track.title, 300)
+    channel = entry.track.channel.map { Self.clip($0, 200) }
     outcome =
       switch entry.outcome {
       case .finished: "finished"
@@ -22,6 +22,25 @@ public struct ListeningEvent: Sendable, Equatable {
       case .replaced: "replaced"
       }
     playedAt = date
+  }
+
+  /// The server counts UTF-16 units; whole characters are kept, so emoji never split.
+  static func clip(_ text: String, _ limit: Int) -> String {
+    var result = ""
+    var units = 0
+    for character in text {
+      units += character.utf16.count
+      if units > limit { break }
+      result.append(character)
+    }
+    return result
+  }
+  /// Only YouTube's eleven-character IDs reach the server.
+  static func valid(_ id: String) -> Bool {
+    id.count == 11
+      && id.unicodeScalars.allSatisfy {
+        CharacterSet.alphanumerics.contains($0) && $0.isASCII || $0 == "_" || $0 == "-"
+      }
   }
 
   public var payload: [String: Any] {
@@ -51,7 +70,7 @@ public struct ListeningHistoryOutbox: Sendable {
   public init() {}
 
   public mutating func observe(_ history: [PlaybackHistoryEntry], at date: Date = Date()) {
-    for entry in history where !seen.contains(entry.id) {
+    for entry in history where !seen.contains(entry.id) && ListeningEvent.valid(entry.track.id) {
       pending.append(ListeningEvent(entry, at: date))
     }
     seen = Set(history.map(\.id))

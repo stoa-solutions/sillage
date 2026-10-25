@@ -4,7 +4,7 @@ import RecallKit
 func listeningHistoryChecks() throws {
   var queue = PlaybackQueue()
   let tracks = (1...3).map {
-    Track(id: "track\($0)abcd", title: "Titre \($0)", channel: $0 == 2 ? nil : "Chaîne")
+    Track(id: "track\($0)abcde", title: "Titre \($0)", channel: $0 == 2 ? nil : "Chaîne")
   }
   _ = queue.apply(DJResponse(reply: "", action: "replace", tracks: tracks))
   queue.requestNext()  // track 1 skipped
@@ -13,7 +13,7 @@ func listeningHistoryChecks() throws {
   let now = Date(timeIntervalSince1970: 1_793_000_000)
   outbox.observe(queue.history, at: now)
   try expect(
-    outbox.pending.map(\.videoId) == ["track1abcd", "track2abcd"]
+    outbox.pending.map(\.videoId) == ["track1abcde", "track2abcde"]
       && outbox.pending.map(\.outcome) == ["skipped", "finished"],
     "Outbox lost the order or outcome of plays")
   try expect(
@@ -37,7 +37,7 @@ func listeningHistoryChecks() throws {
   outbox.observe(queue.history)
   outbox.acknowledge(sent)
   try expect(
-    outbox.pending.map(\.videoId) == ["track3abcd"], "Acknowledging removed an unsent play")
+    outbox.pending.map(\.videoId) == ["track3abcde"], "Acknowledging removed an unsent play")
 
   outbox.reset()
   try expect(outbox.pending.isEmpty, "Another account would receive this account's plays")
@@ -57,6 +57,22 @@ func listeningHistoryChecks() throws {
       && offline.pending.last?.videoId == "v0000000598"
       && offline.nextBatch().count == ListeningHistoryOutbox.batchSize,
     "Offline outbox is unbounded or drops the newest plays")
+  var odd = PlaybackQueue()
+  let emojiTitle = String(repeating: "🎵", count: 200)
+  _ = odd.apply(
+    DJResponse(
+      reply: "", action: "replace",
+      tracks: [Track(id: "bad id", title: "Invalide"), Track(id: "emojititle1", title: emojiTitle)]
+    ))
+  odd.requestNext()
+  odd.requestNext()
+  var strict = ListeningHistoryOutbox()
+  strict.observe(odd.history)
+  try expect(
+    strict.pending.map(\.videoId) == ["emojititle1"]
+      && strict.pending[0].title.utf16.count == 300
+      && strict.pending[0].title.allSatisfy { $0 == "🎵" },
+    "History sent an invalid video ID or a title the server would reject")
   print(
     "Listening history checks passed: order, duplicates, payload, acknowledgement, reset, bound")
 }

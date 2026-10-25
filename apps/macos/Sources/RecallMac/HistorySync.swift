@@ -13,10 +13,13 @@ import RecallKit
 
   init(session: Session, dj: DJModel) {
     self.session = session
-    watch = dj.$listening.map(\.queue.history).sink { [weak self] history in
-      self?.outbox.observe(history)
-      self?.schedule(after: .seconds(5))
-    }
+    // Only history changes matter, not every chat or status update of the session.
+    watch = dj.$listening.map(\.queue.history)
+      .removeDuplicates { $0.map(\.id) == $1.map(\.id) }
+      .sink { [weak self] history in
+        self?.outbox.observe(history)
+        self?.schedule(after: .seconds(5))
+      }
   }
 
   func reset() {
@@ -45,6 +48,12 @@ import RecallKit
     do {
       try await HTTPClient().recordHistory(connection, batch)
       guard !Task.isCancelled else { return false }
+      outbox.acknowledge(batch)
+      return true
+    } catch let error as HTTPServiceError
+      where (400..<500).contains(error.status) && ![401, 408, 429].contains(error.status)
+    {
+      // The server will never accept this batch; keeping it would block every later play.
       outbox.acknowledge(batch)
       return true
     } catch {
