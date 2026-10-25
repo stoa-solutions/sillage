@@ -9,11 +9,13 @@ public struct HTTPServiceError: LocalizedError, Sendable {
 public struct HTTPClient: Sendable {
   public init() {}
   private static let session = URLSession(configuration: .ephemeral)
-  public func json(url: URL, body: Any? = nil, headers: [String: String] = [:]) async throws
+  public func json(
+    url: URL, method: String? = nil, body: Any? = nil, headers: [String: String] = [:]
+  ) async throws
     -> [String: Any]
   {
     var request = URLRequest(url: url, timeoutInterval: 90)
-    request.httpMethod = body == nil ? "GET" : "POST"
+    request.httpMethod = method ?? (body == nil ? "GET" : "POST")
     for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
     if let body {
       request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -42,12 +44,23 @@ public struct HTTPClient: Sendable {
     else { throw RecallError.message("Réponse trop volumineuse ou illisible.") }
     return object
   }
-  public func server(_ connection: Connection, path: String, body: Any? = nil) async throws
+  public func server(
+    _ connection: Connection, path: String, method: String? = nil, body: Any? = nil
+  ) async throws
     -> [String: Any]
   {
     try await json(
-      url: URL(string: connection.url + "/v1/" + path)!, body: body,
+      url: URL(string: connection.url + "/v1/" + path)!, method: method, body: body,
       headers: ["Authorization": "Bearer " + connection.token])
+  }
+  /// Sends finished plays; the server ignores events it already has.
+  public func recordHistory(_ connection: Connection, _ events: [ListeningEvent]) async throws {
+    _ = try await server(connection, path: "history", body: ["events": events.map(\.payload)])
+  }
+  /// Removes a playlist from this account only; YouTube is never changed.
+  public func deletePlaylist(_ connection: Connection, id: String) async throws {
+    let encoded = id.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? id
+    _ = try await server(connection, path: "playlists/" + encoded, method: "DELETE")
   }
   public func lyrics(_ connection: Connection, videoId: String) async throws -> Lyrics {
     try Lyrics.decode(await server(connection, path: "lyrics/" + videoId))

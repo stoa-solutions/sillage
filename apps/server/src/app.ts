@@ -1,6 +1,7 @@
 import { enrichmentProgress } from "./musicbrainz/rollout.ts";
 import { discoveryRoutes } from "./discovery.ts";
 import { accountRoutes } from "./account-routes.ts";
+import { historyRoutes } from "./history.ts";
 import { authRoutes, type IdentityProvider } from "./auth.ts";
 import { LEGACY_USER, ownsPlaylist, accountProfile } from "./accounts.ts";
 import { Hono } from "hono";
@@ -130,6 +131,7 @@ export function createApp(
   app.route("/v1/account", accountRoutes(db));
   app.route("/v1/discover", discoveryRoutes(db));
   app.route("/v1/dj", createDjRoutes(db));
+  app.route("/v1/history", historyRoutes(db));
   app.all("/v1/mcp", (c) => handleMusicMcp(db, c.req.raw, c.get("userId")));
   app.get("/v1/library/enrichment", async (c) =>
     c.json(await enrichmentProgress(db, c.get("userId"))),
@@ -182,6 +184,23 @@ export function createApp(
     );
     const job = await enqueue(db, "sync", id, { playlistId: id });
     return c.json({ id, job }, 202);
+  });
+  // Removes the playlist from this account only: YouTube and other accounts keep it, and its
+  // videos leave the library unless another of the account's playlists holds them.
+  app.delete("/v1/playlists/:id", async (c) => {
+    const id = z.string().min(1).max(160).parse(c.req.param("id"));
+    const removed = await db.query(
+      "DELETE FROM user_playlists WHERE playlist_id=$1 AND user_id=$2",
+      [id, c.get("userId")],
+    );
+    if (!removed.rowCount) return c.json({ error: "Playlist inconnue." }, 404);
+    // Mes découvertes belongs to this account alone: emptied, so a later addition starts afresh.
+    if (id === `recall-discoveries:${c.get("userId")}`)
+      await db.query(
+        "UPDATE memberships SET active=false WHERE playlist_id=$1",
+        [id],
+      );
+    return c.json({ removed: id });
   });
   app.post("/v1/playlists/:id/sync", async (c) => {
     const id = parsePlaylistId(c.req.param("id"));

@@ -38,6 +38,7 @@ Sur le Mac, seul le **jeton révocable Recall** est conservé dans `session.json
 | `images` | Une représentation vectorielle 768 dimensions par vidéo et révision de miniature. |
 | `account_dj_settings` | Une configuration chiffrée + modèle par utilisateur. |
 | `account_dj_usage` | Compteur par utilisateur/jour ; distinct du quota Google de sa clé. |
+| `listening_history` | (user_id, event_id) : vidéo, titre et chaîne copiés, issue (terminé, passé, indisponible, remplacé), date de lecture. Sans lien vers `videos`, car un titre YouTube écouté n'est pas forcément dans la bibliothèque. |
 | `lyrics` | Paroles publiques, lignes, source et écart de durée, par vidéo. |
 | `lyrics_offsets` | Calage privé par couple (utilisateur, vidéo). |
 | `jobs` | File persistante : sync, enrich YouTube, MusicBrainz, texte, image ; déduplication, bail, reprises. |
@@ -69,3 +70,11 @@ L’extension progressive est activable par compte après validation du pilote. 
 - `search.ts` et outils musique : lecture des index existants, toujours bornée au compte.
 
 Pour grandir : conserver les preuves de propriété à chaque nouvelle route, séparer cache public et état privé, instrumenter les jobs/latences et traiter toute nouvelle persistance de chat comme une donnée privée. RLS, rotation automatique de clé et historique multiappareils sont des pistes distinctes, pas des fonctions déjà livrées.
+
+## Historique d'écoute et suppression de playlist
+
+L'app envoie chaque lecture finie à `POST /v1/history`, par lots de 100 au plus, quelques secondes après. Chaque événement porte un identifiant créé sur le Mac : un envoi répété après une réponse perdue ne compte pas deux fois. En cas d'échec, l'app réessaie une minute plus tard ; jusqu'à 500 lectures attendent en mémoire, et celles qui n'ont pas été envoyées sont perdues si l'app est quittée. Au changement de compte, la file d'envoi est vidée avant la réinitialisation de la session, pour qu'aucune lecture n'atteigne un autre compte.
+
+`GET /v1/history?limit=50&before=<date>` relit l'historique, du plus récent au plus ancien, et `DELETE /v1/history` l'efface pour le compte. Pour l'instant, rien ne le lit automatiquement : il servira plus tard aux suggestions de Découvrir.
+
+`DELETE /v1/playlists/:id` retire seulement le lien `user_playlists` du compte. La playlist YouTube, son catalogue et les autres comptes restent intacts. Ses vidéos quittent la bibliothèque, sauf celles présentes dans une autre playlist du compte. « Mes découvertes », propre au compte, est en plus vidée pour qu'un ajout ultérieur reparte de zéro.

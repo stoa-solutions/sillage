@@ -9,6 +9,7 @@ struct LibraryView: View {
   @EnvironmentObject var library: LibraryModel
   @EnvironmentObject var dj: DJModel
   @State private var adding = false
+  @State private var deleting: ServerPlaylistSummary?
 
   var body: some View {
     VStack(spacing: 12) {
@@ -24,6 +25,18 @@ struct LibraryView: View {
       NowPlayingBar(model: dj, player: dj.player, openDJ: onPlay)
     }.padding(16)
       .task(id: session.generation) { await library.watchEnrichment() }
+      .confirmationDialog(
+        "Retirer « \(deleting?.title ?? "") » ?", isPresented: deletingBinding,
+        titleVisibility: .visible, presenting: deleting
+      ) { playlist in
+        Button("Retirer", role: .destructive) { library.deletePlaylist(playlist) }
+      } message: { playlist in
+        Text(
+          playlist.syncEnabled
+            ? "Ses vidéos quittent ta bibliothèque, sauf celles présentes dans une autre de tes playlists. La playlist reste intacte sur YouTube ; tu pourras la rajouter avec son lien."
+            : "Ses vidéos quittent ta bibliothèque, sauf celles présentes dans une autre de tes playlists."
+        )
+      }
   }
 
   // MARK: Sidebar
@@ -51,6 +64,11 @@ struct LibraryView: View {
             symbol: "music.note.list")
           ForEach(library.playlists) { playlist in
             playlistItem(id: playlist.id, title: playlist.title, count: playlist.entries)
+              .contextMenu {
+                Button("Retirer de ma bibliothèque…", systemImage: "trash", role: .destructive) {
+                  deleting = playlist
+                }
+              }
           }
         }.padding(.horizontal, 8)
       }
@@ -110,6 +128,9 @@ struct LibraryView: View {
     }
   }
 
+  private var deletingBinding: Binding<Bool> {
+    Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })
+  }
   private var title: String { library.selectedPlaylistSummary?.title ?? "Toutes les vidéos" }
   private var count: Int { library.selectedPlaylistSummary?.entries ?? library.libraryCount }
 
@@ -141,6 +162,18 @@ struct LibraryView: View {
           .accessibilityLabel("Lire \(title)")
         IconButton(symbol: "shuffle", help: "Lire dans un ordre aléatoire", action: shuffle)
           .font(.title3).disabled(library.results.isEmpty)
+        if let playlist = library.selectedPlaylistSummary {
+          Menu {
+            Button("Retirer de ma bibliothèque…", systemImage: "trash", role: .destructive) {
+              deleting = playlist
+            }
+          } label: {
+            Image(systemName: "ellipsis").font(.title3).frame(width: 26, height: 26)
+              .contentShape(Rectangle())
+          }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+            .foregroundStyle(.secondary).help("Plus d’actions pour cette playlist")
+            .accessibilityLabel("Plus d’actions pour \(playlist.title)")
+        }
         if !wide {
           IconButton(symbol: "plus", help: "Ajouter une playlist YouTube") { adding = true }
             .font(.title3)

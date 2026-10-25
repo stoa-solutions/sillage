@@ -21,13 +21,17 @@ import SwiftUI
   @StateObject private var library: LibraryModel
   @StateObject private var dj: DJModel
   @StateObject private var discovery: DiscoveryModel
+  @StateObject private var history: HistorySync
   @State private var didBootstrap = false
   init() {
     let session = Session()
     let library = LibraryModel(session: session)
     let dj = DJModel(session: session)
     let discovery = DiscoveryModel(session: session, library: library)
-    session.onConnectionChange = { [weak library, weak dj, weak discovery] in
+    let history = HistorySync(session: session, dj: dj)
+    session.onConnectionChange = { [weak library, weak dj, weak discovery, weak history] in
+      // Plays still waiting belong to the previous account: dropped before its queue resets.
+      history?.reset()
       discovery?.reset()
       dj?.reset()
       library?.reset()
@@ -36,6 +40,7 @@ import SwiftUI
     _library = StateObject(wrappedValue: library)
     _dj = StateObject(wrappedValue: dj)
     _discovery = StateObject(wrappedValue: discovery)
+    _history = StateObject(wrappedValue: history)
   }
   private func bootstrap() async {
     if CommandLine.arguments.contains("--import-configuration-stdin") {

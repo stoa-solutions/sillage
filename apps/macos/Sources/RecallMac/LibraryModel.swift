@@ -173,6 +173,25 @@ final class LibraryModel: ObservableObject {
       }
     }
   }
+  /// Removes a playlist from this account (YouTube is untouched), then refreshes the library.
+  func deletePlaylist(_ playlist: ServerPlaylistSummary) {
+    guard let connection = session.connection, !importing else { return }
+    let generation = session.generation
+    Task {
+      do {
+        try await HTTPClient().deletePlaylist(connection, id: playlist.id)
+        guard session.generation == generation else { return }
+        if selectedPlaylist == playlist.id { selectedPlaylist = "" }
+        playlists.removeAll { $0.id == playlist.id }
+        session.notice = "Playlist retirée de ta bibliothèque : \(playlist.title)."
+        results = []
+        sync()
+      } catch {
+        guard session.generation == generation else { return }
+        session.error = "Impossible de retirer la playlist. " + error.localizedDescription
+      }
+    }
+  }
   func cancelImport() {
     importTask?.cancel()
     importing = false

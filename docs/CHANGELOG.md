@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Historique d’écoute enregistré sur le serveur pour chaque compte (titre, issue, date), sans doublon si un envoi est répété ; base des futures suggestions de Découvrir. Bibliothèque : retirer une playlist depuis son menu ou un clic droit, avec confirmation ; YouTube et les autres comptes ne changent pas.
+
 - App 1.5.9 : Bibliothèque façon Spotify (playlists à gauche, en-tête avec lecture et aléatoire, liste dense chargée au défilement, actions au survol, enrichissement résumé en une pastille). Découvrir façon Raycast et YouTube Music : barre de recherche qui cherche pendant la frappe, recherches récentes et idées de départ, meilleur résultat mis en avant, vidéos YouTube en cartes. Accueil sobre aux couleurs Stoa, mis en page comme Studio.
 
 - DJ : dernier tour sans outil pour conclure la composition ; une sélection partielle vérifiée est conservée si le modèle continue à chercher au-delà de la limite.

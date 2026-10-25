@@ -137,3 +137,16 @@ BEGIN
   RETURN NEW;
 END $$;
 CREATE OR REPLACE TRIGGER videos_music_revision BEFORE INSERT OR UPDATE ON videos FOR EACH ROW EXECUTE FUNCTION recall_music_revision();
+-- Listening history per account; see history.ts.
+CREATE TABLE IF NOT EXISTS listening_history (
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_id uuid NOT NULL,
+  video_id text NOT NULL,
+  title text NOT NULL,
+  channel text,
+  outcome text NOT NULL CHECK (outcome IN ('finished','skipped','unavailable','replaced')),
+  played_at timestamptz NOT NULL,
+  received_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY(user_id,event_id)
+);
+CREATE INDEX IF NOT EXISTS listening_history_recent ON listening_history(user_id,played_at DESC);
