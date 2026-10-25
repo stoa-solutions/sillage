@@ -61,7 +61,7 @@ final class DJModel: ObservableObject {
     messages = []
     prompt = ""
     lastRequest = ""
-    player.command("pause")
+    player.reset()
   }
   func send(_ text: String? = nil, automatic: Bool = false) {
     let text = (text ?? prompt).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -130,7 +130,10 @@ final class DJModel: ObservableObject {
     playCurrent()
   }
   private func playCurrent() {
-    if let current { player.cue(current) }
+    if let current {
+      player.cue(current)
+      player.prepareNext(upcoming.first?.track)
+    }
   }
   func next() {
     voice.stop()
@@ -142,7 +145,7 @@ final class DJModel: ObservableObject {
         messages = Array(messages.suffix(24))
         speak(announcement)
       }
-    } else if continuous, !queue.isEmpty {
+    } else if !queue.isEmpty {
       playback.markEnded()
       send(
         "Continue ma demande : \(lastRequest). Cherche de nouveaux vrais morceaux dans la bibliothèque, sans répétition. Ajoute-les à la file. Exclue les type beats et hommages sauf si je les ai demandés.",

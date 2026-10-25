@@ -23,6 +23,23 @@ struct DJView: View {
             .system(size: 10, design: .monospaced)
           ).tracking(2)
           Spacer()
+          Toggle(
+            "Studio",
+            isOn: Binding(
+              get: { player.studio },
+              set: {
+                cinema = true
+                if $0 {
+                  model.spoken = true
+                  model.continuous = true
+                  session.cloudVoice = true
+                }
+                player.setStudio($0)
+              })
+          ).toggleStyle(.switch).controlSize(.small)
+            .help(
+              "Cache vidéo privé sur ce Mac, fond vidéo et panneaux translucides. Retour YouTube si le clip est indisponible."
+            )
           Button {
             cinema.toggle()
           } label: {
@@ -36,7 +53,17 @@ struct DJView: View {
             .system(size: 40, weight: .medium, design: .serif))
           Text("Parle-moi de ta soirée. On trouve la suite ensemble.").foregroundStyle(.secondary)
         }
-        PlayerView(player: player).frame(minHeight: 270, maxHeight: .infinity)
+        if player.studioReady {
+          Color.clear.frame(minHeight: 270, maxHeight: .infinity).allowsHitTesting(false)
+        } else {
+          PlayerView(player: player).frame(minHeight: 270, maxHeight: .infinity)
+        }
+        if player.preparingStudio {
+          HStack {
+            ProgressView().controlSize(.small)
+            Text("Préparation du clip Studio…").font(.caption)
+          }
+        }
         Text(model.current?.title ?? "Prêt quand tu l’es").font(.title3).bold().lineLimit(2)
         Text(model.current?.channel ?? "Une ambiance, un artiste, une sensation…").foregroundStyle(
           .secondary)
@@ -45,7 +72,7 @@ struct DJView: View {
             player.command(player.playing ? "pause" : "play")
           } label: {
             Image(systemName: player.playing ? "pause.fill" : "play.fill")
-          }.disabled(model.current == nil)
+          }.disabled(model.current == nil || player.preparingStudio)
           Button {
             model.next()
           } label: {
@@ -56,6 +83,16 @@ struct DJView: View {
             Link("YouTube ↗", destination: current.url).font(.caption)
           }
         }.buttonStyle(.bordered)
+        if player.studioReady {
+          Slider(
+            value: Binding(get: { player.elapsed }, set: { player.seek($0) }),
+            in: 0...max(1, player.duration)
+          ).accessibilityLabel("Position du morceau")
+          Text(
+            "\(Int(player.elapsed) / 60):\(String(format: "%02d", Int(player.elapsed) % 60)) / \(Int(player.duration) / 60):\(String(format: "%02d", Int(player.duration) % 60)) · Studio"
+          )
+          .font(.caption).monospacedDigit().foregroundStyle(.secondary)
+        }
         if !player.failure.isEmpty { Text(player.failure).font(.caption).foregroundStyle(.orange) }
         Toggle("Continuer la musique automatiquement", isOn: $model.continuous).font(.caption)
         if model.queue.count > 1 {
@@ -155,6 +192,11 @@ struct DJView: View {
           .font(.system(size: 10)).foregroundStyle(.secondary)
       }.padding(24).frame(minWidth: 320, idealWidth: 360, maxWidth: cinema ? 420 : .infinity)
         .background(.ultraThinMaterial)
+    }.background {
+      if player.studioReady {
+        StudioPlayerView(player: player.nativePlayer)
+          .overlay(Color.black.opacity(0.3)).allowsHitTesting(false)
+      }
     }
   }
 }

@@ -117,6 +117,7 @@ do {
     expired.consume(callbackURL, now: now.addingTimeInterval(601)) == nil,
     "Expired OAuth callback accepted")
   print("29 native behavior checks passed")
+  try await studioCacheChecks()
 } catch {
   fputs("Native tests failed: \(error.localizedDescription)\n", stderr)
   exit(1)

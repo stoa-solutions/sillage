@@ -1,3 +1,4 @@
+import AVKit
 import RecallKit
 import SwiftUI
 import WebKit
@@ -7,6 +8,22 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
   @Published private(set) var ready = false
   @Published private(set) var playing = false
   @Published var failure = ""
+  @Published private(set) var studio = UserDefaults.standard.bool(forKey: "studioMode")
+  @Published private(set) var studioReady = false
+  @Published private(set) var preparingStudio = false
+  @Published private(set) var elapsed: Double = 0
+  @Published private(set) var duration: Double = 0
+  let nativePlayer = AVPlayer()
+  private let studioCache = StudioVideoCache()
+  private var studioTask: Task<Void, Never>?
+  private var prefetchTask: Task<Void, Never>?
+  private var nextTrack: Track?
+  private var currentTrack: Track?
+  private var nativeState: NSKeyValueObservation?
+  private var itemState: NSKeyValueObservation?
+  private var endObserver: NSObjectProtocol?
+  private var timeObserver: Any?
+  private var voiceDucked = false
   var onEnded: (() -> Void)?
   var onUnavailable: (() -> Void)?
   private var pending: Track?
@@ -29,6 +46,33 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
       WKUserScript(source: bridge, injectionTime: .atDocumentStart, forMainFrameOnly: true))
     webView = WKWebView(frame: .zero, configuration: configuration)
     super.init()
+    nativeState = nativePlayer.observe(\.timeControlStatus) { [weak self] native, _ in
+      Task { @MainActor in
+        guard let self, self.studioReady else { return }
+        self.playing = native.timeControlStatus == .playing
+      }
+    }
+    endObserver = NotificationCenter.default.addObserver(
+      forName: .AVPlayerItemDidPlayToEndTime,
+      object: nil, queue: .main
+    ) { [weak self] event in
+      let item = event.object as? AVPlayerItem
+      Task { @MainActor in
+        guard let self, self.studioReady, item === self.nativePlayer.currentItem else { return }
+        self.playing = false
+        self.onEnded?()
+      }
+    }
+    timeObserver = nativePlayer.addPeriodicTimeObserver(
+      forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main
+    ) { [weak self] time in
+      Task { @MainActor in
+        guard let self, self.studioReady else { return }
+        self.elapsed = time.seconds.isFinite ? time.seconds : 0
+        let length = self.nativePlayer.currentItem?.duration.seconds ?? 0
+        self.duration = length.isFinite ? length : 0
+      }
+    }
     configuration.userContentController.add(self, name: "player")
     webView.navigationDelegate = self
     webView.load(URLRequest(url: URL(string: Self.origin + "/dj/player")!))
@@ -48,6 +92,7 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
         cue(pending)
       }
     case "state":
+      guard !studioReady && !preparingStudio else { return }
       let state = value["state"] as? Int
       playing = state == 1
       if state == 1 { canEnd = true }
@@ -55,8 +100,11 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
         canEnd = false
         onEnded?()
       }
-    case "blocked": failure = "Clique sur Lecture pour lancer l’écoute."
+    case "blocked":
+      guard !studioReady && !preparingStudio else { return }
+      failure = "Clique sur Lecture pour lancer l’écoute."
     case "error":
+      guard !studioReady && !preparingStudio else { return }
       failure = "YouTube bloque l’intégration de ce titre."
       onUnavailable?()
     default: break
@@ -87,15 +135,115 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
     decisionHandler(.allow)
   }
   func cue(_ track: Track) {
+    currentTrack = track
     canEnd = false
     failure = ""
+    studioTask?.cancel()
+    nativePlayer.pause()
+    nativePlayer.replaceCurrentItem(with: nil)
+    studioReady = false
+    elapsed = 0
+    duration = 0
+    if studio {
+      sendWebCommand("pause")
+      playing = false
+      preparingStudio = true
+      studioTask = Task {
+        do {
+          let file = try await studioCache.file(for: track.id)
+          try Task.checkCancellation()
+          guard currentTrack?.id == track.id, studio else { return }
+          let item = AVPlayerItem(url: file)
+          itemState = item.observe(\.status) { [weak self] item, _ in
+            Task { @MainActor in
+              guard let self, self.nativePlayer.currentItem === item, item.status == .failed else {
+                return
+              }
+              self.nativePlayer.pause()
+              self.studioReady = false
+              self.failure = "Lecture locale indisponible. Retour au lecteur YouTube."
+              self.cueWeb(track)
+            }
+          }
+          nativePlayer.replaceCurrentItem(with: item)
+          nativePlayer.volume = voiceDucked ? 0.18 : 1
+          preparingStudio = false
+          studioReady = true
+          nativePlayer.play()
+          studioCache.trim(keeping: Set([track.id, nextTrack?.id].compactMap { $0 }))
+        } catch {
+          guard !Task.isCancelled, currentTrack?.id == track.id else { return }
+          preparingStudio = false
+          failure = error.localizedDescription
+          cueWeb(track)
+        }
+      }
+    } else {
+      preparingStudio = false
+      cueWeb(track)
+    }
+  }
+  func prepareNext(_ track: Track?) {
+    nextTrack = track
+    let keep = Set([currentTrack?.id, track?.id].compactMap { $0 })
+    studioCache.cancel(except: keep)
+    prefetchTask?.cancel()
+    guard studio, let track else { return }
+    prefetchTask = Task { _ = try? await studioCache.file(for: track.id) }
+  }
+  func setStudio(_ value: Bool) {
+    studio = value
+    UserDefaults.standard.set(value, forKey: "studioMode")
+    if !value {
+      studioCache.cancel()
+      prefetchTask?.cancel()
+    }
+    if let currentTrack {
+      cue(currentTrack)
+      prepareNext(nextTrack)
+    }
+  }
+  func seek(_ seconds: Double) {
+    guard studioReady, seconds.isFinite else { return }
+    nativePlayer.seek(to: CMTime(seconds: min(max(seconds, 0), duration), preferredTimescale: 600))
+  }
+  func reset() {
+    studioTask?.cancel()
+    prefetchTask?.cancel()
+    studioCache.cancel()
+    nativePlayer.pause()
+    nativePlayer.replaceCurrentItem(with: nil)
+    studioReady = false
+    preparingStudio = false
+    currentTrack = nil
+    nextTrack = nil
+    pending = nil
+    sendWebCommand("pause")
+  }
+  private func cueWeb(_ track: Track) {
     guard ready else {
       pending = track
       return
     }
-    command("cue", extra: ["id": track.id, "autoplay": true])
+    sendWebCommand("cue", extra: ["id": track.id, "autoplay": true])
   }
   func command(_ name: String, extra: [String: Any] = [:]) {
+    if name == "duck" {
+      voiceDucked = true
+      nativePlayer.volume = 0.18
+    }
+    if name == "restore" {
+      voiceDucked = false
+      nativePlayer.volume = 1
+    }
+    if studioReady {
+      if name == "play" { nativePlayer.play() }
+      if name == "pause" { nativePlayer.pause() }
+      return
+    }
+    sendWebCommand(name, extra: extra)
+  }
+  private func sendWebCommand(_ name: String, extra: [String: Any] = [:]) {
     var value = extra
     value["source"] = "recall-dj"
     value["command"] = name
@@ -104,6 +252,18 @@ final class Player: NSObject, ObservableObject, WKNavigationDelegate, WKScriptMe
       "window.postMessage(" + String(decoding: data, as: UTF8.self) + ", location.origin)"
     webView.evaluateJavaScript(script, completionHandler: nil)
   }
+}
+
+struct StudioPlayerView: NSViewRepresentable {
+  let player: AVPlayer
+  func makeNSView(context: Context) -> AVPlayerView {
+    let view = AVPlayerView()
+    view.player = player
+    view.controlsStyle = .none
+    view.videoGravity = .resizeAspectFill
+    return view
+  }
+  func updateNSView(_ view: AVPlayerView, context: Context) { view.player = player }
 }
 // SwiftUI sizes this container, while WebKit remains free to reparent its view for fullscreen.
 // Direct AutoLayout constraints on WKWebView collapse its viewport during that transition.

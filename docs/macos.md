@@ -206,3 +206,17 @@ Aucune récupération automatique depuis le Trousseau : l’ancienne connexion p
 ### Retour Google (1.4.2)
 
 Le navigateur par défaut s’ouvre directement. Le lien `playlist-recall://auth` ne transporte qu’un code valable 90 secondes ; l’app ne l’échange qu’avec son vérificateur PKCE privé en mémoire. État aléatoire, validation stricte de l’URL, refus des doublons, consommation unique et expiration après 10 minutes protègent le retour. Aucun mot de passe Google n’est reçu par Recall. Cette voie remplace ASWebAuthenticationSession dont aucune fenêtre n’apparaissait sur le Mac de test.
+
+## Studio personnel (optionnel)
+
+Samuel a mis la distribution en attente et demandé un mode Studio pour son Mac.
+La case Studio active la voix, l’enchaînement et le thème cinéma. Les clips publics
+préparables sont lus avec AVPlayer en fond, avec préchargement du prochain titre.
+Un téléchargement ou décodage impossible conserve le lecteur officiel YouTube.
+Le téléchargement utilise l’installation Homebrew de yt-dlp et ffmpeg ; aucun cookie
+Google, fichier de connexion ou paramètre du shell utilisateur n’est transmis.
+Clips limités à 20 minutes, 720p H.264/AAC et 200 Mio après assemblage ; nettoyage
+du cache vers 800 Mio en conservant les deux clips en usage. Le cache se trouve dans
+`~/Library/Caches/Playlist Recall/Studio`, ou sous `RECALL_DATA_DIR` pour les essais.
+Cette option crée seulement un cache vidéo : les playlists et clés restent côté serveur.
+La distribution publique et les mises à jour automatiques ne sont pas publiées.
