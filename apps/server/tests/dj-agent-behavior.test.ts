@@ -409,3 +409,13 @@ it("keeps a genuinely ambiguous proposal after one reconsideration even with a s
   expect(result).toMatchObject({ discoveries: [{ video: { id: library[0].id } }] });
   expect(requests).toHaveLength(3);
 });
+
+it("does not let a later empty filtered search erase earlier candidates during a quota outage", async () => {
+  boundaries.youtube.mockRejectedValue(Object.assign(new Error("private"), { status: 429, reason: "daily_quota" }));
+  responses.push(searchCall("afro"), searchCall("afro", { playlistId: "_library_all" }), selection([], "keep"), selection([library[0].id], "replace"));
+  const result = await run({ message: "Fais-moi une playlist de musique afro", scope: "all" });
+  expect(result).toMatchObject({ action: "replace", tracks: [{ id: library[0].id }] });
+  expect(boundaries.search).toHaveBeenCalledOnce();
+  expect(toolEvidence()).toContainEqual(expect.objectContaining({ note: expect.stringContaining("Unknown playlistId") }));
+  expect(requests).toHaveLength(4);
+});

@@ -198,3 +198,21 @@ it("classifies YouTube throttling without leaking its private response", async (
   });
   expect(JSON.stringify(result)).not.toContain("private quota details");
 });
+
+it("rejects invented playlist filters without searching or treating them as an empty catalog", async () => {
+  const result = await query("all", { query: "afro", playlistId: "_library_all" });
+  expect(result.sources).toContainEqual({ source: "library", status: "invalid_request", reason: "invalid_playlist" });
+  expect(result.note).toContain("omit it");
+  expect(mocks.search).not.toHaveBeenCalled();
+  expect(mocks.youtube).not.toHaveBeenCalled();
+});
+it("accepts the owned playlist ID returned by overview in the same agent session", async () => {
+  const mcp = await connectMusicMcp(db as unknown as Database, [], "alice", true, "all");
+  try {
+    db.query.mockResolvedValueOnce({ rows: [{ ...libraryTrack, id: "owned-playlist", title: "My playlist" }] });
+    await mcp.client.callTool({ name: "library_overview", arguments: {} });
+    await mcp.client.callTool({ name: "music_search", arguments: { query: "afro", playlistId: "owned-playlist" } });
+    expect(mocks.search).toHaveBeenCalledWith(db, expect.objectContaining({ playlistId: "owned-playlist" }), "alice");
+    expect(mocks.youtube).not.toHaveBeenCalled();
+  } finally { await mcp.close(); }
+});

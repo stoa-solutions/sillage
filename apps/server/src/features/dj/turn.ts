@@ -226,7 +226,7 @@ export async function djTurn(
         youtubeDailyQuota &&
         intent !== "browse" &&
         output.action === "keep" &&
-        (output.discoveryIds?.length || output.trackIds.length) &&
+        candidates.size > 0 &&
         !clarifiedPartialIntent &&
         turn < MAX_ROUNDS - 1
       ) {
@@ -234,7 +234,7 @@ export async function djTurn(
         messages.push({ role: "assistant", content: message.content ?? null });
         messages.push({
           role: "user",
-          content: `L’intention de la demande est ${intent}. Le quota d’une source ne transforme pas cette demande en recherche de cartes. Si les candidats retenus correspondent à l’envie, renvoie une sélection partielle avec action=${intent} et trackIds pour l’exécuter. Garde keep seulement si une vraie ambiguïté musicale nécessite mon choix ou si aucun candidat ne convient. N’invente aucun titre.`,
+          content: `L’intention de la demande est ${intent}. Le quota d’une source ne transforme pas cette demande en recherche de cartes. Une recherche ultérieure vide n’efface pas les candidats déjà trouvés dans les réponses précédentes. Si ces candidats correspondent à l’envie, renvoie une sélection partielle avec action=${intent} et trackIds pour l’exécuter. Garde keep seulement si une vraie ambiguïté musicale nécessite mon choix ou si aucun candidat ne convient. N’invente aucun titre.`,
         });
         continue;
       }

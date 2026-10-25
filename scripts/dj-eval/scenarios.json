@@ -172,7 +172,7 @@
         "message": "Fais-moi une playlist de musique afro s'il te plaît",
         "expect": {
           "action": "replace",
-          "minTracks": 1
+          "minTracks": 2
         }
       }
     ]
