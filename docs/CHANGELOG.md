@@ -3,6 +3,7 @@
 ## Non publié
 
 - DJ : outil `seekInformation` pour les questions sur les artistes, morceaux et albums, avec recherche Web SearXNG, sources numérotées cliquables et lecture conservée. Google et DuckDuckGo restent accessibles sans proxy ; les pannes ou le recours à DuckDuckGo sont signalés.
+- Découvrir : recherche de clips dans la catégorie Musique confirmée par YouTube pour éviter les homonymes (livres audio, conférences) ; les imports généraux restent compatibles.
 - Découvrir : propositions dès l’accueil à partir des écoutes du compte et des genres MusicBrainz, avec raison affichée, lecture, ajout à la suite, enregistrement et actualisation ; morceaux déjà écoutés ou dans la bibliothèque exclus. App Mac 1.7.0.
 
 - Recherche YouTube : SearXNG privé partagé par Découvrir et le DJ, sans appel au quota Google de recherche. Les métadonnées et la disponibilité restent vérifiées par YouTube ; cache public avec appartenance recalculée par compte et erreurs explicites du moteur. Aucun changement du design.

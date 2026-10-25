@@ -74,14 +74,20 @@ export async function discoveryHome(
   const seen = new Set(rows.map((row) => row.video_id));
   const titles = new Set(rows.map((row) => titleKey(row.title)));
   const pages = await Promise.allSettled(
-    seeds.map((seed) => source.search(user, seed.query)),
+    seeds.map((seed) => source.search(user, seed.query + " official music")),
   );
   const suggestions = [];
   for (let index = 0; index < 12; index++) {
     for (let seedIndex = 0; seedIndex < pages.length; seedIndex++) {
       const page = pages[seedIndex];
       if (page.status !== "fulfilled") continue;
-      const candidates = page.value.results.filter((item) => !item.inLibrary);
+      const candidates = page.value.results.filter(
+        (item) =>
+          !item.inLibrary &&
+          !/\b(type beat|backing track|tutorial|audiobook|podcast|for drummers?|bpm)\b/i.test(
+            item.video.title ?? "",
+          ),
+      );
       const item = candidates[index];
       if (
         !item ||

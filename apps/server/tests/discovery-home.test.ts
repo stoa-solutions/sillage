@@ -45,7 +45,7 @@ it("queries only this account, excludes heard titles and owned tracks and labels
     { search },
   );
   expect(query.mock.calls[0][1]).toEqual(["alice"]);
-  expect(search).toHaveBeenCalledWith("alice", "Artist");
+  expect(search).toHaveBeenCalledWith("alice", "Artist official music");
   expect(result.suggestions.map((r) => r.video.id)).toEqual(["newtrack001"]);
   expect(result.suggestions[0].reason).toContain("Artist");
 });

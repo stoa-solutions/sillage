@@ -38,6 +38,7 @@ const video = (id: string) => ({
   snippet: {
     title: `Discovery ${id}`,
     channelTitle: "Real artist",
+    categoryId: "10",
     channelId: "channel123",
     description: "Music",
     thumbnails: { high: { url: `https://i.ytimg.com/vi/${id}/hqdefault.jpg` } },

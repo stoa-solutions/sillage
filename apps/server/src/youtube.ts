@@ -137,6 +137,7 @@ export class YouTube {
   async videos(
     ids: string[],
     playableOnly = false,
+    musicOnly = false,
   ): Promise<(Video & { channelId: string | null })[]> {
     if (!ids.length) return [];
     if (ids.length > 50) throw new Error("Maximum 50 vidéos par lot.");
@@ -147,12 +148,13 @@ export class YouTube {
     return data.items
       .filter(
         (v: any) =>
-          !playableOnly ||
-          (v.status?.embeddable === true &&
-            v.status?.privacyStatus !== "private" &&
-            !["deleted", "failed", "rejected"].includes(
-              v.status?.uploadStatus,
-            )),
+          (!musicOnly || v.snippet?.categoryId === "10") &&
+          (!playableOnly ||
+            (v.status?.embeddable === true &&
+              v.status?.privacyStatus !== "private" &&
+              !["deleted", "failed", "rejected"].includes(
+                v.status?.uploadStatus,
+              ))),
       )
       .map((v: any) => ({
         id: v.id,

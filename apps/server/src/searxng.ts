@@ -90,7 +90,7 @@ export class SearxngDiscovery {
       throw error instanceof SearxngError ? error : new SearxngError();
     }
     // Keep Google metadata failures distinct from failures of the search engine.
-    const videos = await this.videos(ids);
+    const videos = await this.youtube.videos(ids, true, true);
     const byId = new Map(videos.map((video) => [video.id, video]));
     return {
       videos: ids.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])),

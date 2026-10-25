@@ -7,7 +7,11 @@ const ids = ["6R-R51CZ9tA", "ylpbHo6G6JU", "dixmrd_mN40"];
 const row = (id: string) => ({ url: `https://www.youtube.com/watch?v=${id}` });
 const metadata = (id: string, embeddable = true) => ({
   id,
-  snippet: { title: `Verified ${id}`, channelTitle: "Acid Coco" },
+  snippet: {
+    title: `Verified ${id}`,
+    channelTitle: "Acid Coco",
+    categoryId: "10",
+  },
   contentDetails: { duration: "PT3M20S" },
   status: { embeddable, privacyStatus: "public" },
 });
@@ -131,3 +135,19 @@ it.each([403, 429, 500])(
     });
   },
 );
+
+it("excludes non-music videos before discovery without changing general metadata imports", async () => {
+  const request = vi.fn(async () =>
+    Response.json({
+      items: [
+        {
+          ...metadata(ids[0]),
+          snippet: { ...metadata(ids[0]).snippet, categoryId: "27" },
+        },
+      ],
+    }),
+  );
+  const youtube = new YouTube("fixture", undefined, request);
+  expect(await youtube.videos([ids[0]], true, true)).toEqual([]);
+  expect(await youtube.videos([ids[0]])).toHaveLength(1);
+});
