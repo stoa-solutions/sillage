@@ -37,8 +37,8 @@ export async function checkDj(
         message:
           response.status === 429
             ? "Google refuse cette demande : quota atteint ou service occupé. Vérifie la facturation et le quota du projet de cette clé."
-            : [401, 403].includes(response.status)
-              ? "Google refuse cette clé ou son accès au modèle choisi. Vérifie la clé et ses restrictions."
+            : [400, 401, 403].includes(response.status)
+              ? "Google refuse cette clé ou le modèle choisi. Vérifie la clé, ses restrictions et le modèle."
               : "Le modèle Gemini choisi ne répond pas. Essaie un autre modèle.",
       };
     const data = (await response.json()) as any;

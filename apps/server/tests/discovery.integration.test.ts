@@ -279,9 +279,10 @@ it("tests draft Gemini keys without persisting them and reports invalid/quota fa
   expect((await db.query("SELECT * FROM account_dj_settings")).rowCount).toBe(
     0,
   );
-  status = 401;
+  status = 400;
   const invalid = await (await req("/v1/dj/check", tokenA, input)).json();
   expect(invalid.ok).toBe(false);
+  expect(invalid.message).toContain("clé");
   expect(invalid.message).not.toContain("secret-provider-body");
   status = 429;
   expect(

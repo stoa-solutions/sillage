@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Réglages : une clé refusée par Google avec une réponse 400 reçoit le même message explicite que les refus 401/403.
+
 - Découvrir : recherche YouTube limitée à la musique ; aperçu de trois résultats privés pour garder les découvertes visibles en mode Partout.
 
 - Découvrir : recherche groupée dans les playlists du compte et sur YouTube, pagination YouTube, cartes dans le chat et ajout explicite dans Mes découvertes. Recherche et ajout partagent les mêmes services, sans modifier la file tant qu’aucune action de lecture n’est choisie.
