@@ -231,3 +231,48 @@ it("rejects a result when the YouTube identity changes during lookup", async () 
   await enrichMusic(db, job, changing);
   expect((await row()).music_metadata).toBeNull();
 });
+
+it("treats a known album as literal even when its name looks conversational", async () => {
+  await run();
+  await upsertVideo(
+    db,
+    {
+      ...video,
+      id: "other123456",
+      title: "Unrelated song",
+      description: "Les garçons dans une autre histoire",
+    },
+    true,
+  );
+  await upsertVideo(
+    db,
+    {
+      ...video,
+      id: "album123456",
+      title: "Poussière",
+      description: "Poussière · Jewel Usain\nOù les garçons grandissent",
+    },
+    true,
+  );
+  for (const id of ["other123456", "album123456"])
+    await db.query(
+      "INSERT INTO memberships(key,playlist_id,video_id,position,seen_generation) VALUES($1,'pilot',$1,1,1)",
+      [id],
+    );
+  vi.mocked(infer).mockClear();
+  const page = await search(
+    db,
+    {
+      query: "Où les garçons grandissent",
+      mode: "text",
+      sort: "relevance",
+      offset: 0,
+      limit: 20,
+    },
+    alice,
+  );
+  expect(page.results.map((r) => r.video.id).sort()).toEqual(
+    [video.id, "album123456"].sort(),
+  );
+  expect(infer).not.toHaveBeenCalled();
+});

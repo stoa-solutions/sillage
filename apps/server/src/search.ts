@@ -7,7 +7,7 @@ import { TEXT_KEY, VISION_KEY } from "./indexing.ts";
 import { videoFromRow } from "./library.ts";
 import { vectorSql } from "./content.ts";
 import { hasGenreEvidence, isDescriptiveQuery, lookupTokens, matchesLookup, genreNameCollision, descriptiveRank } from "./search-relevance.ts";
-import { musicMatchRank } from "./music-matching.ts";
+import { musicMatchRank, normalizeMusic } from "./music-matching.ts";
 export interface SearchInput {
   query: string;
   fuzzy?: boolean;
@@ -37,7 +37,8 @@ export async function search(
   userId = LEGACY_USER,
 ) {
   const parsed = parseQuery(input.query);
-  const descriptive = isDescriptiveQuery(parsed.text);
+  let descriptive = isDescriptiveQuery(parsed.text);
+  let knownAlbum = false;
   let direct = false;
   const lexicalQuery =
     [...new Set(tokenize(parsed.text))].join(" OR ") || parsed.text;
@@ -77,6 +78,25 @@ export async function search(
   let degraded: string | null = null;
   if (parsed.text) {
     if (input.mode === "text") {
+      // A literal catalog album can contain mood/question words ("Où", "Calme").
+      // Resolve that identity before the conversational/semantic heuristic.
+      const albumMatch = await db.query(
+        `SELECT 1 FROM videos v WHERE ${filter} AND EXISTS(
+          SELECT 1 FROM jsonb_array_elements(v.music_metadata->'albums') a
+          WHERE unaccent(lower(a->>'title'))=unaccent(lower($${params.length + 1}))) LIMIT 1`,
+        [...params, parsed.text.trim()],
+      );
+      knownAlbum = albumMatch.rows.length > 0;
+      if (knownAlbum) {
+        descriptive = false;
+        const albumTracks = await db.query(
+          `SELECT v.id FROM videos v WHERE ${filter} AND
+          (music_search_document @@ phraseto_tsquery('recall_simple',$${params.length + 1})
+           OR unaccent(lower(v.description)) LIKE unaccent(lower($${params.length + 2}))) ORDER BY v.id LIMIT 200`,
+          [...params, parsed.text, "%" + parsed.text.replace(/[\\%_]/g, "\\$&") + "%"],
+        );
+        lexical.push(...albumTracks.rows.map(r => r.id));
+      }
       // Complete metadata matches need neither model startup nor vector inference.
       const precise = !descriptive && lookupTokens(parsed.text).length
         ? await db.query(
@@ -84,7 +104,7 @@ export async function search(
           AND to_tsvector('recall_simple',coalesce(v.title,'') || ' ' || coalesce(v.channel,'') || ' ' || coalesce(v.music_metadata->>'searchText','')) @@ plainto_tsquery('recall_simple',$${params.length + 1})
           ORDER BY v.id LIMIT 200`, [...params, lookupTokens(parsed.text).join(" ")])
         : { rows: [] };
-      direct = precise.rows.length > 0;
+      direct = knownAlbum || precise.rows.length > 0;
       for (const row of precise.rows) { exact.add(row.id); lexical.push(row.id); }
       // Optional recall expansion: a heard name may omit a short prefix/suffix
       // (Edge / Hedges). Keep exact hits first; do not broaden ordinary lookups.
@@ -198,6 +218,7 @@ export async function search(
   const ordered = [...rows.values()]
     .filter((v) => {
       if (!parsed.text || input.mode === "image") return true;
+      if (knownAlbum && normalizeMusic(v.description ?? "").includes(normalizeMusic(parsed.text))) return true;
       if (descriptive) return enrichedGenreEvidence(parsed.text, v);
       return matchesLookup(parsed.text, enrichedLookup(v), input.fuzzy);
     })
