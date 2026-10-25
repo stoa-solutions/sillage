@@ -220,6 +220,92 @@ it("keeps daily DJ budgets separate and revokes only the logged-out session", as
   );
   expect((await req("/v1/me", tokenB)).status).toBe(401);
 });
+it("resolves requested titles in order without AI, including queued tracks, and never another account's song", async () => {
+  await db.query(
+    "UPDATE videos SET title='Masego - Navajo',channel='Masego' WHERE id='alicevideo1'",
+  );
+  await db.query(
+    "UPDATE videos SET title='FKJ & Masego - Tadow',channel='FKJ' WHERE id='shared12345'",
+  );
+  await db.query(
+    "UPDATE videos SET title='Secret Song',channel='Bob' WHERE id='bobvideo123'",
+  );
+  const result = await req("/v1/dj/chat", tokenA, {
+    message: "Joue Masego Navajo puis FKJ et Masego Tadow",
+    excludeIds: ["alicevideo1"],
+  });
+  expect(result.status).toBe(200);
+  expect(await result.json()).toMatchObject({
+    action: "replace",
+    source: "catalog",
+    tracks: [{ id: "alicevideo1" }, { id: "shared12345" }],
+  });
+  const reversed = await req("/v1/dj/chat", tokenA, {
+    message: "Joue Tadow puis Navajo",
+  });
+  expect((await reversed.json()).tracks.map((t: any) => t.id)).toEqual([
+    "shared12345",
+    "alicevideo1",
+  ]);
+  const missing = await req("/v1/dj/chat", tokenA, {
+    message: "Joue Navajo puis Secret Song",
+  });
+  expect(await missing.json()).toMatchObject({ action: "keep", tracks: [] });
+  expect(
+    (
+      await db.query(
+        "SELECT count(*)::int AS count FROM account_dj_usage WHERE user_id=$1",
+        [alice],
+      )
+    ).rows[0].count,
+  ).toBe(0);
+});
+it("ranks an artist's exact song ahead of type beats and other titles in the library and MCP", async () => {
+  await db.query(
+    "UPDATE videos SET title='Self Care',channel='Mac Miller - Topic' WHERE id='alicevideo1'",
+  );
+  await db.query(
+    "UPDATE videos SET title='Mac Miller Type Beat - Dysphoria',channel='Producer' WHERE id='shared12345'",
+  );
+  for (const query of ["Mac Miller", "Mac Miller Self Care"]) {
+    const result = await req("/v1/search", tokenA, { query });
+    expect((await result.json()).results[0].video.id).toBe("alicevideo1");
+    const mcp = await connectMusicMcp(db, [], alice);
+    try {
+      const response = await mcp.client.callTool({
+        name: "library_search",
+        arguments: { query },
+      });
+      expect(JSON.parse((response.content as any)[0].text).tracks[0].id).toBe(
+        "alicevideo1",
+      );
+    } finally {
+      await mcp.close();
+    }
+  }
+});
+it("raises only the configured account's limit and keeps its usage history", async () => {
+  vi.stubEnv("DJ_DAILY_REQUEST_LIMIT", "1");
+  vi.stubEnv("DJ_ACCOUNT_DAILY_LIMITS", JSON.stringify({ [alice]: 3 }));
+  try {
+    await reserveDj(db, alice);
+    await reserveDj(db, alice);
+    await reserveDj(db, alice);
+    await expect(reserveDj(db, alice)).rejects.toThrow("Recall (3");
+    await reserveDj(db, bob);
+    await expect(reserveDj(db, bob)).rejects.toThrow("Recall (1");
+    expect(
+      (
+        await db.query(
+          "SELECT requests FROM account_dj_usage WHERE user_id=$1",
+          [alice],
+        )
+      ).rows[0].requests,
+    ).toBe(3);
+  } finally {
+    vi.stubEnv("DJ_ACCOUNT_DAILY_LIMITS", "{}");
+  }
+});
 async function loginStart() {
   const verifier = randomBytes(32).toString("base64url"),
     appState = randomBytes(32).toString("base64url");

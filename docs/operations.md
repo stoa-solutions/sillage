@@ -65,3 +65,7 @@ La configuration IA par défaut de Stoa utilise la clé CAEX sur demande du prop
 Générer `DJ_SETTINGS_ENCRYPTION_KEY` avec 32 octets aléatoires en hexadécimal et la conserver dans l’environnement privé du serveur. Ne jamais la régénérer au déploiement. La nouvelle table `dj_settings` est migrée automatiquement et rattachée aux jetons ; les clés y sont chiffrées et ne figurent pas dans les exports. Sans clé de chiffrement valide, les réglages personnels refusent l’enregistrement, tandis que la configuration d’environnement reste disponible.
 
 Le modèle d’accès reste celui d’un serveur privé : tous ses jetons peuvent consulter la même bibliothèque. Ne pas inviter des utilisateurs indépendants sur Stoa en supposant que leurs données sont isolées. Voir `docs/architecture.md`.
+
+### Plafond DJ par compte
+
+`DJ_ACCOUNT_DAILY_LIMITS` accepte un objet JSON associant un identifiant utilisateur à un plafond journalier de 1 à 1000 requêtes (chat et voix). Les autres comptes conservent `DJ_DAILY_REQUEST_LIMIT` (100 par défaut). Une configuration invalide conserve ce défaut. Modifier un plafond ne réinitialise pas la consommation et ne modifie aucun quota Google. Les demandes de titres résolues directement dans le catalogue ne consomment pas de génération de sélection ; leur annonce vocale reste comptée.

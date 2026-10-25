@@ -6,6 +6,7 @@ import { infer } from "./inference-client.ts";
 import { TEXT_KEY, VISION_KEY } from "./indexing.ts";
 import { videoFromRow } from "./library.ts";
 import { vectorSql } from "./content.ts";
+import { musicMatchRank } from "./music-matching.ts";
 export interface SearchInput {
   query: string;
   playlistId?: string;
@@ -162,6 +163,9 @@ export async function search(
         );
       if (parsed.text && input.sort === "relevance")
         return (
+          (input.mode === "text"
+            ? musicMatchRank(parsed.text, b) - musicMatchRank(parsed.text, a)
+            : 0) ||
           Number(exact.has(b.id)) - Number(exact.has(a.id)) ||
           (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0) ||
           a.id.localeCompare(b.id)

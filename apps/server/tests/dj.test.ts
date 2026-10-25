@@ -1,8 +1,21 @@
-import { it, expect } from "vitest";
+import { it, expect, vi, afterEach } from "vitest";
 import { Script } from "node:vm";
 import { pcmToWav } from "../src/dj-voice.ts";
-import { djInput } from "../src/dj.ts";
+import { djInput, djDailyBudget } from "../src/dj.ts";
 import { djPlayerJs } from "../src/dj-player.ts";
+afterEach(() => vi.unstubAllEnvs());
+it("applies a bounded account budget without changing another account", () => {
+  vi.stubEnv("DJ_DAILY_REQUEST_LIMIT", "100");
+  vi.stubEnv(
+    "DJ_ACCOUNT_DAILY_LIMITS",
+    JSON.stringify({ alice: 1000, bob: 5000 }),
+  );
+  expect(djDailyBudget("alice")).toBe(1000);
+  expect(djDailyBudget("bob")).toBe(1000);
+  expect(djDailyBudget("carol")).toBe(100);
+  vi.stubEnv("DJ_ACCOUNT_DAILY_LIMITS", "invalid");
+  expect(djDailyBudget("alice")).toBe(100);
+});
 it("wraps mono 24kHz PCM in a valid WAV header", () => {
   const pcm = Buffer.from([0, 0, 1, 1]);
   const wav = pcmToWav(pcm);

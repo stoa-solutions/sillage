@@ -6,9 +6,24 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { z } from "zod";
 import type { Database } from "./db.ts";
 import { search } from "./search.ts";
+import { resolveExactRequest } from "./music-matching.ts";
 
 import type { DjTrack } from "@playlist-recall/core/dj";
 export type { DjTrack } from "@playlist-recall/core/dj";
+export async function requestedTracks(
+  db: Database,
+  message: string,
+  userId: string,
+) {
+  const { rows } = await db.query(
+    `SELECT v.id,v.title,v.channel FROM videos v WHERE v.available AND v.title IS NOT NULL
+     AND EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active AND ${ownsPlaylist("m.playlist_id", "$1")})
+     ORDER BY v.id LIMIT 10001`,
+    [userId],
+  );
+  // Bound the deterministic resolver; larger catalogs use the paginated MCP search.
+  return rows.length > 10000 ? null : resolveExactRequest(message, rows);
+}
 export async function musicTracks(
   db: Database,
   ids: string[],
