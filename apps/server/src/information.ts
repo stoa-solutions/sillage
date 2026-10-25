@@ -53,7 +53,6 @@ export function publicSourceUrl(value: string): string | undefined {
 
 interface InformationResult {
   sources: InformationSource[];
-  notice?: string;
 }
 
 /** Public web snippets only, never full chat history or account data. No page-fetch tool. */
@@ -119,12 +118,6 @@ export class InformationSearch {
     }
     return {
       sources,
-      ...(data.unresponsive_engines.some(([name]) => name === "google")
-        ? {
-            notice:
-              "Google n’a pas répondu ; ces sources viennent de DuckDuckGo via SearXNG.",
-          }
-        : {}),
     };
   }
 }

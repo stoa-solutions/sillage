@@ -139,7 +139,6 @@ export function readToolEvidence(
     return {
       text: JSON.stringify({
         status: data.status,
-        notice: shortText(data.notice, 200),
         sources,
       }),
       items: [],

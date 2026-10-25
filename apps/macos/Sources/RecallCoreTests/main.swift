@@ -10,6 +10,7 @@ func expectFailure(_ work: () throws -> Void) throws {
   try expect(failed, "Invalid input was accepted")
 }
 do {
+  try studioPresentationChecks()
   let information = try JSONDecoder().decode(
     DJResponse.self,
     from: Data(

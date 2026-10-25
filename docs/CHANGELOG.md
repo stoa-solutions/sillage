@@ -2,6 +2,10 @@
 
 ## Non publié
 
+- Studio : commandes, titre, navigation et boutons de fenêtre s’effacent en douceur après trois secondes sans interaction, puis reviennent à la souris ou au clavier ; pause, chargement et pages de lecture gardent les commandes. Le chat ouvert reste visible, le dégradé du clip s’atténue et les animations respectent Réduire les animations.
+- Lecteur YouTube natif : mode discret avec commandes et sous-titres non forcés, annotations désactivées et survol du lecteur évité ; les commandes Recall et le plein écran de la fenêtre restent disponibles. Certains éléments YouTube imposés à la pause restent possibles.
+- Chat : rendu Markdown natif (titres, listes, citations, code, gras et liens sélectionnables) et suppression du message technique Google/DuckDuckGo en cas de repli réussi. App Mac 1.7.1.
+
 - DJ : outil `seekInformation` pour les questions sur les artistes, morceaux et albums, avec recherche Web SearXNG, sources numérotées cliquables et lecture conservée. Google et DuckDuckGo restent accessibles sans proxy ; les pannes ou le recours à DuckDuckGo sont signalés.
 - Découvrir : recherche de clips dans la catégorie Musique confirmée par YouTube et vérification des crédits d’artiste pour éviter les homonymes (livres audio, conférences ou titre portant seulement le nom d’un autre artiste) ; les imports généraux restent compatibles.
 - Découvrir : propositions dès l’accueil à partir des écoutes du compte et des genres MusicBrainz, avec raison affichée, lecture, ajout à la suite, enregistrement et actualisation ; morceaux déjà écoutés ou dans la bibliothèque exclus. App Mac 1.7.0.

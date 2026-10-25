@@ -70,3 +70,25 @@ it("distinguishes an outage from a true empty search and never leaks upstream er
     ).search("Unknown"),
   ).toEqual({ status: "ok", sources: [] });
 });
+
+it("does not expose a successful engine fallback in user-facing information", async () => {
+  const fetcher = vi.fn(async () =>
+    Response.json({
+      results: [
+        {
+          title: "Artist interview",
+          url: "https://artist.test",
+          content: "A verified detail.",
+        },
+      ],
+      unresponsive_engines: [["google", "access denied"]],
+    }),
+  );
+  const result = await new InformationSearch("http://searxng", fetcher).search(
+    "artist interview",
+  );
+  expect(result.status).toBe("ok");
+  expect(result.sources).toHaveLength(1);
+  expect(result).not.toHaveProperty("notice");
+  expect(JSON.stringify(result)).not.toMatch(/google|DuckDuckGo|access denied/);
+});

@@ -63,10 +63,11 @@ it("does not accept a system role or unbounded conversation input from the brows
 it("ships executable player JavaScript", () => {
   expect(() => new Script(djPlayerJs)).not.toThrow();
 });
-it("accepts player commands only from its trusted parent and restores the original volume", async () => {
+it.each([false, true])("accepts native=%s player commands only from its trusted parent and restores volume", async (native) => {
   const { runInNewContext } = await import("node:vm");
   let listener: (event: any) => void = () => {};
   let events: any;
+  let playerVars: any;
   let tick: () => void = () => {};
   const cues: any[] = [];
   const seeks: any[] = [];
@@ -76,7 +77,7 @@ it("accepts player commands only from its trusted parent and restores the origin
   const context: any = {
     parent,
     setInterval: (callback: () => void) => { tick = callback; },
-    location: { origin: "https://recall.stoa.solutions" },
+    location: { origin: "https://recall.stoa.solutions", search: native ? "?native=1" : "" },
     window: {
       addEventListener: (_name: string, callback: any) => {
         listener = callback;
@@ -91,6 +92,7 @@ it("accepts player commands only from its trusted parent and restores the origin
       Player: class {
         constructor(_id: string, options: any) {
           events = options.events;
+          playerVars = options.playerVars;
         }
         seekTo(seconds: number, ahead: boolean) { seeks.push([seconds, ahead]); }
         getCurrentTime() { return 37; }
@@ -108,6 +110,9 @@ it("accepts player commands only from its trusted parent and restores the origin
   };
   runInNewContext(djPlayerJs, context);
   context.window.onYouTubeIframeAPIReady();
+  expect(playerVars.controls).toBe(native ? 0 : undefined);
+  expect(playerVars.fs).toBe(native ? 0 : undefined);
+  expect(playerVars.cc_load_policy).toBe(native ? 0 : undefined);
   listener({
     source: parent,
     origin: "https://attacker.example",

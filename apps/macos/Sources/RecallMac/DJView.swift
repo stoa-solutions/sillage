@@ -5,6 +5,7 @@ import SwiftUI
 /// Compact: one column beside your work. Studio: the clip fills the window, chat floats on glass.
 struct DJView: View {
   @AppStorage("djPanelCollapsed") private var panelCollapsed = false
+  @Environment(\.studioControlsVisible) private var controlsVisible
   @State private var panelTab = SessionPanelTab.dj
   @StateObject private var lyrics = LyricsModel()
   @EnvironmentObject var listened: ListeningHistoryModel
@@ -88,9 +89,9 @@ struct DJView: View {
         progress
         transport
         playerStatus
-      }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
+      }.padding(32).frame(maxWidth: .infinity, alignment: .leading).studioChrome(controlsVisible)
       if panelCollapsed {
-        reopenPanel.padding(16)
+        reopenPanel.padding(16).studioChrome(controlsVisible)
       } else {
         sessionPanel.frame(width: 360).glassPanel().padding(16)
       }

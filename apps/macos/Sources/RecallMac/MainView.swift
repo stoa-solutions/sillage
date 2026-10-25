@@ -18,10 +18,14 @@ struct MainView: View {
   @EnvironmentObject var session: Session
   @EnvironmentObject var library: LibraryModel
   @EnvironmentObject var dj: DJModel
+  @StateObject private var immersion = StudioImmersion()
   @State private var section = Destination.dj
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   var body: some View {
-    Shell(player: dj.player, current: dj.current, focused: section == .dj) {
+    Shell(
+      player: dj.player, current: dj.current, focused: section == .dj && !session.showOnboarding,
+      immersion: immersion
+    ) {
       page
     }
     .toolbar {
@@ -30,14 +34,21 @@ struct MainView: View {
           Text("DJ").tag(Destination.dj)
           Text("Bibliothèque").tag(Destination.library)
           Text("Découvrir").tag(Destination.discover)
-        }.pickerStyle(.segmented).fixedSize().neutralSelection()
+        }.pickerStyle(.segmented).fixedSize().neutralSelection().studioChrome(immersion.visible)
       }
       ToolbarItemGroup(placement: .primaryAction) {
-        DisplayPicker(player: dj.player, wide: section == .discover)
+        DisplayPicker(player: dj.player, wide: section == .discover).studioChrome(immersion.visible)
         SettingsLink { Image(systemName: "gearshape") }
-          .help("Réglages").accessibilityLabel("Réglages")
+          .help("Réglages").accessibilityLabel("Réglages").studioChrome(immersion.visible)
       }
     }
+    .background(
+      StudioActivity(immersion: immersion, visible: immersion.visible, reduceMotion: reduceMotion)
+    )
+    .animation(
+      reduceMotion ? nil : .easeInOut(duration: immersion.visible ? 0.18 : 0.65),
+      value: immersion.visible
+    )
     .background(WindowAppearance(player: dj.player, discovery: section == .discover))
     .tint(.recall)
     .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: section)
@@ -88,6 +99,7 @@ private struct Shell<Content: View>: View {
   @ObservedObject var player: Player
   let current: Track?
   let focused: Bool
+  @ObservedObject var immersion: StudioImmersion
   @ViewBuilder var content: Content
   var body: some View {
     content
@@ -101,6 +113,15 @@ private struct Shell<Content: View>: View {
         }.ignoresSafeArea().allowsHitTesting(false).transition(.opacity)
       }
       .environment(\.surface, focused ? .immersive : .reading)
+      .environment(\.studioControlsVisible, immersion.visible)
+      .onChange(
+        of: focused && player.studio && player.playing && current != nil && player.failure.isEmpty
+          && !NSWorkspace.shared.isVoiceOverEnabled,
+        initial: true
+      ) { _, enabled in
+        immersion.configure(enabled: enabled)
+      }
+      .onDisappear { immersion.stop() }
       .toolbarBackground(.hidden, for: .windowToolbar)
       .animation(.easeInOut(duration: 0.3), value: player.studio)
   }

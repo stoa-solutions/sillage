@@ -159,7 +159,7 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
   private func loadPageIfNeeded() {
     guard !pageLoaded else { return }
     pageLoaded = true
-    webView.load(URLRequest(url: URL(string: Self.origin + "/dj/player")!))
+    webView.load(URLRequest(url: URL(string: Self.origin + "/dj/player?native=1")!))
   }
 
   func load(_ source: PlaybackSource, at start: Double, autoplay: Bool) async throws {
@@ -263,7 +263,7 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
       decisionHandler(.allow)
       return
     }
-    guard navigationAction.request.url?.absoluteString == Self.origin + "/dj/player" else {
+    guard navigationAction.request.url?.absoluteString == Self.origin + "/dj/player?native=1" else {
       if navigationAction.navigationType == .linkActivated, let url = navigationAction.request.url,
         ["https", "http"].contains(url.scheme)
       {

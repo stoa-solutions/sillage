@@ -52,6 +52,7 @@ struct StageBackground: View {
   @Environment(\.surface) private var surface
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.studioControlsVisible) private var controlsVisible
   private var immersive: Bool { surface == .immersive }
 
   var body: some View {
@@ -66,7 +67,9 @@ struct StageBackground: View {
       }
       if current != nil && immersive {
         LinearGradient(
-          colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
+          colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom
+        )
+        .opacity(controlsVisible ? 1 : 0)
       } else if current != nil {
         Color.black.opacity(0.55)
       }

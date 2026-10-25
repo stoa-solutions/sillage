@@ -60,7 +60,6 @@ export async function djTurn(
   let informationRequested = false;
   const information = new Map<number, InformationSource>();
   let informationFailed = false;
-  let informationNotice = "";
   let failedSearches = 0;
   let reformulated = false;
   let youtubeDailyQuota = false;
@@ -128,14 +127,12 @@ export async function djTurn(
           informationRequested = true;
           const data = JSON.parse(text);
           informationFailed = data.status !== "ok";
-          informationNotice = data.notice ?? "";
           const sources = (data.sources as InformationSource[]).map(
             (source) => ({ ...source, id: information.size + source.id }),
           );
           for (const source of sources) information.set(source.id, source);
           text = JSON.stringify({
             status: data.status,
-            notice: informationNotice,
             sources,
           });
         }
@@ -274,8 +271,7 @@ export async function djTurn(
           tracks: [],
           reply:
             information.size && cited.length
-              ? output.reply +
-                (informationNotice ? " " + informationNotice : "")
+              ? output.reply
               : informationFailed
                 ? "La recherche d’informations sur le Web est momentanément indisponible. Ta lecture continue ; réessaie dans un instant."
                 : "Je n’ai pas trouvé de source exploitable pour confirmer cette information. Ta lecture continue.",
