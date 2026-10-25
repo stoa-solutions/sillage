@@ -1,3 +1,4 @@
+import { LEGACY_USER } from "./accounts.ts";
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import type { Video, LibraryImport } from "@playlist-recall/core/types";
@@ -47,11 +48,16 @@ export function videoFromRow(row: any): Video {
 }
 export async function importLibrary(db: Database, library: LibraryImport) {
   await transaction(db, async (client) => {
-    for (const p of library.playlists)
+    for (const p of library.playlists) {
       await client.query(
         `INSERT INTO playlists(id,title,source_url) VALUES($1,$2,$3) ON CONFLICT(id) DO NOTHING`,
         [p.id, p.title, p.sourceUrl],
       );
+      await client.query(
+        "INSERT INTO user_playlists(user_id,playlist_id) VALUES($1,$2) ON CONFLICT DO NOTHING",
+        [LEGACY_USER, p.id],
+      );
+    }
     for (const v of library.videos) {
       const existing = await client.query(
         "SELECT id FROM videos WHERE id=$1 AND enriched_at IS NOT NULL",

@@ -27,6 +27,9 @@ services:
       <<: *config
       PORT: 3001
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      PUBLIC_URL: ${PUBLIC_URL:-https://recall.stoa.solutions}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       DJ_SETTINGS_ENCRYPTION_KEY: ${DJ_SETTINGS_ENCRYPTION_KEY:-}
       DJ_API_KEY: ${DJ_API_KEY:-}
       DJ_BASE_URL: ${DJ_BASE_URL:-https://api.openai.com/v1}

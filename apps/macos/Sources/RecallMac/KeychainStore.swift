@@ -27,7 +27,7 @@ enum KeychainStore {
     private let lock = NSRecursiveLock()
     private var cached: [String: Data]?
     private let account = "credentials-v2"
-    private let allowed = ["gemini", "server", "youtube"]
+    private let allowed = ["gemini", "server", "youtube", "legacy-server"]
     func read(_ key: String) throws -> Data? {
       lock.lock()
       defer { lock.unlock() }

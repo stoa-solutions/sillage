@@ -1,3 +1,4 @@
+import { LEGACY_USER, ownsPlaylist } from "./accounts.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -11,13 +12,14 @@ export type { DjTrack } from "@playlist-recall/core/dj";
 export async function musicTracks(
   db: Database,
   ids: string[],
+  userId = LEGACY_USER,
 ): Promise<DjTrack[]> {
   if (!ids.length) return [];
   const { rows } = await db.query(
     `SELECT v.id,v.title,v.channel,v.duration_seconds,v.thumbnail_url FROM videos v
      WHERE v.id=ANY($1::text[]) AND v.available AND v.title IS NOT NULL
-     AND EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active)`,
-    [ids],
+     AND EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active AND ${ownsPlaylist("m.playlist_id", "$2")})`,
+    [ids, userId],
   );
   const tracks = new Map(
     rows.map((v) => [
@@ -36,7 +38,11 @@ export async function musicTracks(
     tracks.has(id) ? [tracks.get(id)!] : [],
   );
 }
-export function musicMcp(db: Database, excludeIds: string[] = []) {
+export function musicMcp(
+  db: Database,
+  excludeIds: string[] = [],
+  userId = LEGACY_USER,
+) {
   const server = new McpServer({
     name: "recall-music-library",
     version: "1.0.0",
@@ -63,20 +69,25 @@ export function musicMcp(db: Database, excludeIds: string[] = []) {
       },
     },
     async ({ query, maxDurationSeconds, includeQueued }) => {
-      const result = await search(db, {
-        query,
-        maxDuration: maxDurationSeconds,
-        excludeIds: includeQueued ? [] : excludeIds,
-        availableOnly: true,
-        mode: "text",
-        sort: "relevance",
-        offset: 0,
-        limit: 100,
-      });
+      const result = await search(
+        db,
+        {
+          query,
+          maxDuration: maxDurationSeconds,
+          excludeIds: includeQueued ? [] : excludeIds,
+          availableOnly: true,
+          mode: "text",
+          sort: "relevance",
+          offset: 0,
+          limit: 100,
+        },
+        userId,
+      );
       const tracks = (
         await musicTracks(
           db,
           result.results.map((r) => r.video.id),
+          userId,
         )
       )
         .filter((t) => includeQueued || !excludeIds.includes(t.id))
@@ -105,7 +116,8 @@ export function musicMcp(db: Database, excludeIds: string[] = []) {
     },
     async () => {
       const { rows } = await db.query(
-        `SELECT p.title,(SELECT count(*)::int FROM memberships m WHERE m.playlist_id=p.id AND m.active) AS tracks FROM playlists p ORDER BY p.created_at LIMIT 30`,
+        `SELECT p.title,(SELECT count(*)::int FROM memberships m WHERE m.playlist_id=p.id AND m.active) AS tracks FROM playlists p WHERE ${ownsPlaylist("p.id", "$1")} ORDER BY p.created_at LIMIT 30`,
+        [userId],
       );
       return {
         content: [{ type: "text", text: JSON.stringify({ playlists: rows }) }],
@@ -114,8 +126,12 @@ export function musicMcp(db: Database, excludeIds: string[] = []) {
   );
   return server;
 }
-export async function connectMusicMcp(db: Database, excludeIds: string[] = []) {
-  const server = musicMcp(db, excludeIds);
+export async function connectMusicMcp(
+  db: Database,
+  excludeIds: string[] = [],
+  userId = LEGACY_USER,
+) {
+  const server = musicMcp(db, excludeIds, userId);
   const client = new Client({ name: "recall-dj", version: "1.0.0" });
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair();
@@ -131,8 +147,12 @@ export async function connectMusicMcp(db: Database, excludeIds: string[] = []) {
     },
   };
 }
-export async function handleMusicMcp(db: Database, request: Request) {
-  const server = musicMcp(db);
+export async function handleMusicMcp(
+  db: Database,
+  request: Request,
+  userId = LEGACY_USER,
+) {
+  const server = musicMcp(db, [], userId);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

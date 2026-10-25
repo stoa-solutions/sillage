@@ -93,8 +93,7 @@ final class DJModel: ObservableObject {
       } catch { if !Task.isCancelled { session.error = error.localizedDescription } }
     }
   }
-  /// With a personal Gemini key the Mac runs the DJ itself and searches the active source;
-  /// otherwise the connected server runs it with its own key.
+  /// Google accounts use their own encrypted server credential and scoped catalog.
   private func respond(to text: String, history: [ChatMessage], excluded: Set<String>)
     async throws -> DJResponse
   {
@@ -102,7 +101,7 @@ final class DJModel: ObservableObject {
       throw RecallError.message(
         "Connecte ton serveur dans Réglages pour retrouver ta bibliothèque.")
     }
-    if !session.geminiKey.isEmpty {
+    if !session.googleAccount, !session.geminiKey.isEmpty {
       return try await GeminiDJ(key: session.geminiKey, model: session.model).turn(
         message: text, history: history, excluded: excluded
       ) { query, includeQueued in

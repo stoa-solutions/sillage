@@ -1,3 +1,4 @@
+import { LEGACY_USER } from "./accounts.ts";
 import { djConfig, type DjConfig } from "./dj-config.ts";
 import { DjUnavailable, reserveDj } from "./dj.ts";
 import type { Database } from "./db.ts";
@@ -28,10 +29,11 @@ export async function djSpeech(
   text: string,
   signal?: AbortSignal,
   config: DjConfig = djConfig(),
+  userId = LEGACY_USER,
 ) {
   if (!djVoiceConfigured(config))
     throw new DjUnavailable("La voix du DJ n’est pas configurée.");
-  await reserveDj(db);
+  await reserveDj(db, userId);
   try {
     const response = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash-lite-tts:generateContent",

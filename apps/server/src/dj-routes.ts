@@ -10,11 +10,13 @@ import {
   saveDjSettings,
   settingsKey,
 } from "./dj-settings.ts";
-export type ApiEnvironment = { Variables: { installationId: string } };
+export type ApiEnvironment = {
+  Variables: { installationId: string; userId: string };
+};
 export function createDjRoutes(db: Database) {
   const app = new Hono<ApiEnvironment>();
   app.get("/status", async (c) => {
-    const config = await personalDjConfig(db, c.get("installationId"));
+    const config = await personalDjConfig(db, c.get("userId"));
     return c.json({
       configured: config.configured,
       voice: djVoiceConfigured(config),
@@ -25,7 +27,7 @@ export function createDjRoutes(db: Database) {
   });
   app.post("/settings", async (c) => {
     const input = djSettingsInput.parse(await c.req.json());
-    const result = await saveDjSettings(db, c.get("installationId"), input);
+    const result = await saveDjSettings(db, c.get("userId"), input);
     if (result === "missing-key")
       return c.json(
         { error: "Renseigne ta clé Gemini une première fois." },
@@ -39,15 +41,15 @@ export function createDjRoutes(db: Database) {
     return c.json({ saved: true });
   });
   app.post("/settings/reset", async (c) => {
-    await db.query("DELETE FROM dj_settings WHERE token_id=$1", [
-      c.get("installationId"),
+    await db.query("DELETE FROM account_dj_settings WHERE user_id=$1", [
+      c.get("userId"),
     ]);
     return c.json({ saved: true });
   });
   const djActive = new Set<string>();
   app.post("/chat", async (c) => {
     const input = djInput.parse(await c.req.json());
-    const installation = hash(c.req.header("Authorization")!);
+    const installation = c.get("userId");
     if (djActive.has(installation))
       return c.json({ error: "Le DJ prépare déjà ta sélection." }, 429);
     if (djActive.size >= 2)
@@ -62,7 +64,8 @@ export function createDjRoutes(db: Database) {
           db,
           input,
           c.req.raw.signal,
-          await personalDjConfig(db, c.get("installationId")),
+          await personalDjConfig(db, c.get("userId")),
+          c.get("userId"),
         ),
       );
     } catch (error) {
@@ -77,7 +80,7 @@ export function createDjRoutes(db: Database) {
     const { text } = z
       .object({ text: z.string().trim().min(1).max(600) })
       .parse(await c.req.json());
-    const installation = hash(c.req.header("Authorization")!);
+    const installation = c.get("userId");
     if (djActive.has(installation) || djActive.size >= 2)
       return c.json({ error: "Le DJ prépare déjà une réponse." }, 429);
     djActive.add(installation);
@@ -87,7 +90,8 @@ export function createDjRoutes(db: Database) {
           db,
           text,
           c.req.raw.signal,
-          await personalDjConfig(db, c.get("installationId")),
+          await personalDjConfig(db, c.get("userId")),
+          c.get("userId"),
         ),
       );
     } catch (error) {

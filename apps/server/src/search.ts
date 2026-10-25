@@ -1,3 +1,4 @@
+import { LEGACY_USER, ownsPlaylist } from "./accounts.ts";
 import { parseQuery, tokenize } from "@playlist-recall/core/search";
 import type { SearchResult } from "@playlist-recall/core/types";
 import type { Database } from "./db.ts";
@@ -20,7 +21,11 @@ export interface SearchInput {
   limit: number;
 }
 const cache = new Map<string, number[]>();
-export async function search(db: Database, input: SearchInput) {
+export async function search(
+  db: Database,
+  input: SearchInput,
+  userId = LEGACY_USER,
+) {
   const parsed = parseQuery(input.query);
   const lexicalQuery =
     [...new Set(tokenize(parsed.text))].join(" OR ") || parsed.text;
@@ -33,10 +38,13 @@ export async function search(db: Database, input: SearchInput) {
     parsed.maxDuration ?? Infinity,
   );
   const params: unknown[] = [];
-  const conditions = [
-    `EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active${input.playlistId ? " AND m.playlist_id=$1" : ""})`,
-  ];
+  const conditions: string[] = [];
   if (input.playlistId) params.push(input.playlistId);
+  params.push(userId);
+  const ownerFilter = ownsPlaylist("m.playlist_id", `$${params.length}`);
+  conditions.push(
+    `EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active AND ${ownerFilter}${input.playlistId ? " AND m.playlist_id=$1" : ""})`,
+  );
   const add = (sql: string, value: unknown) => {
     params.push(value);
     conditions.push(sql.replace("?", `$${params.length}`));
@@ -123,7 +131,7 @@ export async function search(db: Database, input: SearchInput) {
     selectionParams.push(rankedIds);
     selectionFilter += ` AND v.id=ANY($${selectionParams.length}::text[])`;
   }
-  const positionSql = `(SELECT min(position) FROM memberships m WHERE m.video_id=v.id AND m.active${input.playlistId ? " AND m.playlist_id=$1" : ""})`;
+  const positionSql = `(SELECT min(position) FROM memberships m WHERE m.video_id=v.id AND m.active AND ${ownerFilter}${input.playlistId ? " AND m.playlist_id=$1" : ""})`;
   const browseTotal = parsed.text
     ? null
     : (
@@ -166,8 +174,8 @@ export async function search(db: Database, input: SearchInput) {
   const memberships = page.length
     ? (
         await db.query(
-          `SELECT key,playlist_id,video_id,position FROM memberships WHERE active AND video_id=ANY($1::text[]) AND ($2::text IS NULL OR playlist_id=$2)`,
-          [page.map((r) => r.id), input.playlistId ?? null],
+          `SELECT key,playlist_id,video_id,position FROM memberships m WHERE ${ownsPlaylist("m.playlist_id", "$3")} AND active AND video_id=ANY($1::text[]) AND ($2::text IS NULL OR playlist_id=$2)`,
+          [page.map((r) => r.id), input.playlistId ?? null, userId],
         )
       ).rows
     : [];

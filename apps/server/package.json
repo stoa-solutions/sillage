@@ -18,6 +18,7 @@
     "@huggingface/transformers": "4.3.1",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@playlist-recall/core": "*",
+    "google-auth-library": "11.3.1",
     "hono": "4.13.13",
     "pg": "8.23.1",
     "tsx": "4.23.15",
