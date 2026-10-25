@@ -13,10 +13,9 @@ final class LibraryModel: ObservableObject {
   @Published private(set) var results: [LibraryRow] = []
   @Published private(set) var playlists: [ServerPlaylistSummary] = []
   @Published private(set) var libraryCount = 0
-  @Published private(set) var currentPage = 1
   @Published private(set) var totalResults = 0
   @Published private(set) var searching = false
-  @Published var pageSize = 50 { didSet { search() } }
+  @Published private(set) var loadingMore = false
   @Published var query = ""
   @Published var selectedPlaylist = "" { didSet { search() } }
   @Published var playlistLink = ""
@@ -31,16 +30,11 @@ final class LibraryModel: ObservableObject {
   private var searchTask: Task<Void, Never>?
 
   init(session: Session) { self.session = session }
-  var pageCount: Int { max(1, (totalResults + pageSize - 1) / pageSize) }
-  var visiblePages: [Int] {
-    let anchor = min(currentPage, pageCount)
-    return Array(Set([1, pageCount] + Array(max(1, anchor - 2)...min(pageCount, anchor + 2))))
-      .sorted()
-  }
-  var resultRange: String {
-    guard totalResults > 0 else { return "Aucun résultat" }
-    let first = (currentPage - 1) * pageSize + 1
-    return "\(first)–\(first + results.count - 1) sur \(totalResults)"
+  /// Rows load page by page as the list scrolls; nothing beyond the loaded rows lives on the Mac.
+  static let pageSize = 50
+  var hasMore: Bool { results.count < totalResults }
+  var selectedPlaylistSummary: ServerPlaylistSummary? {
+    playlists.first { $0.id == selectedPlaylist }
   }
   /// Called on disconnect or a different connection, so the next account never sees old data.
   func reset() {
@@ -56,7 +50,7 @@ final class LibraryModel: ObservableObject {
     playlists = []
     libraryCount = 0
     totalResults = 0
-    currentPage = 1
+    loadingMore = false
     query = ""
     selectedPlaylist = ""
     playlistLink = ""
@@ -85,14 +79,13 @@ final class LibraryModel: ObservableObject {
       do { try await Task.sleep(for: .seconds(10)) } catch { return }
     }
   }
-  func goToPage(_ page: Int) {
-    guard (1...pageCount).contains(page) else { return }
-    search(page: page)
-  }
-  func search(page: Int = 1) {
+  /// A new query or playlist starts from the top; `more` appends the next page.
+  func search(more: Bool = false) {
+    if more && (searching || loadingMore || !hasMore) { return }
     searchTask?.cancel()
     guard let connection = session.connection else {
       searching = false
+      loadingMore = false
       results = []
       totalResults = 0
       return
@@ -100,32 +93,32 @@ final class LibraryModel: ObservableObject {
     let value = query.trimmingCharacters(in: .whitespacesAndNewlines)
     let playlist = selectedPlaylist.isEmpty ? nil : selectedPlaylist
     let generation = session.generation
-    let size = pageSize
-    let requestedPage = max(1, page)
-    let offset = (requestedPage - 1) * size
-    searching = true
+    let offset = more ? results.count : 0
+    if more { loadingMore = true } else { searching = true }
     searchTask = Task {
-      defer { if !Task.isCancelled { searching = false } }
+      defer {
+        if !Task.isCancelled {
+          searching = false
+          loadingMore = false
+        }
+      }
       do {
-        try await Task.sleep(nanoseconds: 250_000_000)
+        if !more { try await Task.sleep(nanoseconds: 250_000_000) }
         let found = try await HTTPClient().searchPage(
-          connection, query: value, offset: offset, limit: size, playlist: playlist)
+          connection, query: value, offset: offset, limit: Self.pageSize, playlist: playlist)
         try Task.checkCancellation()
         guard session.generation == generation else { return }
         totalResults = found.total
-        let lastPage = max(1, (found.total + size - 1) / size)
-        if requestedPage > lastPage {
-          search(page: lastPage)
-          return
-        }
-        currentPage = requestedPage
-        results = found.tracks.enumerated().map {
+        let rows = found.tracks.enumerated().map {
           LibraryRow(id: offset + $0.offset, track: $0.element)
         }
+        results = more ? results + rows : rows
       } catch {
         if !Task.isCancelled {
-          results = []
-          totalResults = 0
+          if !more {
+            results = []
+            totalResults = 0
+          }
           session.error = "Recherche serveur indisponible. " + error.localizedDescription
         }
       }
@@ -201,7 +194,7 @@ final class LibraryModel: ObservableObject {
         try Task.checkCancellation()
         guard session.generation == generation else { return }
         if refreshYouTube { session.notice = "Playlists YouTube actualisées sur le serveur." }
-        if !searching { search(page: currentPage) }
+        if !searching { search() }
       } catch {
         if !Task.isCancelled {
           session.error = "Connexion au serveur indisponible. " + error.localizedDescription

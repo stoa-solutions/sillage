@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- App 1.5.9 : Bibliothèque façon Spotify (playlists à gauche, en-tête avec lecture et aléatoire, liste dense chargée au défilement, actions au survol, enrichissement résumé en une pastille). Découvrir façon Raycast et YouTube Music : barre de recherche qui cherche pendant la frappe, recherches récentes et idées de départ, meilleur résultat mis en avant, vidéos YouTube en cartes. Accueil sobre aux couleurs Stoa, mis en page comme Studio.
+
 - DJ : dernier tour sans outil pour conclure la composition ; une sélection partielle vérifiée est conservée si le modèle continue à chercher au-delà de la limite.
 
 - Composition : préparation manuelle et automatique sans rejouer les titres déjà écoutés/en file, y compris un même artiste/titre sous une autre vidéo. Cinq titres visés par défaut, une seule recherche complémentaire si la sélection est trop courte ; manque de résultats signalé. Menu `/`, commandes `/suite 1…8`, `/suivant`, `/pause`, `/reprendre`, `/aide`, `/prompt` (règles de base en lecture seule).

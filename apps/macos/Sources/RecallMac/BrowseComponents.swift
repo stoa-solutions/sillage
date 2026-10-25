@@ -1,0 +1,233 @@
+import AppKit
+import RecallKit
+import SwiftUI
+
+// Pieces shared by Bibliothèque and Découvrir: a dense song list (Spotify), result cards
+// (YouTube Music) and a quiet command bar (Raycast). docs/design.md explains the rules.
+
+/// One song in a list: number or play on hover, artwork, song and artist, duration, actions.
+/// The playing song shows in the accent with a speaker instead of its number.
+struct SongRow: View {
+  let index: Int?
+  let track: Track
+  let playing: Bool
+  var saved = true
+  let onPlay: () -> Void
+  let onEnqueue: () -> Void
+  @State private var hovering = false
+  var body: some View {
+    let name = TrackTitle(track)
+    HStack(spacing: 12) {
+      if let index {
+        ZStack {
+          if hovering {
+            Image(systemName: "play.fill").font(.caption)
+          } else if playing {
+            Image(systemName: "speaker.wave.2.fill").font(.caption).foregroundStyle(Color.recall)
+          } else {
+            Text("\(index)").font(.callout.monospacedDigit()).foregroundStyle(.secondary)
+          }
+        }.frame(width: 28).accessibilityHidden(true)
+      }
+      Artwork(track: track, showsDuration: false).frame(width: 64)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(name.title).fontWeight(.medium).lineLimit(1)
+          .foregroundStyle(playing ? Color.recall : Color.primary)
+        HStack(spacing: 6) {
+          ChannelAvatar(name: name.artist ?? track.channel ?? "?", photo: track.channelAvatarURL)
+          Text(name.artist ?? track.channel ?? "YouTube").font(.callout)
+            .foregroundStyle(.secondary).lineLimit(1)
+          if let metadata = track.musicMetadata, metadata.matched, !metadata.genres.isEmpty {
+            Text(metadata.genres.prefix(2).joined(separator: ", ")).font(.caption)
+              .foregroundStyle(.tertiary).lineLimit(1)
+          }
+        }
+      }.frame(maxWidth: .infinity, alignment: .leading)
+      HStack(spacing: 2) {
+        IconButton(symbol: "text.badge.plus", help: "Lire ensuite", action: onEnqueue)
+        Menu {
+          Button("Lire maintenant", systemImage: "play.fill", action: onPlay)
+          Button("Lire ensuite", systemImage: "text.badge.plus", action: onEnqueue)
+          Divider()
+          Button("Ouvrir sur YouTube", systemImage: "arrow.up.right.square") {
+            NSWorkspace.shared.open(track.url)
+          }
+        } label: {
+          Image(systemName: "ellipsis").frame(width: 26, height: 26).contentShape(Rectangle())
+        }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+          .help("Plus d’actions").accessibilityLabel("Plus d’actions pour \(name.title)")
+      }.opacity(hovering ? 1 : 0).allowsHitTesting(hovering)
+      Text(track.durationSeconds.map(clock) ?? "").font(.callout.monospacedDigit())
+        .foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
+    }
+    .padding(.horizontal, 10).padding(.vertical, 6)
+    .background(
+      RoundedRectangle(cornerRadius: 8).fill(.white.opacity(hovering ? 0.07 : 0))
+    )
+    .contentShape(Rectangle())
+    .onHover { hovering = $0 }
+    .onTapGesture(count: 2, perform: onPlay)
+    .overlay(alignment: .leading) {
+      // The number column doubles as a play button, as in Spotify.
+      if index != nil {
+        Button(action: onPlay) { Color.clear.frame(width: 48) }.buttonStyle(.plain)
+          .accessibilityHidden(true)
+      }
+    }
+    .help(track.description.flatMap(shortDescription) ?? "")
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel(name.artist.map { "\(name.title), \($0)" } ?? name.title)
+    .accessibilityAddTraits(playing ? .isSelected : [])
+    .accessibilityAction(named: "Lire", onPlay)
+    .accessibilityAction(named: "Lire ensuite", onEnqueue)
+  }
+}
+
+/// A YouTube Music style card: 16:9 artwork with a play button on hover, song, artist.
+struct ResultCard<Accessory: View>: View {
+  let track: Track
+  let onPlay: () -> Void
+  @ViewBuilder var accessory: Accessory
+  @State private var hovering = false
+  var body: some View {
+    let name = TrackTitle(track)
+    VStack(alignment: .leading, spacing: 8) {
+      Button(action: onPlay) {
+        Artwork(track: track)
+          .overlay(alignment: .bottomTrailing) {
+            PlayDisc(size: 36).padding(8)
+              .opacity(hovering ? 1 : 0).offset(y: hovering ? 0 : 6)
+          }
+          .scaleEffect(hovering ? 1.02 : 1)
+      }.buttonStyle(.plain).accessibilityLabel("Lire " + name.title)
+      HStack(alignment: .top, spacing: 8) {
+        VStack(alignment: .leading, spacing: 2) {
+          Text(name.title).fontWeight(.medium).lineLimit(2)
+          Text(name.artist ?? track.channel ?? "YouTube").font(.callout)
+            .foregroundStyle(.secondary).lineLimit(1)
+        }.frame(maxWidth: .infinity, alignment: .leading)
+        accessory
+      }
+    }
+    .onHover { hovering = $0 }
+    .animation(.easeOut(duration: 0.15), value: hovering)
+    .accessibilityElement(children: .contain)
+  }
+}
+
+/// The round accent play button: the one strong action of a header or a card.
+struct PlayDisc: View {
+  var size: CGFloat = 48
+  var symbol = "play.fill"
+  var body: some View {
+    Image(systemName: symbol).font(.system(size: size * 0.38, weight: .bold))
+      .foregroundStyle(.black).frame(width: size, height: size)
+      .background(Circle().fill(Color.recall))
+      .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+  }
+}
+
+/// Small borderless icon button with a hover tint.
+struct IconButton: View {
+  let symbol: String
+  let help: String
+  let action: () -> Void
+  var body: some View {
+    Button(action: action) {
+      Image(systemName: symbol).frame(width: 26, height: 26).contentShape(Rectangle())
+    }.buttonStyle(.plain).foregroundStyle(.secondary).help(help).accessibilityLabel(help)
+  }
+}
+
+/// A playlist cover without artwork: its initial on a muted colour of its own.
+struct PlaylistTile: View {
+  let title: String
+  var symbol: String? = nil
+  var size: CGFloat = 40
+  var body: some View {
+    let seed = title.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
+    RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
+      .fill(
+        LinearGradient(
+          colors: [
+            Color(hue: Double(seed % 360) / 360, saturation: 0.35, brightness: 0.42),
+            Color(hue: Double(seed % 360) / 360, saturation: 0.4, brightness: 0.22),
+          ], startPoint: .topLeading, endPoint: .bottomTrailing)
+      )
+      .overlay {
+        if let symbol {
+          Image(systemName: symbol).font(.system(size: size * 0.4, weight: .semibold))
+        } else {
+          Text(title.first.map { String($0).uppercased() } ?? "?")
+            .font(.system(size: size * 0.45, weight: .bold))
+        }
+      }
+      .foregroundStyle(.white.opacity(0.9))
+      .frame(width: size, height: size).accessibilityHidden(true)
+  }
+}
+
+/// Raycast-like command bar: large field, scope chips inside, Escape clears.
+struct CommandBar<Trailing: View>: View {
+  let prompt: String
+  @Binding var text: String
+  var onSubmit: () -> Void = {}
+  @ViewBuilder var trailing: Trailing
+  @FocusState private var focused: Bool
+  var body: some View {
+    HStack(spacing: 10) {
+      Image(systemName: "magnifyingglass").font(.title3).foregroundStyle(.secondary)
+      TextField(prompt, text: $text).textFieldStyle(.plain).font(.title3)
+        .focused($focused).onSubmit(onSubmit)
+        .onExitCommand { text = "" }
+      if !text.isEmpty {
+        Button {
+          text = ""
+          focused = true
+        } label: {
+          Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+        }.buttonStyle(.plain).accessibilityLabel("Effacer la recherche")
+      }
+      trailing
+    }
+    .padding(.horizontal, 16).frame(height: 52)
+    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+    .overlay(
+      RoundedRectangle(cornerRadius: 12).strokeBorder(.white.opacity(focused ? 0.22 : 0.08))
+    )
+    .onAppear { focused = true }
+  }
+}
+
+/// Neutral chip, white when selected: scopes, recent searches, ideas.
+struct Chip: View {
+  let title: String
+  var symbol: String? = nil
+  var selected = false
+  let action: () -> Void
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 5) {
+        if let symbol { Image(systemName: symbol).imageScale(.small) }
+        Text(title).lineLimit(1)
+      }
+      .font(.callout.weight(.medium))
+      .foregroundStyle(selected ? Color.black : Color.primary.opacity(0.85))
+      .padding(.horizontal, 12).padding(.vertical, 6)
+      .background(Capsule().fill(selected ? Color.white : Color.white.opacity(0.08)))
+      .contentShape(Capsule())
+    }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
+  }
+}
+
+/// Start of a YouTube description without the "Provided to YouTube by" line and links.
+func shortDescription(_ description: String) -> String? {
+  let lines = description.split(whereSeparator: \.isNewline)
+    .filter { !$0.hasPrefix("Provided to YouTube by") }
+    .map { line in
+      line.split(separator: " ").filter { !$0.contains("http") && !$0.hasPrefix("www.") }
+        .joined(separator: " ")
+    }.filter { !$0.isEmpty }
+  let text = lines.prefix(3).joined(separator: " ")
+  return text.isEmpty ? nil : String(text.prefix(280))
+}
