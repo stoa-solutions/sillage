@@ -58,6 +58,8 @@ final class Session: ObservableObject {
       canClaimLibrary = legacyConnection != nil
       hasServer = connection != nil
       if changed {
+        notice = ""
+        error = ""
         generation = UUID()
         onConnectionChange?()
       }
@@ -65,7 +67,10 @@ final class Session: ObservableObject {
         do {
           let profile = try await HTTPClient().server(connection, path: "me")
           guard refreshAttempt == attempt, self.connection?.token == connection.token else { return }
-          googleAccount = profile["google"] as? Bool == true
+          guard let isGoogle = profile["google"] as? Bool else {
+            throw RecallError.message("Réponse de compte invalide.")
+          }
+          googleAccount = isGoogle
           accountEmail = profile["email"] as? String ?? ""
           if !googleAccount { geminiKey = credentials.0 }
           let settings = try await HTTPClient().server(connection, path: "dj/status")
@@ -160,6 +165,8 @@ final class Session: ObservableObject {
     hasKey = false
     googleAccount = false
     accountEmail = ""
+    notice = ""
+    error = ""
     legacyConnection = nil
     canClaimLibrary = false
     onConnectionChange?()
