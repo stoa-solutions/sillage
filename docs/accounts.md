@@ -1,0 +1,70 @@
+# Comptes Recall
+
+La connexion Google identifie un utilisateur par le `sub` vérifié du jeton OIDC,
+jamais par une adresse fournie par le client. Les seuls scopes sont openid,
+email et profile. Pas de permission YouTube, pas de refresh token Google conservé.
+
+## Configuration
+
+Créer un client OAuth « Application Web » dans le projet Google personnel Recall.
+URL de redirection exacte : `https://recall.stoa.solutions/auth/google/callback`.
+Renseigner `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `PUBLIC_URL` dans
+l’environnement privé du serveur. Le secret reste côté serveur. Activer le
+stockage des clés avec `DJ_SETTINGS_ENCRYPTION_KEY` (32 octets hexadécimaux).
+Ne pas remplacer cette clé de chiffrement sans migration des secrets existants.
+
+La plateforme Google Auth doit autoriser les utilisateurs externes visés :
+utilisateurs de test tant que l’app est en test, puis publication et validation
+Google éventuelle selon sa configuration. L’app Mac n’embarque aucun secret.
+
+## Frontières
+
+Le catalogue public YouTube, ses métadonnées et les vecteurs sont mutualisés.
+`user_playlists` porte les abonnements privés. Les API status, playlists,
+search (lexicale, vectorielle, images, pagination et memberships), export et
+MCP filtrent cet abonnement. Le DJ revalide les titres finaux dans ce périmètre.
+Connaître un ID vidéo ne donne pas accès à une autre bibliothèque. Importer
+explicitement le même lien public ou non répertorié ajoute cette playlist au
+compte demandeur ; aucun abonnement d’un autre compte n’est exposé.
+
+Les clés Gemini sont chiffrées AES-256-GCM avec l’ID du compte comme AAD.
+Deux sessions du même compte retrouvent ses réglages. Aucun compte Google
+sans clé ne bénéficie de la clé globale historique. Chat et voix utilisent la
+clé de l’utilisateur ; le budget journalier est également par utilisateur.
+Les clés ne sont jamais retournées par l’API. Retrait d’une clé et déconnexion
+sont explicites. Les sessions opaques sont hachées côté DB, révoquées au logout,
+expirent après 90 jours et sont prolongées avec l’usage (sous 60 jours restants).
+
+Le navigateur porte un cookie CSRF Secure/HttpOnly/SameSite=Lax et un state
+aléatoire à usage unique. Le jeton Google est vérifié par google-auth-library
+(signature, audience, issuer, expiration), puis nonce et email_verified sont
+contrôlés. Le retour à l’app ne contient qu’un code de 90 secondes, à usage
+unique et lié au vérificateur PKCE S256 détenu par l’app. L’app contrôle son state.
+Les réponses auth et API sont no-store. Les échecs n’exposent pas les réponses
+Google ni les secrets.
+
+## Migration et retour arrière
+
+La migration 2 rattache une seule fois les anciennes playlists et les anciens
+jetons à un compte historique. Aucun premier utilisateur Google ne reçoit ce
+compte automatiquement. Le rattachement explicite demande à la fois une
+session Google et la preuve de possession d’un ancien jeton actif. Il est
+transactionnel, verrouillé et utilisable une seule fois. Les anciens jetons
+sont alors rattachés au compte cible. La clé Gemini doit être saisie par son
+propriétaire ; la clé globale historique n’est jamais copiée vers un compte.
+
+Sauvegarder PostgreSQL avant déploiement. Ne pas revenir à une ancienne API
+sans filtrage après ouverture des comptes : elle exposerait le catalogue global
+aux nouveaux jetons. Pour un rollback, désactiver la connexion publique et
+révoquer les sessions Google avant de rétablir l’ancienne API, ou conserver
+l’API multi-compte et revenir uniquement au client Mac précédent.
+
+## Validation
+
+`npm run check`, `npm test`, `npm run test:macos`.
+La suite d’intégration exige une base jetable dont le nom finit par `_test` :
+`TEST_DATABASE_URL=... npm run test:integration`.
+Elle couvre deux comptes, vidéos communes, forçage d’IDs, recherche vectorielle,
+MCP, export, clés, quotas, logout, expiration, PKCE, replay et migration.
+Le fournisseur Google est simulé dans cette suite ; une connexion Google réelle
+reste une validation distincte après configuration des identifiants.

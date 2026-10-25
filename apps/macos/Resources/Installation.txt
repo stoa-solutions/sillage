@@ -1,24 +1,26 @@
-PLAYLIST RECALL — APP MAC, BIBLIOTHÈQUE SUR SERVEUR
+PLAYLIST RECALL — TON COMPTE, TES PLAYLISTS, TON DJ
 
-1. Copiez Playlist Recall.app dans Applications, puis ouvrez-la.
-2. Importez le fichier de connexion privé de votre serveur Recall dans l’accueil.
-   La connexion donne accès à la bibliothèque de ce serveur ; ne la publiez pas.
-3. Ajoutez votre clé Gemini pour personnaliser le DJ et sa voix expressive.
-   Elle est conservée dans le Trousseau. Aucune clé du développeur n’est distribuée.
-4. Collez un lien de playlist publique ou non répertoriée dans Bibliothèque.
-   Le serveur importe et conserve les morceaux, sans clé YouTube sur le Mac.
-5. Autorisez le micro et la reconnaissance vocale pour parler au DJ.
+1. Copie Playlist Recall.app dans Applications et ouvre-la.
+2. Clique sur Continuer avec Google et choisis ton compte.
+3. Ajoute ta propre clé Gemini pour activer le DJ et sa voix expressive.
+   Elle est chiffrée sur le serveur et réservée à ton compte.
+4. Dans Bibliothèque, colle un lien de playlist YouTube publique ou non répertoriée.
+   Aucune clé YouTube à saisir : le serveur s’occupe des imports.
+5. Autorise le micro et la reconnaissance vocale pour parler au DJ.
 
-La bibliothèque, sa recherche et les imports sont gérés par le serveur.
-L’app affiche seulement la page consultée et la file de lecture en mémoire temporaire.
-Elle ne crée aucune base musicale locale et ne propose pas de mode hors ligne.
-Les clés et réglages restent sur ce Mac ; Internet est nécessaire pour utiliser Recall.
-Les jetons d’un même serveur partagent actuellement sa bibliothèque.
-Les comptes individuels ne sont pas encore disponibles.
+Les playlists et la recherche restent sur le serveur. La page consultée,
+la file et la conversation sont temporaires et effacées à la déconnexion.
+Seul l’accès à ton compte est enregistré dans le Trousseau de ce Mac.
+Google reçoit ton chat et les métadonnées nécessaires au DJ avec ta clé Gemini.
+La connexion Google demande uniquement ton identité et ton adresse e-mail.
+Elle ne donne pas accès à tes playlists YouTube privées.
 
-Pour partager : transmettez uniquement l’archive ZIP ou le disque DMG de l’application.
-Ne transmettez ni vos fichiers de connexion ni votre Trousseau.
-Cette version est signée localement mais pas notarisée par Apple : un avertissement
-peut apparaître sur un autre Mac. Après avoir vérifié la provenance de l’application,
-utilisez Réglages Système > Confidentialité et sécurité > Ouvrir quand même si proposé.
-Les mises à jour publiques automatiques nécessitent encore une publication signée.
+Migration : si tu avais déjà une connexion personnelle, connecte Google puis
+choisis « Récupérer mes playlists existantes » après avoir vérifié l’adresse du compte.
+La clé Gemini doit être ajoutée dans les réglages de ce compte.
+
+Pour partager : transmets uniquement le ZIP ou le DMG de l’application.
+Aucun fichier de connexion ni clé personnelle ne doit accompagner l’archive.
+Cette version est signée localement, sans notarisation Apple. La distribution
+sans avertissement macOS nécessite un compte Apple Developer et la notarisation.
+Les mises à jour automatiques exigent une publication d’archive signée.

@@ -42,13 +42,14 @@ public struct HTTPClient: Sendable {
   }
   public func searchPage(
     _ connection: Connection, query: String, offset: Int = 0,
-    limit: Int = 50, playlist: String? = nil
+    limit: Int = 50, playlist: String? = nil, excludeIds: [String] = []
   ) async throws -> LibrarySearchPage {
     var body: [String: Any] = [
       "query": query, "mode": "text", "sort": query.isEmpty ? "position" : "relevance",
       "offset": offset, "limit": limit,
     ]
     if let playlist { body["playlistId"] = playlist }
+    if !excludeIds.isEmpty { body["excludeIds"] = Array(excludeIds.prefix(100)) }
     let object = try await server(connection, path: "search", body: body)
     let videos = (object["results"] as? [[String: Any]] ?? []).compactMap {
       $0["video"] as? [String: Any]

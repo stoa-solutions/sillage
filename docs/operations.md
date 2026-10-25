@@ -14,6 +14,10 @@ Plafonds : API 192 Mio/0,5 CPU, worker 192 Mio/0,5 CPU, inférence 1 408 Mio/1,5
 
 Créer un jeton avec `node --import tsx src/token.ts create /tmp/connexion.json` depuis le conteneur API. Transférer son contenu vers un fichier privé via la sortie redirigée de `docker exec` puis le retirer du conteneur (`docker cp` ne lit pas ce montage tmpfs sur ce serveur). Ne jamais afficher son contenu dans les journaux. `token.ts revoke UUID` révoque une installation. Seul un hash du jeton est enregistré en base.
 
+## Comptes utilisateurs
+
+Voir [accounts.md](accounts.md) pour la configuration Google, les clés Gemini personnelles, les tests d’isolation et les précautions de rollback. SSH Stoa utilise le port 7544. Depuis les comptes, ne jamais redéployer une API sans filtrage utilisateur en laissant les sessions Google actives.
+
 ## Déploiement et reprise
 
 1. Exécuter `npm run check`, `npm test`, les tests PostgreSQL, puis `npm run package:local` pour l’extension.

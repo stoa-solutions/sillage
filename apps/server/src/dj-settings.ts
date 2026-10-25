@@ -1,3 +1,4 @@
+import { LEGACY_USER } from "./accounts.ts";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { DJ_MODELS } from "@playlist-recall/core/dj";
@@ -48,10 +49,15 @@ export async function personalDjConfig(
   owner: string,
 ): Promise<DjConfig & { personal: boolean }> {
   const { rows } = await db.query(
-    "SELECT encrypted_key,model FROM dj_settings WHERE token_id=$1",
+    "SELECT encrypted_key,model FROM account_dj_settings WHERE user_id=$1",
     [owner],
   );
-  if (!rows.length) return { ...djConfig(), personal: false };
+  if (!rows.length)
+    return {
+      ...djConfig(),
+      ...(owner === LEGACY_USER ? {} : { key: undefined, configured: false }),
+      personal: false,
+    };
   const key = settingsKey();
   if (!key) throw new Error("DJ settings encryption key unavailable");
   return {
@@ -71,15 +77,15 @@ export async function saveDjSettings(
   if (!key) return "unavailable" as const;
   if (!input.apiKey) {
     const result = await db.query(
-      "UPDATE dj_settings SET model=$2,updated_at=now() WHERE token_id=$1 RETURNING token_id",
+      "UPDATE account_dj_settings SET model=$2,updated_at=now() WHERE user_id=$1 RETURNING user_id",
       [owner, input.model],
     );
     return result.rowCount ? ("saved" as const) : ("missing-key" as const);
   }
   const encrypted = sealSecret(input.apiKey, owner, key);
   await db.query(
-    `INSERT INTO dj_settings(token_id,encrypted_key,model) VALUES($1,$2,$3)
-    ON CONFLICT(token_id) DO UPDATE SET encrypted_key=EXCLUDED.encrypted_key,model=EXCLUDED.model,updated_at=now()`,
+    `INSERT INTO account_dj_settings(user_id,encrypted_key,model) VALUES($1,$2,$3)
+    ON CONFLICT(user_id) DO UPDATE SET encrypted_key=EXCLUDED.encrypted_key,model=EXCLUDED.model,updated_at=now()`,
     [owner, encrypted, input.model],
   );
   return "saved" as const;

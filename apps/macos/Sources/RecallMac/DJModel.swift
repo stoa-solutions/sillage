@@ -93,8 +93,7 @@ final class DJModel: ObservableObject {
       } catch { if !Task.isCancelled { session.error = error.localizedDescription } }
     }
   }
-  /// With a personal Gemini key the Mac runs the DJ itself and searches the active source;
-  /// otherwise the connected server runs it with its own key.
+  /// Google accounts use their own encrypted server credential and scoped catalog.
   private func respond(to text: String, history: [ChatMessage], excluded: Set<String>)
     async throws -> DJResponse
   {
@@ -102,26 +101,14 @@ final class DJModel: ObservableObject {
       throw RecallError.message(
         "Connecte ton serveur dans Réglages pour retrouver ta bibliothèque.")
     }
-    if !session.geminiKey.isEmpty {
-      return try await GeminiDJ(key: session.geminiKey, model: session.model).turn(
-        message: text, history: history, excluded: excluded
-      ) { query, includeQueued in
-        try await HTTPClient().djCandidates(
-          connection, query: query,
-          excluded: includeQueued ? [] : excluded)
-      }
+    let request = DJRequest(message: text, history: history, queued: excluded)
+    if !session.googleAccount, !session.geminiKey.isEmpty {
+      return try await LocalDJ(
+        model: GeminiDJ(key: session.geminiKey, model: session.model),
+        search: ServerLibrarySearch(connection: connection)
+      ).turn(request)
     }
-    do {
-      let object = try await HTTPClient().server(
-        connection, path: "dj/chat",
-        body: [
-          "message": String(text.prefix(1500)),
-          "history": history.suffix(12).map { ["role": $0.role, "content": $0.content] },
-          "excludeIds": Array(excluded),
-        ])
-      return try JSONDecoder().decode(
-        DJResponse.self, from: JSONSerialization.data(withJSONObject: object))
-    }
+    return try await ServerDJ(connection: connection).turn(request)
   }
   private func speak(_ text: String) {
     if !session.cloudVoice {

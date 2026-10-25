@@ -1,3 +1,4 @@
+import { LEGACY_USER } from "../src/accounts.ts";
 import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
@@ -53,7 +54,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
   await db.query(
-    "TRUNCATE tokens,playlists,videos,jobs,quota_usage,dj_usage CASCADE",
+    "TRUNCATE tokens,playlists,videos,jobs,quota_usage,dj_usage,account_dj_usage,account_dj_settings CASCADE",
   );
   await db.query("INSERT INTO tokens(id,name,hash) VALUES($1,$2,$3)", [
     randomUUID(),
@@ -559,7 +560,7 @@ it.skipIf(!process.env.DJ_SIMULATION_URL)(
   },
 );
 
-it("stores a personal DJ key encrypted, scopes it to its token and never returns it", async () => {
+it("stores a personal DJ key encrypted, scopes it to its account and never returns it", async () => {
   vi.stubEnv("DJ_SETTINGS_ENCRYPTION_KEY", "42".repeat(32));
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -572,7 +573,8 @@ it("stores a personal DJ key encrypted, scopes it to its token and never returns
     body: JSON.stringify({ apiKey: secret, model: "gemini-4-argon" }),
   });
   expect(save.status).toBe(200);
-  const row = (await db.query("SELECT encrypted_key FROM dj_settings")).rows[0];
+  const row = (await db.query("SELECT encrypted_key FROM account_dj_settings"))
+    .rows[0];
   expect(row.encrypted_key).not.toContain(secret);
   const status = await app.request("/v1/dj/status", { headers });
   const body = await status.json();
@@ -584,7 +586,9 @@ it("stores a personal DJ key encrypted, scopes it to its token and never returns
   expect(JSON.stringify(body)).not.toContain(secret);
   const { personalDjConfig } = await import("../src/dj-settings.ts");
   const owner = (
-    await db.query("SELECT id FROM tokens WHERE hash=$1", [hash(token)])
+    await db.query("SELECT user_id AS id FROM tokens WHERE hash=$1", [
+      hash(token),
+    ])
   ).rows[0].id;
   expect((await personalDjConfig(db, owner)).key).toBe(secret);
   const otherId = randomUUID();
@@ -627,6 +631,7 @@ it("refuses credential storage without a valid encryption key", async () => {
   });
   expect(response.status).toBe(503);
   expect(
-    (await db.query("SELECT count(*)::int n FROM dj_settings")).rows[0].n,
+    (await db.query("SELECT count(*)::int n FROM account_dj_settings")).rows[0]
+      .n,
   ).toBe(0);
 });

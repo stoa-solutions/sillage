@@ -13,3 +13,5 @@
 | [history/](history/) | Plans et specs terminés, conservés tels quels. |
 
 Règles de travail des agents : [`AGENTS.md`](../AGENTS.md). Vocabulaire : [`GLOSSARY.md`](../GLOSSARY.md).
+
+- [Comptes Google et isolation](accounts.md) : connexion, clés personnelles, migration et validation.

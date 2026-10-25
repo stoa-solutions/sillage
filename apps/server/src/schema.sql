@@ -68,3 +68,40 @@ CREATE TABLE IF NOT EXISTS dj_settings (
   encrypted_key text NOT NULL, model text NOT NULL,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- The public YouTube catalog is shared; ownership and credentials never are.
+CREATE TABLE IF NOT EXISTS users (
+  id uuid PRIMARY KEY, google_sub text UNIQUE, email text, name text,
+  created_at timestamptz NOT NULL DEFAULT now(), legacy_claimed_by uuid REFERENCES users(id)
+);
+INSERT INTO users(id,name) VALUES('00000000-0000-4000-8000-000000000001','Bibliothèque historique') ON CONFLICT DO NOTHING;
+ALTER TABLE tokens ADD COLUMN IF NOT EXISTS user_id uuid NOT NULL DEFAULT '00000000-0000-4000-8000-000000000001' REFERENCES users(id);
+ALTER TABLE tokens ADD COLUMN IF NOT EXISTS expires_at timestamptz;
+CREATE INDEX IF NOT EXISTS tokens_user ON tokens(user_id);
+CREATE TABLE IF NOT EXISTS user_playlists (
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  playlist_id text NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(user_id,playlist_id)
+);
+DO $$ BEGIN
+  IF NOT EXISTS(SELECT 1 FROM schema_migrations WHERE version=2) THEN
+    INSERT INTO user_playlists(user_id,playlist_id) SELECT '00000000-0000-4000-8000-000000000001',id FROM playlists ON CONFLICT DO NOTHING;
+    INSERT INTO schema_migrations(version) VALUES(2);
+  END IF;
+END $$;
+CREATE TABLE IF NOT EXISTS account_dj_settings (
+  user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  encrypted_key text NOT NULL, model text NOT NULL, updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS account_dj_usage (
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, day date NOT NULL,
+  requests integer NOT NULL DEFAULT 0, PRIMARY KEY(user_id,day)
+);
+CREATE TABLE IF NOT EXISTS oauth_flows (
+  state_hash text PRIMARY KEY, cookie_hash text NOT NULL, challenge text NOT NULL,
+  app_state text NOT NULL, nonce text NOT NULL, expires_at timestamptz NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_grants (
+  code_hash text PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  challenge text NOT NULL, expires_at timestamptz NOT NULL
+);

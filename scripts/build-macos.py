@@ -57,6 +57,7 @@ shutil.copy2(project / ".build/artifacts/sparkle/Sparkle/LICENSE", contents / "R
 info = {
     "CFBundleName": "Playlist Recall", "CFBundleDisplayName": "Playlist Recall", "CFBundleExecutable": "RecallMac",
     "CFBundleIdentifier": "solutions.stoa.playlist-recall", "CFBundlePackageType": "APPL",
+    "CFBundleURLTypes": [{"CFBundleURLName": "Recall Sign In", "CFBundleURLSchemes": ["playlist-recall"]}],
     "CFBundleShortVersionString": args.version, "CFBundleVersion": args.build,
     "LSMinimumSystemVersion": "14.0", "NSHighResolutionCapable": True, "CFBundleIconFile": "Recall.png",
     "NSMicrophoneUsageDescription": "Recall écoute ton envie musicale seulement quand tu actives le micro.",
