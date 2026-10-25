@@ -15,7 +15,20 @@ final class LibraryModel: ObservableObject {
   @Published private(set) var results: [LibraryRow] = []
   @Published private(set) var playlists: [LibraryPlaylist] = []
   @Published private(set) var libraryCount = 0
-  @Published private(set) var hasMore = false
+  @Published private(set) var currentPage = 1
+  @Published private(set) var totalResults = 0
+  @Published private(set) var searching = false
+  @Published var pageSize = 50 { didSet { search() } }
+  var pageCount: Int { max(1, (totalResults + pageSize - 1) / pageSize) }
+  var visiblePages: [Int] {
+    let anchor = min(currentPage, pageCount)
+    return Array(Set([1, pageCount] + Array(max(1, anchor - 2)...min(pageCount, anchor + 2)))).sorted()
+  }
+  var resultRange: String {
+    guard totalResults > 0 else { return "Aucun résultat" }
+    let first = (currentPage - 1) * pageSize + 1
+    return "\(first)–\(first + results.count - 1) sur \(totalResults)"
+  }
   @Published var query = ""
   @Published var selectedPlaylist = "" { didSet { search() } }
   @Published var playlistLink = ""
@@ -27,13 +40,13 @@ final class LibraryModel: ObservableObject {
   private var importTask: Task<Void, Never>?
   private var syncTask: Task<Void, Never>?
   private var searchTask: Task<Void, Never>?
-  private nonisolated static let pageSize = 100
 
   init(session: Session) {
     self.session = session
     do {
       try session.store.prepare()
       reload()
+      search()
     } catch { session.error = error.localizedDescription }
   }
   /// Called when the source changes: running work belongs to the previous source.
@@ -44,47 +57,55 @@ final class LibraryModel: ObservableObject {
     importTask?.cancel()
     importing = false
     searchTask?.cancel()
+    query = ""
     selectedPlaylist = ""
     reload()
+    search()
   }
   private func reload() {
     do {
       libraryCount = try store.count(session.source)
       playlists = try store.playlists(session.source)
-      show(try store.search("", source: session.source, limit: Self.pageSize), appending: false)
+      if !selectedPlaylist.isEmpty && !playlists.contains(where: { $0.id == selectedPlaylist }) {
+        selectedPlaylist = ""
+      }
     } catch { session.error = error.localizedDescription }
   }
-  private func show(_ tracks: [Track], appending: Bool) {
-    let start = appending ? results.count : 0
-    let rows = tracks.enumerated().map { LibraryRow(id: start + $0.offset, track: $0.element) }
-    results = appending ? results + rows : rows
-    hasMore = tracks.count == Self.pageSize
+  func goToPage(_ page: Int) {
+    guard (1...pageCount).contains(page) else { return }
+    search(page: page)
   }
-  func search(more: Bool = false) {
+  func search(page: Int = 1) {
     searchTask?.cancel()
-    let value = query
+    let value = query.trimmingCharacters(in: .whitespacesAndNewlines)
     let source = session.source
     let playlist = selectedPlaylist.isEmpty ? nil : selectedPlaylist
     let generation = session.generation
-    let offset = more ? results.count : 0
+    let size = pageSize
+    let requestedPage = max(1, page)
+    let offset = (requestedPage - 1) * size
     let store = self.store
     let connection = session.connection
+    searching = true
     searchTask = Task {
+      defer { if !Task.isCancelled { searching = false } }
       do {
         try await Task.sleep(nanoseconds: 250_000_000)
-        let found: [Track]
+        let found: LibrarySearchPage
         if source == .server, let connection, playlist == nil, !value.isEmpty {
-          // Server text search is hybrid and returns one page; cached browsing is paginated.
-          found = more ? [] : try await HTTPClient().search(connection, query: value)
+          found = try await HTTPClient().searchPage(connection, query: value, offset: offset, limit: size)
         } else {
           found = try await Task.detached {
-            try store.search(
-              value, source: source, playlist: playlist, offset: offset, limit: Self.pageSize)
+            try store.searchPage(value, source: source, playlist: playlist, offset: offset, limit: size)
           }.value
         }
         try Task.checkCancellation()
         guard session.generation == generation else { return }
-        show(found, appending: more)
+        totalResults = found.total
+        let lastPage = max(1, (found.total + size - 1) / size)
+        if requestedPage > lastPage { search(page: lastPage); return }
+        currentPage = requestedPage
+        results = found.tracks.enumerated().map { LibraryRow(id: offset + $0.offset, track: $0.element) }
       } catch { if !Task.isCancelled { session.error = error.localizedDescription } }
     }
   }
@@ -130,24 +151,31 @@ final class LibraryModel: ObservableObject {
       return
     }
     let importer = ServerPlaylistImporter(connection: connection)
-    runImport("YouTube est actualisé par ton serveur…") { _ in
+    let destination = session.source
+    session.error = ""
+    runImport("Ajout de la playlist via YouTube…", destination: destination) { _ in
       let document = try await importer.load(link: link)
       return (
         document,
-        "Playlist importée sur ce Mac : \(document.tracks.count) vidéos. Clé YouTube conservée sur ton serveur."
+        "Playlist ajoutée \(destination == .server ? "au serveur" : "sur ce Mac") : \(document.tracks.count) vidéos."
       )
     } completed: { [weak self] in
       self?.playlistLink = ""
+      self?.query = ""
+      self?.selectedPlaylist = (try? YouTubePlaylistLink.id(from: link)) ?? ""
     }
   }
-  /// Every import writes to the local source only, after the whole document is acquired.
+  /// The destination is captured before acquisition; imports merge without removing other playlists.
   private func runImport(
     _ progress: String,
+    destination: LibraryStore.Source = .local,
     acquire: @escaping (UUID) async throws -> (LibraryDocument, String),
     completed: @escaping () -> Void = {}
   ) {
     guard !importing else { return }
-    session.useServer = false
+    syncTask?.cancel()
+    syncing = false
+    session.useServer = destination == .server
     importing = true
     importProgress = progress
     let generation = session.generation
@@ -158,7 +186,7 @@ final class LibraryModel: ObservableObject {
         let (document, notice) = try await acquire(generation)
         try Task.checkCancellation()
         guard session.generation == generation else { return }
-        try await Task.detached { try store.commit(document, source: .local) }.value
+        try await Task.detached { try store.commit(document, source: destination) }.value
         completed()
         guard session.generation == generation else { return }
         reload()
@@ -186,7 +214,7 @@ final class LibraryModel: ObservableObject {
     }
   }
   func sync(refreshYouTube: Bool = false) {
-    guard !syncing, let connection = session.connection else { return }
+    guard !syncing, !importing, let connection = session.connection else { return }
     session.useServer = true
     syncing = true
     session.error = ""
@@ -213,7 +241,7 @@ final class LibraryModel: ObservableObject {
         guard session.generation == generation else { return }
         reload()
         session.notice = "\(libraryCount) vidéos synchronisées depuis ton serveur."
-        search()
+        search(page: currentPage)
       } catch { if !Task.isCancelled { session.error = error.localizedDescription } }
     }
   }

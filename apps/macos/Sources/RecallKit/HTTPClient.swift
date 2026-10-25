@@ -37,13 +37,18 @@ public struct HTTPClient: Sendable {
       headers: ["Authorization": "Bearer " + connection.token])
   }
   public func search(_ connection: Connection, query: String) async throws -> [Track] {
+    try await searchPage(connection, query: query).tracks
+  }
+  public func searchPage(_ connection: Connection, query: String, offset: Int = 0,
+                         limit: Int = 50) async throws -> LibrarySearchPage {
     let object = try await server(
       connection, path: "search",
-      body: ["query": query, "mode": "text", "sort": "relevance", "offset": 0, "limit": 50])
+      body: ["query": query, "mode": "text", "sort": "relevance", "offset": offset, "limit": limit])
     let videos = (object["results"] as? [[String: Any]] ?? []).compactMap {
       $0["video"] as? [String: Any]
     }
-    return try Catalog.parse(JSONSerialization.data(withJSONObject: ["videos": videos]))
+    let tracks = try Catalog.parse(JSONSerialization.data(withJSONObject: ["videos": videos]))
+    return LibrarySearchPage(tracks: tracks, total: object["total"] as? Int ?? tracks.count)
   }
 
 }

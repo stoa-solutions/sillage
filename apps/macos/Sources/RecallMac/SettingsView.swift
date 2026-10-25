@@ -49,7 +49,7 @@ struct SettingsView: View {
       }
       Section("Import YouTube") {
         Text(
-          "Colle un lien dans Bibliothèque. Ton serveur récupère la playlist, puis l’app en conserve une copie locale. La clé YouTube reste sur le serveur."
+          "Colle un lien dans Bibliothèque. Choisis « Mon serveur » ou « Sur ce Mac » pour y ajouter la playlist. Ton serveur se charge de YouTube. La clé YouTube reste sur le serveur."
         ).font(.caption)
       }
       Section("Bibliothèque") {

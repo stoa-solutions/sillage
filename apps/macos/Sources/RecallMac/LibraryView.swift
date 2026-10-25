@@ -16,24 +16,25 @@ struct LibraryView: View {
           Button(library.syncing ? "Synchronisation…" : "Actualiser YouTube") {
             library.sync(refreshYouTube: true)
           }.disabled(
-            library.syncing)
+            library.syncing || library.importing)
         }
       }
       if session.hasServer {
         Picker("Bibliothèque", selection: $session.useServer) {
           Text("Sur ce Mac").tag(false)
           Text("Mon serveur").tag(true)
-        }.pickerStyle(.segmented)
+        }.pickerStyle(.segmented).disabled(library.importing)
       }
       if session.useServer {
         Button("Garder une copie sur ce Mac") { library.copyServerLocally() }.disabled(
           library.importing || library.syncing)
       }
+      Text("Ajouter une playlist YouTube").font(.headline)
       HStack {
         TextField("Coller le lien d’une playlist YouTube…", text: $library.playlistLink)
           .textFieldStyle(.roundedBorder)
           .onSubmit { library.importPlaylist() }
-        Button("Importer sur ce Mac") { library.importPlaylist() }.disabled(
+        Button(session.useServer ? "Ajouter au serveur" : "Ajouter sur ce Mac") { library.importPlaylist() }.disabled(
           library.importing || library.playlistLink.isEmpty || session.loadingCredentials)
       }
       if library.importing {
@@ -44,7 +45,7 @@ struct LibraryView: View {
         }
       } else {
         HStack {
-          Text("Import YouTube via ton serveur personnel · aucune clé YouTube à saisir.").font(
+          Text("Playlists publiques ou non répertoriées · colle un lien pour en ajouter une autre. Aucune clé YouTube à saisir.").font(
             .caption
           )
           .foregroundStyle(.secondary)
@@ -82,10 +83,34 @@ struct LibraryView: View {
           }.buttonStyle(.borderless).accessibilityLabel("Lire " + row.track.title)
         }
       }.scrollContentBackground(.hidden)
-      if library.hasMore { Button("Afficher plus") { library.search(more: true) } }
+        .id("\(library.currentPage)-\(library.pageSize)-\(library.selectedPlaylist)")
+        .overlay { if library.searching { ProgressView().padding().background(.regularMaterial).clipShape(RoundedRectangle(cornerRadius: 10)) } }
+      HStack {
+        Text(library.resultRange).font(.caption).foregroundStyle(.secondary)
+        Spacer()
+        Button { library.goToPage(library.currentPage - 1) } label: {
+          Image(systemName: "chevron.left")
+        }.accessibilityLabel("Page précédente").disabled(library.currentPage <= 1 || library.searching)
+        ForEach(Array(library.visiblePages.enumerated()), id: \.element) { index, page in
+          if index > 0 && page > library.visiblePages[index - 1] + 1 { Text("…") }
+          Button("\(page)") { library.goToPage(page) }
+            .fontWeight(page == library.currentPage ? .bold : .regular)
+            .tint(page == library.currentPage ? Color.accentColor : Color.secondary)
+            .accessibilityLabel("Page \(page) sur \(library.pageCount)")
+            .disabled(library.searching)
+        }
+        Button { library.goToPage(library.currentPage + 1) } label: {
+          Image(systemName: "chevron.right")
+        }.accessibilityLabel("Page suivante").disabled(library.currentPage >= library.pageCount || library.searching)
+        Picker("Par page", selection: $library.pageSize) {
+          Text("25").tag(25)
+          Text("50").tag(50)
+          Text("100").tag(100)
+        }.fixedSize().disabled(library.searching)
+      }
       if library.libraryCount == 0 {
         Text(
-          "Colle une playlist YouTube ou importe un export Recall / yt-dlp. Ta bibliothèque reste sur ce Mac."
+          "Colle une playlist YouTube ou importe un export Recall / yt-dlp. Tes playlists existantes sont conservées."
         ).foregroundStyle(.secondary)
       }
     }.padding(28)
