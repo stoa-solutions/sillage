@@ -108,6 +108,47 @@ struct ChatBubble: View {
   }
 }
 
+/// A typed request waiting for the current answer: dimmed, withdrawable, and on the first
+/// one a way to interrupt the DJ and send it now.
+struct WaitingBubble: View {
+  let message: WaitingMessage
+  let first: Bool
+  let sendNow: () -> Void
+  let discard: () -> Void
+  var body: some View {
+    HStack(alignment: .top, spacing: 6) {
+      Spacer(minLength: 40)
+      VStack(alignment: .trailing, spacing: 4) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+          Text(message.text).foregroundStyle(.secondary)
+          Button(action: discard) {
+            Image(systemName: "xmark").font(.caption2.weight(.semibold))
+          }
+          .buttonStyle(.plain).foregroundStyle(.tertiary)
+          .help("Retirer ce message")
+          .accessibilityLabel("Retirer le message en attente")
+        }
+        .padding(.horizontal, 13).padding(.vertical, 8)
+        .background(
+          RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .strokeBorder(
+              Color.primary.opacity(0.14), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+        )
+        HStack(spacing: 8) {
+          Label("En attente", systemImage: "clock").labelStyle(.titleAndIcon)
+            .foregroundStyle(.secondary)
+          if first {
+            Button("Envoyer maintenant", action: sendNow).buttonStyle(SillageLinkStyle())
+              .help("Interrompt le DJ et envoie ce message tout de suite")
+          }
+        }.font(.caption)
+      }
+    }
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel("En attente : \(message.text)")
+  }
+}
+
 /// Three dots while the DJ searches, in the conversation where the answer will appear.
 struct TypingIndicator: View {
   var label = "Le DJ cherche…"

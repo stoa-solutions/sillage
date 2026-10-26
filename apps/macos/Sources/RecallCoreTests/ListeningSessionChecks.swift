@@ -355,7 +355,8 @@ func listeningSessionChecks() throws {
       request: discover,
       DJResponse(
         reply: "Deux choix", action: "keep", tracks: [], discoveries: Array(items.prefix(2)))))
-  let alternatives = session.handle(.ask("d’autre", source: .all)).sentRequests[0]
+  let alternativesSent = session.handle(.ask("d’autre", source: .all))
+  let alternatives = alternativesSent.sentRequests[0]
   try expect(
     Set(alternatives.rejectedIds) == Set([b.id, c.id]),
     "Explicit alternatives did not reject the displayed choices")
@@ -363,11 +364,18 @@ func listeningSessionChecks() throws {
     alternatives.discoveryContext.map(\.id) == [b.id, c.id]
       && alternatives.playbackContext?.current?.id == a.id,
     "Discovery choices were confused with current playback")
+  _ = session.handle(
+    .answer(
+      request: alternativesSent.requests[0],
+      DJResponse(reply: "Rien d’autre", action: "keep", tracks: [])))
   let except = session.handle(.ask("met tout ce que tu trouve sauf ces deux la", source: .all))
   try expect(
     except.cued.isEmpty && except.sentRequests.count == 1
       && Set(except.sentRequests[0].rejectedIds) == Set([b.id, c.id]),
     "All except these two replayed the two suggestion cards")
+  _ = session.handle(
+    .answer(
+      request: except.requests[0], DJResponse(reply: "Rien", action: "keep", tracks: [])))
   let normalBrowse = session.handle(.ask("Cherche du jazz", source: .all)).sentRequests[0]
   try expect(
     normalBrowse.rejectedIds.isEmpty && normalBrowse.queued.contains(a.id),
@@ -414,7 +422,71 @@ func listeningSessionChecks() throws {
     session.handle(.playback(.progress(elapsed: 196, duration: 220))).requests.isEmpty,
     "Progress duplicated the deliberate continuation request")
 
+  // A typed request waits for the current answer instead of cancelling it.
+  session = playingAlone(a)
+  let firstAsk = session.handle(.ask("Du jazz", source: .library)).requests[0]
+  let held = session.handle(.ask("Plutôt du rock", source: .library))
+  try expect(
+    held.requests.isEmpty && !held.cancels && session.waiting.map(\.text) == ["Plutôt du rock"],
+    "A second typed request cancelled the first instead of waiting")
+  _ = session.handle(.ask("Et du funk", source: .library))
+  let heldPause = session.handle(.ask("pause", source: .library))
+  try expect(
+    heldPause.pauses && session.waiting.count == 2, "A transport command waited behind the DJ")
+  let released = session.handle(
+    .answer(request: firstAsk, DJResponse(reply: "Jazz", action: "replace", tracks: [b])))
+  try expect(
+    released.sentRequests.map(\.message) == ["Plutôt du rock"]
+      && session.waiting.map(\.text) == ["Et du funk"],
+    "Waiting messages did not leave one after the other, in order")
+
+  // « Envoyer maintenant » interrupts the DJ; a withdrawn message never leaves.
+  let funk = session.waiting[0].id
+  let forced = session.handle(.sendNow(funk))
+  try expect(
+    forced.cancels && forced.sentRequests.map(\.message) == ["Et du funk"]
+      && forced.sentRequests[0].trigger == .user && session.waiting.isEmpty,
+    "Sending a waiting message now did not interrupt the current request")
+  _ = session.handle(.ask("Du reggae", source: .library))
+  _ = session.handle(.discardWaiting(session.waiting[0].id))
+  try expect(session.waiting.isEmpty, "A withdrawn waiting message remained")
+
+  // Playing a track cancels the DJ's answer; the waiting message still goes out.
+  session = playingAlone(a)
+  _ = session.handle(.ask("Du jazz", source: .library))
+  _ = session.handle(.ask("Plutôt du rock", source: .library))
+  let clicked = session.handle(.play(b, source: .library))
+  try expect(
+    clicked.cancels && clicked.sentRequests.map(\.message) == ["Plutôt du rock"],
+    "A waiting message was stranded after a click cancelled the DJ")
+
+  // A refill never waits in line: it gives way to typed requests and comes back after.
+  session = playingAlone(a)
+  let typed = session.handle(.ask("Du jazz", source: .library)).requests[0]
+  _ = session.handle(.ask("Plutôt du rock", source: .library))
+  try expect(
+    session.handle(.playback(.progress(elapsed: 200, duration: 220))).requests.isEmpty,
+    "A refill was sent while typed requests were pending")
+  let rockAsk = session.handle(
+    .answer(request: typed, DJResponse(reply: "Bon", action: "keep", tracks: []))
+  ).requests[0]
+  _ = session.handle(
+    .answer(request: rockAsk, DJResponse(reply: "Rien", action: "keep", tracks: [])))
+  let comeback = session.handle(.playback(.progress(elapsed: 201, duration: 220))).sentRequests
+  try expect(
+    comeback.count == 1 && comeback[0].trigger == .continuation
+      && comeback[0].continuation == DJContinuation(count: 5, broaden: false),
+    "The refill did not come back as a structured request after the typed ones")
+
+  // /suite asks for a structured refill of the requested size, as a typed request.
+  session = playingAlone(a)
+  let suiteSent = session.handle(.ask("/suite 3", source: .library)).sentRequests
+  try expect(
+    suiteSent.count == 1 && suiteSent[0].continuation?.count == 3
+      && suiteSent[0].trigger == .user,
+    "/suite did not send a structured refill")
+
   print(
-    "Listening session checks passed: requests, late answers, pause/resume, sign-in, refill, unavailable"
+    "Listening session checks passed: requests, late answers, pause/resume, sign-in, refill, unavailable, waiting messages"
   )
 }

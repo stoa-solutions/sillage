@@ -1,5 +1,12 @@
 import Foundation
 
+/// A typed request held while the DJ answers an earlier one, shown « En attente ».
+public struct WaitingMessage: Identifiable, Sendable, Equatable {
+  public let id: Int
+  public let text: String
+  public let source: DiscoveryScope
+}
+
 /// What the playback module reports, whichever player (YouTube or downloaded clip) is sounding.
 public enum PlaybackSignal: Sendable, Equatable {
   case playing(Bool)
@@ -27,6 +34,10 @@ public struct ListeningSession: Sendable {
     case retryContinuation
     /// The person stops a search in progress ("Annuler").
     case cancel
+    /// « Envoyer maintenant » : interrupt the DJ and send this waiting message.
+    case sendNow(Int)
+    /// Withdraw a waiting message before it is sent.
+    case discardWaiting(Int)
     case continuous(Bool)
     case spoken(Bool)
     /// Credentials loaded (or not): continuation waits for them instead of failing.
@@ -63,6 +74,8 @@ public struct ListeningSession: Sendable {
 
   public private(set) var queue = PlaybackQueue()
   public private(set) var messages: [ChatMessage] = []
+  /// Typed requests sent one after the other, in order, after the current answer.
+  public private(set) var waiting: [WaitingMessage] = []
   /// Why the music stopped or why no continuation came; empty when all is well.
   public private(set) var notice = ""
   public private(set) var playbackBlocked = false
@@ -81,6 +94,7 @@ public struct ListeningSession: Sendable {
   private var composition = DJComposition()
   private var pending: Pending?
   private var lastRequest = 0
+  private var lastWaiting = 0
   private var unavailableCount = 0
   private var accountReady = false
   private var deferredContinuation = false
@@ -170,6 +184,15 @@ public struct ListeningSession: Sendable {
       cancelPending(into: &effects)
       composition.cancel()
       waitingForNext = false
+    case .sendNow(let id):
+      guard let index = waiting.firstIndex(where: { $0.id == id }) else { break }
+      let message = waiting.remove(at: index)
+      // The server keeps what the interrupted turn had already explored.
+      if pending?.automatic == true { composition.resume() }
+      cancelPending(into: &effects)
+      ask(message.text, source: message.source, into: &effects)
+    case .discardWaiting(let id):
+      waiting.removeAll { $0.id == id }
     case .continuous(let value):
       continuous = value
       if !value, let pending, pending.automatic, !waitingForNext { cancelPending(into: &effects) }
@@ -192,6 +215,9 @@ public struct ListeningSession: Sendable {
       notice = "La recherche n’a pas abouti. Tu peux réessayer."
       effects.append(.error(message))
     }
+    // Whatever freed the DJ (an answer, a failure, Annuler, a click on a track),
+    // the next waiting message goes out now.
+    sendWaiting(into: &effects)
     return effects
   }
 
@@ -200,14 +226,30 @@ public struct ListeningSession: Sendable {
   private mutating func ask(_ text: String, source: DiscoveryScope, into effects: inout [Effect]) {
     let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !text.isEmpty else { return }
+    // One typed request at a time: a new one waits for the answer unless the person forces it.
+    // Local commands (transport, card choice, help) still act immediately.
+    if let pending, !pending.automatic, needsServer(text) {
+      lastWaiting += 1
+      waiting.append(WaitingMessage(id: lastWaiting, text: text, source: source))
+      return
+    }
     if text.hasPrefix("/") {
       switch DJCommand.parse(text) {
       case .next: ask("next", source: source, into: &effects)
       case .pause: ask("pause", source: source, into: &effects)
       case .resume: ask("play", source: source, into: &effects)
       case .prepare(let count):
-        ask(
-          "Prépare \(count) nouveaux morceaux à suivre dans le même style, sans répétition et sans interrompre la lecture.",
+        if pending?.automatic == true { composition.resume() }
+        cancelPending(into: &effects)
+        effects.append(.error(""))
+        notice = ""
+        var request = composition.request(history: messages, queue: queue, count: count)
+        request.scope = source
+        say(user: text)
+        send(
+          request, automatic: false,
+          text:
+            "Prépare \(count) nouveaux morceaux à suivre dans le même style, sans répétition et sans interrompre la lecture.",
           source: source, into: &effects)
       case .help:
         say(user: text)
@@ -292,6 +334,8 @@ public struct ListeningSession: Sendable {
     if !rejectsCards && !DJPlaybackContext.followsCurrent(text) {
       rejectedDiscoveryIDs = []
     }
+    // A typed request takes precedence over a refill, which is tried again afterwards.
+    if pending?.automatic == true { composition.resume() }
     cancelPending(into: &effects)
     effects += [.stopSpeech, .clearPreparedSpeech, .error("")]
     unavailableCount = 0
@@ -314,6 +358,23 @@ public struct ListeningSession: Sendable {
     var loggedRequest = withDiscoveryContext(request)
     loggedRequest.trigger = automatic ? .continuation : .user
     effects.append(.send(request: lastRequest, loggedRequest))
+  }
+
+  /// Whether a request must reach the DJ, as opposed to a command the session runs itself.
+  private func needsServer(_ text: String) -> Bool {
+    if text.hasPrefix("/") {
+      if case .prepare = DJCommand.parse(text) { return true }
+      return false
+    }
+    return DJTransportCommand.parse(text) == nil
+      && DJSuggestionCommand.parse(text, count: latestDiscoveries.count) == nil
+  }
+
+  /// The next waiting message goes out once the DJ is free.
+  private mutating func sendWaiting(into effects: inout [Effect]) {
+    guard pending == nil, !waiting.isEmpty else { return }
+    let message = waiting.removeFirst()
+    ask(message.text, source: message.source, into: &effects)
   }
 
   private var latestDiscoveries: [DiscoveryItem] {
@@ -462,8 +523,8 @@ public struct ListeningSession: Sendable {
         preparedSpeechFor = queue.position
         effects.append(.prepareSpeech(TrackTitle(next).announcement))
       }
-      if continuous, pending == nil, upcoming.count <= 1, remaining <= Self.continuationLead,
-        !composition.needsDirection
+      if continuous, pending == nil, waiting.isEmpty, upcoming.count <= 1,
+        remaining <= Self.continuationLead, !composition.needsDirection
       {
         requestContinuation(retry: false, into: &effects)
       }

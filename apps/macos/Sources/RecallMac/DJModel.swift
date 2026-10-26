@@ -37,6 +37,7 @@ final class DJModel: ObservableObject {
   var position: Int { listening.queue.position }
   var history: [PlaybackHistoryEntry] { listening.queue.history }
   var busy: Bool { listening.busy }
+  var waiting: [WaitingMessage] { listening.waiting }
   var waitingForNext: Bool { listening.waitingForNext }
   var playbackBlocked: Bool { listening.playbackBlocked }
   var continuationNotice: String { listening.notice }
@@ -160,6 +161,12 @@ final class DJModel: ObservableObject {
     dispatch(.moveUpcoming(from: source, to: destination))
   }
   func retryContinuation() { dispatch(.retryContinuation) }
+  /// « Envoyer maintenant » : the DJ stops its current answer and takes this message.
+  func sendNow(_ id: Int) {
+    voice.stop()
+    dispatch(.sendNow(id))
+  }
+  func discardWaiting(_ id: Int) { dispatch(.discardWaiting(id)) }
   func retryPlayback() { dispatch(.resume) }
   /// "Annuler": stops the search in progress, the dictation and the voice.
   func cancel() {
@@ -226,6 +233,8 @@ final class DJModel: ObservableObject {
     case .pause: action = "pause"
     case .resume: action = "resume"
     case .cancel: action = "cancel"
+    case .sendNow: action = "send_now"
+    case .discardWaiting: action = "discard_waiting"
     case .retryContinuation: action = "retry_continuation"
     case .playUpcoming: action = "play_upcoming"
     case .moveUpcoming: action = "reorder"

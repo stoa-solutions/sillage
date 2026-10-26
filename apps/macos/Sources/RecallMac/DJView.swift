@@ -573,6 +573,12 @@ struct DJView: View {
           if model.busy && !microphone.active {
             TypingIndicator(label: "Je cherche la bonne suite…") { model.cancel() }
           }
+          ForEach(Array(model.waiting.enumerated()), id: \.element.id) { index, message in
+            WaitingBubble(
+              message: message, first: index == 0,
+              sendNow: { model.sendNow(message.id) },
+              discard: { model.discardWaiting(message.id) })
+          }
           Color.clear.frame(height: 1).id("conversation-bottom").accessibilityHidden(true)
         }.padding(.vertical, 16)
       }
@@ -591,7 +597,7 @@ struct DJView: View {
 
   private var conversationScrollKey: String {
     // Count stays at 24 once history is full; the last ID still changes on every reply.
-    "\(model.messages.last?.id.uuidString ?? "empty"):\(model.busy):\(microphone.active)"
+    "\(model.messages.last?.id.uuidString ?? "empty"):\(model.busy):\(microphone.active):\(model.waiting.count)"
   }
 
   private var welcome: some View {

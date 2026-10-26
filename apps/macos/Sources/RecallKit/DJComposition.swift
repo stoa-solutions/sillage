@@ -86,9 +86,11 @@ public struct DJComposition: Sendable {
     }
     return result
   }
-  public func request(history: [ChatMessage], queue: PlaybackQueue, broaden: Bool = false)
-    -> DJRequest
-  {
+  /// The server writes a refill's instructions from `continuation`; the text only serves
+  /// servers older than structured refills.
+  public func request(
+    history: [ChatMessage], queue: PlaybackQueue, broaden: Bool = false, count: Int = 5
+  ) -> DJRequest {
     let memory = contextualHistory(history, queue: queue)
     let request = DJRequest.continuation(
       context: directions.last ?? "la même ambiance", history: [], queued: queue.excludedIDs)
@@ -99,6 +101,7 @@ public struct DJComposition: Sendable {
     var continuation = DJRequest(
       message: request.message + guidance,
       history: memory, queued: queue.excludedIDs)
+    continuation.continuation = DJContinuation(count: count, broaden: broaden)
     continuation.scope = source
     continuation.playbackContext = DJPlaybackContext(queue: queue, direction: directions.last ?? "")
     return continuation

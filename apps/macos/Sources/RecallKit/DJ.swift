@@ -18,10 +18,23 @@ public struct DJDiscoveryContext: Codable, Sendable {
 }
 
 public enum DJTrigger: String, Sendable { case user, continuation }
+
+/// A refill the server plans from its count, whatever the accompanying text says.
+public struct DJContinuation: Sendable, Equatable {
+  public var count: Int
+  /// Search further than the playing artist after an empty first attempt.
+  public var broaden: Bool
+  public init(count: Int = 5, broaden: Bool = false) {
+    self.count = min(8, max(1, count))
+    self.broaden = broaden
+  }
+}
+
 public struct DJRequest: Sendable {
   public var conversationId: UUID?
   public var requestId: UUID?
   public var trigger: DJTrigger = .user
+  public var continuation: DJContinuation?
   public var scope: DiscoveryScope = .library
   public var playbackContext: DJPlaybackContext?
   /// Explicitly rejected suggestions, unlike songs merely queued or previously played.
@@ -66,6 +79,9 @@ public struct ServerDJ: DJ {
     body["conversationId"] = request.conversationId?.uuidString.lowercased()
     body["requestId"] = request.requestId?.uuidString.lowercased()
     body["trigger"] = request.trigger.rawValue
+    if let continuation = request.continuation {
+      body["continuation"] = ["count": continuation.count, "broaden": continuation.broaden]
+    }
     if !request.discoveryContext.isEmpty {
       body["discoveryContext"] = try JSONSerialization.jsonObject(
         with: JSONEncoder().encode(Array(request.discoveryContext.prefix(8))))
