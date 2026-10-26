@@ -15,6 +15,10 @@ public enum SillageRole: CaseIterable, Sendable {
   /// The main button: Stoa orange with an ink pictogram in both appearances.
   case primaryFill, primaryIcon
   case selection, separator
+  /// Title of the playing song, as on the Atelier boards: deep orange on paper, Stoa orange on
+  /// graphite (4.44:1 there; Samuel chose the board over the spec's 4.5:1 for this title,
+  /// which is always paired with a speaker symbol).
+  case playingText
 }
 
 public struct SillagePalette: Sendable {
@@ -44,6 +48,8 @@ public struct SillagePalette: Sendable {
     case (.dark, .focus): Self.orange
     case (.dark, .selection): 0x373732
     case (.dark, .separator): 0x484843
+    case (.light, .playingText): Self.deepOrange
+    case (.dark, .playingText): Self.orange
     case (_, .primaryFill): Self.orange
     case (_, .primaryIcon): Self.ink
     }

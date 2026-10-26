@@ -122,6 +122,9 @@ struct DJView: View {
               .contentShape(Rectangle())
           }.buttonStyle(.plain).help("Morceau suivant").accessibilityLabel("Morceau suivant")
             .disabled(model.current == nil)
+          // Board order: speaker, position, time.
+          VolumeControl(player: player, compact: true)
+            .fixedSize()
           SillageSlider(
             value: Binding(get: { player.elapsed }, set: { model.seek($0) }),
             range: 0...max(1, player.duration), step: 5
@@ -129,10 +132,8 @@ struct DJView: View {
           .disabled(player.duration <= 0).accessibilityLabel("Position du morceau")
           .accessibilityValue(clock(player.elapsed))
           Text(clock(player.duration > 0 ? player.elapsed : 0))
-            .font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
+            .font(.system(size: 13).monospacedDigit()).foregroundStyle(.secondary)
             .frame(width: 34, alignment: .trailing)
-          VolumeControl(player: player, compact: true)
-            .fixedSize()
         }
       }
     }

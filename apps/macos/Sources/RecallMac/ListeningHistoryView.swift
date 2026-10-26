@@ -225,7 +225,7 @@ struct HistoryRow: View {
       }.buttonStyle(.plain).accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 2) {
         Text(name.title).fontWeight(.medium).lineLimit(1)
-          .foregroundStyle(playing ? Color.sillage(.actionText) : Color.primary)
+          .foregroundStyle(playing ? Color.sillage(.playingText) : Color.primary)
         Text(name.artist ?? listened.track.channel ?? "YouTube").font(.callout)
           .foregroundStyle(.secondary).lineLimit(1)
         if compact {

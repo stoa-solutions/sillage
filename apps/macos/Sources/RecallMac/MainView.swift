@@ -59,12 +59,14 @@ struct MainView: View {
     .frame(minWidth: minimumWidth, minHeight: minimumHeight)
     .toolbar {
       ToolbarItem(placement: .principal) {
-        Picker("Vue", selection: $section) {
-          Text("DJ").tag(Destination.dj)
-          Text("Bibliothèque").tag(Destination.library)
-          Text("Découvrir").tag(Destination.discover)
-        }.pickerStyle(.segmented).fixedSize().neutralSelection()
-          .controlSize(pocket ? .small : .regular).studioChrome(immersion.visible)
+        // The pocket shows no tabs (Atelier board); ⌘1, ⌘2, ⌘3 and the Présentation menu
+        // still reach every page.
+        if pocket {
+          // An empty centre keeps Studio and Réglages on the right, as on the board.
+          Color.clear.frame(width: 1, height: 1).accessibilityHidden(true)
+        } else {
+          picker
+        }
       }.withoutSystemBackground()
       ToolbarItem(placement: .primaryAction) {
         HStack(spacing: 10) {
@@ -91,6 +93,14 @@ struct MainView: View {
       value: immersion.visible
     )
     .background(WindowAppearance(dark: stage))
+    // Page shortcuts, available everywhere and the only tab access in the pocket.
+    .background {
+      Group {
+        Button("DJ") { section = .dj }.keyboardShortcut("1")
+        Button("Bibliothèque") { section = .library }.keyboardShortcut("2")
+        Button("Découvrir") { section = .discover }.keyboardShortcut("3")
+      }.opacity(0).frame(width: 0, height: 0).accessibilityHidden(true)
+    }
     .background(WindowSizer(presentation: presentation, animate: !reduceMotion))
     .tint(.recall)
     .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: section)
@@ -100,6 +110,14 @@ struct MainView: View {
     .onChange(of: session.showOnboarding) { _, showing in
       if !showing && session.hasServer && library.libraryCount == 0 { section = .library }
     }
+  }
+
+  private var picker: some View {
+    Picker("Vue", selection: $section) {
+      Text("DJ").tag(Destination.dj)
+      Text("Bibliothèque").tag(Destination.library)
+      Text("Découvrir").tag(Destination.discover)
+    }.pickerStyle(.segmented).fixedSize().neutralSelection().studioChrome(immersion.visible)
   }
 
   private var minimumWidth: CGFloat {

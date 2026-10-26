@@ -117,6 +117,12 @@ func sillageLayoutChecks() throws {
   try expect(
     (HTTPClient.transportError(URLError(.cancelled)) as? URLError)?.code == .cancelled,
     "Cancelled requests must stay recognisable")
+  try expect(
+    SillagePalette.contrast(SillagePalette(.dark)[.playingText], SillagePalette(.dark)[.reading])
+      > 4.4
+      && SillagePalette.contrast(
+        SillagePalette(.light)[.playingText], SillagePalette(.light)[.reading]) >= 4.5,
+    "Playing title colour drifted from the board")
   print(
     "Sillage layout checks passed: pocket, panel ceiling, drift, screen edges, reading size, contrast"
   )

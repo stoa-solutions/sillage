@@ -81,3 +81,10 @@ Les paroles restent dans le panneau latéral, jamais au centre du clip. Le racco
 Nom visible et icône approuvés le 26 octobre 2026. Le nom du produit est Sillage ; Stoa signe les supports de présentation. L’app conserve ses contrôles et polices système. Le signe est un artwork orange sculptural ; l’ICNS haute résolution est dans `apps/macos/Resources/Sillage.icns`, les exports Chrome dans `apps/extension/public/icon/`. Provenance : `assets/branding/sillage/`.
 
 Le renommage reste visuel : bundle ID, chemins de données, Trousseau, schéma OAuth, noms d’archives Sparkle et dossier Chrome chargé restent inchangés. Le bundle produit porte `Sillage.app`. Aucun renommage du dépôt ou publication open source implicite.
+
+## Écarts assumés avec le cahier (choix de Samuel, 26 octobre 2026)
+
+Samuel a choisi de suivre la planche « Atelier de lumière » plutôt que le cahier sur trois points :
+- barre latérale de la Bibliothèque à 34,5 % de la fenêtre (220 à 380 points) au lieu de 190 à 220 ;
+- titre en lecture en orange Stoa sur graphite (4,44:1), toujours accompagné du haut-parleur ;
+- poche Compact sans onglets ; ⌘1, ⌘2 et ⌘3 mènent au DJ, à la Bibliothèque et à Découvrir, et le mini-clip ouvre le DJ.

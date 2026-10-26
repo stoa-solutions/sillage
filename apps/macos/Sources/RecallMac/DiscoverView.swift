@@ -394,7 +394,7 @@ private struct DiscoveryResultRow: View {
       Artwork(track: row.track, showsDuration: false).frame(width: 96)
       VStack(alignment: .leading, spacing: 3) {
         Text(name.title).font(.system(size: 14, weight: .medium)).lineLimit(2)
-          .foregroundStyle(playing ? Color.sillage(.actionText) : Color.primary)
+          .foregroundStyle(playing ? Color.sillage(.playingText) : Color.primary)
         Text(name.artist ?? row.track.channel ?? "YouTube").font(.system(size: 12))
           .foregroundStyle(.secondary).lineLimit(1)
       }.frame(maxWidth: .infinity, alignment: .leading)

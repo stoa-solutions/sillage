@@ -20,7 +20,8 @@ struct LibraryView: View {
         let wide = geometry.size.width >= 780
         HStack(spacing: 0) {
           if wide && session.hasServer {
-            sidebar.frame(width: 220).sillageSurface(.sidebar)
+            sidebar.frame(width: Self.sidebarWidth(geometry.size.width))
+              .sillageSurface(.sidebar)
             SillageRule(vertical: true)
           }
           main(wide: wide).frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -48,6 +49,10 @@ struct LibraryView: View {
   }
 
   // MARK: Sidebar
+
+  /// The Atelier board gives the playlists about a third of the window (0.345), within
+  /// readable bounds.
+  static func sidebarWidth(_ window: CGFloat) -> CGFloat { min(max(window * 0.345, 220), 380) }
 
   private var sidebar: some View {
     VStack(alignment: .leading, spacing: 0) {

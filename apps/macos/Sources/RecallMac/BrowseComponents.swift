@@ -33,7 +33,7 @@ struct SongRow: View {
       Artwork(track: track, showsDuration: false).frame(width: 56)
       VStack(alignment: .leading, spacing: 2) {
         Text(name.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
-          .foregroundStyle(playing ? Color.sillage(.actionText) : Color.primary)
+          .foregroundStyle(playing ? Color.sillage(.playingText) : Color.primary)
         Text(name.artist ?? track.channel ?? "YouTube").font(.system(size: 12))
           .foregroundStyle(.secondary).lineLimit(1)
       }.frame(maxWidth: .infinity, alignment: .leading)
