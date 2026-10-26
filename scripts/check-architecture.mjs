@@ -5,11 +5,13 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const pureDj = new Set(["contracts.ts", "context.ts", "errors.ts", "evidence.ts"]);
+const pureDj = new Set(["contracts.ts", "context.ts", "errors.ts", "evidence.ts", "composition.ts", "retrieval.ts"]);
 const pureDjImports = new Set([
   "zod",
   "./contracts.ts",
   "./errors.ts",
+  "./context.ts",
+  "./evidence.ts",
   "../../dj-intent.ts",
   "../../dj-prompt.ts",
 ]);

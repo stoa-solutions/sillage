@@ -47,8 +47,10 @@ export async function beginJournal(
           JSON.stringify(journalPayload(input)),
           JSON.stringify({
             intent: plan.intent,
+            openChoice: plan.openChoice,
             relative: plan.relative,
             targetCount: plan.targetCount,
+            selectionLimit: plan.selectionLimit,
             avoidRepeats: plan.avoidRepeats,
           }),
           promptHash,

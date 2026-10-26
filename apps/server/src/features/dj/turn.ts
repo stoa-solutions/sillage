@@ -10,11 +10,11 @@ import {
 } from "./evidence.ts";
 import type { InformationSource } from "../../information.ts";
 import { selectionReply } from "../../dj-selection.ts";
-import { playbackAction } from "../../dj-intent.ts";
+import { Composition } from "./composition.ts";
 import { LEGACY_USER } from "../../accounts.ts";
 import { djConfig, type DjConfig } from "../../dj-config.ts";
 import type { Database } from "../../db.ts";
-import { connectMusicMcp, musicTracks, type DjTrack } from "../../music-mcp.ts";
+import { connectMusicMcp, musicTracks } from "../../music-mcp.ts";
 import { selection, type DjInput, type Selection } from "./contracts.ts";
 import { DjUnavailable } from "./errors.ts";
 import { reserveDj } from "./quota.ts";
@@ -36,10 +36,16 @@ export async function djTurn(
   const { intent, targetCount, avoidRepeats, externalSearch } = plan;
   const catalogStarted = Date.now();
   const requested = await catalogSelection(db, input, userId, plan);
-  observe?.({ kind:"catalog", name:"catalog_lookup", status:"ok", durationMs:Date.now()-catalogStarted, output: requested ?? { matched:false } });
+  observe?.({
+    kind: "catalog",
+    name: "catalog_lookup",
+    status: "ok",
+    durationMs: Date.now() - catalogStarted,
+    output: requested ?? { matched: false },
+  });
   if (requested) return requested;
   let expandedSelection = false;
-  let partialIds: string[] = [];
+  const composition = new Composition(input, plan);
   if (!config.configured)
     throw new DjUnavailable(
       "Le mode DJ attend la configuration de son IA côté serveur. Ta bibliothèque reste disponible.",
@@ -47,12 +53,20 @@ export async function djTurn(
   await reserveDj(db, userId);
   // A confirmation can refer to a card that is already playing/excluded from a
   // continuation. Hydrate its owned metadata without treating it as a new pick.
-  const recentIds = [...new Set([
-    ...input.discoveryContext.map(({ id }) => id),
-    ...(plan.playback?.current ? [plan.playback.current.id] : []),
-  ])].filter(id => !input.rejectedIds.includes(id));
-  const recentTracks = recentIds.length ? await musicTracks(db, recentIds, userId) : [];
-  const messages = initialMessages(input, plan, recentTracks.slice(-8).map(compactVideo));
+  const recentIds = [
+    ...new Set([
+      ...input.discoveryContext.map(({ id }) => id),
+      ...(plan.playback?.current ? [plan.playback.current.id] : []),
+    ]),
+  ].filter((id) => !input.rejectedIds.includes(id));
+  const recentTracks = recentIds.length
+    ? await musicTracks(db, recentIds, userId)
+    : [];
+  const messages = initialMessages(
+    input,
+    plan,
+    recentTracks.slice(-8).map(compactVideo),
+  );
   const mcp = await connectMusicMcp(
     db,
     input.excludeIds,
@@ -61,8 +75,6 @@ export async function djTurn(
     plan.scope,
     input.rejectedIds,
   );
-  const candidates = new Map<string, DjTrack>();
-  const discoveries = new Map<string, { video: DjTrack; inLibrary: boolean }>();
   const timeout = AbortSignal.any([
     AbortSignal.timeout(90000),
     ...(signal ? [signal] : []),
@@ -93,16 +105,27 @@ export async function djTurn(
         );
   }
   async function partialSelection() {
+    const chosen = composition.recover();
     const tracks = externalSearch
-      ? partialIds.slice(0, targetCount ?? 8).map((id) => candidates.get(id)!)
-      : await musicTracks(db, partialIds.slice(0, targetCount ?? 8), userId);
+      ? composition.tracks(chosen.ids)
+      : await musicTracks(db, chosen.ids, userId);
     timeout.throwIfAborted();
     return {
-      action: tracks.length ? ("append" as const) : ("keep" as const),
+      action: tracks.length ? chosen.action : ("keep" as const),
       tracks,
+      ...(chosen.cards.length ? { discoveries: chosen.cards } : {}),
       reply: tracks.length
-        ? withSourceNote(selectionReply("append", tracks, targetCount))
-        : emptyReply(),
+        ? withSourceNote(
+            selectionReply(
+              chosen.action as "replace" | "append",
+              tracks,
+              targetCount,
+              chosen.explanation,
+            ),
+          )
+        : chosen.cards.length
+          ? withSourceNote(discoveryReply(chosen.cards, chosen.explanation))
+          : emptyReply(),
       source: "mcp" as const,
     };
   }
@@ -136,7 +159,8 @@ export async function djTurn(
           { signal: timeout },
         );
         const evidence = readToolEvidence(name, result);
-        if (evidence.failedSources) status = evidence.items.length ? "partial" : "error";
+        if (evidence.failedSources)
+          status = evidence.items.length ? "partial" : "error";
         text = evidence.text;
         if (name === "seekInformation") {
           informationRequested = true;
@@ -151,10 +175,7 @@ export async function djTurn(
             sources,
           });
         }
-        for (const item of evidence.items) {
-          candidates.set(item.video.id, item.video);
-          discoveries.set(item.video.id, item);
-        }
+        composition.add(evidence.items);
         if (evidence.isSearch) searched = true;
         failedSearches += evidence.failedSources;
         if (evidence.isSearch) failures.delete("search");
@@ -165,7 +186,16 @@ export async function djTurn(
         visualUnsupported ||= evidence.visualUnsupported;
       } catch (error) {
         status = "error";
-        if (timeout.aborted) observe?.({kind:"tool",name,callId:id,status,durationMs:Date.now()-started,input:args,output:{error:"canceled"}});
+        if (timeout.aborted)
+          observe?.({
+            kind: "tool",
+            name,
+            callId: id,
+            status,
+            durationMs: Date.now() - started,
+            input: args,
+            output: { error: "canceled" },
+          });
         timeout.throwIfAborted();
         if (name === "seekInformation") {
           informationRequested = true;
@@ -190,14 +220,42 @@ export async function djTurn(
         });
       }
       let output: unknown = text;
-      try { output = JSON.parse(text); } catch { /* Preserve non-JSON tool text. */ }
-      observe?.({kind:"tool",name,callId:id,status,durationMs:Date.now()-started,input:args,output});
+      try {
+        output = JSON.parse(text);
+      } catch {
+        /* Preserve non-JSON tool text. */
+      }
+      observe?.({
+        kind: "tool",
+        name,
+        callId: id,
+        status,
+        durationMs: Date.now() - started,
+        input: args,
+        output,
+      });
       messages.push({ role: "tool", tool_call_id: id, content: text });
     }
     for (let turn = 0; turn < MAX_ROUNDS; turn++) {
+      if (turn === MAX_ROUNDS - 1)
+        observe?.({
+          kind: "policy",
+          name: "compose_final",
+          status: "ok",
+          input: {
+            candidates: composition.size,
+            hasSelection: composition.hasSelection,
+            scope: plan.scope,
+          },
+        });
       const message = await completeTurn(
         config,
-        messages,
+        turn === MAX_ROUNDS - 1
+          ? composition.finalMessages(
+              [...information.values()],
+              [...failures.values()],
+            )
+          : messages,
         tools,
         turn,
         timeout,
@@ -243,7 +301,7 @@ export async function djTurn(
         }
         // Sources are routed by the server. A single reformulation can explore
         // other musical clues freely; never force the playing artist as a filter.
-        if (searched && !candidates.size && !reformulated && toolCalls < 8) {
+        if (searched && !composition.size && !reformulated && toolCalls < 8) {
           reformulated = true;
           messages.push({
             role: "user",
@@ -264,9 +322,19 @@ export async function djTurn(
       }
       // Let the model acknowledge a correction or discuss known context without
       // executing a tool or manufacturing another musical selection.
-      if (!informationRequested && output.kind === "conversation"
-        && output.action === "keep" && !output.trackIds.length && !output.discoveryIds?.length) {
-        return { action: "keep" as const, tracks: [], reply: output.reply, source: "mcp" as const };
+      if (
+        !informationRequested &&
+        output.kind === "conversation" &&
+        output.action === "keep" &&
+        !output.trackIds.length &&
+        !output.discoveryIds?.length
+      ) {
+        return {
+          action: "keep" as const,
+          tracks: [],
+          reply: output.reply,
+          source: "mcp" as const,
+        };
       }
       // A musical conclusion still needs evidence. This reminder does not force
       // ordinary conversation through search and remains bounded to one retry.
@@ -313,7 +381,7 @@ export async function djTurn(
         youtubeDailyQuota &&
         intent !== "browse" &&
         output.action === "keep" &&
-        candidates.size > 0 &&
+        composition.size > 0 &&
         !clarifiedPartialIntent &&
         turn < MAX_ROUNDS - 1
       ) {
@@ -333,42 +401,17 @@ export async function djTurn(
         // Some providers still use the ordinary selection field. Preserve that
         // selection; never expand it to every retrieved candidate (which can
         // reintroduce titles the user explicitly excluded).
-        const ids = output.discoveryIds?.length
-          ? output.discoveryIds
-          : output.trackIds;
-        if (ids.some((id) => !discoveries.has(id)))
-          throw new DjUnavailable(
-            "Résultat de découverte non vérifié. Réessaie.",
-            502,
-          );
-        const cards = [...new Set(ids)]
-          .filter((id) => !input.rejectedIds.includes(id))
-          .map((id) => discoveries.get(id)!);
+        const { cards } = composition.select(output);
         return {
           reply: cards.length
-            ? withSourceNote(discoveryReply(cards))
+            ? withSourceNote(discoveryReply(cards, output.explanation))
             : emptyReply(),
           action: "keep" as const,
           tracks: [],
           discoveries: cards,
         };
       }
-      if (output.trackIds.some((id) => !candidates.has(id)))
-        throw new DjUnavailable(
-          "La sélection du DJ contenait un titre non vérifié. Réessaie.",
-          502,
-        );
-      const action = playbackAction(intent, output.action);
-      const ids =
-        action === "keep"
-          ? []
-          : [...new Set(output.trackIds)].filter(
-              (id) =>
-                !input.rejectedIds.includes(id) &&
-                (!avoidRepeats || !input.excludeIds.includes(id)),
-            );
-      if (action === "append" && ids.length > partialIds.length)
-        partialIds = ids;
+      const { action, ids } = composition.select(output);
       // A provider can override an MCP exclusion; the executable selection cannot.
       if (
         targetCount &&
@@ -389,8 +432,8 @@ export async function djTurn(
       // External tracks come only from this turn's authoritative tool results.
       // Library-only turns still revalidate account ownership before playback.
       const tracks = externalSearch
-        ? ids.slice(0, targetCount ?? 8).map((id) => candidates.get(id)!)
-        : await musicTracks(db, ids.slice(0, targetCount ?? 8), userId);
+        ? composition.tracks(ids)
+        : await musicTracks(db, ids, userId);
       // Never announce a start when the provider supplied no executable selection.
       if (action !== "keep" && !tracks.length)
         throw new DjUnavailable(
@@ -400,7 +443,9 @@ export async function djTurn(
       return {
         reply:
           tracks.length && action !== "keep"
-            ? withSourceNote(selectionReply(action, tracks, targetCount))
+            ? withSourceNote(
+                selectionReply(action, tracks, targetCount, output.explanation),
+              )
             : emptyReply(),
         action: tracks.length ? action : "keep",
         tracks,
@@ -412,7 +457,7 @@ export async function djTurn(
   } catch (error) {
     // A provider outage while expanding cannot erase a verified partial queue.
     // Cancellation, including the deadline, always wins over that recovery.
-    if (partialIds.length && !timeout.aborted) {
+    if (composition.hasSelection && !timeout.aborted) {
       const partial = await partialSelection();
       if (partial.tracks.length) return partial;
     }

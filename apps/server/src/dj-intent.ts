@@ -45,7 +45,7 @@ export function parseDJIntent(message: string): ParsedDJIntent {
   const affirmative = clauses.filter((part) => !isNegatedOperation(part));
   // "Sans jouer" is a prohibition, not an affirmative playback request.
   const active = affirmative.map((part) => part.replace(
-    /\bsans (?:jouer|lancer|ecouter|ajouter)(?:\s+\S+){0,3}/g, ""));
+    /\bsans (?:(?:le|la|les|l|en)\s+)?(?:jouer|lancer|ecouter|ajouter|mettre)(?:\s+\S+){0,3}/g, ""));
   const now = active.some((part) => playbackVerb.test(part) && immediate.test(part));
   const later = active.some((part) => deferred.test(part) || appendVerb.test(part));
   let intent: DJIntent;

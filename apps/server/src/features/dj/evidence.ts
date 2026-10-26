@@ -82,6 +82,7 @@ function compactSearch(
   const shown: DiscoveryEvidence[] = [];
   const envelope = {
     [key]: values,
+    ...(Array.isArray(data.queries) ? {queries:shortList(data.queries,3,200)} : {}),
     sources: Array.isArray(data.sources)
       ? data.sources.slice(0, 3).map((source) => ({
           source: shortText(source?.source, 20),
@@ -239,7 +240,7 @@ export function readToolEvidence(
 }
 
 /** Explain catalog facts, never repeat a provider's unexecuted action or diagnosis. */
-export function discoveryReply(cards: DiscoveryEvidence[]) {
+export function discoveryReply(cards: DiscoveryEvidence[], explanation?: string) {
   const credits = cards
     .flatMap(({ video }) => {
       const metadata = video.musicMetadata;
@@ -256,7 +257,7 @@ export function discoveryReply(cards: DiscoveryEvidence[]) {
     .slice(0, 2)
     .join(" ")
     .slice(0, 700);
-  return `Je te propose ${cards.length === 1 ? "ce morceau" : `ces ${cards.length} morceaux`}. ${credits ? credits + " " : ""}Choisis celui que tu veux écouter.`;
+  return `Je te propose ${cards.length === 1 ? "ce morceau" : `ces ${cards.length} morceaux`}. ${credits ? credits + " " : ""}Choisis celui que tu veux écouter.${explanation?.trim() ? " " + explanation.trim() : ""}`;
 }
 
 export function noSelectionReply(failureSummary = "", currentTitle?: string) {

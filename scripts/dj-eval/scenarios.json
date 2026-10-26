@@ -176,5 +176,94 @@
         }
       }
     ]
+  },
+  {
+    "id": "journal-energy",
+    "suite": "journal-regressions",
+    "description": "Une envie d’énergie produit une sélection de musique plutôt qu’un faux vide.",
+    "scope": "library",
+    "steps": [
+      {
+        "message": "De l’énergie pour avancer",
+        "expect": {
+          "action": "replace",
+          "minTracks": 1,
+          "maxTracks": 5
+        }
+      }
+    ]
+  },
+  {
+    "id": "journal-carte-blanche",
+    "suite": "journal-regressions",
+    "description": "La carte blanche remplace les anciennes contraintes sans modifier les playlists enregistrées.",
+    "scope": "library",
+    "direction": "Des morceaux dans l’esprit de velib'bleu, de sean.",
+    "current": {
+      "id": "-EXXvrOk2mU",
+      "title": "Qui peut me stopper ?",
+      "channel": "La Fouine",
+      "artists": [
+        "La Fouine"
+      ],
+      "genres": []
+    },
+    "steps": [
+      {
+        "message": "met ce que tu veux dans ma playlist",
+        "expect": {
+          "action": "replace",
+          "minTracks": 1,
+          "maxTracks": 5
+        }
+      }
+    ]
+  },
+  {
+    "id": "journal-no-autoplay",
+    "suite": "journal-regressions",
+    "description": "Sans le lancer impose des cartes, même si le modèle propose de jouer.",
+    "scope": "library",
+    "steps": [
+      {
+        "message": "Propose un morceau de Jewel Usain sans le lancer.",
+        "expect": {
+          "action": "keep",
+          "minCards": 1,
+          "maxCards": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "journal-sean-followup",
+    "suite": "journal-regressions",
+    "description": "Cinq nouveaux titres autour de Sean, sans répétition ni interruption. La cohérence musicale reste à écouter.",
+    "scope": "all",
+    "current": {
+      "id": "SytYIsc986A",
+      "title": "sean - velib'bleu",
+      "channel": "Sean",
+      "artists": [
+        "sean"
+      ],
+      "genres": []
+    },
+    "queuedIds": [
+      "qKJGRghiF0c",
+      "-EXXvrOk2mU"
+    ],
+    "direction": "Des morceaux dans l’esprit de velib'bleu, de sean.",
+    "steps": [
+      {
+        "message": "Prépare cinq nouveaux morceaux à suivre dans le même style, sans répétition et sans interrompre la lecture.",
+        "expect": {
+          "action": "append",
+          "minTracks": 5,
+          "maxTracks": 5,
+          "preserveCurrent": true
+        }
+      }
+    ]
   }
 ]

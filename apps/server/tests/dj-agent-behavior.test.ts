@@ -573,3 +573,45 @@ it("observes actual catalog, provider and MCP rounds without changing selection 
   expect(boundaries.search).toHaveBeenCalledOnce();
   expect(boundaries.youtube).toHaveBeenCalledOnce();
 });
+
+it("concludes from accumulated candidates when the exploratory budget runs out", async () => {
+  responses.push(searchCall("énergie"), searchCall("dynamique"), searchCall("workout"), searchCall("rock"), selection([library[0].id], "replace"));
+  boundaries.search.mockResolvedValueOnce({results:library.map(video=>({video})),degraded:null}).mockResolvedValue({results:[],degraded:null});
+  const result=await run({message:"De l’énergie pour avancer",scope:"library"});
+  expect(result).toMatchObject({action:"replace",tracks:[{id:library[0].id}]});
+  const final=requests.at(-1);
+  expect(final.messages.some((m:any)=>m.role==="tool")).toBe(false);
+  expect(JSON.stringify(final.messages)).toContain(library[0].id);
+});
+it("offers known choices rather than claiming nothing exists if the final provider still requests a tool", async () => {
+  responses.push(searchCall("énergie"),searchCall("dynamique"),searchCall("workout"),searchCall("rock"),searchCall("dance"));
+  const result=await run({message:"De l’énergie pour avancer",scope:"library"});
+  expect(result.action).toBe("keep");
+  expect("discoveries" in result && result.discoveries?.length).toBeGreaterThan(0);
+  expect(result.reply).not.toMatch(/pas trouvé|aucun morceau/);
+});
+it("preserves a separate musical explanation while announcing the validated queue", async () => {
+  responses.push(searchCall(),{content:JSON.stringify({reply:"Je lance immédiatement !",explanation:"Une couleur électronique et atmosphérique pour prolonger le morceau actuel.",trackIds:[library[0].id],action:"append"})});
+  const result=await run({message:"Ajoute un morceau dans cette ambiance",scope:"library",playbackContext:{current,direction:"cumbia électronique"}});
+  expect(result.action).toBe("append");
+  expect(result.reply).toContain("J’ajoute à la suite");
+  expect(result.reply).toContain("électronique et atmosphérique");
+  expect(result.reply).not.toContain("Je lance");
+});
+
+
+it("chooses freely for carte blanche without stale failed artist requests or invented playlist filters",async()=>{
+ responses.push(searchCall("funk"),selection(library.slice(0,3).map(track=>track.id),"replace"));
+ const result=await run({message:"met ce que tu veux dans ma playlist",scope:"library",history:[{role:"user",content:"Ancienne envie : sean rap français"}],playbackContext:{current,direction:"Ancienne envie : sean rap français"}});
+ expect(result.action).toBe("replace");expect(result.tracks).toHaveLength(3);
+ expect(JSON.stringify(requests[0].messages)).not.toContain("Ancienne envie");
+ expect(boundaries.search).toHaveBeenCalledWith(db,expect.objectContaining({query:"funk",playlistId:undefined}),"alice");
+});
+
+
+it("keeps the musical explanation on exploratory cards without executing the provider's announcement", async()=>{
+ responses.push(searchCall(),{content:JSON.stringify({reply:"Je lance tout",explanation:"Ces morceaux prolongent la couleur tropicale recherchée.",trackIds:[],discoveryIds:[library[0].id],action:"keep"})});
+ const result=await run({message:"Propose un morceau sans le lancer",scope:"library"});
+ expect(result.action).toBe("keep");expect(result.tracks).toEqual([]);
+ expect(result.reply).toContain("couleur tropicale");expect(result.reply).not.toContain("Je lance");
+});

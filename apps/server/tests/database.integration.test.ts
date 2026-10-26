@@ -601,6 +601,9 @@ it.skipIf(!process.env.DJ_SIMULATION_URL)(
         source: "mcp",
         tracks: [{ id: "abcdefghijk", title: "Jazz du soir" }],
       });
+      const composed = await send("SIMULATE_COMPOSITION de l’énergie pour avancer");
+      expect(composed.status).toBe(200);
+      expect(await composed.json()).toMatchObject({action:"replace",tracks:[{id:"abcdefghijk"}],reply:expect.stringContaining("candidats déjà trouvés")});
       const confirmation = await send("SIMULATE_CONFIRMATION voilà c’est ça");
       expect(confirmation.status).toBe(200);
       expect(await confirmation.json()).toMatchObject({

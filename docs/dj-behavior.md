@@ -63,3 +63,27 @@ Pour itérer sans piloter l’interface : `npm run test:dj` exécute les scénar
 L’audit de référence porte sur `f142fbf`, app 1.6.3 (43), conservée par le tag `checkpoint/recall-1.6.3-before-dj-hardening`. Les scénarios identifiés sont ajoutés aux suites serveur et natives ; ils complètent les tests existants, qui passaient malgré ces défauts.
 
 `npm run verify:node` et `npm run verify:macos` valident les contrats, comportements et builds. Le déploiement et les essais réels restent des étapes distinctes. Une suite verte ne garantit ni une pertinence musicale parfaite ni l’absence de toute régression ; elle rend les défauts connus reproductibles et bloque leur retour.
+
+
+## Recherche et composition depuis l’audit du journal du 26 octobre
+
+Une carte blanche explicite (« mets ce que tu veux », « surprends-moi ») démarre une nouvelle direction. Les anciennes envies et anciens échecs ne sont pas réinjectés comme contraintes. Les restrictions de la demande actuelle, la source choisie et les exclusions restent applicables.
+
+Le tour utilise quatre modules aux responsabilités distinctes :
+
+| Module | Responsabilité |
+| --- | --- |
+| `dj-intent.ts` + `features/dj/context.ts` | Lire l’intention une fois, fixer la source, la référence et la taille. « Sans le lancer » retire l’opération interdite avant de chercher une action affirmative. |
+| `features/dj/retrieval.ts` + `music-mcp.ts` | Transformer les indices structurés en recherches indépendantes, conserver compte et exclusions, entrelacer les résultats et transmettre les erreurs partielles. |
+| `features/dj/composition.ts` | Accumuler les candidats du tour, valider le choix, conserver la meilleure sélection partielle et construire le contexte final. Aucun réseau ni SQL. |
+| `features/dj/turn.ts` + `dj-selection.ts` | Orchestrer les appels, relire l’appartenance avant lecture et annoncer l’action réellement renvoyée. L’explication musicale du modèle n’est plus écrasée par cette annonce. |
+
+`music_search` reste compatible avec `query` seul. Deux champs optionnels rendent les indices moins ambigus : `artist` porte une identité connue, distincte des mots de style dans `query` ; `alternatives` contient au plus deux autres indices courts. Exemple : `{query:"sean rap français", artist:"sean"}` effectue un lookup sur `sean`, puis classe les résultats selon la requête complète. Les autres indices sont exécutés indépendamment, en parallèle, et non comme une liste de mots tous obligatoires. La recherche reste limitée aux mêmes sources et au même compte. `mode=image` garde sa requête visuelle unique ; ces indices ne sont pas des filtres visuels. Les formats manifestement non musicaux sont écartés des suggestions d’ambiance, sans exclure un morceau parce que ses métadonnées sont inconnues ; une demande explicite de tutoriel reste possible.
+
+Les résultats de toutes les recherches du tour restent dans la composition. Le budget reste de cinq appels au modèle et huit appels d’outils au maximum. Le dernier appel est réservé à la sélection : il reçoit un échange neuf avec la demande, la référence actuelle, les candidats accumulés, les sources et la sélection partielle éventuelle, sans ancienne conversation d’outils susceptible d’inciter à chercher encore. Un événement `compose_final` permet de retrouver cette phase dans le journal.
+
+Si le modèle ne conclut toujours pas, une sélection déjà validée est conservée avec son opération initiale. Sans sélection validée, les candidats restent des cartes à choisir : ils ne deviennent pas arbitrairement une file de lecture. Si aucun candidat n’existe, le DJ indique la limite observée. Une annulation reste prioritaire sur toute récupération.
+
+Le JSON interne du modèle accepte `explanation`, facultatif : une phrase sur le rapprochement musical, sans promesse de transport ni de quantité. L’annonce déterministe précise d’abord les titres et l’action validés, puis cette explication est conservée. `reply` reste utilisé pour les informations et conversations ordinaires. Le contrat HTTP final et les clients existants restent compatibles ; aucun nouveau build Mac n’est nécessaire pour ce changement serveur.
+
+Validation : tests de la négation avec pronoms, clôture après recherches répétées, maintien de choix immédiat/ajout, taille/ordre/exclusions, cartes au lieu d’un faux vide, artiste séparé du genre, résultats parallèles partiels et tutoriels. La simulation Postman fait traverser un vrai échange HTTP → modèle → MCP → PostgreSQL → sélection finale. Elle vérifie l’orchestration, pas le goût musical d’un vrai modèle ; la cohérence d’une suite reste à juger sur les réponses réelles et à l’écoute.

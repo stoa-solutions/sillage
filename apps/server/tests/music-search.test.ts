@@ -218,3 +218,31 @@ it("accepts the owned playlist ID returned by overview in the same agent session
     expect(mocks.youtube).not.toHaveBeenCalled();
   } finally { await mcp.close(); }
 });
+
+it("uses an explicit artist identity without AND-ing descriptive style words into the lookup", async()=>{
+  await query("all",{query:"sean rap français",artist:"sean"});
+  expect(mocks.search).toHaveBeenCalledWith(db,expect.objectContaining({query:"sean"}),"alice");
+  expect(mocks.youtube).toHaveBeenCalledWith("alice","sean");
+});
+it("explores independent clues in both sources with the same account and exclusions", async()=>{
+  const result=await query("all",{query:"cumbia",alternatives:["champeta","cumbia"]});
+  expect(mocks.search.mock.calls.map(call=>call[1].query)).toEqual(["cumbia","champeta"]);
+  expect(mocks.youtube.mock.calls.map(call=>call[1])).toEqual(["cumbia","champeta"]);
+  expect(result.results).toHaveLength(2);
+  expect(result.queries).toEqual(["cumbia","champeta"]);
+});
+
+it("keeps successful alternative searches while exposing the failed YouTube clue", async()=>{
+  mocks.youtube.mockRejectedValueOnce(new DiscoveryError("private error",429,"daily_quota"));
+  const result=await query("all",{query:"cumbia",alternatives:["champeta"]});
+  expect(result.results.map((item:any)=>item.video.id).sort()).toEqual([libraryTrack.id,externalTrack.id].sort());
+  expect(result.sources).toContainEqual({source:"youtube",status:"error",reason:"daily_quota"});
+  expect(JSON.stringify(result)).not.toContain("private error");
+});
+it("removes obvious tutorials from mood results without excluding unknown recordings", async()=>{
+  const tutorial={...libraryTrack,id:"tutorial001",title:"Learn Three.js by Building 5 Projects",channel:"freeCodeCamp.org"};
+  db.query.mockResolvedValueOnce({rows:[tutorial,libraryTrack]});
+  mocks.search.mockResolvedValueOnce({results:[{video:tutorial},{video:libraryTrack}],degraded:null});
+  const result=await query("library",{query:"énergie"});
+  expect(result.results.map((item:any)=>item.video.id)).toEqual([libraryTrack.id]);
+});

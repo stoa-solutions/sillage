@@ -57,3 +57,23 @@ it("retains recent proposal and explicit rejections even for a relative follow-u
   expect(evidence?.content).toContain('"rejectedIds":["abcdefghijk"]');
   expect(evidence?.content).toContain('"title":"Verified title"');
 });
+
+it.each(["Propose un morceau de Jewel Usain sans le lancer", "Cherche trois titres sans les jouer", "Montre-moi une chanson sans la mettre en lecture"])("never treats a pronominal prohibition as playback: %s", (message) => {
+  expect(planTurn(request(message)).intent).toBe("browse");
+});
+
+it("treats carte blanche as a new direction rather than recycling old failed musical constraints",()=>{
+  const input=request("met ce que tu veux dans ma playlist");
+  const plan=planTurn(input);
+  expect(plan).toMatchObject({openChoice:true,intent:"replace"});
+  const messages=initialMessages(input,plan);
+  expect(messages).not.toContainEqual(input.history[0]);
+  expect(JSON.stringify(messages)).not.toContain('"direction":"Du jazz"');
+  expect(messages[0].content).toContain("CARTE BLANCHE");
+});
+
+
+it("keeps explicit genre exclusions inside carte blanche rather than restoring the old direction",()=>{
+ expect(planTurn(request("Mets ce que tu veux mais pas de rap")).openChoice).toBe(true);
+ expect(planTurn(request("Je ne te donne pas carte blanche, reste dans le jazz")).openChoice).toBe(false);
+});

@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Intelligence du DJ : recherche exploratoire et composition finale séparées, conservation des candidats et des sélections partielles, choix proposés si le modèle ne conclut pas. Recherche MCP avec artiste distinct des styles et jusqu’à deux formulations alternatives en parallèle, résultats entrelacés, tutoriels manifestes écartés des ambiances et erreurs partielles conservées. « Sans le lancer » reste une proposition ; taille demandée respectée et explication musicale séparée de l’annonce de la file. Aucun changement de design ni de lecteur. Régressions issues du journal et simulation HTTP Postman.
+
 - Sillage 1.7.9 (70) : icônes sobres dans la Bibliothèque et Découvrir (tuiles neutres, symboles fins, simples glyphes pour les recherches et envies), paroles synchronisées sans vide au-dessus de la première ligne, « Reprendre le suivi » lisible, durées longues sur une ligne.
 
 - Sillage 1.7.9 (69) : Studio adaptatif jusqu’à 760 de large (panneau DJ de 300 à 360, marges réduites, commandes en icônes au besoin) ; le titre et le chat ne sortent plus de la fenêtre.
