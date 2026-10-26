@@ -226,6 +226,8 @@ struct NowPlayingBar: View {
       HStack(spacing: 8) {
         Text(clock(player.elapsed)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
           .frame(width: 38, alignment: .trailing)
+          // The slider already speaks the position.
+          .accessibilityHidden(true)
         SillageSlider(
           value: Binding(get: { player.elapsed }, set: { player.seek($0) }),
           range: 0...max(1, player.duration), step: 5

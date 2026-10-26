@@ -78,7 +78,10 @@ struct SongRow: View {
     .help(help(name))
     .accessibilityElement(children: .contain)
     .accessibilityLabel(name.artist.map { "\(name.title), \($0)" } ?? name.title)
-    .accessibilityValue(playing ? "En lecture" : "")
+    .accessibilityValue(
+      [playing ? "En lecture" : nil, track.durationSeconds.map(spokenDuration)]
+        .compactMap { $0 }.joined(separator: ", ")
+    )
     .accessibilityAddTraits(playing ? .isSelected : [])
     .accessibilityAction(named: "Lire", onPlay)
     .accessibilityAction(named: "Lire ensuite", onEnqueue)
@@ -206,4 +209,15 @@ func shortDescription(_ description: String) -> String? {
     }.filter { !$0.isEmpty }
   let text = lines.prefix(3).joined(separator: " ")
   return text.isEmpty ? nil : String(text.prefix(280))
+}
+
+/// « 3 minutes 15 » rather than « 3:15 », which speech reads as a time of day.
+func spokenDuration(_ seconds: Double) -> String {
+  let total = Int(seconds.isFinite ? max(seconds, 0) : 0)
+  let (hours, minutes, rest) = (total / 3600, total / 60 % 60, total % 60)
+  var parts: [String] = []
+  if hours > 0 { parts.append("\(hours) h") }
+  if minutes > 0 { parts.append("\(minutes) minute\(minutes > 1 ? "s" : "")") }
+  if rest > 0 || parts.isEmpty { parts.append("\(rest)") }
+  return parts.joined(separator: " ")
 }

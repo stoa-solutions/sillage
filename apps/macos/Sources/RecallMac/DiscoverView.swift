@@ -432,7 +432,10 @@ private struct DiscoveryResultRow: View {
     .accessibilityElement(children: .contain)
     .accessibilityLabel(name.artist.map { "\(name.title), \($0)" } ?? name.title)
     .accessibilityValue(
-      [selected ? "Sélectionné" : nil, playing ? "En lecture" : nil].compactMap { $0 }
+      [
+        selected ? "Sélectionné" : nil, playing ? "En lecture" : nil,
+        row.track.durationSeconds.map(spokenDuration),
+      ].compactMap { $0 }
         .joined(separator: ", ")
     )
     .accessibilityAddTraits(selected ? .isSelected : [])
