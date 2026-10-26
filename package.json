@@ -29,10 +29,11 @@
     "test:macos": "swift build --package-path apps/macos && swift run --skip-build --package-path apps/macos RecallCoreTests && swift run --skip-build --package-path apps/macos RecallAudioTests && swift run --skip-build --package-path apps/macos RecallServerTests",
     "verify": "npm run verify:node && npm run verify:macos",
     "verify:node": "npm run check && npm test && npm run build",
-    "verify:macos": "npm run test:macos",
+    "verify:macos": "npm run test:packaging && npm run test:macos",
     "board": "sh scripts/board.sh",
     "check:architecture": "node --test scripts/check-architecture.test.mjs && node scripts/check-architecture.mjs",
     "test:dj": "node --test scripts/dj-eval/*.test.mjs && npm run test:dj -w @playlist-recall/server",
-    "eval:dj": "node scripts/dj-eval/run.mjs"
+    "eval:dj": "node scripts/dj-eval/run.mjs",
+    "test:packaging": "python3 -m unittest discover -s scripts -p 'test_macos_release.py'"
   }
 }

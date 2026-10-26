@@ -118,6 +118,9 @@ struct OnboardingView: View {
           .font(.callout).foregroundStyle(Stoa.chalk.opacity(0.8))
           .help("La clé et les appels au modèle sont gérés par le fournisseur choisi.")
       }
+      Text("Les appels utilisent ton quota et peuvent être facturés par ton fournisseur.")
+        .font(.caption).foregroundStyle(Stoa.stone).frame(maxWidth: 340, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
       if !session.accountEmail.isEmpty {
         Text("Connecté : \(session.accountEmail)").font(.caption).foregroundStyle(Stoa.stone)
       }
