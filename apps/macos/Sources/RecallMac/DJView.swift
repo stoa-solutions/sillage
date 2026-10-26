@@ -122,12 +122,12 @@ struct DJView: View {
               .contentShape(Rectangle())
           }.buttonStyle(.plain).help("Morceau suivant").accessibilityLabel("Morceau suivant")
             .disabled(model.current == nil)
-          Slider(
+          SillageSlider(
             value: Binding(get: { player.elapsed }, set: { model.seek($0) }),
-            in: 0...max(1, player.duration)
-          ).controlSize(.mini).tint(Color.sillage(.primaryFill))
-            .disabled(player.duration <= 0).accessibilityLabel("Position du morceau")
-            .accessibilityValue(clock(player.elapsed))
+            range: 0...max(1, player.duration), step: 5
+          )
+          .disabled(player.duration <= 0).accessibilityLabel("Position du morceau")
+          .accessibilityValue(clock(player.elapsed))
           Text(clock(player.duration > 0 ? player.elapsed : 0))
             .font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
             .frame(width: 34, alignment: .trailing)
@@ -232,9 +232,9 @@ struct DJView: View {
     if player.duration > 0 {
       HStack(spacing: 10) {
         Text(clock(player.elapsed))
-        Slider(
+        SillageSlider(
           value: Binding(get: { player.elapsed }, set: { model.seek($0) }),
-          in: 0...max(1, player.duration)
+          range: 0...max(1, player.duration), step: 5
         ).accessibilityLabel("Position du morceau")
           .accessibilityValue("\(clock(player.elapsed)) sur \(clock(player.duration))")
         Text(clock(player.duration))

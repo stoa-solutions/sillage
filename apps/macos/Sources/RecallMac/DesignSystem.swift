@@ -226,12 +226,12 @@ struct NowPlayingBar: View {
       HStack(spacing: 8) {
         Text(clock(player.elapsed)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
           .frame(width: 38, alignment: .trailing)
-        Slider(
+        SillageSlider(
           value: Binding(get: { player.elapsed }, set: { player.seek($0) }),
-          in: 0...max(1, player.duration)
-        ).controlSize(.small).tint(Color.sillage(.primaryFill))
-          .disabled(player.duration <= 0).accessibilityLabel("Position du morceau")
-          .accessibilityValue(clock(player.elapsed))
+          range: 0...max(1, player.duration), step: 5
+        )
+        .disabled(player.duration <= 0).accessibilityLabel("Position du morceau")
+        .accessibilityValue(clock(player.elapsed))
       }.frame(minWidth: 140, maxWidth: 260)
       Spacer(minLength: 8)
       VolumeControl(player: player)
@@ -312,8 +312,9 @@ struct VolumeControl: View {
       .accessibilityLabel(player.volume == 0 ? "Remettre le son" : "Couper le son")
   }
   private var slider: some View {
-    Slider(value: $player.volume, in: 0...1).controlSize(.small)
-      .tint(Color.sillage(.primaryFill)).accessibilityLabel("Volume de la musique")
+    SillageSlider(value: $player.volume)
+      .accessibilityLabel("Volume de la musique")
+      .accessibilityValue("\(Int((player.volume * 100).rounded())) %")
   }
 }
 

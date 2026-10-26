@@ -180,3 +180,62 @@ struct SillageChipStyle: ButtonStyle {
     return result
   }
 }
+
+/// The Sillage slider (planche): an orange filled track and a white knob, the focus ring in
+/// the palette's focus colour instead of AppKit's blue. Arrow keys adjust it; VoiceOver sees a
+/// native slider through its accessibility representation.
+struct SillageSlider: View {
+  @Binding var value: Double
+  var range: ClosedRange<Double> = 0...1
+  /// Arrow-key step; seeking defaults to five seconds.
+  var step: Double = 0.05
+  var height: CGFloat = 16
+  @FocusState private var focused: Bool
+  @State private var dragging = false
+  @Environment(\.isEnabled) private var isEnabled
+  var body: some View {
+    GeometryReader { geometry in
+      let span = max(range.upperBound - range.lowerBound, .ulpOfOne)
+      let fraction = min(max((value - range.lowerBound) / span, 0), 1)
+      let knob = height * 0.82
+      let x = knob / 2 + (geometry.size.width - knob) * fraction
+      ZStack(alignment: .leading) {
+        Capsule().fill(Color.primary.opacity(0.14)).frame(height: 4)
+        Capsule().fill(Color.sillage(.primaryFill).opacity(isEnabled ? 1 : 0.4))
+          .frame(width: x, height: 4)
+        Circle().fill(Color.white)
+          .shadow(color: .black.opacity(0.3), radius: 1.5, y: 0.5)
+          .frame(width: knob, height: knob)
+          .scaleEffect(dragging ? 1.12 : 1)
+          .offset(x: x - knob / 2)
+          .opacity(isEnabled ? 1 : 0)
+      }
+      .frame(maxHeight: .infinity)
+      .contentShape(Rectangle())
+      .gesture(
+        DragGesture(minimumDistance: 0)
+          .onChanged { gesture in
+            dragging = true
+            let position = min(
+              max((gesture.location.x - knob / 2) / max(geometry.size.width - knob, 1), 0), 1)
+            value = range.lowerBound + position * span
+          }
+          .onEnded { _ in dragging = false })
+    }
+    .frame(height: height)
+    .padding(.horizontal, 3).padding(.vertical, 2)
+    .overlay {
+      RoundedRectangle(cornerRadius: 6, style: .continuous)
+        .strokeBorder(Color.sillage(.focus), lineWidth: 2).opacity(focused ? 1 : 0)
+    }
+    .focusable(isEnabled).focused($focused).focusEffectDisabled()
+    .onMoveCommand { direction in
+      switch direction {
+      case .left, .down: value = max(range.lowerBound, value - step)
+      case .right, .up: value = min(range.upperBound, value + step)
+      default: break
+      }
+    }
+    .accessibilityRepresentation { Slider(value: $value, in: range) }
+  }
+}
