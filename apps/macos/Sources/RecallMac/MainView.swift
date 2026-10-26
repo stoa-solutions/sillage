@@ -62,7 +62,7 @@ struct MainView: View {
       }.withoutSystemBackground()
       ToolbarItem(placement: .primaryAction) {
         HStack(spacing: 10) {
-          DisplayPicker(player: dj.player, iconOnly: false)
+          DisplayPicker(player: dj.player)
           SettingsLink { Image(systemName: "gearshape") }
             .help("Réglages").accessibilityLabel("Réglages")
         }
@@ -194,13 +194,11 @@ private struct Banner: View {
 /// The window follows through WindowSizer; this toggle only changes the presentation.
 private struct DisplayPicker: View {
   @ObservedObject var player: Player
-  let iconOnly: Bool
   var body: some View {
     Toggle(
       isOn: Binding(get: { player.studio }, set: { player.setStudio($0) })
     ) {
-      Label("Studio", systemImage: "play.rectangle.on.rectangle")
-        .labelStyle(iconOnly ? AnyLabelStyle(.iconOnly) : AnyLabelStyle(.titleAndIcon))
+      Label("Studio", systemImage: "play.rectangle.on.rectangle").labelStyle(.titleAndIcon)
     }.toggleStyle(ToolbarToggleStyle())
       .accessibilityLabel("Studio")
       .help(
@@ -256,6 +254,7 @@ private struct WindowSizer: NSViewRepresentable {
     /// The pocket's home top edge while its panel is open.
     private var anchorTop: Double?
     private weak var window: NSWindow?
+    private var resizing = false
     nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
 
     deinit { observers.forEach(NotificationCenter.default.removeObserver) }
@@ -285,11 +284,13 @@ private struct WindowSizer: NSViewRepresentable {
         target = RecallWindowLayout.readingFrame(
           from: current, rememberedSize: readingSize, visible: visible)
       case (_, .reading):
+        anchorTop = nil
         target = RecallWindowLayout.readingFrame(
           from: current, rememberedSize: readingSize, visible: visible)
       case (.compact(_, let wasOpen)?, .compact(let rest, let open)) where wasOpen == open:
-        // Only the pocket's content changed: follow it if the window is still ours.
-        guard !open, let appliedFrame, window.frame == appliedFrame else { return }
+        // Only the pocket's content changed: follow it unless the person resized the window
+        // (appliedFrame is cleared then). Moving the window does not count.
+        guard !open, let appliedFrame, window.frame.size == appliedFrame.size else { return }
         target = compact(rest: rest, open: open, from: current, in: window, visible: visible)
       case (_, .compact(let rest, let open)):
         if open && anchorTop == nil { anchorTop = current.maxY }
@@ -298,7 +299,12 @@ private struct WindowSizer: NSViewRepresentable {
       }
       let frame = NSRect(x: target.x, y: target.y, width: target.width, height: target.height)
       appliedFrame = frame
-      if frame != window.frame { window.setFrame(frame, display: true, animate: animate) }
+      if frame != window.frame {
+        // Our own move must not reset the pocket's home.
+        resizing = true
+        window.setFrame(frame, display: true, animate: animate)
+        resizing = false
+      }
     }
 
     private func compact(
@@ -330,9 +336,22 @@ private struct WindowSizer: NSViewRepresentable {
             case .compact:
               self.compactWidth = Double(window.frame.width)
               self.anchorTop = nil
+              // A height the person chose stays until the panel opens or folds.
+              self.appliedFrame = nil
             case nil: break
             }
-            self.appliedFrame = window.frame
+            if case .reading = self.applied { self.appliedFrame = window.frame }
+            // Whatever was asked during the drag is applied now.
+            self.apply(animate: false)
+          }
+        })
+      observers.append(
+        center.addObserver(forName: NSWindow.didMoveNotification, object: window, queue: .main) {
+          [weak self] _ in
+          // A window moved by hand has a new home: folding returns under its new top edge.
+          MainActor.assumeIsolated {
+            guard let self, !self.resizing else { return }
+            self.anchorTop = nil
           }
         })
       observers.append(

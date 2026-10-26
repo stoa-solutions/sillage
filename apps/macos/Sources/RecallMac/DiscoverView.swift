@@ -437,15 +437,16 @@ private struct DiscoveryResultRow: View {
   }
 }
 
-/// VoiceOver can save a YouTube result from its row, whatever the window width.
+/// VoiceOver can save a YouTube result from its row, whatever the window width. The action
+/// list changes, never the row's identity, so focus stays on the row just saved.
 private struct SaveAction: ViewModifier {
   let item: DiscoveryItem?
   @EnvironmentObject var discovery: DiscoveryModel
   func body(content: Content) -> some View {
-    if let item, !(item.inLibrary || discovery.savedIDs.contains(item.id)) {
-      content.accessibilityAction(named: "Ajouter à Mes découvertes") { discovery.add(item) }
-    } else {
-      content
+    content.accessibilityActions {
+      if let item, !(item.inLibrary || discovery.savedIDs.contains(item.id)) {
+        Button("Ajouter à Mes découvertes") { discovery.add(item) }
+      }
     }
   }
 }

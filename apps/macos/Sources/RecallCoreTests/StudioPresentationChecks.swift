@@ -3,7 +3,7 @@ import RecallKit
 
 func studioPresentationChecks() throws {
   try expect(
-    RecallWindowLayout.minimumWidth(studio: false, reading: false) == 440,
+    RecallWindowLayout.minimumWidth(studio: false, reading: false) == 500,
     "Compact DJ cannot fit its supported narrow window")
   try expect(
     RecallWindowLayout.minimumWidth(studio: true, reading: false) == 760,

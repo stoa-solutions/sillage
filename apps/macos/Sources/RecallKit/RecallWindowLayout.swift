@@ -20,7 +20,7 @@ public struct LayoutRect: Equatable, Sendable, CustomStringConvertible {
 /// Pure geometry, shared by the scene and the automated layout checks; AppKit only applies it.
 public enum RecallWindowLayout {
   public static let compactRestWidth = 520.0
-  public static let compactMinimumWidth = 440.0
+  public static let compactMinimumWidth = 500.0
   public static let compactMaximumWidth = 620.0
   public static let compactPanelCeiling = 560.0
   public static let readingPreferredWidth = 1080.0

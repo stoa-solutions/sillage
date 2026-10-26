@@ -1,4 +1,5 @@
 import AppKit
+import CoreImage
 import RecallKit
 import SwiftUI
 
@@ -19,8 +20,8 @@ extension Color {
   /// Hover and pressed tints that read on paper and on graphite alike.
   static let sillageHover = Color.primary.opacity(0.06)
   static let sillagePressed = Color.primary.opacity(0.1)
-  /// Selected row on glass: a lighter pane that keeps the light behind it.
-  static let sillageSelectionGlass = Color.primary.opacity(0.1)
+  /// Selected row on glass: the palette's selection (text contrast checked), nearly opaque.
+  static let sillageSelectionGlass = Color.sillage(.selection).opacity(0.92)
   /// The selected capsule of a neutral control: white on paper, chalk on graphite, ink text.
   private static let chalk: NSColor = {
     let (red, green, blue) = SillagePalette.components(SillagePalette.chalk)
@@ -50,7 +51,7 @@ enum SillageLayer {
   func veil(dark: Bool) -> Double {
     switch (self, dark) {
     case (.chrome, true), (.sidebar, true): 0.74
-    case (.reading, true): 0.83
+    case (.reading, true): 0.86
     case (.chrome, false), (.sidebar, false): 0.76
     case (.reading, false): 0.88
     }
@@ -110,15 +111,10 @@ struct SillageBackdrop: View {
       ZStack {
         Color.sillage(.canvas)
         if !sillageOpaque(reduceTransparency) {
-          if let image = appearance.image {
-            Image(nsImage: image).resizable().scaledToFill()
+          if let image = appearance.image, let light = SillageLight.prepared(image, dark: dark) {
+            // Blurred and warmed once per image, so resizing only rescales a bitmap.
+            Image(nsImage: light).resizable().scaledToFill()
               .frame(width: geometry.size.width, height: geometry.size.height).clipped()
-              .blur(radius: 48, opaque: true).saturation(1.12)
-              // Warm the white walls of the photo: the whole pane takes the Stoa light.
-              .colorMultiply(
-                dark
-                  ? Color(red: 1, green: 0.72, blue: 0.58) : Color(red: 1, green: 0.9, blue: 0.84)
-              )
               .opacity(dark ? 0.85 : 1)
           }
           RadialGradient(
@@ -151,5 +147,36 @@ struct SillageChipStyle: ButtonStyle {
         .shadow(color: .black.opacity(selected ? 0.12 : 0), radius: 2, y: 1)
       }
       .contentShape(Capsule())
+  }
+}
+
+/// The Stoa light, prepared once: the chosen image reduced, diffused and warmed (its white
+/// walls take the orange), then cached per image and appearance.
+@MainActor enum SillageLight {
+  private static var cache: [String: NSImage] = [:]
+  static func prepared(_ image: NSImage, dark: Bool) -> NSImage? {
+    let key = "\(ObjectIdentifier(image).hashValue)-\(dark)"
+    if let cached = cache[key] { return cached }
+    guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+    let scale = min(1, 640 / Double(cg.width))
+    var output = CIImage(cgImage: cg).transformed(by: .init(scaleX: scale, y: scale))
+    let extent = output.extent
+    output = output.clampedToExtent().applyingGaussianBlur(sigma: 18).cropped(to: extent)
+    let tint: (red: Double, green: Double, blue: Double) = dark ? (1, 0.72, 0.58) : (1, 0.9, 0.84)
+    output = output.applyingFilter(
+      "CIColorMatrix",
+      parameters: [
+        "inputRVector": CIVector(x: tint.red, y: 0, z: 0, w: 0),
+        "inputGVector": CIVector(x: 0, y: tint.green, z: 0, w: 0),
+        "inputBVector": CIVector(x: 0, y: 0, z: tint.blue, w: 0),
+      ]
+    ).applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: 1.12])
+    guard let rendered = CIContext().createCGImage(output, from: extent) else { return nil }
+    let result = NSImage(
+      cgImage: rendered, size: NSSize(width: extent.width, height: extent.height))
+    // One entry per appearance: a newly chosen image replaces the previous one.
+    cache = cache.filter { !$0.key.hasSuffix("-\(dark)") }
+    cache[key] = result
+    return result
   }
 }
