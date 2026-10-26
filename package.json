@@ -14,6 +14,7 @@
     "docs:generate": "tsx apps/server/src/api-docs/generate.ts",
     "docs:check": "tsx apps/server/src/api-docs/generate.ts --check",
     "docs:serve": "tsx apps/server/src/api-docs/server.ts",
+    "docs:connect": "tsx apps/server/src/api-docs/connect.ts",
     "dev": "npm run dev -w @playlist-recall/extension",
     "build": "npm run build -w @playlist-recall/extension",
     "check": "npm run docs:check && npm run check:architecture && npm run check --workspaces --if-present",

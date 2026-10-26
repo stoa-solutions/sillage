@@ -24,3 +24,11 @@ for (const [path, value] of Object.entries(artifacts())) {
   }
 }
 if (stale) process.exitCode = 1;
+if (!check) {
+  const manifest = resolve(root, ".postman/resources.yaml");
+  try {
+    await writeFile(manifest, await readFile(resolve(root, ".postman/resources.example.yaml")), { flag: "wx" });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
+}

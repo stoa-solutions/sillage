@@ -114,16 +114,14 @@ it("rejects external host and cross-origin requests before forwarding anything",
 });
 
 it("forwards only documented paths to the fixed API, with an explicit Bearer and no browser cookies", async () => {
-  const forward = vi
-    .fn<typeof fetch>()
-    .mockResolvedValue(
-      new Response('{"id":"account-test"}', {
-        headers: {
-          "Content-Type": "application/json",
-          "Set-Cookie": "not-relayed=1",
-        },
-      }),
-    );
+  const forward = vi.fn<typeof fetch>().mockResolvedValue(
+    new Response('{"id":"account-test"}', {
+      headers: {
+        "Content-Type": "application/json",
+        "Set-Cookie": "not-relayed=1",
+      },
+    }),
+  );
   const docs = createDocsApp("https://api.example.test", forward);
   const response = await docs.request(`${local}/proxy/v1/me`, {
     headers: {
@@ -162,15 +160,107 @@ it("preserves upstream error details but does not follow redirects or expose net
     )
     .mockRejectedValueOnce(new Error("secret-network-configuration"));
   const docs = createDocsApp(undefined, forward);
-  const limited = await docs.request(`${local}/proxy/v1/me`);
+  const authorized = { headers: { Authorization: "Bearer fixture-token" } };
+  const limited = await docs.request(`${local}/proxy/v1/me`, authorized);
   expect(limited.status).toBe(429);
   expect(limited.headers.get("retry-after")).toBe("60");
   expect(await limited.json()).toEqual({
     error: "Quota fournisseur",
     reason: "quota",
   });
-  expect((await docs.request(`${local}/proxy/v1/me`)).status).toBe(502);
-  const unavailable = await docs.request(`${local}/proxy/v1/me`);
+  expect((await docs.request(`${local}/proxy/v1/me`, authorized)).status).toBe(
+    502,
+  );
+  const unavailable = await docs.request(`${local}/proxy/v1/me`, authorized);
   expect(unavailable.status).toBe(502);
   expect(await unavailable.text()).not.toContain("secret-network");
+});
+
+it("uses the private developer session automatically without sending it to the browser or exports", async () => {
+  const access = {
+    id: "00000000-0000-4000-8000-000000000002",
+    token: "sillage_dev_" + "a".repeat(43),
+    email: "dev@example.test",
+    url: "https://api.example.test",
+    provisioned: true,
+  };
+  const forward = vi
+    .fn<typeof fetch>()
+    .mockImplementation(
+      async () =>
+        new Response('{"id":"account-test"}', {
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+  const docs = createDocsApp(access.url, forward, {
+    read: async () => access,
+    clear: vi.fn(),
+  });
+  const status = await (await docs.request(`${local}/developer/status`)).text();
+  expect(status).toContain("dev@example.test");
+  expect(status).not.toContain(access.token);
+  expect((await docs.request(`${local}/proxy/v1/me`)).status).toBe(200);
+  expect(
+    new Headers(forward.mock.calls[0][1]!.headers).get("authorization"),
+  ).toBe(`Bearer ${access.token}`);
+  for (const path of [
+    "/",
+    "/config.js",
+    "/environment.json",
+    "/postman.json",
+    "/openapi.json",
+  ])
+    expect(await (await docs.request(local + path)).text()).not.toContain(
+      access.token,
+    );
+});
+
+it("does not use the developer credential for public routes and fails closed when absent", async () => {
+  const read = vi.fn(async () => null);
+  const forward = vi
+    .fn<typeof fetch>()
+    .mockResolvedValue(new Response('{"ok":true}'));
+  const docs = createDocsApp(undefined, forward, { read, clear: vi.fn() });
+  expect((await docs.request(`${local}/proxy/health`)).status).toBe(200);
+  expect(read).not.toHaveBeenCalled();
+  expect((await docs.request(`${local}/proxy/v1/me`)).status).toBe(401);
+  expect(forward).toHaveBeenCalledTimes(1);
+});
+
+it("revokes only the developer session and keeps the file if the server cannot confirm", async () => {
+  const access = {
+    id: "00000000-0000-4000-8000-000000000002",
+    token: "sillage_dev_" + "a".repeat(43),
+    email: "dev@example.test",
+    url: "https://api.example.test",
+    provisioned: true,
+  };
+  const clear = vi.fn(async () => {});
+  const forward = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(
+      new Response('{"error":"unavailable"}', { status: 503 }),
+    )
+    .mockResolvedValueOnce(new Response('{"saved":true}'));
+  const docs = createDocsApp(access.url, forward, {
+    read: async () => access,
+    clear,
+  });
+  const options = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  };
+  expect(
+    (await docs.request(`${local}/developer/revoke`, options)).status,
+  ).toBe(502);
+  expect(clear).not.toHaveBeenCalled();
+  expect(
+    (await docs.request(`${local}/developer/revoke`, options)).status,
+  ).toBe(200);
+  expect(clear).toHaveBeenCalledOnce();
+  expect(String(forward.mock.calls[0][0])).toBe(access.url + "/v1/logout");
+  expect(
+    new Headers(forward.mock.calls[0][1]!.headers).get("authorization"),
+  ).toBe(`Bearer ${access.token}`);
 });

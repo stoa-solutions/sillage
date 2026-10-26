@@ -25,6 +25,8 @@ La recherche commence après **450 ms sans frappe**, à partir de deux caractèr
 
 Le serveur utilise SearXNG privé pour trouver les vidéos lorsqu’il est configuré, sinon la recherche officielle YouTube. Il vérifie ensuite les vidéos via YouTube. Cela réduit l’usage de `search.list`, mais ne supprime pas tous les appels ni quotas Google. Les recherches publiques sont mises en cache cinq minutes ; l’appartenance à ta bibliothèque est recalculée pour ton compte, y compris lorsqu’un autre utilisateur a fait la même recherche.
 
+La pagination externe dépend de la source : YouTube fournit un curseur, tandis que l’adaptateur SearXNG actuel retourne un premier lot de 50 vidéos au maximum, sans curseur de continuation. Dans ce cas, il faut affiner la recherche ; l’interface ne doit pas afficher une fausse page suivante.
+
 ## Ce que font les cartes
 
 - **Écouter** lance le titre selon le contrat du lecteur ; ce n’est pas un enregistrement dans la bibliothèque.

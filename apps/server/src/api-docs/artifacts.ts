@@ -127,7 +127,7 @@ export function postmanCollection() {
       bearer: [{ key: "token", value: "{{api_token}}", type: "string" }],
     },
     variable: [
-      { key: "base_url", value: "http://127.0.0.1:3001", type: "string" },
+      { key: "base_url", value: "http://127.0.0.1:3030/proxy", type: "string" },
       ...[
         "api_token",
         "video_id",

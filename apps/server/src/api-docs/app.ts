@@ -5,6 +5,12 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { openapi, type Method } from "./openapi.ts";
 import { postmanCollection, postmanEnvironment } from "./artifacts.ts";
+import type { DeveloperConnection } from "./developer-access.ts";
+
+interface DeveloperAccess {
+  read(): Promise<DeveloperConnection | null>;
+  clear(): Promise<void>;
+}
 
 const require = createRequire(import.meta.url);
 const assets = require("swagger-ui-dist").getAbsoluteFSPath() as string;
@@ -18,6 +24,7 @@ const assetTypes: Record<string, string> = {
 export function createDocsApp(
   target = "https://recall.stoa.solutions",
   request: typeof fetch = fetch,
+  developer?: DeveloperAccess,
 ) {
   const upstream = new URL(target);
   if (
@@ -61,12 +68,12 @@ export function createDocsApp(
   );
   app.get("/", (c) =>
     c.html(
-      `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sillage — API développeur</title><link rel="stylesheet" href="/assets/swagger-ui.css"><link rel="stylesheet" href="/docs.css"></head><body><header><strong>Sillage · API développeur</strong><span>Local uniquement · aucun secret mémorisé</span><nav><a href="/downloads/openapi.json" download="sillage.openapi.json">OpenAPI JSON</a><a href="/postman.json" download="Sillage.postman_collection.json">Collection Postman</a><a href="/environment.json" download="Serveur.postman_environment.json">Environnement</a></nav></header><p class="guide">Choisis une route pour voir son contrat. <b>Authorize</b> attend un jeton de session Sillage, pas la clé Gemini. Les essais ciblent <code id="target"></code>. Les écritures et les appels fournisseur ont leurs effets réels. La connexion Google se termine dans le navigateur et l’app.</p><div id="swagger-ui"></div><script src="/assets/swagger-ui-bundle.js"></script><script src="/assets/swagger-ui-standalone-preset.js"></script><script src="/config.js"></script></body></html>`,
+      `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sillage — API développeur</title><link rel="stylesheet" href="/assets/swagger-ui.css"><link rel="stylesheet" href="/docs.css"></head><body><header><strong>Sillage · API développeur</strong><span>Local uniquement</span><nav><a href="/downloads/openapi.json" download="sillage.openapi.json">OpenAPI JSON</a><a href="/postman.json" download="Sillage.postman_collection.json">Collection Postman</a><a href="/environment.json" download="Developpement.postman_environment.json">Environnement</a></nav></header><section class="guide"><strong id="developer">Vérification de l’accès développeur…</strong> <button id="revoke" hidden>Révoquer l’accès développeur</button><p>Les essais ciblent <code id="target"></code>. La connexion de développement est utilisée automatiquement par Swagger et Postman sur ce Mac. Les écritures et les appels fournisseur ont leurs effets réels ; aucun accès administrateur global.</p><p><small>Sans accès de développement : <code>npm run docs:connect -- --email=ton-compte-google</code>. Authorize reste disponible pour utiliser manuellement une autre session Sillage.</small></p></section><div id="swagger-ui"></div><script src="/assets/swagger-ui-bundle.js"></script><script src="/assets/swagger-ui-standalone-preset.js"></script><script src="/config.js"></script></body></html>`,
     ),
   );
   app.get("/config.js", (c) =>
     c.body(
-      `document.getElementById("target").textContent=${JSON.stringify(upstream.origin)};window.ui=SwaggerUIBundle({url:"/openapi.json",dom_id:"#swagger-ui",deepLinking:true,filter:true,docExpansion:"none",persistAuthorization:false,validatorUrl:null,displayRequestDuration:true,tryItOutEnabled:false,supportedSubmitMethods:["get","post","delete"],presets:[SwaggerUIBundle.presets.apis,SwaggerUIStandalonePreset],layout:"BaseLayout"});`,
+      `document.getElementById("target").textContent=${JSON.stringify(upstream.origin)};window.ui=SwaggerUIBundle({url:"/openapi.json",dom_id:"#swagger-ui",deepLinking:true,filter:true,docExpansion:"none",persistAuthorization:false,validatorUrl:null,displayRequestDuration:true,tryItOutEnabled:false,supportedSubmitMethods:["get","post","delete"],presets:[SwaggerUIBundle.presets.apis,SwaggerUIStandalonePreset],layout:"BaseLayout"});async function status(){const r=await fetch("/developer/status");const s=await r.json();document.getElementById("developer").textContent=s.configured?"Connecté en développement · "+s.email:"Accès développeur à configurer sur ce Mac";document.getElementById("revoke").hidden=!s.configured;}status().catch(()=>{document.getElementById("developer").textContent="Accès développeur indisponible";});document.getElementById("revoke").onclick=async()=>{const r=await fetch("/developer/revoke",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});if(r.ok)await status();else document.getElementById("developer").textContent="Révocation non confirmée ; réessaie.";};`,
       200,
       { "Content-Type": "text/javascript" },
     ),
@@ -96,8 +103,48 @@ export function createDocsApp(
   app.get("/downloads/openapi.json", (c) => c.json(openapi));
   app.get("/postman.json", (c) => c.json(postmanCollection()));
   app.get("/environment.json", (c) =>
-    c.json(postmanEnvironment("Sillage — Serveur privé", upstream.origin)),
+    c.json(
+      postmanEnvironment(
+        "Sillage — Développement sur ce Mac",
+        "http://127.0.0.1:" + new URL(c.req.url).port + "/proxy",
+      ),
+    ),
   );
+  app.get("/developer/status", async (c) => {
+    try {
+      const connection = await developer?.read();
+      return c.json(
+        connection
+          ? { configured: true, email: connection.email }
+          : { configured: false },
+      );
+    } catch {
+      return c.json(
+        { configured: false, error: "Accès développeur indisponible." },
+        503,
+      );
+    }
+  });
+  app.post("/developer/revoke", async (c) => {
+    if (c.req.header("content-type") !== "application/json")
+      return c.json({ error: "Corps JSON attendu." }, 400);
+    try {
+      const connection = await developer?.read();
+      if (!connection) return c.json({ saved: true });
+      const result = await request(new URL("/v1/logout", upstream), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${connection.token}` },
+        redirect: "error",
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (result.status !== 401 && (!result.ok || !(await result.json()).saved))
+        return c.json({ error: "Révocation non confirmée." }, 502);
+      await developer!.clear();
+      return c.json({ saved: true });
+    } catch {
+      return c.json({ error: "Révocation non confirmée." }, 502);
+    }
+  });
   app.all("/proxy/*", async (c) => {
     const url = new URL(c.req.url);
     const path = url.pathname.slice("/proxy".length);
@@ -132,6 +179,24 @@ export function createDocsApp(
       if (value) headers.set(name, value);
     }
     try {
+      if (
+        operation.security?.length !== 0 &&
+        !headers
+          .get("authorization")
+          ?.replace(/^Bearer\s*/i, "")
+          .trim()
+      ) {
+        const connection = await developer?.read();
+        if (!connection)
+          return c.json(
+            {
+              error:
+                "Configure l’accès développeur avec npm run docs:connect, ou renseigne une session Sillage dans Authorize.",
+            },
+            401,
+          );
+        headers.set("authorization", `Bearer ${connection.token}`);
+      }
       const response = await request(new URL(path + url.search, upstream), {
         method: c.req.method,
         headers,

@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Développement : accès personnel séparé pour Swagger et Postman via le serveur local, sans recopier de session de l’app ni ajouter de rôle administrateur global ; jeton privé, création idempotente et révocation indépendante.
+
 - Mac 1.7.7 (build 56) : le panneau DJ de Découvrir se replie réellement, libère la place et propose sa réouverture. La recherche, la lecture et l’état partagé avec DJ sont conservés ; parcours de régression ajouté pour l’interface installée.
 
 - Développement : documentation OpenAPI des routes serveur, collection Postman locale sans secrets et Swagger réservé au Mac du développeur ; connexion Google, isolation des comptes, clés Gemini et fonctionnement de Découvrir documentés.

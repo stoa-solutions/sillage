@@ -24,6 +24,11 @@ public/data/
 
 .playwright-cli/
 
+# Postman keeps the developer's local workspace binding and globals here.
+.postman/resources.yaml
+.postman/skills.json
+postman/globals/
+
 apps/macos/.build/
 apps/macos/.swiftpm/
 

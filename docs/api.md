@@ -13,6 +13,29 @@ npm run docs:serve
 
 Ouvrir **http://127.0.0.1:3030**. Les ressources Swagger sont installées avec le projet et servies localement, sans CDN ni validation externe. Le processus écoute uniquement `127.0.0.1`.
 
+### Accès développeur sans répéter Google
+
+Une seule fois, pour un compte Google déjà créé dans Sillage :
+
+```sh
+npm run docs:connect -- --email=ton-adresse-google@example.com
+npm run docs:serve
+```
+
+La première commande exige l’accès SSH d’exploitation au serveur. Elle crée un **jeton distinct de celui de l’app**, rattaché à ce seul compte ; seul son hash est envoyé au serveur. Le secret reste dans `~/.config/sillage/developer.json`, hors dépôt, avec des permissions 600. Une interruption se retente avec le même identifiant, sans créer de doublon. Le fichier privé de session de l’app n’est ni lu ni modifié.
+
+Ensuite, **Swagger et la collection Postman fonctionnent sans recopier de jeton** : leur passage local `http://127.0.0.1:3030/proxy` transmet le jeton de développement à la cible prévue. Le jeton n’est jamais envoyé à la page Swagger, à ses téléchargements ou à Postman. Il ne sera pas transmis à une autre origine API. Ce n’est pas un accès administrateur global : le serveur conserve toutes les vérifications du compte et les limites des fournisseurs.
+
+Dans Postman, ouvrir la collection et laisser **No Environment** pour cet usage simple ; sa variable `base_url` vaut déjà `http://127.0.0.1:3030/proxy`. Si Postman avait mémorisé une ancienne valeur locale de `base_url`, la remplacer par cette adresse dans ses variables locales. Aucun secret n’est à saisir dans Postman. Les environnements fournis restent utiles pour les appels directs ou une API de développement séparée.
+
+La session serveur dure 90 jours et sa durée est prolongée à l’usage selon la même règle que les autres sessions Sillage. Pour révoquer uniquement cet accès développeur, utiliser le bouton de Swagger ou :
+
+```sh
+npm run docs:connect -- --revoke
+```
+
+La révocation est confirmée par le serveur avant la suppression du fichier privé. La connexion de l’app et ses playlists restent présentes. `SILLAGE_DEV_CONNECTION` permet de choisir un autre chemin privé ; les paramètres SSH d’exploitation peuvent être adaptés avec `SILLAGE_DEV_SSH_HOST`, `SILLAGE_DEV_SSH_PORT` et `SILLAGE_DEV_CONTAINER`.
+
 Par défaut, les essais appellent le serveur Sillage. Pour cibler une API de développement :
 
 ```sh
@@ -27,11 +50,13 @@ Deux formats dérivés du même contrat :
 
 | Usage | Fichiers |
 | --- | --- |
-| Postman avec **Local Files / Open Folder** | Ouvrir le dépôt ; `postman/collections/sillage/` contient les requêtes Git natives v3, `postman/environments/` les deux environnements. Aucun workspace cloud n’est lié. |
+| Postman avec **Local Files / Open Folder** | Ouvrir le dépôt ; `postman/collections/sillage/` contient les requêtes Git natives v3, `postman/environments/` les deux environnements. Aucune publication cloud n’est activée. |
 | Import classique | `postman/exports/Sillage.postman_collection.json`, puis les environnements `Local.postman_environment.json` et `Serveur.postman_environment.json`. |
 | Autre outil compatible OpenAPI | `postman/specs/sillage.openapi.json` (OpenAPI 3.1). |
 
-Choisir **Sillage — Local** ou **Sillage — Serveur privé**. `base_url` désigne la cible. `api_token` est le **jeton de session Sillage**, pas une clé Gemini. `gemini_api_key` sert uniquement aux réglages du DJ. Les deux valeurs sont volontairement vides et marquées secrètes dans les environnements fournis. Pour rester local, utiliser les valeurs locales de Postman ou son Vault, jamais une valeur partagée ou un fichier suivi par Git. Le type « secret » masque une valeur ; il ne remplace pas le chiffrement ni l’isolement du stockage choisi.
+Pour un appel direct, choisir **Sillage — Local** ou **Sillage — Serveur privé**. `base_url` désigne alors la cible directe. `api_token` est le **jeton de session Sillage**, pas une clé Gemini. `gemini_api_key` sert uniquement aux réglages du DJ. Les deux valeurs sont volontairement vides et marquées secrètes dans les environnements fournis. Pour rester local, utiliser les valeurs locales de Postman ou son Vault, jamais une valeur partagée ou un fichier suivi par Git. Le type « secret » masque une valeur ; il ne remplace pas le chiffrement ni l’isolement du stockage choisi.
+
+Postman peut enregistrer le rattachement à son workspace privé dans `.postman/resources.yaml` : ce fichier local et les globals sont ignorés par Git. `resources.example.yaml` fournit le modèle ; `npm run docs:generate` crée le fichier local s’il manque, sans écraser un rattachement existant. Cela n’active ni workflow de publication ni synchronisation cloud.
 
 Un appel de lecture sans compte suffit à vérifier l’installation :
 
@@ -42,6 +67,13 @@ postman collection run postman/collections/sillage \
 ```
 
 Le même essai fonctionne avec les exports JSON v2.1. Le CLI peut afficher une invitation à se connecter à Postman ; ces essais locaux n’exigent ni publication des résultats ni connexion cloud.
+
+Avec l’accès développeur actif et Swagger lancé, des essais authentifiés deviennent :
+
+```sh
+postman collection run postman/collections/sillage \
+  -i getAccount -i getLibraryStatus -i getDjStatus --no-report-events
+```
 
 **Choisir les requêtes à exécuter.** La collection contient aussi déconnexion, suppression, transfert de bibliothèque et appels Gemini/YouTube consommant leurs quotas. Un lancement intégral n’est pas une recette de test de production. Les corps utilisent des exemples publics ou des variables à renseigner ; aucune session n’est récupérée automatiquement depuis l’app.
 
