@@ -4,12 +4,12 @@ import {
   RefreshCw,
   Plus,
   Download,
-  Cloud,
   Loader2,
   Image,
   Library,
   Maximize2,
 } from "lucide-react";
+import { ProductBrand } from "./product-brand";
 import { VideoCard } from "./App";
 import type { SearchResult } from "./types";
 import { api, downloadJson, type Connection } from "./server-client";
@@ -227,9 +227,7 @@ export function ConnectedApp({ connection }: { connection: Connection }) {
   return (
     <div className="app">
       <aside className="sidebar">
-        <div className="brand">
-          <Cloud /> recall <small>SERVEUR</small>
-        </div>
+        <ProductBrand mode="serveur" />
         <nav>
           <button
             className={`nav-item ${!playlistId ? "active" : ""}`}
@@ -262,7 +260,7 @@ export function ConnectedApp({ connection }: { connection: Connection }) {
       </aside>
       <main className="main">
         <header className="topbar">
-          <div className="brand mobile-brand">recall</div>
+          <ProductBrand compact />
           <div className="breadcrumb">
             Votre espace / Bibliothèque synchronisée
           </div>

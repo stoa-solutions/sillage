@@ -21,7 +21,7 @@ public struct PlaybackFailure: Error, LocalizedError, Sendable, Equatable {
     case .videoUnavailable: detail = "Cette vidéo est indisponible sur YouTube."
     case .embeddingDenied:
       detail = "YouTube refuse la lecture de cette vidéo dans le lecteur intégré."
-    case .configuration: detail = "YouTube ne reconnaît pas la configuration du lecteur Recall."
+    case .configuration: detail = "YouTube ne reconnaît pas la configuration du lecteur Sillage."
     case .authentication:
       detail = "YouTube demande une connexion ou une vérification avant de lire les clips."
     case .rateLimited: detail = "YouTube limite temporairement les demandes de lecture."

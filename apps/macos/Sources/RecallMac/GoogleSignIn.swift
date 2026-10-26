@@ -49,7 +49,7 @@ final class GoogleSignIn {
     // Bind the return to the app that actually started this login, before leaving for Google.
     guard Bundle.main.bundleIdentifier == "solutions.stoa.playlist-recall" else {
       throw RecallError.message(
-        "Cet aperçu ne permet pas la connexion. Ouvre Playlist Recall dans Applications.")
+        "Cet aperçu ne permet pas la connexion. Ouvre Sillage dans Applications.")
     }
     let callbackURL = URL(string: "playlist-recall://auth")!
     if NSWorkspace.shared.urlForApplication(toOpen: callbackURL)?.standardizedFileURL
@@ -86,7 +86,7 @@ final class GoogleSignIn {
       timeout = Task { [weak self] in
         do { try await Task.sleep(nanoseconds: 600_000_000_000) } catch { return }
         guard self?.attempt == id else { return }
-        self?.finishWithError("La connexion Google a expiré. Recommence depuis Recall.")
+        self?.finishWithError("La connexion Google a expiré. Recommence depuis Sillage.")
       }
     }
     let result = try await HTTPClient().json(

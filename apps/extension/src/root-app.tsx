@@ -118,7 +118,7 @@ export function RootApp() {
       )}
       {settings && !connection && (
         <section className="connection-panel" aria-label="Connexion au serveur">
-          <h2>Connecter Playlist Recall</h2>
+          <h2>Connecter Sillage</h2>
           <p>
             Importez votre fichier de connexion privé ou renseignez l’adresse et
             le jeton fournis pour votre serveur.

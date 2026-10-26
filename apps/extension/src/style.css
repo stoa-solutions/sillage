@@ -8,8 +8,8 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  color: #202925;
-  background: #f7f8f4;
+  color: #20201e;
+  background: #faf9f6;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   font-size: 14px;
@@ -50,7 +50,7 @@ a {
 button:focus-visible,
 a:focus-visible,
 select:focus-visible {
-  outline: 3px solid #88b79c;
+  outline: 3px solid #bd3b12;
   outline-offset: 3px;
 }
 button svg {
@@ -68,8 +68,8 @@ svg {
   position: sticky;
   top: 0;
   height: 100vh;
-  background: #eef1e9;
-  border-right: 1px solid #dfe5d9;
+  background: #f5f3ee;
+  border-right: 1px solid #dad8d1;
   padding: 30px 22px;
   display: flex;
   flex-direction: column;
@@ -83,17 +83,30 @@ svg {
   letter-spacing: -1.1px;
   font-weight: 750;
 }
-.brand-mark {
-  display: grid;
-  place-items: center;
-  color: #fff;
-  background: #244737;
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
+.product-icon {
+  display: block;
+  flex-shrink: 0;
+}
+.product-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.1;
+}
+.product-signature {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: #65655e;
+}
+.product-signature img {
+  display: block;
 }
 .brand small {
-  color: #527760;
+  color: #65655e;
   letter-spacing: 0.4px;
   font-size: 10px;
   font-weight: 650;
@@ -122,8 +135,8 @@ svg {
   min-width: 0;
 }
 .nav-item.active {
-  background: #dce6d6;
-  color: #244737;
+  background: #f5f3ee;
+  color: #20201e;
 }
 .nav-item span {
   overflow: hidden;
@@ -204,12 +217,12 @@ svg {
   border-color: #b9c9b0;
 }
 .btn.primary {
-  background: #294e3b;
-  border-color: #294e3b;
+  background: #bd3b12;
+  border-color: #bd3b12;
   color: #fff;
 }
 .btn.primary:hover:not(:disabled) {
-  background: #1b3e2b;
+  background: #a63112;
 }
 .btn.icon {
   padding: 9px;
@@ -660,7 +673,7 @@ svg {
     display: flex;
     font-size: 23px;
   }
-  .mobile-brand .brand-mark {
+  .mobile-brand .product-icon {
     width: 30px;
     height: 30px;
   }
@@ -791,7 +804,7 @@ svg {
   align-items: center;
   gap: 12px;
   padding: 9px 20px;
-  background: #244737;
+  background: #20201e;
   color: #fff;
   font-size: 11px;
   flex-wrap: wrap;
@@ -885,7 +898,7 @@ svg {
 }
 input:focus-visible,
 summary:focus-visible {
-  outline: 3px solid #88b79c;
+  outline: 3px solid #bd3b12;
   outline-offset: 3px;
 }
 @media (max-width: 430px) {

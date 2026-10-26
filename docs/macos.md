@@ -1,4 +1,4 @@
-# Playlist Recall pour Mac
+# Sillage pour Mac
 
 État actuel : comptes et données sur serveur, session persistante sans Trousseau (1.4.1). Les sections ci-dessous conservent l’historique des versions ; la dernière section décrit le stockage actuel.
 
@@ -61,7 +61,7 @@ python3 scripts/build-macos.py --universal
 
 Les contrôles natifs sont un exécutable autonome, sans dépendance à XCTest ni obligation d’installer Xcode complet. Ils vérifient les formats, l’isolation des caches, les recherches longues/accentuées, les exclusions, les sélections inventées, les URL et le WAV.
 
-La compilation produit `.output/macos/Playlist Recall.app`, une archive ZIP et `release.json`. La signature ad hoc permet les essais locaux ; elle ne constitue pas une notarisation Apple.
+La compilation produit `.output/macos/Sillage.app`, une archive ZIP et `release.json`. La signature ad hoc permet les essais locaux ; elle ne constitue pas une notarisation Apple.
 
 `--skip-update-signature` permet uniquement de préparer une archive de test si l’accès au Trousseau pour le signataire n’a pas encore été autorisé. Cette archive est refusée par le générateur de flux de mises à jour.
 
@@ -273,3 +273,11 @@ python3 apps/macos/Checks/render-lyrics.py /tmp/recall-lyrics-ui
 ```
 
 Le second contrôle lie les composants SwiftUI de la build de développement, sans le point d’entrée de l’app. Il génère six rendus (synchronisé, texte simple, manquant ; panneaux de 320 et 380 points) dans des fenêtres hors écran, sans activation, connexion ni capture micro. Les résultats sont des exemples synthétiques ; ils ne prouvent pas la couverture du catalogue LRCLIB ni le comportement des commandes de fenêtre pendant une vraie lecture. Ces derniers restent à vérifier sur la version installée lors d’un prochain essai interactif.
+
+## Identité Sillage (1.7.5, build 54)
+
+L’application affichée devient **Sillage**, avec l’icône sculpturale orange approuvée et la signature de présentation **by Stoa**. L’ICNS haute résolution provient de `apps/macos/Resources/Sillage.icns` ; le script officiel le copie dans le bundle.
+
+Le nom technique `RecallMac`, le bundle ID `solutions.stoa.playlist-recall`, le schéma `playlist-recall`, les chemins privés et le flux Sparkle restent inchangés. Les archives conservent leur préfixe `Playlist-Recall-…` pour rester compatibles avec les contrôles existants. Les mentions historiques ci-dessus gardent leurs noms d’époque.
+
+L’installation locale remplace l’ancien bundle par `~/Applications/Sillage.app`, après fermeture propre et sauvegarde du binaire précédent hors du dossier Applications. Les données et la session ne sont pas réimportées ni migrées. Une archive de test créée avec `--skip-update-signature` reste locale ; ne pas la publier dans le flux Sparkle.

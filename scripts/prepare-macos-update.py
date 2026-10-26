@@ -30,9 +30,9 @@ namespace = "http://www.andymatuschak.org/xml-namespaces/sparkle"
 ET.register_namespace("sparkle", namespace)
 rss = ET.Element("rss", version="2.0")
 channel = ET.SubElement(rss, "channel")
-ET.SubElement(channel, "title").text = "Playlist Recall pour Mac"
+ET.SubElement(channel, "title").text = "Sillage pour Mac"
 item = ET.SubElement(channel, "item")
-ET.SubElement(item, "title").text = "Playlist Recall " + release["version"]
+ET.SubElement(item, "title").text = "Sillage " + release["version"]
 ET.SubElement(item, "{" + namespace + "}version").text = release["build"]
 ET.SubElement(item, "{" + namespace + "}shortVersionString").text = release["version"]
 ET.SubElement(item, "{" + namespace + "}minimumSystemVersion").text = "14.0.0"

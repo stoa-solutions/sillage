@@ -58,14 +58,14 @@ import Speech
     let micAllowed = await microphonePermission()
     guard generation == ticket else { return }
     guard micAllowed else {
-      fail("Autorise Recall dans Réglages Système → Confidentialité et sécurité → Microphone.")
+      fail("Autorise Sillage dans Réglages Système → Confidentialité et sécurité → Microphone.")
       return
     }
     let speechStatus = await speechPermission()
     guard generation == ticket else { return }
     guard speechStatus == .authorized else {
       fail(
-        "Autorise Recall dans Réglages Système → Confidentialité et sécurité → Reconnaissance vocale."
+        "Autorise Sillage dans Réglages Système → Confidentialité et sécurité → Reconnaissance vocale."
       )
       return
     }

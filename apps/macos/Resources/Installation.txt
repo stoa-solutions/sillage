@@ -1,6 +1,6 @@
 PLAYLIST RECALL — TON COMPTE, TES PLAYLISTS, TON DJ
 
-1. Copie Playlist Recall.app dans Applications et ouvre-la.
+1. Copie Sillage.app dans Applications et ouvre-la.
 2. Clique sur Continuer avec Google et choisis ton compte.
 3. Ajoute ta propre clé Gemini pour activer le DJ et sa voix expressive.
    Elle est chiffrée sur le serveur et réservée à ton compte.

@@ -3,12 +3,12 @@ import RecallKit
 import SwiftUI
 
 extension Color {
-  /// Recall green: deep on light backgrounds, luminous on dark ones and over Studio video.
+  /// Sillage action accent: Stoa orange on dark surfaces, deep orange on light ones.
   static let recall = Color(
     nsColor: NSColor(name: nil) { appearance in
       appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        ? NSColor(red: 0.55, green: 0.86, blue: 0.69, alpha: 1)
-        : NSColor(red: 0.12, green: 0.42, blue: 0.31, alpha: 1)
+        ? NSColor(red: 0xF1 / 255, green: 0x5A / 255, blue: 0x24 / 255, alpha: 1)
+        : NSColor(red: 0xBD / 255, green: 0x3B / 255, blue: 0x12 / 255, alpha: 1)
     })
 }
 

@@ -1,0 +1,11 @@
+Built-in Codex ImageGen — 26 October 2026. New product-icon exploration; no CLI/API fallback.
+
+Create ONE highly refined app icon artwork for an independent music discovery/listening app made by Stoa. This is a new product symbol, NOT a reproduction of an existing Stoa logo. The app organizes music, searches a personal library, and offers a conversational DJ. Working name Sillage; do not put any text in the icon.
+
+Art direction: a single substantial orange architectural ribbon folded into an interrupted circular loop, like a record groove reinterpreted as a small spatial sculpture. One confident, instantly readable silhouette with an open white interior. The ribbon has generous width, crisp folded planes, and a diagonal passage through the loop; its planes reveal the structure through light. Avoid a generic torus or a thin line. Think an exquisitely fabricated miniature of Stoa's folded orange sheet sculpture, but with the calm circular rhythm of a record. Distinctive geometry, simple enough to recognize as a small Dock icon.
+
+Color palette: the vivid Stoa orange #F15A24, warm white/chalk #FAF9F6, with naturally deeper orange on side faces. Material: finely textured satin powder-coated metal or dense resin, soft tactile quality, beautifully precise edges, not plastic toy gloss. Restrained physically plausible depth. Large diffused studio light from upper left, nuanced contact shadow and subtle light bounced into the interior; no dramatic spotlight, no glow, no glass.
+
+Composition: a front-facing orthographic or very shallow perspective app symbol, optically centered on a clean warm-white FULL SQUARE background. The orange form occupies about 70 percent of the canvas. Consider every contour and balance the interior negative space. Leave clear margins. Produce a square high-resolution 1024 x 1024 artwork with no rounded-square outer mask, no frame, no typography, no letters, no badges, no labels, no desktop mockup, no collage. It must look like one production-quality app-icon study, not a presentation sheet.
+
+No musical note, headphones, microphone, robot, sparkle, equalizer bars, play button, generic gradient blob, bevelled badge, unrelated scenery, or extra decorative objects. Prioritize a memorable sculptural form and clear silhouette over details.

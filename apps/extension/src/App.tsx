@@ -18,6 +18,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { ProductBrand } from "./product-brand";
 import { LibraryStore } from "./db";
 import { buildDocument, exportLibrary, parseImport } from "./import";
 import { formatDuration, parseQuery, searchLibrary } from "./search";
@@ -381,12 +382,7 @@ export function App() {
   return (
     <div className="app">
       <aside className="sidebar" aria-label="Navigation de la bibliothèque">
-        <div className="brand">
-          <span className="brand-mark">
-            <Disc3 size={23} />
-          </span>
-          recall<small>LOCAL</small>
-        </div>
+        <ProductBrand mode="local" />
         <nav>
           <p className="nav-label">VOTRE ESPACE</p>
           <button
@@ -435,12 +431,7 @@ export function App() {
       <main className="main">
         <header className="topbar">
           <div className="breadcrumb">Votre espace / Bibliothèque</div>
-          <div className="brand mobile-brand">
-            <span className="brand-mark">
-              <Disc3 size={21} />
-            </span>
-            recall
-          </div>
+          <ProductBrand compact />
           <div className="toolbar">
             <button
               className="btn"

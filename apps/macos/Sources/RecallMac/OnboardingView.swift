@@ -53,7 +53,7 @@ struct OnboardingView: View {
 
   private var account: some View {
     StepPage(
-      title: "Bienvenue dans Recall",
+      title: "Bienvenue dans Sillage",
       message: "Ton DJ personnel, nourri par tes playlists YouTube."
     ) {
       if session.signingIn {
@@ -77,7 +77,7 @@ struct OnboardingView: View {
         .disabled(session.loadingCredentials)
       }
       errorLine
-      Text("Recall reçoit ton nom et ton adresse e-mail, rien d’autre.")
+      Text("Sillage reçoit ton nom et ton adresse e-mail, rien d’autre.")
         .font(.caption).foregroundStyle(Stoa.stone)
     }
   }
@@ -233,7 +233,8 @@ private struct ChalkButtonStyle: ButtonStyle {
       .padding(.horizontal, 20).frame(height: 40)
       .background(
         Stoa.chalk.opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.3),
-        in: RoundedRectangle(cornerRadius: 8))
+        in: RoundedRectangle(cornerRadius: 8)
+      )
       .contentShape(RoundedRectangle(cornerRadius: 8))
   }
 }

@@ -3,7 +3,7 @@ import { defineConfig } from "wxt";
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   manifest: {
-    name: "Playlist Recall",
+    name: "Sillage",
     icons: {
       16: "icon/16.png",
       32: "icon/32.png",
@@ -19,7 +19,7 @@ export default defineConfig({
       "http://localhost/*",
       "http://127.0.0.1/*",
     ],
-    action: { default_title: "Ouvrir Playlist Recall" },
+    action: { default_title: "Ouvrir Sillage" },
     content_security_policy: {
       extension_pages:
         "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; frame-src https: http://localhost:* http://127.0.0.1:*; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; img-src 'self' https://i.ytimg.com https://i9.ytimg.com data:;",

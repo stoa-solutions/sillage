@@ -38,7 +38,7 @@ export async function grantServerAccess(connection: Connection): Promise<void> {
   const origins = [`${connection.url}/*`];
   if (await chrome.permissions.contains({ origins })) return;
   if (!(await chrome.permissions.request({ origins })))
-    throw new Error("Autorise l’accès à ton serveur pour connecter Recall.");
+    throw new Error("Autorise l’accès à ton serveur pour connecter Sillage.");
 }
 export function storedConnection(): Connection | null {
   try {

@@ -34,7 +34,7 @@ output = root / ".output/macos"
 output.mkdir(parents=True, exist_ok=True)
 # Never leave metadata describing a previous archive if rebuilding or signing fails.
 (output / "release.json").unlink(missing_ok=True)
-bundle = output / "Playlist Recall.app"
+bundle = output / "Sillage.app"
 if bundle.exists():
     shutil.rmtree(bundle)
 contents = bundle / "Contents"
@@ -54,17 +54,17 @@ shutil.copytree(framework, contents / "Frameworks/Sparkle.framework", symlinks=T
 # Include SwiftPM resources in the installed app, not only the build directory.
 resources = project / f".build/{architectures[0]}-apple-macosx/release/PlaylistRecallMac_RecallMac.bundle"
 shutil.copytree(resources, contents / "Resources" / resources.name)
-shutil.copy2(root / "apps/extension/public/icon/128.png", contents / "Resources/Recall.png")
+shutil.copy2(project / "Resources/Sillage.icns", contents / "Resources/Sillage.icns")
 shutil.copy2(project / "Resources/Installation.txt", contents / "Resources/Installation.txt")
 shutil.copy2(project / ".build/artifacts/sparkle/Sparkle/LICENSE", contents / "Resources/Sparkle-LICENSE.txt")
 info = {
-    "CFBundleName": "Playlist Recall", "CFBundleDisplayName": "Playlist Recall", "CFBundleExecutable": "RecallMac",
+    "CFBundleName": "Sillage", "CFBundleDisplayName": "Sillage", "CFBundleExecutable": "RecallMac",
     "CFBundleIdentifier": "solutions.stoa.playlist-recall", "CFBundlePackageType": "APPL",
     "CFBundleURLTypes": [{"CFBundleURLName": "Recall Sign In", "CFBundleURLSchemes": ["playlist-recall"]}],
     "CFBundleShortVersionString": args.version, "CFBundleVersion": args.build,
-    "LSMinimumSystemVersion": "14.0", "NSHighResolutionCapable": True, "CFBundleIconFile": "Recall.png",
-    "NSMicrophoneUsageDescription": "Recall écoute ton envie musicale seulement quand tu actives le micro.",
-    "NSSpeechRecognitionUsageDescription": "Recall transforme ta demande vocale en texte pour ton DJ personnel.",
+    "LSMinimumSystemVersion": "14.0", "NSHighResolutionCapable": True, "CFBundleIconFile": "Sillage.icns",
+    "NSMicrophoneUsageDescription": "Sillage écoute ton envie musicale seulement quand tu actives le micro.",
+    "NSSpeechRecognitionUsageDescription": "Sillage transforme ta demande vocale en texte pour ton DJ personnel.",
     "NSAppTransportSecurity": {"NSAllowsLocalNetworking": True},
     "SUFeedURL": "https://recall.stoa.solutions/macos/appcast.xml",
     "SUPublicEDKey": (project / "Resources/UpdatePublicKey.txt").read_text().strip(),
@@ -115,7 +115,7 @@ if args.dmg:
         shutil.copytree(bundle, stage / bundle.name, symlinks=True)
         (stage / "Applications").symlink_to("/Applications")
         shutil.copy2(project / "Resources/Installation.txt", stage / "Lire avant installation.txt")
-        subprocess.run(["hdiutil", "create", "-volname", "Playlist Recall", "-srcfolder", str(stage), "-ov", "-format", "UDZO", str(disk)], check=True)
+        subprocess.run(["hdiutil", "create", "-volname", "Sillage", "-srcfolder", str(stage), "-ov", "-format", "UDZO", str(disk)], check=True)
     manifest["installer"] = disk.name
     manifest["installerSha256"] = hashlib.sha256(disk.read_bytes()).hexdigest()
 (output / "release.json").write_text(json.dumps(manifest, indent=2) + "\n")

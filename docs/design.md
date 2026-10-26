@@ -9,7 +9,7 @@ Référence commune pour toute nouvelle vue Mac, Découvrir comprise. Plan valid
 - **Une action principale par écran.** Les explications longues vont dans l’aide au survol (`.help`), pas sous chaque champ.
 - **Le mouvement montre ce qui change** : un nouveau morceau, un changement de mode ou d’onglet. Pas d’animation décorative. Avec « Réduire les animations », tout passe en fondu court ou sans animation.
 - **Une seule scène, deux profondeurs.** L’app est sombre dans les deux modes. Toutes les pages reposent sur la même scène, sous une barre d’outils transparente : en Studio, le clip (atténué hors de la page DJ) ; en Compact, la pochette floutée du morceau. Les panneaux partagent `glassPanel`, avec deux contextes définis dans `Surfaces.swift` : `.immersive` pour le DJ, `.reading` pour Bibliothèque et Découvrir (chat et mini-lecteur compris). En lecture, fond sombre à 86 % et clip atténué à 55 % ; avec Réduire la transparence, panneaux opaques et aucun clip visible derrière les pages de lecture. Le DJ Studio garde son clip net.
-- **Le vert est une action, pas une décoration.** `Color.recall` sert au bouton de lecture, à la progression, à la ligne chantée et aux boutons principaux. Les bascules (Studio, Voix du DJ, Enchaîner), les suggestions et les sélecteurs segmentés restent neutres : blanc quand actif, gris sinon (`GlassToggleStyle`, `ToolbarToggleStyle`, `neutralSelection`).
+- **L’orange est une action, pas une décoration.** `Color.recall` conserve son identifiant technique ; il utilise l’orange Stoa `#f15a24` en sombre et l’orange profond `#bd3b12` en clair. Il sert au bouton de lecture, à la progression, à la ligne chantée et aux boutons principaux. Les bascules (Studio, Voix du DJ, Enchaîner), les suggestions et les sélecteurs segmentés restent neutres : blanc quand actif, gris sinon (`GlassToggleStyle`, `ToolbarToggleStyle`, `neutralSelection`).
 
 ## Repères
 
@@ -64,3 +64,9 @@ Chaque écran est vérifié en Compact et en Studio, clair et sombre, avec « R�
 ### Paroles
 
 Les paroles restent dans le panneau latéral, jamais au centre du clip. Le raccourci Paroles ouvre cet onglet et déplie le panneau si nécessaire. La ligne chantée, son défilement, le clic pour se déplacer et le calage par compte sont conservés.
+
+## Identité Sillage — by Stoa
+
+Nom visible et icône approuvés le 26 octobre 2026. Le nom du produit est Sillage ; Stoa signe les supports de présentation. L’app conserve ses contrôles et polices système. Le signe est un artwork orange sculptural ; l’ICNS haute résolution est dans `apps/macos/Resources/Sillage.icns`, les exports Chrome dans `apps/extension/public/icon/`. Provenance : `assets/branding/sillage/`.
+
+Le renommage reste visuel : bundle ID, chemins de données, Trousseau, schéma OAuth, noms d’archives Sparkle et dossier Chrome chargé restent inchangés. Le bundle produit porte `Sillage.app`. Aucun renommage du dépôt ou publication open source implicite.

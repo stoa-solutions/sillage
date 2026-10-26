@@ -115,7 +115,7 @@ import SwiftUI
     if session.hasServer { library.sync() }
   }
   var body: some Scene {
-    WindowGroup("Playlist Recall") {
+    WindowGroup("Sillage") {
       MainView().environmentObject(session).environmentObject(library).environmentObject(dj)
         .environmentObject(discovery).environmentObject(listened)
         .task {

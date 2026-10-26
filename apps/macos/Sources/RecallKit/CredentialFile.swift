@@ -25,7 +25,7 @@ public final class CredentialFile: @unchecked Sendable {
   }
 
   private func failure() -> RecallError {
-    .message("La connexion privée de Recall ne peut pas être lue ou enregistrée.")
+    .message("La connexion privée de Sillage ne peut pas être lue ou enregistrée.")
   }
 
   private func transaction<T>(write: Bool = false, _ body: (inout [String: Data]) throws -> T)
