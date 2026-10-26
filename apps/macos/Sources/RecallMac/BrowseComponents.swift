@@ -71,7 +71,8 @@ struct SongRow: View {
         Color.clear.frame(width: accessoryWidth, height: 1)
       }
       Text(track.durationSeconds.map(clock) ?? "").font(.system(size: 12).monospacedDigit())
-        .foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
+        .foregroundStyle(.secondary).lineLimit(1).fixedSize().frame(
+          minWidth: 44, alignment: .trailing)
     }
     .padding(.horizontal, 8).padding(.vertical, 5)
     .background {
@@ -163,31 +164,36 @@ struct IconButton: View {
   }
 }
 
-/// A playlist cover without artwork: its initial on a muted colour of its own.
+/// A collection's tile. Symbols sit thin and grey on quiet glass; a playlist without artwork
+/// gets its initial on a muted, almost neutral tint of its own. Nothing loud or glossy.
 struct PlaylistTile: View {
   let title: String
   var symbol: String? = nil
   var size: CGFloat = 40
   var body: some View {
-    let seed = title.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
-    RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
-      .fill(
-        LinearGradient(
-          colors: [
-            Color(hue: Double(seed % 360) / 360, saturation: 0.35, brightness: 0.42),
-            Color(hue: Double(seed % 360) / 360, saturation: 0.4, brightness: 0.22),
-          ], startPoint: .topLeading, endPoint: .bottomTrailing)
-      )
-      .overlay {
-        if let symbol {
-          Image(systemName: symbol).font(.system(size: size * 0.4, weight: .semibold))
-        } else {
+    let shape = RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+    Group {
+      if let symbol {
+        shape.fill(Color.primary.opacity(0.07))
+          .overlay(shape.strokeBorder(Color.primary.opacity(0.08)))
+          .overlay {
+            Image(systemName: symbol).font(.system(size: size * 0.36, weight: .regular))
+              .foregroundStyle(.secondary)
+          }
+      } else {
+        let seed = title.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
+        shape.fill(
+          Color(hue: Double(seed % 360) / 360, saturation: 0.18, brightness: 0.5).opacity(0.55)
+        )
+        .overlay(shape.strokeBorder(Color.primary.opacity(0.08)))
+        .overlay {
           Text(title.first.map { String($0).uppercased() } ?? "?")
-            .font(.system(size: size * 0.45, weight: .bold))
+            .font(.system(size: size * 0.4, weight: .medium))
+            .foregroundStyle(.white.opacity(0.85))
         }
       }
-      .foregroundStyle(.white.opacity(0.9))
-      .frame(width: size, height: size).accessibilityHidden(true)
+    }
+    .frame(width: size, height: size).accessibilityHidden(true)
   }
 }
 
@@ -242,11 +248,17 @@ struct SidebarItem: View {
   var body: some View {
     Button(action: action) {
       HStack(spacing: 10) {
-        PlaylistTile(
-          title: tileTitle ?? title, symbol: tileTitle == nil ? symbol : nil,
-          size: detail == nil ? 28 : 40)
+        if detail == nil, tileTitle == nil, let symbol {
+          // Simple entries (searches, ideas) take a plain glyph, as in a Finder sidebar.
+          Image(systemName: symbol).font(.system(size: 13)).foregroundStyle(.secondary)
+            .frame(width: 22).accessibilityHidden(true)
+        } else {
+          PlaylistTile(
+            title: tileTitle ?? title, symbol: tileTitle == nil ? symbol : nil, size: 36)
+        }
         VStack(alignment: .leading, spacing: 1) {
-          Text(title).font(.system(size: 14, weight: .medium)).lineLimit(1).help(title)
+          Text(title).font(.system(size: 13, weight: detail == nil ? .regular : .medium))
+            .lineLimit(1).help(title)
           if let detail {
             Text(detail).font(.system(size: 12)).foregroundStyle(.secondary)
           }

@@ -134,7 +134,9 @@ private struct SyncedLyrics: View {
                   scroll(proxy, to: index)
                 } label: {
                   Text(lyrics.lines[index].text).font(.system(size: 19, weight: .bold))
-                    .foregroundStyle(index == position.index ? Color.recall : Color.secondary)
+                    .foregroundStyle(
+                      index == position.index ? Color.sillage(.playingText) : Color.secondary
+                    )
                     .opacity((position.index ?? -1) > index ? 0.55 : 1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -142,7 +144,11 @@ private struct SyncedLyrics: View {
                   .accessibilityLabel(lyrics.lines[index].text)
                   .accessibilityHint("Lire à partir de cette ligne")
               }
-            }.padding(.horizontal, 16).padding(.vertical, max(24, geometry.size.height * 0.35))
+            }
+            // Lines start at the top; only the end leaves room so the last line can still
+            // come to the reading position.
+            .padding(.horizontal, 16).padding(.top, 16)
+            .padding(.bottom, max(24, geometry.size.height * 0.6))
           }
           .simultaneousGesture(DragGesture(minimumDistance: 8).onChanged { _ in following = false })
           .onLyricsScroll { following = false }
@@ -155,7 +161,7 @@ private struct SyncedLyrics: View {
           .overlay(alignment: .bottom) {
             if !following {
               Button("Reprendre le suivi") { following = true }
-                .buttonStyle(GlassButtonStyle()).padding(8)
+                .buttonStyle(SillageChipStyle(selected: true)).padding(10)
             }
           }
         }

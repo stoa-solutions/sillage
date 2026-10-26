@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage 1.7.9 (70) : icônes sobres dans la Bibliothèque et Découvrir (tuiles neutres, symboles fins, simples glyphes pour les recherches et envies), paroles synchronisées sans vide au-dessus de la première ligne, « Reprendre le suivi » lisible, durées longues sur une ligne.
+
 - Sillage 1.7.9 (69) : Studio adaptatif jusqu’à 760 de large (panneau DJ de 300 à 360, marges réduites, commandes en icônes au besoin) ; le titre et le chat ne sortent plus de la fenêtre.
 
 - Sillage 1.7.9 (68) : relecture de la 67. Fenêtre sans maximum rigide (bannières et plein écran ne coupent plus la poche ; une poche repliée revient à sa hauteur après un redimensionnement), clic droit et « Ouvrir sur YouTube » sur toutes les lignes, ajout à Mes découvertes au menu et à VoiceOver, colonnes alignées dans les résultats, raccourcis de Découvrir visibles quand la barre latérale est masquée, bouton de retour à « Pour toi », barre latérale partagée avec la Bibliothèque.
