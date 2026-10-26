@@ -10,7 +10,7 @@ import plistlib
 import shutil
 import subprocess
 import tempfile
-from macos_release import release_names, require_public_signing, signing_targets, verify_clean_bundle
+from macos_release import release_names, require_public_signing, signing_targets, verify_clean_bundle, validate_update_configuration
 
 root = Path(__file__).resolve().parent.parent
 project = root / 'apps/macos'
@@ -42,10 +42,10 @@ if args.public_release:
         require_public_signing(identity, profile, tools_available)
     except ValueError as error:
         parser.error(str(error))
-if bool(feed) != bool(update_key):
-    parser.error('Automatic updates need both MAC_UPDATE_FEED_URL and MAC_UPDATE_PUBLIC_KEY')
-if feed and (not feed.startswith('https://') or not re.fullmatch(r'[A-Za-z0-9+/]{43}=', update_key)):
-    parser.error('Updates require an HTTPS feed and an Ed25519 public key')
+try:
+    validate_update_configuration(feed, update_key)
+except ValueError as error:
+    parser.error(str(error))
 updates = bool(feed) and not args.skip_update_signature
 architectures = ['arm64', 'x86_64'] if args.universal else [platform.machine()]
 label = 'universal' if args.universal else architectures[0]

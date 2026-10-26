@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from macos_release import release_names, require_public_signing, signing_targets, verify_clean_bundle
+from macos_release import release_names, require_public_signing, signing_targets, verify_clean_bundle, validate_update_configuration
 
 
 class MacReleaseTests(unittest.TestCase):
@@ -11,6 +11,15 @@ class MacReleaseTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     require_public_signing(identity, profile, tools)
         require_public_signing('Developer ID Application: Stoa (TEAM)', 'profile', True)
+
+    def test_update_configuration_cannot_embed_private_url_credentials(self):
+        key = 'A' * 43 + '='
+        validate_update_configuration('', '')
+        validate_update_configuration('https://updates.example.test/appcast.xml', key)
+        for feed, value in [('http://example.test/feed', key), ('https://user:secret@example.test/feed', key), ('https://example.test/feed?token=private', key), ('https://example.test/feed#secret', key), ('https://example.test/feed', 'invalid'), ('', key)]:
+            with self.subTest(feed=feed):
+                with self.assertRaises(ValueError):
+                    validate_update_configuration(feed, value)
 
     def test_brand_names_cannot_escape_output_directory(self):
         self.assertEqual(release_names('1.8.1', 'universal'), ('Sillage-1.8.1-universal.zip', 'Sillage-1.8.1-universal.dmg'))
