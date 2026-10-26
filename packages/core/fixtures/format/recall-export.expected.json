@@ -1,0 +1,51 @@
+{
+  "playlists": [
+    {
+      "id": "PLjazz",
+      "title": "Jazz du soir",
+      "videoIds": [
+        "bbbbbbbbbbb",
+        "aaaaaaaaaaa",
+        "aaaaaaaaaaa"
+      ]
+    },
+    {
+      "id": "PLmix",
+      "title": "Mix",
+      "videoIds": [
+        "bbbbbbbbbbb"
+      ]
+    }
+  ],
+  "videos": [
+    {
+      "id": "aaaaaaaaaaa",
+      "title": "Autumn Leaves",
+      "channel": "Trio",
+      "durationSeconds": 300,
+      "tags": [
+        "jazz",
+        "live"
+      ],
+      "publishedAt": "20190101"
+    },
+    {
+      "id": "bbbbbbbbbbb",
+      "title": "Moanin'",
+      "channel": "Art Blakey",
+      "durationSeconds": 580,
+      "tags": [],
+      "publishedAt": null
+    },
+    {
+      "id": "ccccccccccc",
+      "title": "Solo",
+      "channel": null,
+      "durationSeconds": null,
+      "tags": [
+        "piano"
+      ],
+      "publishedAt": null
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "playlists": [
+    {
+      "id": "file_7a51fc58cb4a57201d283de4",
+      "title": "Ma sélection",
+      "videoIds": [
+        "fffffffffff"
+      ]
+    }
+  ],
+  "videos": [
+    {
+      "id": "fffffffffff",
+      "title": "Song",
+      "channel": null,
+      "durationSeconds": null,
+      "tags": [
+        "a",
+        "b"
+      ],
+      "publishedAt": "2021-05-04"
+    }
+  ]
+}

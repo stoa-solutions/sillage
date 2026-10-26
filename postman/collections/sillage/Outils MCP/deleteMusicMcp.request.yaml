@@ -1,0 +1,17 @@
+$kind: http-request
+description: >-
+  Le transport monté reçoit cette méthode mais ne maintient aucune session ni flux SSE à reprendre. Utiliser POST avec
+  un client MCP.
+
+
+  Effet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection
+  sur son compte.
+url: "{{base_url}}/v1/mcp"
+method: DELETE
+headers:
+  Accept: application/json
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([405]); });
+    language: text/javascript
+order: 3000

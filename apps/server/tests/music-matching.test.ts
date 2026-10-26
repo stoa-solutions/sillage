@@ -1,0 +1,180 @@
+import { describe, expect, it } from "vitest";
+import { musicMatchRank, resolveExactRequest } from "../src/music-matching.ts";
+
+const catalog = [
+  {
+    id: "navajo-live",
+    title: "Masego - Navajo | A COLORS SHOW",
+    channel: "COLORS",
+  },
+  { id: "navajo", title: "Masego - Navajo", channel: "Hash Music" },
+  { id: "tadow", title: "FKJ & Masego - Tadow", channel: "Fkj" },
+  { id: "ylang", title: "FKJ - Ylang Ylang", channel: "Fkj" },
+  { id: "self-care", title: "Self Care", channel: "Mac Miller - Topic" },
+  {
+    id: "day-one",
+    title: "Mac Miller - Day One (A Song About Nothing)",
+    channel: "Majestic Casual",
+  },
+  {
+    id: "beat",
+    title: 'Mac Miller Type Beat - "Dysphoria" (SOLD)',
+    channel: "Producer",
+  },
+  {
+    id: "beat2",
+    title: 'FREE Mac Miller/Joey Bada$$ Type Beat "Theory"',
+    channel: "Producer",
+  },
+];
+describe("music retrieval", () => {
+  it("puts individual recordings ahead of unrequested mixes", () => {
+    const mix = {
+      title: "Mac Miller but he's relaxed | Lofi Hip Hop Mix",
+      channel: "Relaxed Radio",
+    };
+    expect(musicMatchRank("Mac Miller", catalog[4])).toBeGreaterThan(
+      musicMatchRank("Mac Miller", mix),
+    );
+    expect(musicMatchRank("Mac Miller mix", mix)).toBeGreaterThan(
+      musicMatchRank("Mac Miller mix", catalog[4]),
+    );
+  });
+  it("ranks the requested artist and title above another song by that artist", () => {
+    const sorted = [...catalog].sort(
+      (a, b) =>
+        musicMatchRank("Mac Miller Self Care", b) -
+        musicMatchRank("Mac Miller Self Care", a),
+    );
+    expect(sorted[0].id).toBe("self-care");
+  });
+  it("ranks actual artist recordings above type beats even without artist in title", () => {
+    expect(musicMatchRank("Mac Miller", catalog[4])).toBeGreaterThan(
+      musicMatchRank("Mac Miller", catalog[6]),
+    );
+    expect(musicMatchRank("Mac Miller", catalog[5])).toBeGreaterThan(
+      musicMatchRank("Mac Miller", catalog[7]),
+    );
+  });
+  it("keeps requested type beats and live versions eligible", () => {
+    expect(musicMatchRank("Mac Miller type beat", catalog[6])).toBeGreaterThan(
+      musicMatchRank("Mac Miller type beat", catalog[5]),
+    );
+    expect(musicMatchRank("Navajo COLORS SHOW", catalog[0])).toBeGreaterThan(
+      musicMatchRank("Navajo COLORS SHOW", catalog[1]),
+    );
+  });
+});
+describe("explicit DJ requests", () => {
+  it("plays only the requested songs, in order, preferring the original version", () => {
+    expect(
+      resolveExactRequest(
+        "Joue Masego Navajo puis FKJ et Masego Tadow.",
+        catalog,
+      )?.tracks.map((t) => t.id),
+    ).toEqual(["navajo", "tadow"]);
+    expect(
+      resolveExactRequest("Joue Tadow puis Navajo", catalog)?.tracks.map(
+        (t) => t.id,
+      ),
+    ).toEqual(["tadow", "navajo"]);
+  });
+  it("does not force a three-song minimum for a single title", () => {
+    expect(
+      resolveExactRequest(
+        "Mets-moi Mac Miller Self Care stp",
+        catalog,
+      )?.tracks.map((t) => t.id),
+    ).toEqual(["self-care"]);
+  });
+  it("supports an explicitly ordered comma-separated list", () => {
+    expect(
+      resolveExactRequest(
+        "Joue dans cet ordre : Navajo, Tadow, Ylang Ylang",
+        catalog,
+      )?.tracks.map((t) => t.id),
+    ).toEqual(["navajo", "tadow", "ylang"]);
+  });
+  it("does not reinterpret an artist, mood or similarity request as one song", () => {
+    for (const text of [
+      "Du Mac Miller",
+      "Joue du jazz doux",
+      "Joue des titres comme Self Care",
+      "Joue du Masego puis du jazz",
+    ]) {
+      const result = resolveExactRequest(text, catalog);
+      expect(result === null || result.missing.length > 0).toBe(true);
+    }
+  });
+  it("reports a missing requested title without substituting a suggestion", () => {
+    const result = resolveExactRequest(
+      "Joue Navajo puis ImaginarySong987",
+      catalog,
+    );
+    expect(result?.missing).toEqual(["ImaginarySong987"]);
+  });
+  it("honors append and normalized accented names", () => {
+    const result = resolveExactRequest("Ajoute Étoile triste", [
+      { id: "etoile", title: "Étoile triste", channel: "Artiste" },
+    ]);
+    expect(result?.append).toBe(true);
+    expect(result?.tracks[0].id).toBe("etoile");
+  });
+  it("asks for the artist when two distinct artists have the requested title", () => {
+    const result = resolveExactRequest("Joue Hello", [
+      { id: "adele", title: "Adele - Hello" },
+      { id: "lionel", title: "Lionel Richie - Hello" },
+    ]);
+    expect(result?.tracks).toEqual([]);
+    expect(result?.missing).toEqual(["Hello"]);
+  });
+});
+
+it("ignores resolution annotations when resolving an exact requested title", () => {
+  const result = resolveExactRequest("Joue a-ha Take On Me puis Masego Navajo", [
+    ...catalog, {id:"take-on-me",title:"a-ha - Take On Me (Official Video) [4K]",channel:"a-ha"}
+  ]);
+  expect(result?.tracks.map(t => t.id)).toEqual(["take-on-me", "navajo"]);
+  expect(result?.missing).toEqual([]);
+});
+
+it.each([
+  ["Joue Navajo de Masego maintenant, puis Tadow de Masego et FKJ, dans cet ordre.", false],
+  ["Joue Navajo puis Tadow à la suite", true],
+  ["Joue Navajo puis Tadow, sans couper le morceau actuel", true],
+  ["Ajoute Navajo puis Tadow en file d’attente", true],
+  ["Joue maintenant Navajo puis Tadow", false],
+])("separates scheduling controls from ordered titles: %s", (message, append) => {
+  const result = resolveExactRequest(message, catalog);
+  expect(result?.missing).toEqual([]);
+  expect(result?.tracks.map((t) => t.id)).toEqual(["navajo", "tadow"]);
+  expect(result?.append).toBe(append);
+});
+it("does not erase a real title that is also a scheduling word", () => {
+  const result = resolveExactRequest("Joue Maintenant de Artist puis Tadow", [
+    ...catalog, {id: "now", title: "Maintenant", channel: "Artist"},
+  ]);
+  expect(result?.tracks.map((t) => t.id)).toEqual(["now", "tadow"]);
+  expect(result?.missing).toEqual([]);
+});
+it("does not silently remove musical constraints or resolve negated commands", () => {
+  expect(resolveExactRequest("Ne joue pas Navajo", catalog)).toBeNull();
+  const constrained = resolveExactRequest("Joue Navajo puis Tadow sans live", catalog);
+  expect(constrained?.missing).toEqual(["Tadow sans live"]);
+});
+
+it("ignores empty separators and trailing ordering syntax in the Acid Coco request", () => {
+  const acidCoco = [
+    { id: "lUWaHOuh7V0", title: "El Amor De Mis Amores", channel: "Acid Coco" },
+    { id: "X_f-RF8eaFI", title: "Acid Coco  - Todo Me Lleva a ti", channel: "Acid Coco" },
+    // A catalog title can normalize to empty; it must not revive an empty request part.
+    { id: "emptytitle1", title: "[Official Video]", channel: "Other artist" },
+  ];
+  const result = resolveExactRequest(
+    "Joue El Amor De Mis Amores de Acid Coco maintenant, puis Todo Me Lleva a ti de Acid Coco, dans cet ordre.",
+    acidCoco,
+  );
+  expect(result?.tracks.map((track) => track.id)).toEqual(["lUWaHOuh7V0", "X_f-RF8eaFI"]);
+  expect(result?.missing).toEqual([]);
+  expect(result?.append).toBe(false);
+});

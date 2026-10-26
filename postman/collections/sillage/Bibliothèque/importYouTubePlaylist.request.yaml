@@ -1,0 +1,24 @@
+$kind: http-request
+description: >-
+  Ajoute le rattachement au compte puis programme une synchronisation. 202 signifie tâche créée, pas import terminé.
+  Playlists publiques ou non répertoriées ; pas d’OAuth YouTube. Un import incomplet conserve l’instantané précédent.
+
+
+  Effet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/playlists"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "url": "https://www.youtube.com/playlist?list={{playlist_id}}"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([202]); });
+    language: text/javascript
+order: 3000

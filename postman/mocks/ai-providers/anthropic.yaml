@@ -1,0 +1,9 @@
+version: 1
+name: sillage-anthropic-native
+slug: sillage-anthropic-native
+protocol: http
+interceptRequests: true
+scenarios:
+  - name: default
+    path: ./native.js
+    default: true

@@ -1,0 +1,25 @@
+{
+  "id": "PLytdlp",
+  "title": "Flat",
+  "entries": [
+    {
+      "id": "ddddddddddd",
+      "title": null,
+      "duration": null
+    },
+    {
+      "id": "eeeeeeeeeee",
+      "title": "  Trimmed  ",
+      "duration": 61.5,
+      "uploader": "Uploader",
+      "playlist_index": 1
+    },
+    {
+      "id": "ddddddddddd",
+      "title": "Late title",
+      "duration": 120,
+      "uploader": "Chan",
+      "playlist_index": 3
+    }
+  ]
+}

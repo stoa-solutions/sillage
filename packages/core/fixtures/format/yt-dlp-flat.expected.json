@@ -1,0 +1,31 @@
+{
+  "playlists": [
+    {
+      "id": "PLytdlp",
+      "title": "Flat",
+      "videoIds": [
+        "ddddddddddd",
+        "eeeeeeeeeee",
+        "ddddddddddd"
+      ]
+    }
+  ],
+  "videos": [
+    {
+      "id": "ddddddddddd",
+      "title": "Late title",
+      "channel": "Chan",
+      "durationSeconds": 120,
+      "tags": [],
+      "publishedAt": null
+    },
+    {
+      "id": "eeeeeeeeeee",
+      "title": "Trimmed",
+      "channel": "Uploader",
+      "durationSeconds": 61.5,
+      "tags": [],
+      "publishedAt": null
+    }
+  ]
+}

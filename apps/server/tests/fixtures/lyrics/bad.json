@@ -1,0 +1,46 @@
+[
+  {
+    "id": 13004519,
+    "trackName": "BAD!",
+    "artistName": "Folie's",
+    "albumName": "Folie's je t'aime (bonus)",
+    "duration": 161.0,
+    "instrumental": false,
+    "hasWordSync": false,
+    "plainLyrics": "Première ligne de démonstration\nDeuxième ligne de démonstration\nTroisième ligne de démonstration",
+    "syncedLyrics": "[00:06.97]Ligne originale de démonstration 1\n[00:07.91]Ligne originale de démonstration 2\n[00:09.96]Ligne originale de démonstration 3\n[00:11.68]Ligne originale de démonstration 4\n[00:13.79]Ligne originale de démonstration 5\n[00:15.97]Ligne originale de démonstration 6"
+  },
+  {
+    "id": 10018882,
+    "trackName": "BAD!",
+    "artistName": "Folie's",
+    "albumName": "BAD!",
+    "duration": 161.0,
+    "instrumental": false,
+    "hasWordSync": false,
+    "plainLyrics": "Première ligne de démonstration\nDeuxième ligne de démonstration\nTroisième ligne de démonstration",
+    "syncedLyrics": "[00:06.90]Ligne originale de démonstration 1\n[00:07.91]Ligne originale de démonstration 2\n[00:10.02]Ligne originale de démonstration 3\n[00:11.92]Ligne originale de démonstration 4\n[00:14.50]Ligne originale de démonstration 5\n[00:16.20]Ligne originale de démonstration 6"
+  },
+  {
+    "id": 14297769,
+    "trackName": "BAD!",
+    "artistName": "Folie's",
+    "albumName": "Folie's je t'aime",
+    "duration": 161.0,
+    "instrumental": false,
+    "hasWordSync": false,
+    "plainLyrics": "Première ligne de démonstration\nDeuxième ligne de démonstration\nTroisième ligne de démonstration",
+    "syncedLyrics": "[00:06.97]Ligne originale de démonstration 1\n[00:07.91]Ligne originale de démonstration 2\n[00:09.96]Ligne originale de démonstration 3\n[00:11.68]Ligne originale de démonstration 4\n[00:13.79]Ligne originale de démonstration 5\n[00:15.97]Ligne originale de démonstration 6"
+  },
+  {
+    "id": 38489157,
+    "trackName": "BAD!",
+    "artistName": "Folie's",
+    "albumName": "BAD! - Single",
+    "duration": 161.0,
+    "instrumental": false,
+    "hasWordSync": false,
+    "plainLyrics": "Première ligne de démonstration\nDeuxième ligne de démonstration\nTroisième ligne de démonstration",
+    "syncedLyrics": "[00:06.90]Ligne originale de démonstration 1\n[00:07.91]Ligne originale de démonstration 2\n[00:10.02]Ligne originale de démonstration 3\n[00:11.92]Ligne originale de démonstration 4\n[00:14.50]Ligne originale de démonstration 5\n[00:16.20]Ligne originale de démonstration 6"
+  }
+]

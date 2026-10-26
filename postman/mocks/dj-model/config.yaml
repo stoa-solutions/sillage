@@ -1,0 +1,9 @@
+version: 1
+name: recall-dj-model
+slug: recall-dj-model
+protocol: http
+interceptRequests: true
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true

@@ -1,0 +1,28 @@
+$kind: http-request
+description: >-
+  Google fournit code et state ; le cookie du démarrage est obligatoire. Vérification de l’identité et du nonce, puis
+  retour HTML vers playlist-recall://auth?code=…&state=…. Le code de retour Sillage est à usage unique, valable 90
+  secondes et lié au challenge PKCE. Il ne s’agit ni d’une clé Google ni du jeton API. Ne pas rejouer manuellement le
+  callback hors du flux navigateur.
+
+
+  Effet : browser. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/auth/google/callback?state={{state}}&code={{code}}"
+method: GET
+headers:
+  Accept: application/json
+queryParams:
+  - key: state
+    value: "{{state}}"
+    disabled: false
+  - key: code
+    value: "{{code}}"
+    disabled: false
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 3000

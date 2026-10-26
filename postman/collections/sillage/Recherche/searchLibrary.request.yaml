@@ -1,0 +1,29 @@
+$kind: http-request
+description: >-
+  Recherche hybride lexicale/vectorielle et métadonnées MusicBrainz dans les appartenances actives du compte. mode=image
+  rapproche les miniatures indexées. offset/limit paginent la bibliothèque ; un index indisponible peut fournir des
+  résultats avec degraded. Aucun appel de recherche YouTube via cette route.
+
+
+  Effet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection
+  sur son compte.
+url: "{{base_url}}/v1/search"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "query": "Mac Miller",
+      "mode": "text",
+      "sort": "relevance",
+      "offset": 0,
+      "limit": 25
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 1000

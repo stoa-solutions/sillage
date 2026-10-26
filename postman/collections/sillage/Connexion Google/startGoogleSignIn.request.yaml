@@ -1,0 +1,27 @@
+$kind: http-request
+description: >-
+  À ouvrir dans le navigateur système. Le Mac crée un verifier PKCE et app_state, puis envoie SHA-256(verifier) en
+  base64url comme challenge. Le serveur pose un cookie Secure HttpOnly SameSite=Lax et redirige vers Google. Flux
+  valable 10 minutes. Scopes : openid, email, profile ; aucun accès aux playlists YouTube.
+
+
+  Effet : browser. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/auth/google/start?challenge={{challenge}}&app_state={{app_state}}"
+method: GET
+headers:
+  Accept: application/json
+queryParams:
+  - key: challenge
+    value: "{{challenge}}"
+    disabled: false
+  - key: app_state
+    value: "{{app_state}}"
+    disabled: false
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([302]); });
+    language: text/javascript
+order: 2000

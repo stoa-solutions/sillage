@@ -1,0 +1,9 @@
+version: 1
+name: sillage-google-native
+slug: sillage-google-native
+protocol: http
+interceptRequests: true
+scenarios:
+  - name: default
+    path: ./native.js
+    default: true

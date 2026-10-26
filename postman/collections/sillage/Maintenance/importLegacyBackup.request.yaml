@@ -1,0 +1,34 @@
+$kind: http-request
+description: >-
+  Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les
+  exports Recall, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.
+
+
+  Effet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/import"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "format": "playlist-recall",
+      "version": 1,
+      "collections": [
+        {
+          "playlist": {
+            "id": "playlist_example",
+            "title": "Exemple"
+          },
+          "videos": []
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 1000

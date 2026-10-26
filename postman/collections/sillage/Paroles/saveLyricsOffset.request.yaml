@@ -1,0 +1,26 @@
+$kind: http-request
+description: >-
+  Correction personnelle en millisecondes, entre −30 000 et +30 000. Une valeur positive retarde les paroles. Ne modifie
+  pas les corrections des autres comptes.
+
+
+  Effet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/lyrics/:videoId/offset"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+pathVariables:
+  videoId: "{{video_id}}"
+body:
+  type: json
+  content: |-
+    {
+      "offsetMs": 0
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 2000

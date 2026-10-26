@@ -1,0 +1,17 @@
+$kind: http-request
+description: >-
+  Supprime uniquement les événements d’écoute du compte courant ; cela réduit les signaux disponibles pour l’accueil
+  Découvrir.
+
+
+  Effet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/history"
+method: DELETE
+headers:
+  Accept: application/json
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 3000

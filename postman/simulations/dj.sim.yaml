@@ -1,0 +1,6 @@
+simulation: recall-dj
+routing: path
+mocks:
+  - name: model
+    routeKey: model
+    path: postman/mocks/dj-model/config.yaml

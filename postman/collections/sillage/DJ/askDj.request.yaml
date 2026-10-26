@@ -1,0 +1,34 @@
+$kind: http-request
+description: >-
+  scope est la source explicite : library, youtube ou all. Le serveur exécute les outils puis retourne une opération
+  validée ; le Mac joue ensuite les tracks. replace remplace maintenant, append ajoute sans interrompre, keep conserve
+  la lecture. discoveries propose des cartes ; sources accompagne une recherche d’information. Envoyer playbackContext,
+  historique et exclusions pour une suite cohérente. conversationId et requestId optionnels relient le chat aux actions
+  du client ; trigger distingue demande et continuation. X-Sillage-Trace-Id identifie le tour, X-Sillage-Journal vaut
+  saved ou unavailable sans changer la réponse JSON. Aucun ajout à la bibliothèque par cette route. Une opération DJ
+  simultanée par compte ; 429 peut signifier occupé, pas forcément quota épuisé.
+
+
+  Effet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/dj/chat"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "message": "Propose du jazz sans lancer la lecture.",
+      "scope": "library",
+      "history": [],
+      "excludeIds": [],
+      "discoveryContext": [],
+      "rejectedIds": []
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 6000

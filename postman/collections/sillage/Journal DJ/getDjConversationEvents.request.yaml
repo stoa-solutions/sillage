@@ -1,0 +1,28 @@
+$kind: http-request
+description: >-
+  Journal chronologique par ordre de réception. Après une reconnexion, utiliser occurredAt et clientSequence pour
+  l’ordre réel des actions du Mac. payload contient le texte original, les propositions, l’état de file ou l’appel
+  d’outil ; aucun masquage de contenu. Le champ requestId des événements client correspond au request_id du tour
+  serveur.
+
+
+  Effet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection
+  sur son compte.
+url: "{{base_url}}/v1/dj/conversations/:conversationId/events"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  conversationId: "{{conversationId}}"
+queryParams:
+  - key: limit
+    value: "50"
+    disabled: true
+  - key: after
+    value: "0"
+    disabled: true
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 3000

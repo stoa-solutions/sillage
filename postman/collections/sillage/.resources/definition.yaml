@@ -1,0 +1,24 @@
+$kind: collection
+name: Sillage — API développeur
+description: "Export local dérivé d’OpenAPI. Ne pas exécuter toute la collection : elle contient des suppressions,
+  déconnexions et appels fournisseur. Choisir Local ou Serveur privé et renseigner api_token uniquement dans la valeur
+  locale de Postman. Les secrets ne sont jamais fournis dans cet export."
+variables:
+  base_url: http://127.0.0.1:3030/proxy
+  api_token: ""
+  video_id: ""
+  playlist_id: ""
+  conversationId: ""
+  turnId: ""
+  archive: ""
+  challenge: ""
+  app_state: ""
+  auth_code: ""
+  pkce_verifier: ""
+  legacy_token: ""
+auth:
+  - id: 00000000-0000-4000-8000-000000000001
+    type: bearer
+    name: Session Sillage
+    credentials:
+      token: "{{api_token}}"

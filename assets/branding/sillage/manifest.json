@@ -1,0 +1,154 @@
+{
+  "productName": "Sillage",
+  "signature": "by Stoa",
+  "previousName": "Playlist Recall",
+  "namingApproved": "2026-10-26 — user selection in this conversation",
+  "iconStatus": "Visual direction approved by la personne on 2026-10-26; app integration tracked separately",
+  "source": "Built-in Codex ImageGen; technical resizing and format export with sharp and Apple iconutil",
+  "palette": {
+    "orange": "#F15A24",
+    "ink": "#20201E",
+    "chalk": "#F5F3EE",
+    "paper": "#FAF9F6"
+  },
+  "appleLayeredIcon": "Not produced: the .icns pack is a static legacy export, not an Icon Composer .icon file",
+  "repoVisibility": "Private when checked on 2026-10-26; unchanged",
+  "files": [
+    {
+      "file": "icons/chrome/128.png",
+      "bytes": 24450,
+      "width": 128,
+      "height": 128,
+      "sha256": "b8ccf8fe0160c6f1994119227194a7b4d7c1f3fcd2bb774b0ab26bba55721d59"
+    },
+    {
+      "file": "icons/chrome/16.png",
+      "bytes": 865,
+      "width": 16,
+      "height": 16,
+      "sha256": "6915400ffd23216764dc744b4000b3c3350fc87d61c6b12977fa2bbfb6f9a22e"
+    },
+    {
+      "file": "icons/chrome/32.png",
+      "bytes": 2431,
+      "width": 32,
+      "height": 32,
+      "sha256": "43e1c34b738b651cf9ec4b9b5dabc34385d6d15d9b2b26aa3787d36be6ee0453"
+    },
+    {
+      "file": "icons/chrome/48.png",
+      "bytes": 5028,
+      "width": 48,
+      "height": 48,
+      "sha256": "ca368c31c85d148f2b0093bae7847355e23ac694edd5533e6ef9093c1489e655"
+    },
+    {
+      "file": "icons/macos/Sillage.icns",
+      "bytes": 2381256,
+      "sha256": "9cde789536529e362686e34677d26e016aa7b075164e35bf64ccb3046379a4c6"
+    },
+    {
+      "file": "icons/macos/Sillage.iconset/icon_128x128.png",
+      "bytes": 24450,
+      "width": 128,
+      "height": 128,
+      "sha256": "b8ccf8fe0160c6f1994119227194a7b4d7c1f3fcd2bb774b0ab26bba55721d59"
+    },
+    {
+      "file": "icons/macos/Sillage.iconset/icon_128x128@2x.png",
+      "bytes": 93872,
+      "width": 256,
+      "height": 256,
+      "sha256": "3d84dd84bcec7de281f919265f1e2136fa398379ab6be7e5ec571b10d177e00a"
+    },
+    {
+      "file": "icons/macos/Sillage.iconset/icon_16x16.png",
+      "bytes": 865,
+      "width": 16,
+      "height": 16,
+      "sha256": "6915400ffd23216764dc744b4000b3c3350fc87d61c6b12977fa2bbfb6f9a22e"
+    },
+    {
+      "file": "icons/macos/Sillage.iconset/icon_16x16@2x.png",
+      "bytes": 2431,
+      "width": 32,
+      "height": 32,
+      "sha256": "43e1c34b738b651cf9ec4b9b5dabc34385d6d15d9b2b26aa3787d36be6ee0453"
+    },
+    {
+      "file": "icons/macos/Sillage.iconset/icon_256x256.png",
+      "bytes": 93872,
+      "width": 256,
+      "height": 256,
+      "sha256": "3d84dd84bcec7de281f919265f1e2136fa398379ab6be7e5ec571b10d177e00a"
+    },
+    {
+      "file": "icons/macos/Sillage.iconset/icon_256x256@2x.png",
+      "bytes": 366585,
+      "width": 512,
+      "height": 512,
+      "sha256": "32ecaa13771281940e707bb9e9f23d13c8b0871aa65ed044e2b370675c63c693"
+    },
+    {
+      "file": "icons/macos/Sillage.iconset/icon_32x32.png",
+      "bytes": 2431,
+      "width": 32,
+      "height": 32,
+      "sha256": "43e1c34b738b651cf9ec4b9b5dabc34385d6d15d9b2b26aa3787d36be6ee0453"
+    },
+    {
+      "file": "icons/macos/Sillage.iconset/icon_32x32@2x.png",
+      "bytes": 7414,
+      "width": 64,
+      "height": 64,
+      "sha256": "b02f61e52a0698134aed589945c37bceb12254e39387a7cd2dc52589d7cff0e1"
+    },
+    {
+      "file": "icons/macos/Sillage.iconset/icon_512x512.png",
+      "bytes": 366585,
+      "width": 512,
+      "height": 512,
+      "sha256": "32ecaa13771281940e707bb9e9f23d13c8b0871aa65ed044e2b370675c63c693"
+    },
+    {
+      "file": "icons/macos/Sillage.iconset/icon_512x512@2x.png",
+      "bytes": 1416739,
+      "width": 1024,
+      "height": 1024,
+      "sha256": "ba126c8b81a6c64046a4156f36fd9421dbb36b10e3bd6e70e82118781f1b2b51"
+    },
+    {
+      "file": "icons/macos/sillage-1024.png",
+      "bytes": 1416739,
+      "width": 1024,
+      "height": 1024,
+      "sha256": "ba126c8b81a6c64046a4156f36fd9421dbb36b10e3bd6e70e82118781f1b2b51"
+    },
+    {
+      "file": "icons/sillage-1024.png",
+      "bytes": 1381629,
+      "width": 1024,
+      "height": 1024,
+      "sha256": "58022dc1dea7a511d93d5574e805859b3d26cd5cd9caa25104bc3409f6211046"
+    },
+    {
+      "file": "reference/recall-current.png",
+      "bytes": 4448,
+      "width": 128,
+      "height": 128,
+      "sha256": "acfc827ebf0ed7ecd3b7826ef935b3acc97c69ee9ab714b1619d12a43622a083"
+    },
+    {
+      "file": "reference/stoa-logo-encre.svg",
+      "bytes": 1750,
+      "sha256": "1b70ae991a7f797b2ed08197f3d2bbfc6a1e05241991bceb5e5035b3dd8d58ea"
+    },
+    {
+      "file": "sources/sillage-artwork.png",
+      "bytes": 1673337,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "ef60f163fc6c69a3dee95a97fb16baadb55a1970bc7d4847ed20a536ce1b2dba"
+    }
+  ]
+}

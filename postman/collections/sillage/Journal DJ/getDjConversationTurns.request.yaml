@@ -1,0 +1,26 @@
+$kind: http-request
+description: >-
+  Mode effectif et demandé, modèle, action finale, erreurs, statut et complétude du journal. stale indique un tour resté
+  en cours plus de cinq minutes, par exemple après un arrêt du serveur.
+
+
+  Effet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection
+  sur son compte.
+url: "{{base_url}}/v1/dj/conversations/:conversationId/turns"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  conversationId: "{{conversationId}}"
+queryParams:
+  - key: limit
+    value: "25"
+    disabled: true
+  - key: before
+    value: "{{before}}"
+    disabled: true
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 2000

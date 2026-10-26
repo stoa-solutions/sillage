@@ -1,0 +1,33 @@
+$kind: http-request
+description: >-
+  1 à 100 événements par lot. L’identifiant UUID de chaque événement rend les réémissions idempotentes pour ce compte.
+  finished, skipped, unavailable et replaced sont conservés ; pas de suivi audio implicite.
+
+
+  Effet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/history"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "events": [
+        {
+          "id": "00000000-0000-4000-8000-000000000010",
+          "videoId": "video000001",
+          "title": "Titre de test",
+          "channel": "Artiste de test",
+          "outcome": "finished",
+          "playedAt": "2026-10-26T09:00:00Z"
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 1000

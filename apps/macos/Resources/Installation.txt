@@ -1,0 +1,26 @@
+PLAYLIST RECALL — TON COMPTE, TES PLAYLISTS, TON DJ
+
+1. Copie Sillage.app dans Applications et ouvre-la.
+2. Clique sur Continuer avec Google et choisis ton compte.
+3. Ajoute ta propre clé Gemini pour activer le DJ et sa voix expressive.
+   Elle est chiffrée sur le serveur et réservée à ton compte.
+4. Dans Bibliothèque, colle un lien de playlist YouTube publique ou non répertoriée.
+   Aucune clé YouTube à saisir : le serveur s’occupe des imports.
+5. Autorise le micro et la reconnaissance vocale pour parler au DJ.
+
+Les playlists et la recherche restent sur le serveur. La page consultée,
+la file et la conversation sont temporaires et effacées à la déconnexion.
+Seule ta session est mémorisée dans un fichier privé sur ce Mac, sans Trousseau.
+Google reçoit ton chat et les métadonnées nécessaires au DJ avec ta clé Gemini.
+La connexion Google demande uniquement ton identité et ton adresse e-mail.
+Elle ne donne pas accès à tes playlists YouTube privées.
+
+Migration : si tu avais déjà une connexion personnelle, connecte Google puis
+choisis « Récupérer mes playlists existantes » après avoir vérifié l’adresse du compte.
+La clé Gemini doit être ajoutée dans les réglages de ce compte.
+
+Pour partager : transmets uniquement le ZIP ou le DMG de l’application.
+Aucun fichier de connexion ni clé personnelle ne doit accompagner l’archive.
+Cette version est signée localement, sans notarisation Apple. La distribution
+sans avertissement macOS nécessite un compte Apple Developer et la notarisation.
+Les mises à jour automatiques exigent une publication d’archive signée.
