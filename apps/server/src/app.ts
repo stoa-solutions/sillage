@@ -14,6 +14,7 @@ import { hash, parsePlaylistId } from "./content.ts";
 import { transaction, type Database } from "./db.ts";
 import { enqueue } from "./queue.ts";
 import { search } from "./search.ts";
+import { librarySearchInput } from "./library-contracts.ts";
 import {
   Lrclib,
   lyricsFor,
@@ -228,30 +229,7 @@ export function createApp(
     );
   });
   app.post("/v1/search", async (c) => {
-    const input = z
-      .object({
-        query: z.string().max(1000).default(""),
-        playlistId: z.string().max(160).optional(),
-        excludeIds: z
-          .array(z.string().regex(/^[A-Za-z0-9_-]{11}$/))
-          .max(100)
-          .optional(),
-        availableOnly: z.boolean().optional(),
-        minDuration: z.number().min(0).optional(),
-        maxDuration: z.number().min(0).optional(),
-        channel: z.string().max(300).optional(),
-        publishedAfter: z
-          .string()
-          .regex(/^\d{4}-\d{2}-\d{2}$/)
-          .optional(),
-        mode: z.enum(["text", "image"]).default("text"),
-        sort: z
-          .enum(["relevance", "position", "duration"])
-          .default("relevance"),
-        offset: z.number().int().min(0).max(50000).default(0),
-        limit: z.number().int().min(1).max(100).default(48),
-      })
-      .parse(await c.req.json());
+    const input = librarySearchInput.parse(await c.req.json());
     return c.json(await search(db, input, c.get("userId")));
   });
   const videoId = z.string().regex(/^[A-Za-z0-9_-]{11}$/);

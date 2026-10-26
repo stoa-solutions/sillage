@@ -1,0 +1,35 @@
+$kind: http-request
+description: >-
+  Transport Streamable HTTP stateless, authentifié avec le même Bearer que l’API. JSON-RPC 2.0 : initialisation,
+  tools/list puis tools/call selon le client MCP. Catalogue limité au compte ; outils de recherche en lecture seule. Le
+  DJ utilise en interne une connexion MCP en mémoire. MCP n’est pas un endpoint REST pour chaque outil.
+
+
+  Effet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/mcp"
+method: POST
+headers:
+  Accept: application/json, text/event-stream
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-11-25",
+        "capabilities": {},
+        "clientInfo": {
+          "name": "Sillage Postman",
+          "version": "1.0.0"
+        }
+      }
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200,202]); });
+    language: text/javascript
+order: 1000

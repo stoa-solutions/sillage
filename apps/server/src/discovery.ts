@@ -24,6 +24,7 @@ export const discoveryInput = z.object({
     .default(""),
 });
 export type DiscoverySource = Pick<YouTube, "search" | "videos">;
+export const discoveryAddInput = z.object({ videoId: z.string().regex(/^[\w-]{11}$/) });
 function discoverySource(db: Database): DiscoverySource {
   const youtube = new YouTube(process.env.YOUTUBE_API_KEY ?? "", db);
   const url = process.env.SEARXNG_URL?.trim();
@@ -201,9 +202,7 @@ export function discoveryRoutes(db: Database, service = discoveryFor(db)) {
     );
   });
   routes.post("/add", async (c) => {
-    const { videoId } = z
-      .object({ videoId: z.string().regex(/^[\w-]{11}$/) })
-      .parse(await c.req.json());
+    const { videoId } = discoveryAddInput.parse(await c.req.json());
     return c.json(await service.add(c.get("userId"), videoId));
   });
   routes.onError((error, c) => {

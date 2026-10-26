@@ -1,0 +1,25 @@
+$kind: http-request
+description: >-
+  Synthèse vocale Gemini avec la clé du compte ; renvoie un WAV encodé en base64, pas un flux audio direct. Consomme le
+  quota fournisseur. La demande peut être annulée avec la connexion HTTP. L’app utilise une voix locale si cette
+  synthèse échoue.
+
+
+  Effet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/dj/speech"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "text": "La suite est prête."
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 7000

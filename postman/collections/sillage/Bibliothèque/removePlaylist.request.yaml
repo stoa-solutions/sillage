@@ -1,0 +1,20 @@
+$kind: http-request
+description: >-
+  Retire uniquement le rattachement Sillage du compte courant. Ne supprime rien sur YouTube ni chez les autres comptes.
+  Les morceaux restent accessibles si une autre playlist du compte les contient. Retirer Mes découvertes vide cette
+  collection privée.
+
+
+  Effet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/playlists/:id"
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  id: "{{playlist_id}}"
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 4000

@@ -1,0 +1,26 @@
+$kind: http-request
+description: >-
+  La première configuration exige apiKey. Ensuite model seul conserve la clé existante. Chiffrement AES-256-GCM côté
+  serveur avec contexte du compte ; clé jamais renvoyée. L’enregistrement ne vérifie pas Google : utiliser /check pour
+  tester, ce qui consomme le quota du fournisseur.
+
+
+  Effet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/dj/settings"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "apiKey": "{{gemini_api_key}}",
+      "model": "gemini-3.5-flash-lite"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 3000

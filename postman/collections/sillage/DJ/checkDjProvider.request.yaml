@@ -1,0 +1,26 @@
+$kind: http-request
+description: >-
+  Appel réel à Google, sans enregistrer les paramètres fournis. Sans apiKey, teste la clé existante. ok=false ou
+  voice=false peuvent être retournés avec HTTP 200 : lire le résultat métier. Une seule opération DJ par compte et deux
+  au maximum sur cette instance.
+
+
+  Effet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/dj/check"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "model": "gemini-3.5-flash-lite",
+      "voice": false
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 5000

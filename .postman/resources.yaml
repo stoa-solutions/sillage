@@ -1,0 +1,10 @@
+localResources:
+  collections:
+    - ../postman/collections/sillage
+  environments:
+    - ../postman/environments/Local.environment.yaml
+    - ../postman/environments/Serveur privé.environment.yaml
+  specs:
+    - ../postman/specs/sillage.openapi.json
+workspace:
+  id: ''

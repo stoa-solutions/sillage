@@ -3,6 +3,8 @@
 | Document | Contenu |
 | --- | --- |
 | [developing.md](developing.md) | Démarrer, comprendre les couches et valider une fonctionnalité. |
+| [api.md](api.md) | Swagger privé local, OpenAPI, Postman et parcours de connexion. |
+| [discovery.md](discovery.md) | Fonctionnement actuel de Découvrir, sources et pistes d’amélioration. |
 | [architecture.md](architecture.md) | Produit, frontières de code, secrets, limites de volume. |
 | [macos.md](macos.md) | App Mac : modules, compilation, signature, mises à jour, bibliothèque serveur. |
 | [design.md](design.md) | Design de l’app Mac : principes, composants communs, enchaînements. |

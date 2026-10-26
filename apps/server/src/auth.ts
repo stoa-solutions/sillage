@@ -12,6 +12,8 @@ export const pkceChallenge = (verifier: string) =>
   createHash("sha256").update(verifier).digest("base64url");
 const opaque = () => randomBytes(32).toString("base64url");
 const safeValue = z.string().regex(/^[A-Za-z0-9_-]{43,128}$/);
+export const authStartInput = z.object({ challenge: safeValue, app_state: safeValue });
+export const authExchangeInput = z.object({ code: safeValue, verifier: safeValue });
 export interface GoogleIdentity {
   sub: string;
   email: string;
@@ -75,9 +77,7 @@ export function authRoutes(db: Database, provider = googleProvider()) {
         { error: "La connexion Google attend sa configuration serveur." },
         503,
       );
-    const input = z
-      .object({ challenge: safeValue, app_state: safeValue })
-      .parse(c.req.query());
+    const input = authStartInput.parse(c.req.query());
     const now = Math.floor(Date.now() / 60000);
     if (minute !== now) {
       minute = now;
@@ -156,9 +156,7 @@ export function authRoutes(db: Database, provider = googleProvider()) {
     }
   });
   app.post("/exchange", async (c) => {
-    const { code, verifier } = z
-      .object({ code: safeValue, verifier: safeValue })
-      .parse(await c.req.json());
+    const { code, verifier } = authExchangeInput.parse(await c.req.json());
     const token = opaque();
     const user = await transaction(db, async (client) => {
       const grant = await client.query(

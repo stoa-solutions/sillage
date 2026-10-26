@@ -1,0 +1,1959 @@
+{
+  "info": {
+    "name": "Sillage — API développeur",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Export local dérivé d’OpenAPI. Ne pas exécuter toute la collection : elle contient des suppressions, déconnexions et appels fournisseur. Choisir Local ou Serveur privé et renseigner api_token uniquement dans la valeur locale de Postman. Les secrets ne sont jamais fournis dans cet export."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{api_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:3001",
+      "type": "string"
+    },
+    {
+      "key": "api_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "video_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "playlist_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "archive",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "challenge",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "app_state",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auth_code",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pkce_verifier",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "legacy_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Système",
+      "item": [
+        {
+          "name": "getHealth",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Vérifie PostgreSQL et retourne la version ainsi que le SHA déployé. Ne valide pas à lui seul la progression du worker.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+                  "pm.test(\"Serveur disponible\", function () { pm.expect(pm.response.json().ok).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Connexion Google",
+      "item": [
+        {
+          "name": "getAuthStatus",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "status"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Indique si la connexion Google est configurée, sans exposer d’identifiant privé.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "startGoogleSignIn",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/google/start?challenge={{challenge}}&app_state={{app_state}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "google",
+                "start"
+              ],
+              "query": [
+                {
+                  "key": "challenge",
+                  "value": "{{challenge}}",
+                  "disabled": false,
+                  "description": ""
+                },
+                {
+                  "key": "app_state",
+                  "value": "{{app_state}}",
+                  "disabled": false,
+                  "description": ""
+                }
+              ],
+              "variable": []
+            },
+            "description": "À ouvrir dans le navigateur système. Le Mac crée un verifier PKCE et app_state, puis envoie SHA-256(verifier) en base64url comme challenge. Le serveur pose un cookie Secure HttpOnly SameSite=Lax et redirige vers Google. Flux valable 10 minutes. Scopes : openid, email, profile ; aucun accès aux playlists YouTube.\n\nEffet : browser. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([302]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "completeGoogleSignIn",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/google/callback?state={{state}}&code={{code}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "google",
+                "callback"
+              ],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "{{state}}",
+                  "disabled": false,
+                  "description": ""
+                },
+                {
+                  "key": "code",
+                  "value": "{{code}}",
+                  "disabled": false,
+                  "description": ""
+                }
+              ],
+              "variable": []
+            },
+            "description": "Google fournit code et state ; le cookie du démarrage est obligatoire. Vérification de l’identité et du nonce, puis retour HTML vers playlist-recall://auth?code=…&state=…. Le code de retour Sillage est à usage unique, valable 90 secondes et lié au challenge PKCE. Il ne s’agit ni d’une clé Google ni du jeton API. Ne pas rejouer manuellement le callback hors du flux navigateur.\n\nEffet : browser. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "exchangeSignInGrant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/exchange",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "exchange"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "L’app échange le code Sillage reçu par son lien de retour et son verifier PKCE. Usage unique. Le jeton retourné est conservé dans le fichier privé de session du Mac ; le serveur conserve son empreinte. Validité 90 jours, prolongée à l’usage lorsque moins de 60 jours restent.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{auth_code}}\",\n  \"verifier\": \"{{pkce_verifier}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Compte",
+      "item": [
+        {
+          "name": "getAccount",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "me"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Compte associé au jeton Bearer. Chaque session détermine son userId côté serveur ; un client ne peut pas choisir le compte d’un autre utilisateur.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "revokeSession",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "logout"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Révoque le jeton utilisé pour cet appel. Les autres sessions du compte restent actives.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "claimLegacyLibrary",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/account/claim-library",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "account",
+                "claim-library"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Transfert à usage unique vers un compte Google, avec preuve du jeton historique. Transfère aussi l’historique et les jetons concernés. Ne sert pas à partager des bibliothèques entre comptes ordinaires.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"legacyToken\": \"{{legacy_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bibliothèque",
+      "item": [
+        {
+          "name": "getLibraryStatus",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "status"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Compteurs de vidéos, index et tâches visibles pour le compte courant. Les tâches des autres comptes ne sont pas listées.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "listPlaylists",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/playlists",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "playlists"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Instantanés des playlists rattachées au compte et nombre d’entrées actives. Ce ne sont pas des droits d’écriture sur YouTube.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "importYouTubePlaylist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/playlists",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "playlists"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Ajoute le rattachement au compte puis programme une synchronisation. 202 signifie tâche créée, pas import terminé. Playlists publiques ou non répertoriées ; pas d’OAuth YouTube. Un import incomplet conserve l’instantané précédent.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://www.youtube.com/playlist?list={{playlist_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([202]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "removePlaylist",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/playlists/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "playlists",
+                ":id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{playlist_id}}"
+                }
+              ]
+            },
+            "description": "Retire uniquement le rattachement Sillage du compte courant. Ne supprime rien sur YouTube ni chez les autres comptes. Les morceaux restent accessibles si une autre playlist du compte les contient. Retirer Mes découvertes vide cette collection privée.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "syncYouTubePlaylist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/playlists/:id/sync",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "playlists",
+                ":id",
+                "sync"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{playlist_id}}"
+                }
+              ]
+            },
+            "description": "Programme une synchronisation idempotente. Lire ensuite les tâches et la liste de playlists pour vérifier l’achèvement. Ne pas appeler pour Mes découvertes, qui n’a pas de source YouTube.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([202]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getEnrichmentProgress",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/library/enrichment",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "library",
+                "enrichment"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Compteurs propres au compte : matched, ambiguous, not_found, attente YouTube, tâches et erreurs. processed indique une décision d’enrichissement, pas forcément une correspondance certaine. Les genres d’artiste ne prouvent pas le genre du morceau.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "exportLibrary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/export",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "export"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Export Recall JSON version 1 au format collections/playlist/videos, limité au compte. Aucun jeton ni clé Gemini n’est inclus.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Recherche",
+      "item": [
+        {
+          "name": "searchLibrary",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "search"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Recherche hybride lexicale/vectorielle et métadonnées MusicBrainz dans les appartenances actives du compte. mode=image rapproche les miniatures indexées. offset/limit paginent la bibliothèque ; un index indisponible peut fournir des résultats avec degraded. Aucun appel de recherche YouTube via cette route.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Mac Miller\",\n  \"mode\": \"text\",\n  \"sort\": \"relevance\",\n  \"offset\": 0,\n  \"limit\": 25\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Maintenance",
+      "item": [
+        {
+          "name": "importLegacyBackup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/import",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "import"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les exports Recall, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"format\": \"playlist-recall\",\n  \"version\": 1,\n  \"collections\": [\n    {\n      \"playlist\": {\n        \"id\": \"playlist_example\",\n        \"title\": \"Exemple\"\n      },\n      \"videos\": []\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "retryFailedJobs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/jobs/retry",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "jobs",
+                "retry"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Réservé au compte historique de maintenance. Relance les dernières tâches en échec sans dupliquer une tâche active. Opération globale de maintenance, pas une action de playlist ordinaire.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([202]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Découvrir",
+      "item": [
+        {
+          "name": "getDiscoveryHome",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/discover/home",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "discover",
+                "home"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Relit les 80 dernières écoutes du compte. Parmi les 20 écoutes finished/replaced les plus récentes, extrait au plus 3 pistes artiste/genre MusicBrainz. Cherche ces pistes, écarte les vidéos déjà possédées ou récemment écoutées et entrelace au plus 12 suggestions. Heuristique sans appel Gemini, pas apprentissage de goûts collaboratif. Pas d’historique : emptyReason et suggestions vides.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "searchYouTube",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/discover/search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "discover",
+                "search"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "SearXNG privé si configuré, sinon YouTube search.list. Les vidéos sont vérifiées par YouTube ; inLibrary est recalculé pour chaque compte. Cache public des requêtes de 5 minutes, maximum 100 entrées ; demandes identiques partagées, 4 recherches distinctes simultanées. pageToken est opaque et doit être renvoyé tel quel.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Mac Miller\",\n  \"pageToken\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "saveDiscovery",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/discover/add",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "discover",
+                "add"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Revérifie l’identifiant sur YouTube, enregistre dans la collection privée du compte, puis programme les index texte et image si activés. Ajout idempotent. Ne modifie aucune playlist YouTube. L’enrichissement MusicBrainz est ensuite pris en charge par le worker pour les comptes activés.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"videoId\": \"{{video_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DJ",
+      "item": [
+        {
+          "name": "getDjRules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/rules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "rules"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Règles de l’agent côté serveur, consultables par un compte connecté. Cette route ne modifie pas le prompt.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getDjStatus",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "status"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Retourne les capacités configurées et le modèle sélectionné, sans jamais renvoyer la clé. personal distingue les réglages du compte du mode historique.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "saveDjSettings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/settings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "settings"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "La première configuration exige apiKey. Ensuite model seul conserve la clé existante. Chiffrement AES-256-GCM côté serveur avec contexte du compte ; clé jamais renvoyée. L’enregistrement ne vérifie pas Google : utiliser /check pour tester, ce qui consomme le quota du fournisseur.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"apiKey\": \"{{gemini_api_key}}\",\n  \"model\": \"gemini-3.5-flash-lite\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "resetDjSettings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/settings/reset",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "settings",
+                "reset"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Supprime les réglages et la clé chiffrée du compte courant. Le DJ d’un utilisateur Google sera à reconfigurer ; les playlists restent disponibles.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "checkDjProvider",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/check",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "check"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Appel réel à Google, sans enregistrer les paramètres fournis. Sans apiKey, teste la clé existante. ok=false ou voice=false peuvent être retournés avec HTTP 200 : lire le résultat métier. Une seule opération DJ par compte et deux au maximum sur cette instance.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model\": \"gemini-3.5-flash-lite\",\n  \"voice\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "askDj",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/chat",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "chat"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "scope est la source explicite : library, youtube ou all. Le serveur exécute les outils puis retourne une opération validée ; le Mac joue ensuite les tracks. replace remplace maintenant, append ajoute sans interrompre, keep conserve la lecture. discoveries propose des cartes ; sources accompagne une recherche d’information. Envoyer playbackContext, historique et exclusions pour une suite cohérente. Aucun ajout à la bibliothèque par cette route. Une opération DJ simultanée par compte ; 429 peut signifier occupé, pas forcément quota épuisé.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Propose du jazz sans lancer la lecture.\",\n  \"scope\": \"library\",\n  \"history\": [],\n  \"excludeIds\": [],\n  \"discoveryContext\": [],\n  \"rejectedIds\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "synthesizeDjSpeech",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/speech",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "speech"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Synthèse vocale Gemini avec la clé du compte ; renvoie un WAV encodé en base64, pas un flux audio direct. Consomme le quota fournisseur. La demande peut être annulée avec la connexion HTTP. L’app utilise une voix locale si cette synthèse échoue.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"La suite est prête.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Historique",
+      "item": [
+        {
+          "name": "recordListeningEvents",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/history",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "history"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "1 à 100 événements par lot. L’identifiant UUID de chaque événement rend les réémissions idempotentes pour ce compte. finished, skipped, unavailable et replaced sont conservés ; pas de suivi audio implicite.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"events\": [\n    {\n      \"id\": \"00000000-0000-4000-8000-000000000010\",\n      \"videoId\": \"video000001\",\n      \"title\": \"Titre de test\",\n      \"channel\": \"Artiste de test\",\n      \"outcome\": \"finished\",\n      \"playedAt\": \"2026-10-26T09:00:00Z\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "listListeningEvents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/history",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "history"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "before",
+                  "value": "{{before}}",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "beforeId",
+                  "value": "{{beforeId}}",
+                  "disabled": true,
+                  "description": ""
+                }
+              ],
+              "variable": []
+            },
+            "description": "Tri décroissant par playedAt et id. Pagination par curseur : reprendre playedAt et id de la dernière ligne dans before et beforeId. beforeId exige before. Valeur par défaut : 50 ; maximum : 200.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "clearListeningHistory",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/history",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "history"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Supprime uniquement les événements d’écoute du compte courant ; cela réduit les signaux disponibles pour l’accueil Découvrir.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Paroles",
+      "item": [
+        {
+          "name": "getLyrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/lyrics/:videoId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "lyrics",
+                ":videoId"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": "{{video_id}}"
+                }
+              ]
+            },
+            "description": "Réservé aux vidéos présentes dans les playlists du compte. Cherche/cache LRCLIB et applique la correction personnelle. missing et unavailable sont des états métier en HTTP 200. Le clic temporel et le rendu restent gérés par le lecteur Mac.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "saveLyricsOffset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/lyrics/:videoId/offset",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "lyrics",
+                ":videoId",
+                "offset"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": "{{video_id}}"
+                }
+              ]
+            },
+            "description": "Correction personnelle en millisecondes, entre −30 000 et +30 000. Une valeur positive retarde les paroles. Ne modifie pas les corrections des autres comptes.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offsetMs\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Outils MCP",
+      "item": [
+        {
+          "name": "callMusicMcp",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/mcp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "mcp"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Transport Streamable HTTP stateless, authentifié avec le même Bearer que l’API. JSON-RPC 2.0 : initialisation, tools/list puis tools/call selon le client MCP. Catalogue limité au compte ; outils de recherche en lecture seule. Le DJ utilise en interne une connexion MCP en mémoire. MCP n’est pas un endpoint REST pour chaque outil.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"2025-11-25\",\n    \"capabilities\": {},\n    \"clientInfo\": {\n      \"name\": \"Sillage Postman\",\n      \"version\": \"1.0.0\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200,202]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getMusicMcp",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/mcp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "mcp"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Le transport monté reçoit cette méthode mais ne maintient aucune session ni flux SSE à reprendre. Utiliser POST avec un client MCP.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([405]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "deleteMusicMcp",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/mcp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "mcp"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Le transport monté reçoit cette méthode mais ne maintient aucune session ni flux SSE à reprendre. Utiliser POST avec un client MCP.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([405]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lecteur et distribution",
+      "item": [
+        {
+          "name": "getYouTubePlayer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/dj/player",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "dj",
+                "player"
+              ],
+              "query": [
+                {
+                  "key": "native",
+                  "value": "{{native}}",
+                  "disabled": true,
+                  "description": ""
+                }
+              ],
+              "variable": []
+            },
+            "description": "Ressource publique utilisée par WebKit ; ne reçoit aucun jeton privé ni clé Gemini. Les contrôles du lecteur ne sont pas des endpoints REST. Le paramètre native=1 active le mode discret prévu par l’app.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getYouTubePlayerScript",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/dj/player.js",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "dj",
+                "player.js"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Ressource publique utilisée par WebKit ; ne reçoit aucun jeton privé ni clé Gemini. Les contrôles du lecteur ne sont pas des endpoints REST. Le paramètre native=1 active le mode discret prévu par l’app.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getYouTubePlayerStyle",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/dj/player.css",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "dj",
+                "player.css"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Ressource publique utilisée par WebKit ; ne reçoit aucun jeton privé ni clé Gemini. Les contrôles du lecteur ne sont pas des endpoints REST. Le paramètre native=1 active le mode discret prévu par l’app.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getMacUpdateFeed",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/macos/appcast.xml",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "macos",
+                "appcast.xml"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Flux Sparkle public. Un flux vide est normal tant qu’aucune archive signée n’a été volontairement publiée. Une installation locale n’active pas automatiquement une mise à jour publique.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "downloadMacArchive",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/macos/:archive",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "macos",
+                ":archive"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "archive",
+                  "value": "{{archive}}"
+                }
+              ]
+            },
+            "description": "Uniquement les archives ZIP nommées Playlist-Recall-version-architecture.zip présentes dans le répertoire de publication. Le nom technique historique reste stable malgré la marque Sillage.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
