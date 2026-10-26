@@ -43,8 +43,8 @@ private final class FakeClips: ClipSource {
   func deliver(_ id: String) {
     waiting.removeValue(forKey: id)?.resume(returning: URL(fileURLWithPath: "/tmp/\(id).mp4"))
   }
-  func fail(_ id: String) {
-    waiting.removeValue(forKey: id)?.resume(throwing: RecallError.message("no clip"))
+  func fail(_ id: String, error: Error = RecallError.message("no clip")) {
+    waiting.removeValue(forKey: id)?.resume(throwing: error)
   }
 }
 
@@ -135,6 +135,26 @@ func playbackEngineChecks() async throws {
   clips.fail(song.id)
   try await settle { !engine.preparingClip }
   try expect(engine.active == .youtube && heard.isEmpty, "A missing clip disturbed playback")
+  try expect(engine.clipFailure?.kind == .download, "Native preparation failure was silent")
+  youtube.position = 42
+  let loads = youtube.loaded.count
+  engine.retryClip()
+  try await settle { clips.waiting[song.id] != nil }
+  try expect(
+    youtube.loaded.count == loads && youtube.position == 42 && engine.clipFailure == nil,
+    "Native retry restarted or sought the healthy YouTube player")
+  clips.fail(song.id, error: PlaybackFailure(.authentication))
+  try await settle { !engine.preparingClip }
+  try expect(
+    engine.clipFailure?.kind == .authentication && heard.isEmpty,
+    "Robot check was hidden or interrupted healthy playback")
+  engine.cue(other)
+  try await settle { clips.waiting[other.id] != nil }
+  try expect(engine.clipFailure == nil, "Native failure leaked into the next track")
+  clips.fail(other.id)
+  try await settle { !engine.preparingClip }
+  engine.reset()
+  try expect(engine.clipFailure == nil, "Native failure survived a session reset")
 
   // YouTube refuses to embed, but the clip comes: no skip.
   youtube = FakePlayer()

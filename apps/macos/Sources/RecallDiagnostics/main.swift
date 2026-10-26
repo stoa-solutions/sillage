@@ -4,6 +4,15 @@ import RecallKit
 @main struct Diagnostics {
   static func main() async {
     do {
+      if CommandLine.arguments.count == 5, CommandLine.arguments[1] == "--studio-clip" {
+        guard let quality = StudioQuality(rawValue: CommandLine.arguments[3]) else {
+          throw RecallError.message("Qualité attendue : 1080 ou 2160.")
+        }
+        try await verifyClip(
+          CommandLine.arguments[2], quality: quality,
+          directory: URL(fileURLWithPath: CommandLine.arguments[4], isDirectory: true))
+        return
+      }
       if CommandLine.arguments.count == 3, CommandLine.arguments[1] == "--server-library" {
         let connection = try JSONDecoder().decode(
           Connection.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[2])))
@@ -30,7 +39,9 @@ import RecallKit
         guard !opening.tracks.isEmpty else { throw RecallError.message("No server DJ selection") }
         let queued = Set(opening.tracks.map(\.id))
         let next = try await dj.turn(
-          DJRequest(message: "D’autres titres de Mac Miller, pas ceux déjà en file", history: [], queued: queued))
+          DJRequest(
+            message: "D’autres titres de Mac Miller, pas ceux déjà en file", history: [],
+            queued: queued))
         guard next.tracks.allSatisfy({ !queued.contains($0.id) }) else {
           throw RecallError.message("Server DJ replayed a queued track")
         }
@@ -70,5 +81,23 @@ import RecallKit
       fputs("Native verification failed: \(error.localizedDescription)\n", stderr)
       exit(1)
     }
+  }
+
+  /// Exercises the production extractor and native player without a session, window or sound.
+  @MainActor private static func verifyClip(_ id: String, quality: StudioQuality, directory: URL)
+    async throws
+  {
+    let started = Date()
+    let cache = StudioVideoCache(directory: directory)
+    let file = try await cache.file(for: id, quality: quality)
+    let player = ClipPlayer()
+    defer { player.stop() }
+    try await player.load(.file(file), at: 30, autoplay: false)
+    guard abs(player.position - 30) < 0.1 else {
+      throw RecallError.message("Le clip natif ne se cale pas à la position demandée.")
+    }
+    print(
+      "Studio verification passed:", id, quality.label, "seek", player.position,
+      "seconds", Date().timeIntervalSince(started))
   }
 }

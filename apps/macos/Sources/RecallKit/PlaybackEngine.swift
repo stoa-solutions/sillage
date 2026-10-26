@@ -46,6 +46,8 @@ public final class PlaybackEngine: ObservableObject {
   @Published public private(set) var elapsed: Double = 0
   @Published public private(set) var duration: Double = 0
   @Published public private(set) var preparingClip = false
+  /// A native-clip failure does not stop healthy YouTube playback, but must remain visible.
+  @Published public private(set) var clipFailure: PlaybackFailure?
   /// True during the audio crossfade, while both players are visible.
   @Published public private(set) var fading = false
   @Published public private(set) var failure = ""
@@ -103,6 +105,7 @@ public final class PlaybackEngine: ObservableObject {
     elapsed = 0
     duration = 0
     failure = ""
+    clipFailure = nil
     heldUnavailable = false
     failureDelivered = false
     wantsPlayback = autoplay
@@ -168,7 +171,15 @@ public final class PlaybackEngine: ObservableObject {
       loadYouTube(track, at: resume)
     }
     preparingClip = false
+    clipFailure = nil
     if downloads { prepareClip(for: track, generation: generation) }
+  }
+
+  /// Retry only the native preparation; leave the current YouTube position and transport alone.
+  public func retryClip() {
+    guard let track, downloads, active == .youtube, !preparingClip else { return }
+    clipFailure = nil
+    prepareClip(for: track, generation: generation)
   }
 
   public func reset() {
@@ -186,6 +197,7 @@ public final class PlaybackEngine: ObservableObject {
     elapsed = 0
     duration = 0
     preparingClip = false
+    clipFailure = nil
     failure = ""
     heldUnavailable = false
     clock.sample(0, playing: false)
@@ -271,6 +283,7 @@ public final class PlaybackEngine: ObservableObject {
   private func clipFailed(generation: Int, error: Error? = nil) {
     guard generation == self.generation else { return }
     preparingClip = false
+    clipFailure = error as? PlaybackFailure ?? PlaybackFailure(.download)
     if heldUnavailable {
       heldUnavailable = false
       // An explicit service failure explains both paths better than a generic iframe refusal.

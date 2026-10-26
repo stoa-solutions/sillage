@@ -84,17 +84,18 @@ public final class StudioVideoCache {
     else { throw RecallError.message("Le téléchargement Studio n’est pas installé sur ce Mac.") }
     let process = Process()
     process.executableURL = URL(fileURLWithPath: executable)
-    process.arguments = [
-      "--ignore-config", "--no-playlist", "--no-cache-dir", "--no-progress",
-      "--quiet", "--no-warnings", "--concurrent-fragments", "4", "--retries", "1",
-      "--fragment-retries", "1", "--socket-timeout",
-      "15",
-      "--max-filesize", String(quality.maximumBytes), "--match-filters",
-      "duration <= 1200 & !is_live",
-      "--format", quality.format,
-      "--merge-output-format", "mp4", "--output", output.path,
-      "--", "https://www.youtube.com/watch?v=" + id,
-    ]
+    process.arguments =
+      StudioJavaScriptRuntime.arguments() + [
+        "--ignore-config", "--no-playlist", "--no-cache-dir", "--no-progress",
+        "--quiet", "--no-warnings", "--concurrent-fragments", "4", "--retries", "1",
+        "--fragment-retries", "1", "--socket-timeout",
+        "15",
+        "--max-filesize", String(quality.maximumBytes), "--match-filters",
+        "duration <= 1200 & !is_live",
+        "--format", quality.format,
+        "--merge-output-format", "mp4", "--output", output.path,
+        "--", "https://www.youtube.com/watch?v=" + id,
+      ]
     var environment = ProcessInfo.processInfo.environment
     environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
     process.environment = environment

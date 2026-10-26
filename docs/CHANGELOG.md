@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Mac 1.7.4 : préparation des clips avec le moteur JavaScript Node installé explicitement indiqué à yt-dlp, sinon comportement Deno habituel. Les erreurs de préparation native sont visibles pendant la lecture YouTube et peuvent être retentées sans redémarrer le morceau. Circuit réel vérifié sur « Réseaux » de Niska en AV1 2160p, sans proxy ni cookie.
+
 - Mac 1.7.3 : contraintes de fenêtre uniques (600 points en DJ Compact, 900 en Studio et dans les pages de lecture) ; fonds des commandes du haut inclus dans leur fondu, sans capsule système indépendante. Paroles en panneau latéral avec présentation commune du texte simple et synchronisé, arrivée sur la ligne en cours à l’ouverture, suivi suspendu au défilement manuel et reprise explicite. Prélecture partagée, cache mémoire limité à 32 titres, protection des corrections contre les réponses tardives et retour visible si leur enregistrement échoue. Tests de cycle de vie et rendus SwiftUI hors écran, sans interrompre l’app utilisée.
 
 - Lecture : erreurs YouTube conservées avec leur code ; les problèmes d’accès, de réseau ou de configuration arrêtent la cascade et gardent le titre et la file. « Réessayer ce titre » relance la sélection actuelle ; les signaux tardifs d’un échec ne passent plus plusieurs morceaux. Le cache Studio classe ses erreurs sans exposer la sortie brute du téléchargeur. Aucun proxy activé.

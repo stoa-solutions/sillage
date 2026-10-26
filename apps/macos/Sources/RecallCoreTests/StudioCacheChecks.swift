@@ -1,6 +1,20 @@
 import Foundation
 import RecallKit
 
+func studioRuntimeChecks() throws {
+  try expect(
+    StudioJavaScriptRuntime.arguments(isExecutable: { $0 == "/opt/homebrew/bin/node" })
+      == ["--no-js-runtimes", "--js-runtimes", "node:/opt/homebrew/bin/node"],
+    "Apple Silicon Node runtime was not explicitly selected")
+  try expect(
+    StudioJavaScriptRuntime.arguments(isExecutable: { $0 == "/usr/local/bin/node" })
+      == ["--no-js-runtimes", "--js-runtimes", "node:/usr/local/bin/node"],
+    "Intel Node runtime was not explicitly selected")
+  try expect(
+    StudioJavaScriptRuntime.arguments(isExecutable: { _ in false }).isEmpty,
+    "A missing Node installation disabled yt-dlp's default runtime")
+}
+
 @MainActor
 func studioCacheChecks() async throws {
   let root = FileManager.default.temporaryDirectory.appendingPathComponent(

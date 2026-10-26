@@ -211,6 +211,14 @@ struct DJView: View {
   }
 
   @ViewBuilder private var playerStatus: some View {
+    if player.studio, let failure = player.clipFailure, !model.playbackBlocked {
+      VStack(alignment: .leading, spacing: 4) {
+        Text("Lecteur YouTube actif · " + failure.message)
+          .font(.caption).foregroundStyle(.secondary)
+        Button("Réessayer le clip natif") { player.retryClip() }
+          .buttonStyle(.bordered).disabled(player.preparingClip)
+      }
+    }
     if player.preparingClip && !player.playing && player.studio {
       HStack(spacing: 8) {
         ProgressView().controlSize(.small)

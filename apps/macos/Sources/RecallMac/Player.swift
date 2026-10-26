@@ -43,6 +43,8 @@ final class Player: ObservableObject {
   /// The downloaded clip is the one on screen and in the speakers.
   var clipActive: Bool { engine.active == .clip }
   var preparingClip: Bool { engine.preparingClip }
+  var clipFailure: PlaybackFailure? { engine.clipFailure }
+  func retryClip() { engine.retryClip() }
   /// YouTube stays on screen only until the clip has fully faded in.
   var youtubeHidden: Bool { clipActive && !engine.fading }
   var videoHeight: Int { clipActive ? clipPlayer.videoHeight : 0 }

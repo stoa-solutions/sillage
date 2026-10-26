@@ -11,6 +11,7 @@ func expectFailure(_ work: () throws -> Void) throws {
 }
 do {
   try studioPresentationChecks()
+  try studioRuntimeChecks()
   let information = try JSONDecoder().decode(
     DJResponse.self,
     from: Data(
