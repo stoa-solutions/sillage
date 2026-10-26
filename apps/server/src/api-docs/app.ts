@@ -210,7 +210,7 @@ export function createDocsApp(
         ]),
       });
       const outgoing = new Headers();
-      for (const name of ["content-type", "retry-after"]) {
+      for (const name of ["content-type", "retry-after", "x-sillage-trace-id", "x-sillage-journal"]) {
         const value = response.headers.get(name);
         if (value) outgoing.set(name, value);
       }

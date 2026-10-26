@@ -264,3 +264,14 @@ it("revokes only the developer session and keeps the file if the server cannot c
     new Headers(forward.mock.calls[0][1]!.headers).get("authorization"),
   ).toBe(`Bearer ${access.token}`);
 });
+
+
+it("preserves journal diagnostics through the local proxy without forwarding private headers", async () => {
+  const forward = vi.fn<typeof fetch>().mockResolvedValue(Response.json({reply:"ok",action:"keep",tracks:[]},{headers:{"X-Sillage-Trace-Id":"trace-test","X-Sillage-Journal":"saved","Set-Cookie":"private=example","Authorization":"private"}}));
+  const docs = createDocsApp(undefined, forward);
+  const response = await docs.request(`${local}/proxy/v1/dj/chat`,{method:"POST",headers:{Authorization:"Bearer fixture-token","Content-Type":"application/json"},body:JSON.stringify({message:"test"})});
+  expect(response.headers.get("x-sillage-trace-id")).toBe("trace-test");
+  expect(response.headers.get("x-sillage-journal")).toBe("saved");
+  expect(response.headers.has("set-cookie")).toBe(false);
+  expect(response.headers.has("authorization")).toBe(false);
+});
