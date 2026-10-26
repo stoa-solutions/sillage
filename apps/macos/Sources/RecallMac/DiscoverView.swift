@@ -101,6 +101,11 @@ struct DiscoverView: View {
             ).lineLimit(1)
             Image(systemName: "chevron.down").imageScale(.small)
           }.font(.callout).foregroundStyle(.secondary)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+              "Playlist : "
+                + (library.playlists.first { $0.id == discovery.playlistID }?.title
+                  ?? "Toutes mes playlists"))
         }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
       }
     }
@@ -307,7 +312,10 @@ struct DiscoverView: View {
           if !discovery.libraryError.isEmpty && discovery.scope != .youtube {
             error(discovery.libraryError)
           }
-          if !discovery.youtubeError.isEmpty && discovery.scope != .library {
+          // Both sources usually fail for the same reason: one message, one retry.
+          if !discovery.youtubeError.isEmpty && discovery.scope != .library
+            && (discovery.youtubeError != discovery.libraryError || discovery.scope == .youtube)
+          {
             error(discovery.youtubeError)
           }
           // Cards load more on scroll; the button covers a page too short to scroll.
@@ -354,7 +362,7 @@ struct DiscoverView: View {
     HStack {
       Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
         .font(.callout)
-      Button("Réessayer") { discovery.search() }.buttonStyle(.link)
+      Button("Réessayer") { discovery.search() }.buttonStyle(SillageLinkStyle())
     }.padding(8)
   }
 }

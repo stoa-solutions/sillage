@@ -122,7 +122,7 @@ final class LibraryModel: ObservableObject {
             results = []
             totalResults = 0
           }
-          session.error = "Recherche serveur indisponible. " + error.localizedDescription
+          session.error = error.localizedDescription
         }
       }
     }

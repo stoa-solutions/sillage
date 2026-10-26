@@ -105,6 +105,18 @@ func sillageLayoutChecks() throws {
     graphite[.actionText] != SillagePalette.orange
       && abs(SillagePalette.contrast(SillagePalette.orange, graphite[.reading]) - 4.442) < 0.01,
     "Orange small text on graphite would fail 4.5:1 (spec measures 4.442:1)")
+  for failure in [
+    URLError(.notConnectedToInternet) as Error, URLError(.cannotFindHost),
+    NSError(domain: NSPOSIXErrorDomain, code: 1),
+  ] {
+    let message = HTTPClient.transportError(failure).localizedDescription
+    try expect(
+      message.hasPrefix("Connexion au serveur impossible"),
+      "A network failure would show a system message: \(message)")
+  }
+  try expect(
+    (HTTPClient.transportError(URLError(.cancelled)) as? URLError)?.code == .cancelled,
+    "Cancelled requests must stay recognisable")
   print(
     "Sillage layout checks passed: pocket, panel ceiling, drift, screen edges, reading size, contrast"
   )

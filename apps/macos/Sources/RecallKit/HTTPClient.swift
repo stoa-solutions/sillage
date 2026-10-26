@@ -9,6 +9,20 @@ public struct HTTPServiceError: LocalizedError, Sendable {
 public struct HTTPClient: Sendable {
   public init() {}
   private static let session = URLSession(configuration: .ephemeral)
+  /// Network failures in the person's words; system messages are English and technical.
+  /// Cancellation passes through untouched so callers can ignore it.
+  public static func transportError(_ error: Error) -> Error {
+    if error is CancellationError { return error }
+    let code = (error as? URLError)?.code
+    if code == .cancelled { return error }
+    if code == .timedOut {
+      return RecallError.message(
+        "Le serveur met trop de temps à répondre. Réessaie dans un instant.")
+    }
+    return RecallError.message(
+      "Connexion au serveur impossible. Vérifie ta connexion Internet, puis réessaie.")
+  }
+
   public func json(
     url: URL, method: String? = nil, body: Any? = nil, headers: [String: String] = [:]
   ) async throws
@@ -21,7 +35,12 @@ public struct HTTPClient: Sendable {
       request.httpBody = try JSONSerialization.data(withJSONObject: body)
       request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     }
-    let (data, response) = try await Self.session.data(for: request)
+    let (data, response): (Data, URLResponse)
+    do {
+      (data, response) = try await Self.session.data(for: request)
+    } catch {
+      throw Self.transportError(error)
+    }
     guard let http = response as? HTTPURLResponse else {
       throw RecallError.message("Réponse réseau invalide.")
     }

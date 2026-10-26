@@ -69,8 +69,10 @@ struct MainView: View {
       ToolbarItem(placement: .primaryAction) {
         HStack(spacing: 10) {
           DisplayPicker(player: dj.player)
-          SettingsLink { Image(systemName: "gearshape") }
-            .help("Réglages").accessibilityLabel("Réglages")
+          SettingsLink {
+            Image(systemName: "gearshape").frame(width: 24, height: 24).contentShape(Rectangle())
+          }
+          .help("Réglages").accessibilityLabel("Réglages")
         }
         .buttonStyle(.plain)
         .padding(.horizontal, pocket ? 9 : 12).padding(.vertical, pocket ? 5 : 7)

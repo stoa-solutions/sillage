@@ -119,6 +119,7 @@ struct DJView: View {
             model.next()
           } label: {
             Image(systemName: "forward.fill").frame(width: 26, height: 26)
+              .contentShape(Rectangle())
           }.buttonStyle(.plain).help("Morceau suivant").accessibilityLabel("Morceau suivant")
             .disabled(model.current == nil)
           Slider(
@@ -235,6 +236,7 @@ struct DJView: View {
           value: Binding(get: { player.elapsed }, set: { model.seek($0) }),
           in: 0...max(1, player.duration)
         ).accessibilityLabel("Position du morceau")
+          .accessibilityValue("\(clock(player.elapsed)) sur \(clock(player.duration))")
         Text(clock(player.duration))
       }.font(.caption.monospacedDigit()).foregroundStyle(.secondary)
     }
@@ -274,6 +276,7 @@ struct DJView: View {
       model.next()
     } label: {
       Image(systemName: "forward.fill").font(.title3).frame(width: 32, height: 32)
+        .contentShape(Rectangle())
     }.buttonStyle(.plain).help("Morceau suivant").accessibilityLabel("Morceau suivant")
       .disabled(model.current == nil)
     VolumeControl(player: player)
@@ -301,9 +304,12 @@ struct DJView: View {
       .help("Afficher les paroles synchronisées dans le panneau latéral")
     }
     if let current = model.current {
-      Link(destination: current.url) { Image(systemName: "arrow.up.right.square") }
-        .foregroundStyle(.secondary)
-        .help("Ouvrir sur YouTube").accessibilityLabel("Ouvrir sur YouTube")
+      Link(destination: current.url) {
+        Image(systemName: "arrow.up.right.square").frame(width: 28, height: 28)
+          .contentShape(Rectangle())
+      }
+      .foregroundStyle(.secondary)
+      .help("Ouvrir sur YouTube").accessibilityLabel("Ouvrir sur YouTube")
     }
   }
 
@@ -326,7 +332,7 @@ struct DJView: View {
       HStack {
         ProgressView().controlSize(.small)
         Text("Recherche du prochain morceau…")
-        Button("Annuler") { model.cancel() }.buttonStyle(.link)
+        Button("Annuler") { model.cancel() }.buttonStyle(SillageLinkStyle())
       }.font(.caption)
     }
     if !model.continuationNotice.isEmpty {
@@ -367,6 +373,7 @@ struct DJView: View {
             if panelOnly { discoverCollapsed = true } else { panelCollapsed = true }
           } label: {
             Image(systemName: "sidebar.right").frame(width: 26, height: 26)
+              .contentShape(Rectangle())
           }.buttonStyle(.plain).foregroundStyle(.secondary).help("Replier le panneau")
             .accessibilityLabel("Replier le panneau")
         }
@@ -464,7 +471,8 @@ struct DJView: View {
               HStack {
                 Text(listened.error).font(.caption).foregroundStyle(.orange).lineLimit(2)
                 Spacer(minLength: 0)
-                Button("Réessayer") { listened.load(session) }.buttonStyle(.link).font(.caption)
+                Button("Réessayer") { listened.load(session) }.buttonStyle(SillageLinkStyle()).font(
+                  .caption)
               }.padding(8)
             } else if listened.loading {
               ProgressView().controlSize(.small).padding(10).frame(maxWidth: .infinity)
@@ -598,7 +606,7 @@ struct DJView: View {
         HStack(spacing: 8) {
           if microphone.starting || microphone.finishing { ProgressView().controlSize(.small) }
           Text(microphone.status).foregroundStyle(Color.recall)
-          Button("Annuler l’écoute") { microphone.stop() }.buttonStyle(.link)
+          Button("Annuler l’écoute") { microphone.stop() }.buttonStyle(SillageLinkStyle())
         }.font(.caption).padding(.horizontal, 4)
       } else if !model.busy && !voice.status.isEmpty {
         Text(voice.status).font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)

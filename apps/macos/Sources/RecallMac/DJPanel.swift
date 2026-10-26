@@ -155,6 +155,9 @@ struct ScopeMenu: View {
       .font(.caption.weight(.medium)).foregroundStyle(.secondary)
       .padding(.horizontal, 8).padding(.vertical, 4)
       .background(Capsule().fill(Color.sillageHover))
+      // One spoken control, not three (icon, title and chevron).
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel("Chercher dans : \(scope.title)")
     }
     .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
     .help("Choisis où le DJ cherche. « Joue » lance maintenant ; « ajoute » garde la lecture.")

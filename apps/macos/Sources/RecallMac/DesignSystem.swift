@@ -221,7 +221,7 @@ struct NowPlayingBar: View {
       Button {
         model.next()
       } label: {
-        Image(systemName: "forward.fill").frame(width: 28, height: 28)
+        Image(systemName: "forward.fill").frame(width: 28, height: 28).contentShape(Rectangle())
       }.buttonStyle(.plain).disabled(model.current == nil).accessibilityLabel("Morceau suivant")
       HStack(spacing: 8) {
         Text(clock(player.elapsed)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
@@ -403,4 +403,15 @@ struct ToolbarToggleStyle: ToggleStyle {
 /// Segmented pickers select in neutral grey; the accent is kept for actions.
 extension View {
   func neutralSelection() -> some View { tint(Color(white: 0.42)) }
+}
+
+/// Inline text action (Réessayer, Annuler): the palette's action text, underlined on hover,
+/// instead of the system link blue.
+struct SillageLinkStyle: ButtonStyle {
+  @State private var hovering = false
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label.foregroundStyle(Color.sillage(.actionText))
+      .underline(hovering).opacity(configuration.isPressed ? 0.7 : 1)
+      .contentShape(Rectangle()).onHover { hovering = $0 }
+  }
 }

@@ -245,7 +245,7 @@ struct LibraryView: View {
         Text(title).font(.system(size: 22, weight: .semibold)).lineLimit(1)
         Image(systemName: "chevron.down").font(.callout.weight(.semibold))
           .foregroundStyle(.secondary)
-      }
+      }.accessibilityElement(children: .ignore).accessibilityLabel("Collection : \(title)")
     }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
   }
 
@@ -315,7 +315,7 @@ struct LibraryView: View {
       ProgressView().controlSize(.small)
       Text(library.importProgress).lineLimit(2)
       Spacer(minLength: 0)
-      Button("Annuler") { library.cancelImport() }.buttonStyle(.link)
+      Button("Annuler") { library.cancelImport() }.buttonStyle(SillageLinkStyle())
     }.font(.caption)
   }
 
