@@ -202,23 +202,33 @@ struct DJView: View {
       .disabled(model.current == nil)
   }
 
+  /// Down to the 760 pt minimum: the panel narrows (300–360), the margins shrink and the
+  /// controls drop to icons before anything is pushed out of the window.
   private var studio: some View {
-    HStack(alignment: .bottom, spacing: 0) {
-      VStack(alignment: .leading, spacing: 14) {
-        // The video itself fills the stage behind this page (StageBackground).
-        Spacer(minLength: 0)
-        TrackHeadline(
-          track: model.current, titleFont: .system(size: 40, weight: .bold), detailFont: .title3,
-          lines: 2)
-        progress
-        transport
-        playerStatus
-      }.padding(32).frame(maxWidth: .infinity, alignment: .leading).studioChrome(controlsVisible)
-      if panelCollapsed {
-        reopenPanel.padding(16).studioChrome(controlsVisible)
-      } else {
-        sessionPanel.frame(width: 360).glassPanel().padding(16)
+    GeometryReader { geometry in
+      let narrow = geometry.size.width < 960
+      let panel = min(max(geometry.size.width * 0.36, 300), 360)
+      HStack(alignment: .bottom, spacing: 0) {
+        VStack(alignment: .leading, spacing: 14) {
+          // The video itself fills the stage behind this page (StageBackground).
+          Spacer(minLength: 0)
+          TrackHeadline(
+            track: model.current, titleFont: .system(size: narrow ? 32 : 40, weight: .bold),
+            detailFont: .title3, lines: 2)
+          progress
+          transport
+          playerStatus
+        }
+        .padding(narrow ? 20 : 32)
+        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+        .studioChrome(controlsVisible)
+        if panelCollapsed {
+          reopenPanel.padding(16).studioChrome(controlsVisible)
+        } else {
+          sessionPanel.frame(width: panel).glassPanel().padding(narrow ? 12 : 16)
+        }
       }
+      .frame(width: geometry.size.width, height: geometry.size.height)
     }
   }
 
@@ -257,6 +267,17 @@ struct DJView: View {
         }
         HStack(spacing: 12) {
           sessionControls
+          Spacer(minLength: 0)
+        }
+      }
+      // Narrowest: the same toggles as icons; their names stay for VoiceOver and on hover.
+      VStack(alignment: .leading, spacing: 12) {
+        HStack(spacing: 12) {
+          playbackControls
+          Spacer(minLength: 0)
+        }
+        HStack(spacing: 8) {
+          sessionControls.labelStyle(.iconOnly)
           Spacer(minLength: 0)
         }
       }
