@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Mac 1.7.6 (build 55) : reconstruction universelle locale depuis main après intégration des correctifs serveur du DJ et de recherche ; identité Sillage et signature locale conservées.
+
 - Recherche : les noms à apostrophe gardent aussi leur forme séparée issue de la dictée (« M’Dee », « MDee », « M Dee ») ; une correspondance exacte dans le titre d’un autre morceau n’écarte plus les collaborations créditées. Cas reproduit avec le modèle réel et couvert dans PostgreSQL.
 
 - Mac 1.7.5 (build 54), Sillage — by Stoa : nouveau nom affiché, icône orange haute résolution pour Mac et Chrome, signature Stoa et accents visuels harmonisés. Identifiants de connexion, dossiers de données, exécutable et compatibilité des mises à jour conservés.
