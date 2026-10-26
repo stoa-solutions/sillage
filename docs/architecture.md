@@ -16,10 +16,10 @@ Le serveur peut accueillir plusieurs comptes ; cela ne prouve pas une capacité 
 | `apps/extension/src/server-client.ts` | Connexion HTTP et permission Chrome limitée au serveur choisi. |
 | `apps/extension/src/dj-app.tsx` | Conversation et session de lecture. |
 | `apps/extension/src/dj-settings.tsx` | Saisie de clé et modèle ; aucun stockage local de clé Gemini. |
-| `apps/server/src/dj-routes.ts` | Frontière HTTP du DJ, validation et concurrence. |
+| `apps/server/src/features/dj/routes.ts` | Frontière HTTP du DJ, validation et bail par compte. |
 | `apps/server/src/dj-config.ts` | Configuration par défaut du déploiement. |
 | `apps/server/src/dj-settings.ts` | Configuration personnelle, chiffrement et persistance. |
-| `apps/server/src/dj-prompt.ts` | Règles de sélection et de dialogue, indépendantes du transport fournisseur. |
+| `apps/server/src/features/dj/prompt.ts` | Règles de sélection et de dialogue, indépendantes du transport fournisseur. |
 | `apps/server/src/dj.ts` | Façade publique stable du DJ ; détails dans `features/dj/`. |
 | `apps/server/src/music-mcp.ts` | Recherche dans la bibliothèque, lecture seule. |
 | `apps/server/src/dj-voice.ts` | Adaptateur de synthèse vocale Gemini. |
@@ -56,7 +56,7 @@ Sources : https://sparkle-project.org/documentation/ et https://developer.apple.
 
 ## Ajouter une fonctionnalité sans mêler les couches
 
-- **Règle pure** : `RecallKit` sur Mac, `packages/core` pour les contrats partagés, ou un module serveur pur (`dj-intent`, `search-relevance`). Tests sans réseau.
+- **Règle pure** : `RecallKit` sur Mac, `packages/core` pour les contrats partagés, ou un module serveur pur (`features/dj/decision`, `search-relevance`). Tests sans réseau.
 - **Effet externe** : un adaptateur ciblé (HTTPClient, outils MCP, voix, lecteur). Les secrets et autorisations restent aux frontières.
 - **État de session** : `PlaybackQueue` gère ordre/historique, `DJComposition` les suites bornées et exclusions, `LyricsModel` le cache/calage par compte. L’UI affiche ces états ; elle ne refait pas leurs règles.
 - **Temps de lecture** : `Player` possède l’horloge `PlaybackClock`. Les panneaux lisent la même position, même après fermeture/réouverture. Les déplacements natifs sont précis ; YouTube reste soumis aux limites de son lecteur et de son tampon.
@@ -71,21 +71,37 @@ Démarrage et parcours de contribution : [developing.md](developing.md).
 
 ```text
 apps/server/src/
-├── dj.ts                    # API publique conservée pour routes, tests et consommateurs
-├── dj-routes.ts             # HTTP, authentification déjà établie, concurrence
+├── dj.ts                    # API publique conservée pour tests et consommateurs
 ├── dj-settings.ts           # secrets personnels et persistance
 ├── dj-voice.ts              # synthèse vocale ; ne charge pas la composition
+├── music-mcp.ts             # outils MCP en lecture seule (recherche, parcours)
 └── features/dj/
-    ├── contracts.ts         # schémas Zod d'entrée et de sélection
-    ├── context.ts           # intention, référence musicale, messages du tour
-    ├── catalog.ts           # résolution de titres précis, ordre et propriété
-    ├── provider.ts          # format Gemini, validation de réponse, transport
-    ├── quota.ts             # réservation atomique du budget par compte
-    ├── errors.ts            # erreurs publiques sans secrets
-    └── turn.ts              # orchestration bornée MCP → sélection → réponse
+    ├── routes.ts            # HTTP : bail, journal, mémoire, codes d'erreur
+    ├── lease.ts             # un Tour par compte, plafond global, échéance
+    ├── turn.ts              # orchestration : plan → catalogue → recherche → décision
+    │
+    │   # règles pures (vérifiées par check:architecture)
+    ├── contracts.ts         # schémas Zod d'entrée et de sortie du modèle
+    ├── intent.ts            # intention d'une phrase tapée
+    ├── plan.ts              # politique du Tour, suite structurée comprise
+    ├── messages.ts          # messages envoyés au modèle, mémoire comprise
+    ├── memory.ts            # résumé borné du journal de la conversation
+    ├── decision.ts          # sortie du modèle → une seule décision motivée
+    ├── reply.ts             # texte visible, annoncé depuis l'action exécutée
+    ├── composition.ts       # candidats du Tour, choix validé, reprise
+    ├── evidence.ts          # lecture bornée des résultats d'outils
+    ├── retrieval.ts         # indices de recherche indépendants
+    ├── prompt.ts            # règles de dialogue
+    │
+    │   # adaptateurs
+    ├── research.ts          # exécution des outils, preuves accumulées
+    ├── provider.ts          # AI SDK : Gemini et Claude
+    ├── catalog.ts           # titres précis, ordre et propriété
+    ├── quota.ts             # budget quotidien par compte
+    └── journal/             # traces, mémoire, nettoyage au redémarrage
 ```
 
-`turn` compose ces modules. `provider` connaît le format fournisseur, mais ne décide pas de la file ; `context` calcule les règles sans réseau ; `catalog` relit les titres pour le compte authentifié. Les modules internes n'importent jamais `dj.ts`, afin d'éviter une dépendance circulaire. Les points d'entrée existants restent stables : un rangement de fichiers ne doit pas imposer une migration aux clients.
+`turn` compose ces modules. `provider` connaît le format fournisseur, mais ne décide pas de la file ; `decision` est le seul endroit où une réponse du modèle devient une issue, et chaque issue porte une raison enregistrée au journal ; `catalog` relit les titres pour le compte authentifié. Le bail vit en mémoire du processus API, unique pour l’instant (voir « Volume et évolution »). Les modules internes n'importent jamais `dj.ts`, afin d'éviter une dépendance circulaire. Les points d'entrée existants restent stables : un rangement de fichiers ne doit pas imposer une migration aux clients.
 
 La séparation est progressive. Les domaines recherche, comptes, playlists et paroles gardent leurs modules actuels tant qu'un changement concret ne justifie pas leur déplacement. Ne pas multiplier les dossiers `utils`, services génériques ou interfaces à une seule implémentation sans besoin de test ou d'évolution.
 

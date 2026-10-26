@@ -15,11 +15,13 @@ Ce document décrit les frontières à conserver lorsqu’on ajoute une commande
 
 | Sujet | Propriétaire | Ne doit pas faire |
 | --- | --- | --- |
-| Intention musicale | `apps/server/src/dj-intent.ts` | Rechercher, appeler un fournisseur, changer une file |
-| Contexte et taille de sélection | `features/dj/context.ts` | Réinterpréter une référence déjà décidée |
+| Intention musicale | `features/dj/intent.ts` | Rechercher, appeler un fournisseur, changer une file |
+| Plan et taille de sélection | `features/dj/plan.ts` | Réinterpréter une référence déjà décidée |
+| Issue d’une réponse | `features/dj/decision.ts` | Transformer une question en échec de lecture |
+| Un Tour à la fois | `features/dj/lease.ts` | Refuser une demande tapée parce qu’une suite tourne |
 | Résolution des titres | `music-matching.ts`, `features/dj/catalog.ts` | Décider une seconde fois quand lancer la lecture |
 | Outils et candidats | `music-mcp.ts`, orchestration `features/dj/` | Accepter un ID inventé, écrire dans la bibliothèque |
-| Dialogue | `dj-prompt.ts` | Remplacer une garantie exécutable par une consigne |
+| Dialogue | `features/dj/prompt.ts` | Remplacer une garantie exécutable par une consigne |
 | Fournisseur | `features/dj/provider.ts` | Transformer quota/panne en absence de morceau |
 | File et concurrence | `RecallKit/ListeningSession.swift` | Faire du réseau, accéder à Gemini, gérer WebKit |
 | Chargement et transport | `RecallKit/PlaybackEngine.swift`, adaptateurs | Laisser une tâche ancienne annuler Pause ou Reset |
@@ -69,14 +71,15 @@ L’audit de référence porte sur `f142fbf`, app 1.6.3 (43), conservée par le 
 
 Une carte blanche explicite (« mets ce que tu veux », « surprends-moi ») démarre une nouvelle direction. Les anciennes envies et anciens échecs ne sont pas réinjectés comme contraintes. Les restrictions de la demande actuelle, la source choisie et les exclusions restent applicables.
 
-Le tour utilise quatre modules aux responsabilités distinctes :
+Le tour utilise ces modules aux responsabilités distinctes :
 
 | Module | Responsabilité |
 | --- | --- |
-| `dj-intent.ts` + `features/dj/context.ts` | Lire l’intention une fois, fixer la source, la référence et la taille. « Sans le lancer » retire l’opération interdite avant de chercher une action affirmative. |
+| `features/dj/intent.ts` + `plan.ts` | Lire l’intention une fois, fixer la source, la référence et la taille. « Sans le lancer » retire l’opération interdite avant de chercher une action affirmative. |
 | `features/dj/retrieval.ts` + `music-mcp.ts` | Transformer les indices structurés en recherches indépendantes, conserver compte et exclusions, entrelacer les résultats et transmettre les erreurs partielles. |
 | `features/dj/composition.ts` | Accumuler les candidats du tour, valider le choix, conserver la meilleure sélection partielle et construire le contexte final. Aucun réseau ni SQL. |
-| `features/dj/turn.ts` + `dj-selection.ts` | Orchestrer les appels, relire l’appartenance avant lecture et annoncer l’action réellement renvoyée. L’explication musicale du modèle n’est plus écrasée par cette annonce. |
+| `features/dj/decision.ts` | Seul endroit où la réponse du modèle devient une issue : réponse, cartes, lecture, rien, relance unique ou échec. Une question reste une réponse quelle que soit l’intention prévue ; chaque issue a une raison écrite au journal (événement `decision`). |
+| `features/dj/turn.ts` + `reply.ts` | Orchestrer les appels, relire l’appartenance avant lecture et annoncer l’action réellement renvoyée. Les cartes proposées sont toutes nommées ; une identification sourcée garde les mots du DJ. |
 
 `music_search` reste compatible avec `query` seul. Deux champs optionnels rendent les indices moins ambigus : `artist` porte une identité connue, distincte des mots de style dans `query` ; `alternatives` contient au plus deux autres indices courts. Exemple : `{query:"sean rap français", artist:"sean"}` effectue un lookup sur `sean`, puis classe les résultats selon la requête complète. Les autres indices sont exécutés indépendamment, en parallèle, et non comme une liste de mots tous obligatoires. La recherche reste limitée aux mêmes sources et au même compte. `mode=image` garde sa requête visuelle unique ; ces indices ne sont pas des filtres visuels. Les formats manifestement non musicaux sont écartés des suggestions d’ambiance, sans exclure un morceau parce que ses métadonnées sont inconnues ; une demande explicite de tutoriel reste possible.
 

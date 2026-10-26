@@ -20,7 +20,7 @@ Pour les tests SQL, créer un PostgreSQL jetable avec pgvector, définir `TEST_D
 | --- | --- | --- |
 | Connexion et clé | `Session`, `GoogleSignIn`, `SettingsView` | `accounts.ts`, `auth.ts`, `dj-settings.ts`, tests comptes |
 | Chercher une musique | `DiscoveryModel`, `LibraryModel` | `search.ts`, `search-relevance.ts`, MCP ; filtrage propriétaire obligatoire |
-| Comprendre une demande | `DJModel.send` | commandes locales puis `dj-intent.ts`, `dj-prompt.ts`, `features/dj/context.ts` et `turn.ts` |
+| Comprendre une demande | `DJModel.send` | commandes locales puis `features/dj/plan.ts`, `decision.ts` et `turn.ts` |
 | Ordre et suite | `DJModel` | `PlaybackQueue`, `DJComposition`, tests session/composition |
 | Voix | `VoiceOutput` | `PreparedSpeech`, `dj-voice.ts` ; annuler l’annonce d’un titre sauté |
 | Vidéo et paroles | `Player`, `LyricsPanel` | `PlaybackClock`, `Lyrics`, `LyricsModel`, `dj-player.ts` |
@@ -45,7 +45,7 @@ Garder API, worker et inférence séparés. Mesurer latence p50/p95, pertinence 
 ## Lire le projet et contribuer
 
 1. Lire `GLOSSARY.md` pour distinguer catalogue, playlist, file d'écoute et historique.
-2. Lire `docs/architecture.md`, puis suivre un seul parcours de bout en bout. Pour le chat : `dj-routes.ts` → `dj.ts` → `features/dj/turn.ts` → MCP/provider → réponse validée → `ListeningSession` sur Mac.
+2. Lire `docs/architecture.md`, puis suivre un seul parcours de bout en bout. Pour le chat : `features/dj/routes.ts` → `turn.ts` → `research.ts` (MCP) / `provider.ts` → `decision.ts` → `reply.ts` → `ListeningSession` sur Mac.
 3. Trouver un test du même comportement avant d'ajouter une fonctionnalité. `dj-retrieval.test.ts` simule les recherches et les décisions ; `dj-provider.test.ts` vérifie la frontière Gemini ; `accounts.integration.test.ts` utilise PostgreSQL pour prouver la séparation des comptes.
 4. Garder la façade publique stable. Un module porte un nom de responsabilité (contrat, contexte, catalogue, fournisseur), pas un nom générique comme `helpers`.
 

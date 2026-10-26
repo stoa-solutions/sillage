@@ -7,11 +7,11 @@ Le DJ propose des titres ; la session décide ce qui est effectivement joué. Un
 - `RecallKit/DJCommand` : interprétation stricte des commandes `/`, sans réseau. `/suite [1…8]` devient une demande de préparation ; les commandes de transport restent locales. Une commande inconnue affiche l’aide.
 - `RecallKit/DJPlaybackContext` : instantané du morceau réel (ID, titre, chaîne, artistes et genres MusicBrainz certains) et dernière direction musicale. Aucune clé, aucun état partagé entre comptes.
 - `RecallKit/DJComposition` : direction de la session et demandes de suite. Une référence relative ne remplace pas la dernière direction explicite ni ses restrictions.
-- `server/dj-intent` : action attendue, indépendamment de la source. Préparer des « à suivre » ajoute ; jouer immédiatement remplace.
+- `server/features/dj/plan` : action attendue. Une suite structurée (`continuation: {count, broaden}`) ajoute toujours, sans relire de texte. Sinon, `intent` lit la phrase, indépendamment de la source. Préparer des « à suivre » ajoute ; jouer immédiatement remplace.
 - `server/dj` : recherche MCP bornée, vérification des IDs, exclusions et une recherche complémentaire au maximum pour compléter une sélection courte. Les demandes relatives utilisent le contexte de lecture, sans les anciennes annonces potentiellement erronées.
-- `server/dj-selection` : annonce des titres réellement retenus et de l’action validée. Une sélection courte est annoncée honnêtement.
+- `server/features/dj/reply` : annonce des titres réellement retenus et de l’action validée. Une sélection courte est annoncée honnêtement.
 - `RecallKit/PlaybackQueue` et `PlaybackIdentity` : dernier contrôle des répétitions (ID, enregistrement MusicBrainz ou artiste + titre nettoyés). La préparation manuelle suit les mêmes protections que l’automatique. Un clic Écouter / remplacement explicite permet de rejouer.
-- `RecallKit/ListeningSession` : applique la réponse et produit les effets lecteur/voix. Les réponses périmées ne doivent pas remplacer une nouvelle décision.
+- `RecallKit/ListeningSession` : applique la réponse et produit les effets lecteur/voix. Les réponses périmées ne doivent pas remplacer une nouvelle décision. Une demande tapée pendant une réponse devient un message en attente : elle part ensuite, dans l’ordre, ou tout de suite avec « Envoyer maintenant ». La suite automatique ne passe jamais devant et revient après.
 - `RecallMac/DJModel` : exécute ces effets ; la vue affiche la session et les commandes.
 
 ## Règles et personnalisation
