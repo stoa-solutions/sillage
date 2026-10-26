@@ -383,6 +383,11 @@ private struct DiscoveryResultRow: View {
         Text(name.artist ?? row.track.channel ?? "YouTube").font(.system(size: 12))
           .foregroundStyle(.secondary).lineLimit(1)
       }.frame(maxWidth: .infinity, alignment: .leading)
+      if playing {
+        // The playing song is marked by a symbol too, never by colour alone.
+        Image(systemName: "speaker.wave.2.fill").font(.system(size: 11))
+          .foregroundStyle(Color.sillage(.primaryFill)).accessibilityHidden(true)
+      }
       Text(row.track.durationSeconds.map(clock) ?? "").font(.system(size: 12).monospacedDigit())
         .foregroundStyle(.secondary)
       IconButton(symbol: "text.badge.plus", help: "Lire ensuite") {
