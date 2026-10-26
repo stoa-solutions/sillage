@@ -1,0 +1,555 @@
+{
+  "date": "2026-10-26T15:24:39.792Z",
+  "release": "c99424e2f62d8acd8b52f0dfcd78b599cbab40f1",
+  "scope": "Direct deployed djTurn orchestrator, real Google/MCP/database; no native playback or HTTP route exercised. Four cases per model, one pass each, different retrievals/caches; descriptive sample, not statistical ranking.",
+  "config": {
+    "gemini-3.8-flash": "reasoning_effort=low",
+    "gemini-3.6-flash": "provider default reasoning (no explicit effort)"
+  },
+  "results": [
+    {
+      "kind": "case",
+      "model": "gemini-3.8-flash",
+      "id": "journal-energy",
+      "ms": 13776,
+      "status": "pass",
+      "errors": [],
+      "action": "replace",
+      "reply": "C’est parti : Palabra Mi Amor, puis Boys Noize - XTC, puis Vanished et 1 autre titre. Une montée en puissance électro-rock et hip-hop dynamique puisée dans votre bibliothèque.",
+      "tracks": [
+        {
+          "id": "copf8b9-vj4",
+          "title": "Palabra Mi Amor",
+          "channel": "Shaka Ponk - Topic"
+        },
+        {
+          "id": "HEQxeXY0aVA",
+          "title": "Boys Noize - XTC",
+          "channel": "samurairj"
+        },
+        {
+          "id": "6Ymm1OxnuhU",
+          "title": "Vanished",
+          "channel": "Crystal Castles - Topic"
+        },
+        {
+          "id": "2lAcWFxxH9s",
+          "title": "King's Dead",
+          "channel": "Jay Rock - Topic"
+        }
+      ],
+      "cards": [],
+      "calls": [
+        {
+          "round": 0,
+          "ms": 1828,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 3531,
+            "completion_tokens": 27,
+            "total_tokens": 3558
+          }
+        },
+        {
+          "round": 1,
+          "ms": 2852,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 6210,
+            "completion_tokens": 141,
+            "total_tokens": 6351
+          }
+        }
+      ],
+      "tools": [
+        {
+          "name": "music_search",
+          "ms": 8175,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "kind": "case",
+      "model": "gemini-3.8-flash",
+      "id": "journal-carte-blanche",
+      "ms": 12851,
+      "status": "pass",
+      "errors": [],
+      "action": "replace",
+      "reply": "C’est parti : 911, puis Σ. MOROSE, puis Damso - BruxellesVie et 1 autre titre. Sélection rap francophone issue de ta bibliothèque dans la continuité de l'ambiance urbaine.",
+      "tracks": [
+        {
+          "id": "iCV50GfwxRA",
+          "title": "911",
+          "channel": "Damso - Topic"
+        },
+        {
+          "id": "BR4HAkJUghQ",
+          "title": "Σ. MOROSE",
+          "channel": "Damso - Topic"
+        },
+        {
+          "id": "9vSpgfZeuMA",
+          "title": "Damso - BruxellesVie",
+          "channel": "DamsoVEVO"
+        },
+        {
+          "id": "eh17foTBGmg",
+          "title": "Damso - Autotune",
+          "channel": "DamsoVEVO"
+        }
+      ],
+      "cards": [],
+      "calls": [
+        {
+          "round": 0,
+          "ms": 1954,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 3818,
+            "completion_tokens": 16,
+            "total_tokens": 3834
+          }
+        },
+        {
+          "round": 1,
+          "ms": 1616,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 5725,
+            "completion_tokens": 10,
+            "total_tokens": 5735
+          }
+        },
+        {
+          "round": 2,
+          "ms": 4480,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 5846,
+            "completion_tokens": 47,
+            "total_tokens": 5893
+          }
+        },
+        {
+          "round": 3,
+          "ms": 3202,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 7794,
+            "completion_tokens": 145,
+            "total_tokens": 7939
+          }
+        }
+      ],
+      "tools": [
+        {
+          "name": "music_search",
+          "ms": 1297,
+          "status": "ok"
+        },
+        {
+          "name": "library_overview",
+          "ms": 9,
+          "status": "ok"
+        },
+        {
+          "name": "music_search",
+          "ms": 266,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "kind": "case",
+      "model": "gemini-3.8-flash",
+      "id": "journal-no-autoplay",
+      "ms": 6051,
+      "status": "pass",
+      "errors": [],
+      "action": "keep",
+      "reply": "Je te propose ce morceau. « Poussière » : Jewel Usain (crédits MusicBrainz). Choisis celui que tu veux écouter. Un titre marquant issu de son projet acclamé.",
+      "tracks": [],
+      "cards": [
+        {
+          "id": "6cO-9YufcXU",
+          "title": "Poussière"
+        }
+      ],
+      "calls": [
+        {
+          "round": 0,
+          "ms": 1809,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 3536,
+            "completion_tokens": 28,
+            "total_tokens": 3564
+          }
+        },
+        {
+          "round": 1,
+          "ms": 3930,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 4198,
+            "completion_tokens": 99,
+            "total_tokens": 4297
+          }
+        }
+      ],
+      "tools": [
+        {
+          "name": "music_search",
+          "ms": 295,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "kind": "case",
+      "model": "gemini-3.8-flash",
+      "id": "journal-sean-followup",
+      "ms": 12169,
+      "status": "pass",
+      "errors": [],
+      "action": "append",
+      "reply": "J’ajoute à la suite : Tous Mes États (feat. La Fève), puis SAOULÉ, puis J9ueve - SIBÉRIE (Clip officiel) et 2 autres titres. Continuité naturelle avec les ambiances planantes et trap/new wave de La Fève, J9ueve et Green Montana.",
+      "tracks": [
+        {
+          "id": "K_K0t0cYy7w",
+          "title": "Tous Mes États (feat. La Fève)",
+          "channel": "J9ueve - Topic"
+        },
+        {
+          "id": "3U_0ZRpqFHQ",
+          "title": "SAOULÉ",
+          "channel": "La Fève - Topic"
+        },
+        {
+          "id": "nbKpLwyg_rQ",
+          "title": "J9ueve - SIBÉRIE (Clip officiel)",
+          "channel": "J9UEVE"
+        },
+        {
+          "id": "4NUfE7YzPmo",
+          "title": "BB PART.3",
+          "channel": "Green Montana - Topic"
+        },
+        {
+          "id": "b4bmJDiYHwU",
+          "title": "MAGIC CITY 999",
+          "channel": "Green Montana - Topic"
+        }
+      ],
+      "cards": [],
+      "calls": [
+        {
+          "round": 0,
+          "ms": 2015,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 3837,
+            "completion_tokens": 36,
+            "total_tokens": 3873
+          }
+        },
+        {
+          "round": 1,
+          "ms": 2192,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 6154,
+            "completion_tokens": 43,
+            "total_tokens": 6197
+          }
+        },
+        {
+          "round": 2,
+          "ms": 4280,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 8446,
+            "completion_tokens": 178,
+            "total_tokens": 8624
+          }
+        }
+      ],
+      "tools": [
+        {
+          "name": "music_search",
+          "ms": 2220,
+          "status": "ok"
+        },
+        {
+          "name": "music_search",
+          "ms": 1446,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "kind": "case",
+      "model": "gemini-3.6-flash",
+      "id": "journal-energy",
+      "ms": 8477,
+      "status": "pass",
+      "errors": [],
+      "action": "replace",
+      "reply": "C’est parti : Palabra Mi Amor, puis King's Dead, puis SebastiAn - Embody (Official Video) et 2 autres titres. Des morceaux au rythme soutenu et à forte intensité, parfaits pour vous impulser une vraie dynamique.",
+      "tracks": [
+        {
+          "id": "copf8b9-vj4",
+          "title": "Palabra Mi Amor",
+          "channel": "Shaka Ponk - Topic"
+        },
+        {
+          "id": "2lAcWFxxH9s",
+          "title": "King's Dead",
+          "channel": "Jay Rock - Topic"
+        },
+        {
+          "id": "awtiZEiiAE8",
+          "title": "SebastiAn - Embody (Official Video)",
+          "channel": "Ed Banger Records"
+        },
+        {
+          "id": "HEQxeXY0aVA",
+          "title": "Boys Noize - XTC",
+          "channel": "samurairj"
+        },
+        {
+          "id": "6Ymm1OxnuhU",
+          "title": "Vanished",
+          "channel": "Crystal Castles - Topic"
+        }
+      ],
+      "cards": [],
+      "calls": [
+        {
+          "round": 0,
+          "ms": 2698,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 3531,
+            "completion_tokens": 28,
+            "total_tokens": 3793
+          }
+        },
+        {
+          "round": 1,
+          "ms": 3069,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 5917,
+            "completion_tokens": 165,
+            "total_tokens": 6393
+          }
+        }
+      ],
+      "tools": [
+        {
+          "name": "music_search",
+          "ms": 2543,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "kind": "case",
+      "model": "gemini-3.6-flash",
+      "id": "journal-carte-blanche",
+      "ms": 14178,
+      "status": "pass",
+      "errors": [],
+      "action": "replace",
+      "reply": "C’est parti : Damso - Jean Reno, puis Lacrim - Judy Moncada, puis Bigflo & Oli - Dommage et 1 autre titre. Une sélection variée issue de ta bibliothèque, mêlant rap français et pop avec Damso, Lacrim, Bigflo & Oli et WILLOW.",
+      "tracks": [
+        {
+          "id": "2SPb2PF0PYw",
+          "title": "Damso - Jean Reno",
+          "channel": "Rap Binge"
+        },
+        {
+          "id": "0-5k1gkdjEE",
+          "title": "Lacrim - Judy Moncada",
+          "channel": "LacrimMusicVEVO"
+        },
+        {
+          "id": "8AF-Sm8d8yk",
+          "title": "Bigflo & Oli - Dommage",
+          "channel": "BigfloetoliVEVO"
+        },
+        {
+          "id": "1Xfdjqa5dfY",
+          "title": "Wait a Minute!",
+          "channel": "WILLOW - Topic"
+        }
+      ],
+      "cards": [],
+      "calls": [
+        {
+          "round": 0,
+          "ms": 4786,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 3818,
+            "completion_tokens": 28,
+            "total_tokens": 4425
+          }
+        },
+        {
+          "round": 1,
+          "ms": 4644,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 6576,
+            "completion_tokens": 109,
+            "total_tokens": 7340
+          }
+        }
+      ],
+      "tools": [
+        {
+          "name": "music_search",
+          "ms": 4729,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "kind": "case",
+      "model": "gemini-3.6-flash",
+      "id": "journal-no-autoplay",
+      "ms": 7023,
+      "status": "pass",
+      "errors": [],
+      "action": "keep",
+      "reply": "Je te propose ce morceau. « Poussière » : Jewel Usain (crédits MusicBrainz). Choisis celui que tu veux écouter. Une sélection de titres de l'artiste hip-hop / R&B Jewel Usain disponibles dans votre bibliothèque.",
+      "tracks": [],
+      "cards": [
+        {
+          "id": "6cO-9YufcXU",
+          "title": "Poussière"
+        }
+      ],
+      "calls": [
+        {
+          "round": 0,
+          "ms": 2408,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 3536,
+            "completion_tokens": 28,
+            "total_tokens": 3724
+          }
+        },
+        {
+          "round": 1,
+          "ms": 4121,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 4358,
+            "completion_tokens": 87,
+            "total_tokens": 4935
+          }
+        }
+      ],
+      "tools": [
+        {
+          "name": "music_search",
+          "ms": 485,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "kind": "case",
+      "model": "gemini-3.6-flash",
+      "id": "journal-sean-followup",
+      "ms": 35172,
+      "status": "pass",
+      "errors": [],
+      "action": "append",
+      "reply": "J’ajoute à la suite : Luther - alibi, puis Wallace Cleaver - Le Bus | A COLORS SHOW, puis Khali - LE MONDE EST À TOI et 2 autres titres. Dans la continuité de Sean et son style mélancolique et introspectif, voici une sélection de la nouvelle scène rap français (Luther, Wallace Cleaver, Khali, Rounhaa et Yvnnis).",
+      "tracks": [
+        {
+          "id": "IjkVtXgTyKw",
+          "title": "Luther - alibi",
+          "channel": "LUTHER"
+        },
+        {
+          "id": "gTieUhG3QkA",
+          "title": "Wallace Cleaver - Le Bus | A COLORS SHOW",
+          "channel": "COLORS"
+        },
+        {
+          "id": "Hra3x9wprZw",
+          "title": "Khali - LE MONDE EST À TOI",
+          "channel": "KHALI"
+        },
+        {
+          "id": "_JnLvyWWazo",
+          "title": "Rounhaa - LOVE DEATH ROBOTS",
+          "channel": "Rounhaa"
+        },
+        {
+          "id": "p1FZNVjdo2w",
+          "title": "Yvnnis - BIG SHOT | A COLORS SHOW",
+          "channel": "COLORS"
+        }
+      ],
+      "cards": [],
+      "calls": [
+        {
+          "round": 0,
+          "ms": 2858,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 3837,
+            "completion_tokens": 62,
+            "total_tokens": 4111
+          }
+        },
+        {
+          "round": 1,
+          "ms": 2288,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 6565,
+            "completion_tokens": 36,
+            "total_tokens": 6768
+          }
+        },
+        {
+          "round": 2,
+          "ms": 4096,
+          "status": "ok",
+          "usage": {
+            "prompt_tokens": 9133,
+            "completion_tokens": 132,
+            "total_tokens": 9626
+          }
+        }
+      ],
+      "tools": [
+        {
+          "name": "music_search",
+          "ms": 429,
+          "status": "ok"
+        },
+        {
+          "name": "music_search",
+          "ms": 12201,
+          "status": "ok"
+        },
+        {
+          "name": "music_search",
+          "ms": 13291,
+          "status": "ok"
+        }
+      ]
+    }
+  ]
+}
