@@ -72,7 +72,11 @@ struct SettingsView: View {
         }
       }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }.frame(width: 850, height: 750).preferredColorScheme(.dark)
-      .onChange(of: key) { _, _ in message = "" }
+      .onChange(of: key) { _, value in if !value.isEmpty { message = "" } }
+      .onChange(of: session.provider) { _, _ in
+        key = ""
+        message = ""
+      }
       .onChange(of: session.model) { _, _ in message = "" }
       .onChange(of: session.generation) { _, _ in
         key = ""
@@ -84,7 +88,7 @@ struct SettingsView: View {
     Section("Compte") {
       if session.googleAccount {
         Label(session.accountEmail, systemImage: "person.crop.circle.fill")
-          .help("Seules tes playlists et ta clé Gemini sont accessibles depuis ce compte.")
+          .help("Seules tes playlists et tes clés API sont accessibles depuis ce compte.")
         Button(session.signingIn ? "Connexion en cours…" : "Reconnecter Google") {
           Task { await session.connectGoogle() }
         }.disabled(busy || session.signingIn)
@@ -120,21 +124,23 @@ struct SettingsView: View {
   }
   @ViewBuilder private var djSettings: some View {
     Section("DJ") {
-      Picker("Modèle", selection: $session.model) {
-        Text("Gemini 3.8 Flash · équilibré").tag("gemini-3.8-flash")
-        Text("Gemini 3.5 Flash-Lite · très rapide").tag("gemini-3.5-flash-lite")
-        Text("Gemini 4 Argon · raisonnement avancé").tag("gemini-4-argon")
+      AIProviderFields().disabled(busy)
+      if session.provider != session.activeProvider {
+        Text(
+          "Actuellement : \(session.activeProvider.name). Le changement prend effet après enregistrement."
+        )
+        .font(.caption).foregroundStyle(.secondary)
       }
-      .disabled(busy)
       SecureField(
-        session.hasKey ? "Nouvelle clé (laisser vide pour conserver)" : "Ma clé API Gemini",
+        session.selectedHasKey
+          ? "Nouvelle clé (laisser vide pour conserver)" : "Ma clé API \(session.provider.name)",
         text: $key
       ).disabled(busy)
         .help(
-          "Chiffrée sur le serveur, réservée à ton compte. Les demandes au DJ sont transmises à Google avec ton quota Gemini. Les échanges, propositions et outils sont conservés dans le journal privé de ton compte pour diagnostiquer le DJ."
+          "Chiffrée sur le serveur, réservée à ton compte. Les demandes au DJ sont transmises au fournisseur sélectionné avec ton quota. Les échanges, propositions et outils sont conservés dans le journal privé de ton compte pour diagnostiquer le DJ."
         )
       Link(
-        "Obtenir une clé Gemini", destination: URL(string: "https://aistudio.google.com/api-keys")!
+        "Obtenir une clé \(session.provider.name)", destination: session.provider.keyURL
       )
       HStack {
         Button(busy ? "Vérification…" : "Vérifier et enregistrer") {
@@ -146,32 +152,34 @@ struct SettingsView: View {
               if key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 try await session.saveModel()
               } else {
-                try await session.saveGeminiKey(key)
+                try await session.saveAIKey(key)
                 key = ""
               }
               message = "Réglages enregistrés sur ton compte."
             } catch { message = error.localizedDescription }
           }
         }.buttonStyle(.borderedProminent).disabled(busy || !session.googleAccount)
-        Button("Tester le DJ et la voix") {
+        Button(session.provider == .google ? "Tester le DJ et la voix" : "Tester le DJ") {
           busy = true
           message = ""
           Task {
             defer { busy = false }
-            do { message = try await session.testGeminiKey(key).message } catch {
+            do { message = try await session.testAIKey(key).message } catch {
               message = error.localizedDescription
             }
           }
-        }.disabled(busy || !session.googleAccount || (!session.hasKey && key.isEmpty))
-          .help("De courts appels réels à Google, sur le quota de la clé ; rien n’est enregistré.")
-        if session.hasKey && session.googleAccount {
+        }.disabled(busy || !session.googleAccount || (!session.selectedHasKey && key.isEmpty))
+          .help(
+            "De courts appels réels au fournisseur sélectionné, sur le quota de la clé ; rien n’est enregistré."
+          )
+        if session.selectedHasKey && session.googleAccount {
           Button("Retirer ma clé") {
             busy = true
             message = ""
             Task {
               defer { busy = false }
               do {
-                try await session.removeGeminiKey()
+                try await session.removeAIKey()
                 key = ""
                 message = "Clé retirée de ton compte."
               } catch {
@@ -184,8 +192,15 @@ struct SettingsView: View {
       if !message.isEmpty { Text(message).font(.callout).textSelection(.enabled) }
     }
     Section("Voix") {
-      Toggle("Voix Gemini expressive", isOn: $session.cloudVoice)
-        .help("Micro au clic, dictée Apple. Voix Gemini avec ta clé, voix macOS en secours.")
+      if session.activeProvider == .anthropic {
+        Label("Voix macOS", systemImage: "waveform")
+        Text("La voix est produite sur ce Mac. Aucune clé Google supplémentaire n’est nécessaire.")
+          .font(.caption).foregroundStyle(.secondary)
+      } else {
+        Toggle("Voix Gemini expressive", isOn: $session.cloudVoice)
+          .disabled(!session.cloudVoiceAvailable)
+          .help("Micro au clic, dictée Apple. Voix Gemini avec ta clé, voix macOS en secours.")
+      }
     }
   }
 }

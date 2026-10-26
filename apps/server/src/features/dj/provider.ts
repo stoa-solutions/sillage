@@ -1,27 +1,29 @@
-import { z } from "zod";
+import {
+  generateText,
+  jsonSchema,
+  tool,
+  Output,
+  type AssistantModelMessage,
+  type ModelMessage,
+} from "ai";
 import type { DjConfig } from "../../dj-config.ts";
+import { aiModel, providerHttpStatus, thinkingOptions } from "./ai-model.ts";
 import { DjUnavailable } from "./errors.ts";
 import type { TraceObserver } from "./journal/contracts.ts";
 
-const toolCall = z.looseObject({
-  id: z.string(),
-  type: z.literal("function"),
-  function: z.looseObject({ name: z.string(), arguments: z.string() }),
-});
-const assistantMessage = z.object({
-  content: z.string().nullish(),
-  tool_calls: z.array(toolCall).nullish(),
-  // Gemini can attach opaque thought signatures that must survive the next round.
-  extra_content: z.unknown().optional(),
-});
-type ToolCall = z.infer<typeof toolCall>;
+interface ToolCall {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
 export type ChatMessage =
   | { role: "system" | "user"; content: string }
   | {
       role: "assistant";
       content: string | null;
       tool_calls?: ToolCall[];
-      extra_content?: unknown;
+      // Keep the SDK's opaque reasoning/signature metadata across tool rounds.
+      providerContent?: AssistantModelMessage["content"];
     }
   | { role: "tool"; tool_call_id: string; content: string };
 export interface ChatTool {
@@ -32,10 +34,51 @@ export interface ChatTool {
     parameters: Record<string, unknown>;
   };
 }
-
 export const MAX_ROUNDS = 5;
 
-/** Provider-specific wire format only. Selection and playback policy live elsewhere. */
+function modelMessages(messages: ChatMessage[]): ModelMessage[] {
+  const names = new Map<string, string>();
+  return messages.map((message): ModelMessage => {
+    if (message.role === "tool") {
+      const name = names.get(message.tool_call_id);
+      if (!name)
+        throw new DjUnavailable(
+          "La réponse de l’outil du DJ est incomplète.",
+          502,
+        );
+      return {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: message.tool_call_id,
+            toolName: name,
+            output: { type: "json", value: JSON.parse(message.content) },
+          },
+        ],
+      };
+    }
+    if (message.role !== "assistant") return message;
+    for (const call of message.tool_calls ?? [])
+      names.set(call.id, call.function.name);
+    return {
+      role: "assistant",
+      content: message.providerContent ?? [
+        ...(message.content
+          ? [{ type: "text" as const, text: message.content }]
+          : []),
+        ...(message.tool_calls ?? []).map((call) => ({
+          type: "tool-call" as const,
+          toolCallId: call.id,
+          toolName: call.function.name,
+          input: JSON.parse(call.function.arguments),
+        })),
+      ],
+    };
+  });
+}
+
+/** One SDK step. The existing DJ loop owns MCP execution, grounding and limits. */
 export async function completeTurn(
   config: DjConfig,
   messages: ChatMessage[],
@@ -45,97 +88,86 @@ export async function completeTurn(
   observe?: TraceObserver,
 ) {
   const started = Date.now();
-  let reported = false;
   try {
-    const response = await fetch(`${config.baseUrl}/chat/completions`, {
-      method: "POST",
-      signal,
-      headers: {
-        "Content-Type": "application/json",
-        ...(config.key ? { Authorization: `Bearer ${config.key}` } : {}),
-      },
-      body: JSON.stringify({
-        model: config.model,
-        messages,
-        // No tools on the last round: conclude from evidence already collected.
-        ...(round < MAX_ROUNDS - 1 ? { tools, tool_choice: "auto" } : {}),
-        max_completion_tokens: config.model === "gemini-4-argon" ? 32768 : 4096,
-        ...(["gemini-4-argon", "gemini-3.8-flash"].includes(config.model ?? "")
-          ? { reasoning_effort: "low" }
-          : {}),
-        // AUTO permits both tool calls and ordinary structured replies. Requiring
-        // a tool here turns acknowledgements into unnecessary catalog searches.
-        response_format: { type: "json_object" },
-      }),
+    const result = await generateText({
+      model: aiModel(config),
+      instructions: messages
+        .filter((message) => message.role === "system")
+        .map((message) => message.content)
+        .join("\n\n"),
+      messages: modelMessages(
+        messages.filter((message) => message.role !== "system"),
+      ),
+      ...(round < MAX_ROUNDS - 1
+        ? {
+            tools: Object.fromEntries(
+              tools.map(({ function: definition }) => [
+                definition.name,
+                tool({
+                  description: definition.description,
+                  inputSchema: jsonSchema(definition.parameters),
+                  // No execute: MCP and evidence validation remain in the DJ orchestration.
+                }),
+              ]),
+            ),
+            toolChoice: "auto" as const,
+          }
+        : {}),
+      ...(config.provider !== "anthropic" ? { output: Output.json() } : {}),
+      maxOutputTokens: config.model === "gemini-4-argon" ? 32768 : 4096,
+      providerOptions: thinkingOptions(config),
+      maxRetries: 0,
+      abortSignal: signal,
     });
-    if (!response.ok) {
-      observe?.({
-        kind: "provider",
-        name: config.model,
-        round,
-        status: "error",
-        httpStatus: response.status,
-        durationMs: Date.now() - started,
-      });
-      reported = true;
-      throw new DjUnavailable(
-        response.status === 429
-          ? "Google a refusé la demande : limite de débit ou quota de ta clé Gemini atteint. Ce n’est pas le plafond Recall. Ta lecture reste disponible ; vérifie le quota de ta clé dans Réglages avant de réessayer."
-          : "L’IA du DJ ne répond pas pour le moment. Réessaie dans un instant.",
-        response.status === 429 ? 429 : 502,
-      );
-    }
-    const envelope = z.object({
-      choices: z.array(z.object({ message: assistantMessage })).min(1),
-      usage: z.unknown().optional(),
-    });
-    const parsed = envelope.safeParse(await response.json());
-    if (!parsed.success) {
-      throw new DjUnavailable(
-        "La réponse du DJ est incomplète. Réessaie.",
-        502,
-      );
-    }
-    const message = parsed.data.choices[0].message;
-    const usage = z
-      .object({
-        prompt_tokens: z.number().optional(),
-        completion_tokens: z.number().optional(),
-        total_tokens: z.number().optional(),
-      })
-      .safeParse(parsed.data.usage);
+    const calls: ToolCall[] = result.toolCalls.map((call) => ({
+      id: call.toolCallId,
+      type: "function",
+      function: { name: call.toolName, arguments: JSON.stringify(call.input) },
+    }));
+    const assistant = result.response.messages.findLast(
+      (message) => message.role === "assistant",
+    );
+    const message = {
+      content: result.text || null,
+      ...(calls.length ? { tool_calls: calls } : {}),
+      ...(assistant?.role === "assistant"
+        ? { providerContent: assistant.content }
+        : {}),
+    };
     observe?.({
       kind: "provider",
       name: config.model,
       round,
       status: "ok",
-      httpStatus: response.status,
       durationMs: Date.now() - started,
       output: {
         content: message.content,
-        tool_calls: message.tool_calls?.map((call) => ({
-          id: call.id,
-          type: call.type,
-          function: {
-            name: call.function.name,
-            arguments: call.function.arguments,
-          },
-        })),
-        usage: usage.success ? usage.data : undefined,
+        tool_calls: calls,
+        usage: {
+          prompt_tokens: result.usage.inputTokens,
+          completion_tokens: result.usage.outputTokens,
+          total_tokens: result.usage.totalTokens,
+        },
       },
     });
-    reported = true;
     return message;
   } catch (error) {
-    if (!reported)
-      observe?.({
-        kind: "provider",
-        name: config.model,
-        round,
-        status: "error",
-        durationMs: Date.now() - started,
-        output: { error: signal.aborted ? "canceled" : "provider_unavailable" },
-      });
-    throw error;
+    const status = providerHttpStatus(error);
+    observe?.({
+      kind: "provider",
+      name: config.model,
+      round,
+      status: "error",
+      httpStatus: status,
+      durationMs: Date.now() - started,
+      output: { error: signal.aborted ? "canceled" : "provider_unavailable" },
+    });
+    if (signal.aborted) throw signal.reason;
+    throw new DjUnavailable(
+      status === 429
+        ? "Le fournisseur a refusé la demande : limite de débit ou quota de ta clé atteint. Ce n’est pas le plafond Sillage. Ta lecture reste disponible ; vérifie le quota dans Réglages."
+        : "La réponse du DJ est incomplète. Réessaie.",
+      status === 429 ? 429 : 502,
+    );
   }
 }

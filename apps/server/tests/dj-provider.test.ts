@@ -52,33 +52,6 @@ it("allows natural replies and tool calls in JSON mode, then concludes without t
   expect(bodies[2].tool_choice).toBeUndefined();
 });
 
-it("preserves opaque provider signatures across a tool-call round trip", async () => {
-  const call = {
-    id: "search-1",
-    type: "function",
-    function: { name: "library_search", arguments: "{}" },
-    extra_content: { google: { thought_signature: "opaque-test-signature" } },
-  };
-  const message = {
-    content: null,
-    tool_calls: [call],
-    extra_content: { provider: "opaque" },
-  };
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async () => Response.json({ choices: [{ message }] })),
-  );
-  expect(
-    await completeTurn(
-      config,
-      messages,
-      tools,
-      0,
-      new AbortController().signal,
-    ),
-  ).toEqual(message);
-});
-
 it.each([
   {},
   { choices: [] },
@@ -145,7 +118,7 @@ it("identifies provider throttling or quota separately from the Recall budget", 
   ).rejects.toMatchObject({
     status: 429,
     message: expect.stringContaining(
-      "limite de débit ou quota de ta clé Gemini",
+      "limite de débit ou quota de ta clé",
     ),
   });
 });

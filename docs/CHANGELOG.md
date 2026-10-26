@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- DJ multi-fournisseurs avec AI SDK : connecteurs natifs Gemini et Claude, clés et modèles conservés séparément par compte, migration des réglages Gemini existants sans nouvelle saisie. Choix dans l’accueil et les réglages Mac, vérification avant remplacement, voix macOS avec Claude. Les outils MCP, la validation des morceaux et les limites du DJ restent en place. Aucun changement de fournisseur facturé automatique.
+
 - Intelligence du DJ : recherche exploratoire et composition finale séparées, conservation des candidats et des sélections partielles, choix proposés si le modèle ne conclut pas. Recherche MCP avec artiste distinct des styles et jusqu’à deux formulations alternatives en parallèle, résultats entrelacés, tutoriels manifestes écartés des ambiances et erreurs partielles conservées. « Sans le lancer » reste une proposition ; taille demandée respectée et explication musicale séparée de l’annonce de la file. Aucun changement de design ni de lecteur. Régressions issues du journal et simulation HTTP Postman.
 
 - Sillage 1.7.9 (70) : icônes sobres dans la Bibliothèque et Découvrir (tuiles neutres, symboles fins, simples glyphes pour les recherches et envies), paroles synchronisées sans vide au-dessus de la première ligne, « Reprendre le suivi » lisible, durées longues sur une ligne.

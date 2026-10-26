@@ -281,3 +281,9 @@ L’application affichée devient **Sillage**, avec l’icône sculpturale orang
 Le nom technique `RecallMac`, le bundle ID `solutions.stoa.playlist-recall`, le schéma `playlist-recall`, les chemins privés et le flux Sparkle restent inchangés. Les archives conservent leur préfixe `Playlist-Recall-…` pour rester compatibles avec les contrôles existants. Les mentions historiques ci-dessus gardent leurs noms d’époque.
 
 L’installation locale remplace l’ancien bundle par `~/Applications/Sillage.app`, après fermeture propre et sauvegarde du binaire précédent hors du dossier Applications. Les données et la session ne sont pas réimportées ni migrées. Une archive de test créée avec `--skip-update-signature` reste locale ; ne pas la publier dans le flux Sparkle.
+
+## Fournisseur du DJ
+
+L’accueil et **Réglages → DJ et voix** partagent le choix Gemini/Claude et le modèle. Le serveur renvoie le catalogue et les réglages enregistrés de chaque fournisseur. Le changement devient actif après **Vérifier et enregistrer**. Une clé saisie est effacée du champ si le fournisseur change ; elle n’est jamais préremplie depuis le serveur.
+
+La voix est indépendante du choix de raisonnement : Claude utilise directement la voix macOS. Gemini propose la voix expressive existante et son repli macOS. Les deux chemins gardent les mêmes commandes de lecture et outils musicaux. Pour tester sans la session ni la bibliothèque de Samuel, lancer une build QA avec `RECALL_DATA_DIR` dans un dossier temporaire.

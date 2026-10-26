@@ -106,8 +106,9 @@ export const schemas: Record<string, Schema> = {
   DiscoveryAdd: jsonSchema(discoveryAddInput),
   DjRequest: jsonSchema(djInput),
   DjSettings: jsonSchema(djSettingsInput),
+  DjReset: jsonSchema(z.object({provider:z.enum(["google","anthropic"]).optional()})),
   DjCheck: jsonSchema(
-    djSettingsInput.extend({ voice: z.boolean().default(false) }),
+    djSettingsInput.safeExtend({ voice: z.boolean().default(false) }),
   ),
   SpeechRequest: {
     ...object({ text: { type: "string", minLength: 1, maxLength: 600 } }),
@@ -135,6 +136,11 @@ export const schemas: Record<string, Schema> = {
     google: boolean,
   }),
   DjStatus: object({
+    provider: {type:"string",enum:["google","anthropic"]},
+    providers: array(object({
+      id: {type:"string",enum:["google","anthropic"]}, name:string(), configured:boolean,
+      model:string(), defaultModel:string(), keyUrl:string(), models:array(object({id:string(),name:string()})),
+    })),
     configured: boolean,
     voice: boolean,
     model: nullable(string()),

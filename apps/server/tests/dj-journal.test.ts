@@ -111,7 +111,8 @@ it("captures visible provider calls and usage without storing thought signatures
     new AbortController().signal,
     (event) => events.push(event),
   );
-  expect(result.tool_calls?.[0]).toEqual(call); // Still needed for the next provider round trip.
+  expect(result.tool_calls?.[0]).toMatchObject({id:call.id,function:call.function});
+  expect(JSON.stringify(result.providerContent)).toContain("opaque-private");
   expect(journalPayload(events)).toMatchObject([
     {
       kind: "provider",
@@ -123,7 +124,7 @@ it("captures visible provider calls and usage without storing thought signatures
     /opaque-private|private-key|extra_content/,
   );
   fetcher.mockResolvedValueOnce(
-    Response.json({ choices: [{ message: { content: "ok" } }], usage: null }),
+    Response.json({ choices: [{ message: { content: "{}" } }] }),
   );
   await expect(
     completeTurn(
@@ -133,11 +134,11 @@ it("captures visible provider calls and usage without storing thought signatures
         model: "test",
         key: undefined,
       },
-      [],
+      [{role:"user",content:"ok"}],
       [],
       0,
       new AbortController().signal,
       (event) => events.push(event),
     ),
-  ).resolves.toMatchObject({ content: "ok" });
+  ).resolves.toMatchObject({ content: "{}" });
 });

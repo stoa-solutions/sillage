@@ -46,7 +46,7 @@ public struct DiscoveryHome: Decodable, Sendable {
   public let notice: String?
   public let emptyReason: String?
 }
-public struct GeminiCheck: Decodable, Sendable {
+public struct AICheck: Decodable, Sendable {
   public let ok: Bool
   public let voice: Bool
   public let message: String
@@ -71,13 +71,16 @@ extension HTTPClient {
     }
     _ = try await server(connection, path: "discover/add", body: ["videoId": id])
   }
-  public func checkGemini(
-    _ connection: Connection, model: String, key: String? = nil, voice: Bool = false
-  ) async throws -> GeminiCheck {
-    var body: [String: Any] = ["model": model, "voice": voice]
+  public func checkAI(
+    _ connection: Connection, provider: AIProvider, model: String, key: String? = nil,
+    voice: Bool = false
+  ) async throws -> AICheck {
+    var body: [String: Any] = [
+      "provider": provider.rawValue, "model": model, "voice": voice && provider == .google,
+    ]
     if let key { body["apiKey"] = key }
     let object = try await server(connection, path: "dj/check", body: body)
     return try JSONDecoder().decode(
-      GeminiCheck.self, from: JSONSerialization.data(withJSONObject: object))
+      AICheck.self, from: JSONSerialization.data(withJSONObject: object))
   }
 }

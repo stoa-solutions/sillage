@@ -16,6 +16,7 @@ import { connectMusicMcp } from "../src/music-mcp.ts";
 vi.mock("../src/inference-client.ts", () => ({
   infer: vi.fn().mockRejectedValue(new Error("No model in test")),
 }));
+const googleResponse = (parts: unknown[]) => Response.json({candidates:[{index:0,finishReason:"STOP",content:{role:"model",parts}}]});
 const url = process.env.TEST_DATABASE_URL;
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
@@ -109,48 +110,13 @@ beforeEach(async () => {
               .map(video),
           });
       }
-      if (address.pathname.endsWith("/chat/completions")) {
+      if (address.pathname.endsWith(":generateContent")) {
         const body = JSON.parse(String(init?.body));
-        if (!body.tools)
-          return Response.json(
-            status === 200
-              ? { choices: [{ message: { content: "OK" } }] }
-              : { error: { message: "secret-provider-body" } },
-            { status },
-          );
-        if (!body.messages.some((m: any) => m.role === "tool"))
-          return Response.json({
-            choices: [
-              {
-                message: {
-                  tool_calls: [
-                    {
-                      id: "s",
-                      type: "function",
-                      function: {
-                        name: "music_search",
-                        arguments: JSON.stringify({ query: "Real artist" }),
-                      },
-                    },
-                  ],
-                },
-              },
-            ],
-          });
-        return Response.json({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  reply: "Voici deux découvertes sur YouTube.",
-                  trackIds: [],
-                  action: "keep",
-                  discoveryIds: ["newtrack001"],
-                }),
-              },
-            },
-          ],
-        });
+        if (!body.tools) return status === 200 ? googleResponse([{text:"OK"}])
+          : Response.json({error:{message:"secret-provider-body"}},{status});
+        if (!body.contents.some((message: any) => message.parts.some((part: any) => part.functionResponse)))
+          return googleResponse([{functionCall:{id:"s",name:"music_search",args:{query:"Real artist"}},thoughtSignature:"opaque-fixture"}]);
+        return googleResponse([{text:JSON.stringify({reply:"Voici deux découvertes sur YouTube.",trackIds:[],action:"keep",discoveryIds:["newtrack001"]})}]);
       }
       throw new Error("Unexpected external request");
     },
@@ -302,23 +268,15 @@ it("rejects invented discovery IDs and never stores an unverified selection", as
   ) => Promise<Response>;
   upstream.mockImplementation(async (...args: any[]) => {
     const response = await normal(...args);
-    if (String(args[0]).endsWith("/chat/completions")) {
+    if (String(args[0]).endsWith(":generateContent")) {
       const body = await response.clone().json();
-      if (body.choices?.[0]?.message?.content?.includes("discoveryIds")) {
-        return Response.json({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
+      if (body.candidates?.[0]?.content?.parts?.[0]?.text?.includes("discoveryIds")) {
+        return googleResponse([{text:JSON.stringify({
                   reply: "Résultat inventé",
                   trackIds: [],
                   action: "keep",
                   discoveryIds: ["forgedid001"],
-                }),
-              },
-            },
-          ],
-        });
+                })}]);
       }
     }
     return response;
@@ -383,22 +341,14 @@ it("preserves a model's chosen subset when it uses the ordinary trackIds field",
   ) => Promise<Response>;
   upstream.mockImplementation(async (...args: any[]) => {
     const response = await normal(...args);
-    if (String(args[0]).endsWith("/chat/completions")) {
+    if (String(args[0]).endsWith(":generateContent")) {
       const body = await response.clone().json();
-      if (body.choices?.[0]?.message?.content?.includes("discoveryIds")) {
-        return Response.json({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
+      if (body.candidates?.[0]?.content?.parts?.[0]?.text?.includes("discoveryIds")) {
+        return googleResponse([{text:JSON.stringify({
                   reply: "Uniquement le titre demandé",
                   trackIds: ["newtrack001"],
                   action: "keep",
-                }),
-              },
-            },
-          ],
-        });
+                })}]);
       }
     }
     return response;
@@ -426,12 +376,10 @@ it.each([
   const normal = upstream.getMockImplementation() as (...args: any[]) => Promise<Response>;
   upstream.mockImplementation(async (...args: any[]) => {
     const response = await normal(...args);
-    if (String(args[0]).endsWith("/chat/completions")) {
+    if (String(args[0]).endsWith(":generateContent")) {
       const body = await response.clone().json();
-      if (body.choices?.[0]?.message?.content) {
-        return Response.json({ choices: [{ message: { content: JSON.stringify({
-          reply: "Sélection vérifiée", trackIds: ["newtrack001"], action: proposed,
-        }) } }] });
+      if (body.candidates?.[0]?.content?.parts?.[0]?.text) {
+        return googleResponse([{text:JSON.stringify({reply:"Sélection vérifiée",trackIds:["newtrack001"],action:proposed})}]);
       }
     }
     return response;

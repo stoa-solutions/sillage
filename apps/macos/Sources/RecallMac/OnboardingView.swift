@@ -21,7 +21,7 @@ struct OnboardingView: View {
       Group {
         switch step {
         case 0: account
-        case 1: gemini
+        case 1: ai
         default: playlists
         }
       }
@@ -33,10 +33,14 @@ struct OnboardingView: View {
         .disabled(busy || session.claimingLibrary).padding(.top, 28)
     }
     .padding(40)
-    .frame(width: 640, height: 460)
+    .frame(width: 640, height: 520)
     .background(OnboardingBackdrop())
     .environment(\.colorScheme, .dark)
     .animation(.easeInOut(duration: 0.3), value: step)
+    .onChange(of: session.provider) { _, _ in
+      key = ""
+      error = ""
+    }
     .interactiveDismissDisabled().tint(Stoa.orange)
   }
 
@@ -82,13 +86,14 @@ struct OnboardingView: View {
     }
   }
 
-  private var gemini: some View {
+  private var ai: some View {
     StepPage(
       title: "Active ton DJ",
-      message: "Colle ta clé Gemini. Elle reste chiffrée sur ton compte."
+      message: "Choisis ton IA et ajoute ta clé. Elle reste chiffrée sur ton compte."
     ) {
+      AIProviderFields().frame(width: 340).disabled(busy)
       HStack(spacing: 8) {
-        SecureField("Clé API Gemini", text: $key)
+        SecureField("Clé API \(session.provider.name)", text: $key)
           .textFieldStyle(.plain).focused($fieldFocused).onSubmit(saveKey).disabled(busy)
         if busy { ProgressView().controlSize(.small) }
       }
@@ -102,9 +107,9 @@ struct OnboardingView: View {
         Button(busy ? "Vérification…" : "Activer mon DJ", action: saveKey)
           .buttonStyle(ChalkButtonStyle())
           .disabled(busy || key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        Link("Obtenir une clé", destination: URL(string: "https://aistudio.google.com/api-keys")!)
+        Link("Obtenir une clé", destination: session.provider.keyURL)
           .font(.callout).foregroundStyle(Stoa.chalk.opacity(0.8))
-          .help("Ouvre Google AI Studio, où la clé est gratuite.")
+          .help("La clé et les appels au modèle sont gérés par le fournisseur choisi.")
       }
       if !session.accountEmail.isEmpty {
         Text("Connecté : \(session.accountEmail)").font(.caption).foregroundStyle(Stoa.stone)
@@ -165,7 +170,7 @@ struct OnboardingView: View {
     Task {
       defer { busy = false }
       do {
-        try await session.saveGeminiKey(key, finishOnboarding: false)
+        try await session.saveAIKey(key, finishOnboarding: false)
         key = ""
       } catch { self.error = error.localizedDescription }
     }

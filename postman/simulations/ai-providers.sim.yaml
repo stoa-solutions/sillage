@@ -1,0 +1,9 @@
+simulation: sillage-ai-providers
+routing: path
+mocks:
+  - name: google
+    routeKey: google
+    path: postman/mocks/ai-providers/google.yaml
+  - name: anthropic
+    routeKey: anthropic
+    path: postman/mocks/ai-providers/anthropic.yaml

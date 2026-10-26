@@ -59,7 +59,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
   await db.query(
-    "TRUNCATE tokens,playlists,videos,channels,jobs,quota_usage,dj_usage,account_dj_usage,account_dj_settings CASCADE",
+    "TRUNCATE tokens,playlists,videos,channels,jobs,quota_usage,dj_usage,account_dj_usage,account_dj_settings,account_ai_credentials CASCADE",
   );
   await db.query("INSERT INTO tokens(id,name,hash) VALUES($1,$2,$3)", [
     randomUUID(),

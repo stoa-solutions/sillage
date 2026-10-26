@@ -22,6 +22,28 @@ final class Session: ObservableObject {
     didSet { UserDefaults.standard.set(cloudVoice, forKey: "cloudVoice") }
   }
   @Published var model: String { didSet { UserDefaults.standard.set(model, forKey: "djModel") } }
+  @Published var provider = AIProvider.google {
+    didSet {
+      if provider != oldValue {
+        model = providerSettings.first(where: { $0.id == provider })?.model ?? provider.defaultModel
+      }
+    }
+  }
+  @Published private(set) var providerSettings: [AIProviderStatus] = []
+  @Published private(set) var activeProvider = AIProvider.google
+  @Published private(set) var cloudVoiceAvailable = false
+  var usingCloudVoice: Bool { cloudVoice && cloudVoiceAvailable }
+  var selectedHasKey: Bool {
+    providerSettings.first(where: { $0.id == provider })?.configured
+      ?? (provider == activeProvider && hasKey)
+  }
+  var availableModels: [String] {
+    let models =
+      providerSettings.first(where: { $0.id == provider })?.models.map(\.id) ?? [
+        provider.defaultModel
+      ]
+    return models.contains(model) ? models : models + [model]
+  }
   private var refreshAttempt = UUID()
   private(set) var generation = UUID()
   var onConnectionChange: (() -> Void)?
@@ -51,6 +73,8 @@ final class Session: ObservableObject {
         connection?.url != credentials.0?.url || connection?.token != credentials.0?.token
       connection = credentials.0
       hasKey = false
+      cloudVoiceAvailable = false
+      providerSettings = []
       accountEmail = ""
       googleAccount = false
       legacyConnection = credentials.1
@@ -78,37 +102,47 @@ final class Session: ObservableObject {
             return
           }
           hasKey = settings["configured"] as? Bool == true
-          if googleAccount, let selected = settings["model"] as? String, hasKey { model = selected }
+          if let catalog = settings["providers"] {
+            providerSettings = try JSONDecoder().decode(
+              [AIProviderStatus].self, from: JSONSerialization.data(withJSONObject: catalog))
+          }
+          activeProvider =
+            AIProvider(rawValue: settings["provider"] as? String ?? "google") ?? .google
+          provider = activeProvider
+          cloudVoiceAvailable = settings["voice"] as? Bool == true && activeProvider == .google
+          if let selected = settings["model"] as? String, hasKey { model = selected }
         } catch {
           self.error = "Impossible de vérifier le compte. Réessaie ou reconnecte-toi dans Réglages."
         }
       }
     } catch { self.error = error.localizedDescription }
   }
-  func saveGeminiKey(_ value: String, finishOnboarding: Bool = true) async throws {
+  func saveAIKey(_ value: String, finishOnboarding: Bool = true) async throws {
     error = ""
     let key = value.trimmingCharacters(in: .whitespacesAndNewlines)
     guard (20...256).contains(key.count) else {
-      throw RecallError.message("Vérifie ta clé Gemini.")
+      throw RecallError.message("Vérifie ta clé API.")
     }
     guard let connection, googleAccount else {
       throw RecallError.message("Connecte ton compte Google avant d’enregistrer ta clé.")
     }
     let accountGeneration = generation
     let selectedModel = model
-    let check = try await HTTPClient().checkGemini(connection, model: selectedModel, key: key)
+    let selectedProvider = provider
+    let check = try await HTTPClient().checkAI(
+      connection, provider: selectedProvider, model: selectedModel, key: key)
     guard check.ok else { throw RecallError.message(check.message) }
     guard generation == accountGeneration else { throw CancellationError() }
     _ = try await HTTPClient().server(
-      connection, path: "dj/settings", body: ["apiKey": key, "model": selectedModel])
+      connection, path: "dj/settings",
+      body: ["provider": selectedProvider.rawValue, "apiKey": key, "model": selectedModel])
     guard generation == accountGeneration else { throw CancellationError() }
-    cloudVoice = true
     await refreshCredentials()
     guard hasKey else {
       throw RecallError.message(
         "La clé a été envoyée, mais sa confirmation a échoué. Vérifie ta connexion et réessaie.")
     }
-    notice = "Ton DJ est activé. Ta clé Gemini est enregistrée sur ton compte."
+    notice = "Ton DJ est activé. Ta clé est enregistrée sur ton compte."
     if finishOnboarding && hasKey && hasServer && !canClaimLibrary { showOnboarding = false }
   }
   func importConnection(_ url: URL) async throws {
@@ -164,35 +198,40 @@ final class Session: ObservableObject {
       if hasKey { showOnboarding = false }
     } catch { self.error = error.localizedDescription }
   }
-  func testGeminiKey(_ value: String, voice: Bool = true) async throws -> GeminiCheck {
+  func testAIKey(_ value: String, voice: Bool = true) async throws -> AICheck {
     guard let connection, googleAccount else {
       throw RecallError.message("Connecte ton compte Google.")
     }
     let key = value.trimmingCharacters(in: .whitespacesAndNewlines)
     guard key.isEmpty || (20...256).contains(key.count) else {
-      throw RecallError.message("Vérifie ta clé Gemini.")
+      throw RecallError.message("Vérifie ta clé API.")
     }
     let accountGeneration = generation
-    let check = try await HTTPClient().checkGemini(
-      connection, model: model, key: key.isEmpty ? nil : key, voice: voice)
+    let check = try await HTTPClient().checkAI(
+      connection, provider: provider, model: model, key: key.isEmpty ? nil : key, voice: voice)
     guard generation == accountGeneration else { throw CancellationError() }
     return check
   }
   func saveModel() async throws {
-    guard let connection, googleAccount, hasKey else {
-      throw RecallError.message("Renseigne d’abord ta clé Gemini.")
+    guard let connection, googleAccount, selectedHasKey else {
+      throw RecallError.message("Renseigne d’abord la clé de ce fournisseur.")
     }
     let accountGeneration = generation
     let selectedModel = model
-    let check = try await HTTPClient().checkGemini(connection, model: selectedModel)
+    let selectedProvider = provider
+    let check = try await HTTPClient().checkAI(
+      connection, provider: selectedProvider, model: selectedModel)
     guard check.ok else { throw RecallError.message(check.message) }
     guard generation == accountGeneration else { throw CancellationError() }
     _ = try await HTTPClient().server(
-      connection, path: "dj/settings", body: ["model": selectedModel])
+      connection, path: "dj/settings",
+      body: ["provider": selectedProvider.rawValue, "model": selectedModel])
+    await refreshCredentials()
   }
-  func removeGeminiKey() async throws {
+  func removeAIKey() async throws {
     guard let connection, googleAccount else { return }
-    _ = try await HTTPClient().server(connection, path: "dj/settings/reset", body: [:])
+    _ = try await HTTPClient().server(
+      connection, path: "dj/settings/reset", body: ["provider": provider.rawValue])
     await refreshCredentials()
   }
   func forgetServer() async {
@@ -205,6 +244,8 @@ final class Session: ObservableObject {
     connection = nil
     hasServer = false
     hasKey = false
+    cloudVoiceAvailable = false
+    providerSettings = []
     googleAccount = false
     accountEmail = ""
     notice = ""

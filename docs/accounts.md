@@ -68,3 +68,13 @@ Elle couvre deux comptes, vidéos communes, forçage d’IDs, recherche vectorie
 MCP, export, clés, quotas, logout, expiration, PKCE, replay et migration.
 Le fournisseur Google est simulé dans cette suite ; une connexion Google réelle
 reste une validation distincte après configuration des identifiants.
+
+## IA personnelle : Gemini et Claude
+
+Le compte de connexion Google est indépendant du fournisseur du DJ. L’accueil et Réglages proposent Gemini ou Claude et le modèle. Ajouter sa propre clé API puis **Vérifier et enregistrer** ; une session Claude Pro n’est pas une clé de la Console Anthropic et ne garantit pas de crédits API.
+
+Le serveur utilise AI SDK et ses adaptateurs natifs. Les clés sont chiffrées AES-256-GCM avec le contexte du compte dans `account_ai_credentials` ; la table historique est conservée comme miroir Google. La migration conserve le modèle et la clé existants. Chaque fournisseur garde ses réglages lorsque l’autre est activé. Une clé de compte n’utilise jamais la clé de l’administrateur en secours.
+
+`GET /v1/dj/status` renvoie le fournisseur actif et les modèles proposés/configurations disponibles, sans secret. `POST /v1/dj/settings` accepte `provider`, `model` et une `apiKey` facultative après la première saisie. `provider` omis signifie Google pour les anciens clients. `/check` teste seulement le fournisseur demandé et ne sauvegarde rien. `/settings/reset` avec `provider` retire sa clé ; `{}` retire toutes les clés. Supprimer la clé active ne bascule pas sur une autre clé.
+
+Avec Claude, les annonces utilisent la voix macOS, sans appel Google. Avec Gemini, la voix cloud reste facultative ; désactivée ou indisponible, la voix locale prend le relais. Les suggestions de modèles ne prouvent pas leur accès pour chaque projet : le test vérifie la clé et le modèle choisis. Les quotas et tarifs restent ceux du fournisseur.

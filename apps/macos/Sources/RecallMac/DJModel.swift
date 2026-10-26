@@ -259,7 +259,7 @@ final class DJModel: ObservableObject {
       work = nil
     case .speak(let text): speak(text)
     case .prepareSpeech(let text):
-      guard session.cloudVoice, let connection = session.connection else { return }
+      guard session.usingCloudVoice, let connection = session.connection else { return }
       voice.prepare(text, context: connection.token, using: synthesis(connection))
     case .stopSpeech: voice.stop()
     case .clearPreparedSpeech: voice.clearPreparation()
@@ -294,7 +294,7 @@ final class DJModel: ObservableObject {
   }
 
   private func speak(_ text: String) {
-    if !session.cloudVoice {
+    if !session.usingCloudVoice {
       voice.speakLocally(text)
       return
     }

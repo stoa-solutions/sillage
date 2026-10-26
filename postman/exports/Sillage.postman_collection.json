@@ -1106,7 +1106,7 @@
               "query": [],
               "variable": []
             },
-            "description": "Retourne les capacités configurées et le modèle sélectionné, sans jamais renvoyer la clé. personal distingue les réglages du compte du mode historique.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+            "description": "Retourne le fournisseur actif, le catalogue et les capacités de chaque fournisseur, sans jamais renvoyer les clés. personal distingue les réglages du compte du mode historique.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
           },
           "response": [],
           "event": [
@@ -1148,7 +1148,7 @@
               "query": [],
               "variable": []
             },
-            "description": "La première configuration exige apiKey. Ensuite model seul conserve la clé existante. Chiffrement AES-256-GCM côté serveur avec contexte du compte ; clé jamais renvoyée. L’enregistrement ne vérifie pas Google : utiliser /check pour tester, ce qui consomme le quota du fournisseur.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "description": "provider vaut google par défaut pour les clients existants. La première configuration de chaque fournisseur exige apiKey ; ensuite model seul conserve sa clé. Changer de fournisseur conserve les autres clés et modèles. Chiffrement AES-256-GCM côté serveur avec contexte du compte ; clé jamais renvoyée. L’enregistrement ne vérifie pas le fournisseur : utiliser /check pour tester, ce qui consomme le quota du fournisseur.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"apiKey\": \"{{gemini_api_key}}\",\n  \"model\": \"gemini-3.5-flash-lite\"\n}",
@@ -1180,6 +1180,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "url": {
@@ -1196,7 +1200,16 @@
               "query": [],
               "variable": []
             },
-            "description": "Supprime les réglages et la clé chiffrée du compte courant. Le DJ d’un utilisateur Google sera à reconfigurer ; les playlists restent disponibles.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+            "description": "Avec provider, supprime uniquement sa clé ; sans provider, supprime toutes les clés du compte courant. Aucun changement automatique de fournisseur après suppression. Le DJ d’un utilisateur Google sera à reconfigurer ; les playlists restent disponibles.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"google\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
           "response": [],
           "event": [
@@ -1238,7 +1251,7 @@
               "query": [],
               "variable": []
             },
-            "description": "Appel réel à Google, sans enregistrer les paramètres fournis. Sans apiKey, teste la clé existante. ok=false ou voice=false peuvent être retournés avec HTTP 200 : lire le résultat métier. Une seule opération DJ par compte et deux au maximum sur cette instance.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "description": "Appel réel au fournisseur sélectionné (google par défaut), sans enregistrer les paramètres fournis. Sans apiKey, teste uniquement sa clé existante. Avec Claude, voice reste false : la voix macOS est locale. ok=false ou voice=false peuvent être retournés avec HTTP 200 : lire le résultat métier. Une seule opération DJ par compte et deux au maximum sur cette instance.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"model\": \"gemini-3.5-flash-lite\",\n  \"voice\": false\n}",

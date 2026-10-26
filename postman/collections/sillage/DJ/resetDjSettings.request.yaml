@@ -1,6 +1,7 @@
 $kind: http-request
 description: >-
-  Supprime les réglages et la clé chiffrée du compte courant. Le DJ d’un utilisateur Google sera à reconfigurer ; les
+  Avec provider, supprime uniquement sa clé ; sans provider, supprime toutes les clés du compte courant. Aucun
+  changement automatique de fournisseur après suppression. Le DJ d’un utilisateur Google sera à reconfigurer ; les
   playlists restent disponibles.
 
 
@@ -10,6 +11,13 @@ url: "{{base_url}}/v1/dj/settings/reset"
 method: POST
 headers:
   Accept: application/json
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "provider": "google"
+    }
 scripts:
   - type: afterResponse
     code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });

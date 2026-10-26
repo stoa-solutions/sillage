@@ -1,15 +1,35 @@
 import { LEGACY_USER } from "./accounts.ts";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { z } from "zod";
-import { DJ_MODELS } from "@playlist-recall/core/dj";
-import type { Database } from "./db.ts";
-import { djConfig, type DjConfig } from "./dj-config.ts";
+import {
+  AI_PROVIDERS,
+  AI_PROVIDER_IDS,
+  type AiProvider,
+} from "@playlist-recall/core/dj";
+import { transaction, type Database } from "./db.ts";
+import { djConfig, providerBaseUrl, type DjConfig } from "./dj-config.ts";
 
-const geminiUrl = "https://generativelanguage.googleapis.com/v1beta/openai";
-export const djSettingsInput = z.object({
-  apiKey: z.string().trim().min(20).max(256).optional(),
-  model: z.enum(DJ_MODELS),
-});
+export const djSettingsInput = z
+  .object({
+    provider: z.enum(AI_PROVIDER_IDS).default("google"),
+    apiKey: z.string().trim().min(20).max(256).optional(),
+    model: z
+      .string()
+      .trim()
+      .min(1)
+      .max(128)
+      .regex(/^[a-zA-Z0-9._:/-]+$/),
+  })
+  .refine(
+    (value) =>
+      value.model.startsWith(
+        value.provider === "google" ? "gemini-" : "claude-",
+      ),
+    {
+      message: "Le modèle ne correspond pas au fournisseur choisi.",
+      path: ["model"],
+    },
+  );
 export function settingsKey(): Buffer | null {
   const value = process.env.DJ_SETTINGS_ENCRYPTION_KEY;
   return value && /^[a-f0-9]{64}$/i.test(value)
@@ -44,26 +64,65 @@ export function openSecret(value: string, owner: string, key: Buffer): string {
     cipher.final(),
   ]).toString("utf8");
 }
+type Credential = {
+  provider: AiProvider;
+  model: string;
+  encrypted_key: string;
+};
+async function credentials(db: Database, owner: string): Promise<Credential[]> {
+  const result = await db.query<Credential>(
+    `SELECT provider,model,encrypted_key FROM account_ai_credentials WHERE user_id=$1
+     UNION ALL SELECT 'google',model,encrypted_key FROM account_dj_settings WHERE user_id=$1
+       AND NOT EXISTS(SELECT 1 FROM account_ai_credentials WHERE user_id=$1 AND provider='google')`,
+    [owner],
+  );
+  return result.rows;
+}
+export async function aiProviderStatus(db: Database, owner: string) {
+  const rows = await credentials(db, owner);
+  return AI_PROVIDERS.map((provider) => {
+    const saved = rows.find((row) => row.provider === provider.id);
+    return {
+      ...provider,
+      configured: Boolean(saved),
+      model: saved?.model ?? provider.defaultModel,
+    };
+  });
+}
 export async function personalDjConfig(
   db: Database,
   owner: string,
+  requested?: AiProvider,
 ): Promise<DjConfig & { personal: boolean }> {
-  const { rows } = await db.query(
-    "SELECT encrypted_key,model FROM account_dj_settings WHERE user_id=$1",
+  const preference = await db.query(
+    "SELECT dj_provider FROM users WHERE id=$1",
     [owner],
   );
-  if (!rows.length)
+  const provider: AiProvider =
+    requested ??
+    (preference.rows[0]?.dj_provider === "anthropic" ? "anthropic" : "google");
+  const saved = (await credentials(db, owner)).find(
+    (row) => row.provider === provider,
+  );
+  if (!saved) {
+    if (owner === LEGACY_USER && !requested)
+      return { ...djConfig(), personal: false };
     return {
-      ...djConfig(),
-      ...(owner === LEGACY_USER ? {} : { key: undefined, configured: false }),
+      provider,
+      baseUrl: providerBaseUrl(provider),
+      key: undefined,
+      model: undefined,
+      configured: false,
       personal: false,
     };
-  const key = settingsKey();
-  if (!key) throw new Error("DJ settings encryption key unavailable");
+  }
+  const encryption = settingsKey();
+  if (!encryption) throw new Error("DJ settings encryption key unavailable");
   return {
-    baseUrl: geminiUrl,
-    model: rows[0].model,
-    key: openSecret(rows[0].encrypted_key, owner, key),
+    provider,
+    baseUrl: providerBaseUrl(provider),
+    model: saved.model,
+    key: openSecret(saved.encrypted_key, owner, encryption),
     configured: true,
     personal: true,
   };
@@ -75,18 +134,56 @@ export async function saveDjSettings(
 ) {
   const key = settingsKey();
   if (!key) return "unavailable" as const;
-  if (!input.apiKey) {
-    const result = await db.query(
-      "UPDATE account_dj_settings SET model=$2,updated_at=now() WHERE user_id=$1 RETURNING user_id",
-      [owner, input.model],
+  return transaction(db, async (client) => {
+    await client.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [owner]);
+    const existing = (
+      await client.query<Credential>(
+        `SELECT provider,model,encrypted_key FROM account_ai_credentials WHERE user_id=$1 AND provider=$2
+       UNION ALL SELECT 'google',model,encrypted_key FROM account_dj_settings WHERE user_id=$1 AND $2='google'
+         AND NOT EXISTS(SELECT 1 FROM account_ai_credentials WHERE user_id=$1 AND provider=$2)`,
+        [owner, input.provider],
+      )
+    ).rows[0];
+    const encrypted = input.apiKey
+      ? sealSecret(input.apiKey, owner, key)
+      : existing?.encrypted_key;
+    if (!encrypted) return "missing-key" as const;
+    await client.query(
+      `INSERT INTO account_ai_credentials(user_id,provider,encrypted_key,model) VALUES($1,$2,$3,$4)
+      ON CONFLICT(user_id,provider) DO UPDATE SET encrypted_key=EXCLUDED.encrypted_key,model=EXCLUDED.model,updated_at=now()`,
+      [owner, input.provider, encrypted, input.model],
     );
-    return result.rowCount ? ("saved" as const) : ("missing-key" as const);
-  }
-  const encrypted = sealSecret(input.apiKey, owner, key);
-  await db.query(
-    `INSERT INTO account_dj_settings(user_id,encrypted_key,model) VALUES($1,$2,$3)
-    ON CONFLICT(user_id) DO UPDATE SET encrypted_key=EXCLUDED.encrypted_key,model=EXCLUDED.model,updated_at=now()`,
-    [owner, encrypted, input.model],
-  );
-  return "saved" as const;
+    if (input.provider === "google")
+      await client.query(
+        `INSERT INTO account_dj_settings(user_id,encrypted_key,model) VALUES($1,$2,$3)
+       ON CONFLICT(user_id) DO UPDATE SET encrypted_key=EXCLUDED.encrypted_key,model=EXCLUDED.model,updated_at=now()`,
+        [owner, encrypted, input.model],
+      );
+    await client.query("UPDATE users SET dj_provider=$2 WHERE id=$1", [
+      owner,
+      input.provider,
+    ]);
+    return "saved" as const;
+  });
+}
+export async function resetDjSettings(
+  db: Database,
+  owner: string,
+  provider?: AiProvider,
+) {
+  await transaction(db, async (client) => {
+    await client.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [owner]);
+    await client.query(
+      "DELETE FROM account_ai_credentials WHERE user_id=$1 AND ($2::text IS NULL OR provider=$2)",
+      [owner, provider ?? null],
+    );
+    if (!provider || provider === "google")
+      await client.query("DELETE FROM account_dj_settings WHERE user_id=$1", [
+        owner,
+      ]);
+    if (!provider)
+      await client.query("UPDATE users SET dj_provider='google' WHERE id=$1", [
+        owner,
+      ]);
+  });
 }

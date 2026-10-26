@@ -187,3 +187,20 @@ CREATE TABLE IF NOT EXISTS listening_history (
   PRIMARY KEY(user_id,event_id)
 );
 CREATE INDEX IF NOT EXISTS listening_history_recent ON listening_history(user_id,played_at DESC);
+
+-- Provider credentials are independent; the legacy table remains the Google mirror.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS dj_provider text NOT NULL DEFAULT 'google';
+CREATE TABLE IF NOT EXISTS account_ai_credentials (
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider text NOT NULL CHECK (provider IN ('google','anthropic')),
+  encrypted_key text NOT NULL, model text NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(user_id,provider)
+);
+DO $$ BEGIN
+  IF NOT EXISTS(SELECT 1 FROM schema_migrations WHERE version=3) THEN
+    INSERT INTO account_ai_credentials(user_id,provider,encrypted_key,model)
+      SELECT user_id,'google',encrypted_key,model FROM account_dj_settings
+      ON CONFLICT DO NOTHING;
+    INSERT INTO schema_migrations(version) VALUES(3);
+  END IF;
+END $$;

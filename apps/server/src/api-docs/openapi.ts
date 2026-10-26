@@ -483,7 +483,7 @@ add(
   "getDjStatus",
   "DJ",
   "État du modèle et de la voix",
-  "Retourne les capacités configurées et le modèle sélectionné, sans jamais renvoyer la clé. personal distingue les réglages du compte du mode historique.",
+  "Retourne le fournisseur actif, le catalogue et les capacités de chaque fournisseur, sans jamais renvoyer les clés. personal distingue les réglages du compte du mode historique.",
   "DjStatus",
 );
 add(
@@ -492,7 +492,7 @@ add(
   "saveDjSettings",
   "DJ",
   "Enregistrer sa clé ou changer de modèle",
-  "La première configuration exige apiKey. Ensuite model seul conserve la clé existante. Chiffrement AES-256-GCM côté serveur avec contexte du compte ; clé jamais renvoyée. L’enregistrement ne vérifie pas Google : utiliser /check pour tester, ce qui consomme le quota du fournisseur.",
+  "provider vaut google par défaut pour les clients existants. La première configuration de chaque fournisseur exige apiKey ; ensuite model seul conserve sa clé. Changer de fournisseur conserve les autres clés et modèles. Chiffrement AES-256-GCM côté serveur avec contexte du compte ; clé jamais renvoyée. L’enregistrement ne vérifie pas le fournisseur : utiliser /check pour tester, ce qui consomme le quota du fournisseur.",
   "Saved",
   {
     effect: "write",
@@ -507,9 +507,9 @@ add(
   "resetDjSettings",
   "DJ",
   "Supprimer la clé enregistrée du compte",
-  "Supprime les réglages et la clé chiffrée du compte courant. Le DJ d’un utilisateur Google sera à reconfigurer ; les playlists restent disponibles.",
+  "Avec provider, supprime uniquement sa clé ; sans provider, supprime toutes les clés du compte courant. Aucun changement automatique de fournisseur après suppression. Le DJ d’un utilisateur Google sera à reconfigurer ; les playlists restent disponibles.",
   "Saved",
-  { effect: "write" },
+  { effect: "write", input: "DjReset", example: {provider:"google"} },
 );
 add(
   "post",
@@ -517,7 +517,7 @@ add(
   "checkDjProvider",
   "DJ",
   "Tester clé, modèle et voix",
-  "Appel réel à Google, sans enregistrer les paramètres fournis. Sans apiKey, teste la clé existante. ok=false ou voice=false peuvent être retournés avec HTTP 200 : lire le résultat métier. Une seule opération DJ par compte et deux au maximum sur cette instance.",
+  "Appel réel au fournisseur sélectionné (google par défaut), sans enregistrer les paramètres fournis. Sans apiKey, teste uniquement sa clé existante. Avec Claude, voice reste false : la voix macOS est locale. ok=false ou voice=false peuvent être retournés avec HTTP 200 : lire le résultat métier. Une seule opération DJ par compte et deux au maximum sur cette instance.",
   "CheckResult",
   {
     effect: "provider",

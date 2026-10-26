@@ -2,12 +2,14 @@ import { djSystemPrompt } from "./dj-prompt.ts";
 import { checkDj } from "./dj-check.ts";
 import { Hono } from "hono";
 import { z } from "zod";
-import { hash } from "./content.ts";
+import { AI_PROVIDER_IDS } from "@playlist-recall/core/dj";
 import type { Database } from "./db.ts";
 import { djSpeech, djVoiceConfigured } from "./dj-voice.ts";
 import { djInput, djTurn, DjUnavailable } from "./dj.ts";
 import {
   personalDjConfig,
+  aiProviderStatus,
+  resetDjSettings,
   djSettingsInput,
   saveDjSettings,
   settingsKey,
@@ -28,6 +30,8 @@ export function createDjRoutes(db: Database) {
     const config = await personalDjConfig(db, c.get("userId"));
     return c.json({
       configured: config.configured,
+      provider: config.provider === "anthropic" ? "anthropic" : "google",
+      providers: await aiProviderStatus(db, c.get("userId")),
       voice: djVoiceConfigured(config),
       model: config.model ?? null,
       personal: config.personal,
@@ -39,7 +43,7 @@ export function createDjRoutes(db: Database) {
     const result = await saveDjSettings(db, c.get("userId"), input);
     if (result === "missing-key")
       return c.json(
-        { error: "Renseigne ta clé Gemini une première fois." },
+        { error: "Renseigne la clé de ce fournisseur une première fois." },
         400,
       );
     if (result === "unavailable")
@@ -50,15 +54,14 @@ export function createDjRoutes(db: Database) {
     return c.json({ saved: true });
   });
   app.post("/settings/reset", async (c) => {
-    await db.query("DELETE FROM account_dj_settings WHERE user_id=$1", [
-      c.get("userId"),
-    ]);
+    const { provider } = z.object({ provider: z.enum(AI_PROVIDER_IDS).optional() }).parse(await c.req.json());
+    await resetDjSettings(db, c.get("userId"), provider);
     return c.json({ saved: true });
   });
   const djActive = new Set<string>();
   app.post("/check", async (c) => {
     const input = djSettingsInput
-      .extend({ voice: z.boolean().default(false) })
+      .safeExtend({ voice: z.boolean().default(false) })
       .parse(await c.req.json());
     const user = c.get("userId");
     if (djActive.has(user) || djActive.size >= 2)
@@ -68,16 +71,16 @@ export function createDjRoutes(db: Database) {
       );
     djActive.add(user);
     try {
-      const stored = await personalDjConfig(db, user);
+      const stored = await personalDjConfig(db, user, input.provider);
       const config = {
         ...stored,
+        provider: input.provider,
         model: input.model,
         ...(input.apiKey
           ? {
               key: input.apiKey,
               configured: true,
-              baseUrl:
-                "https://generativelanguage.googleapis.com/v1beta/openai",
+              baseUrl: stored.baseUrl,
             }
           : {}),
       };

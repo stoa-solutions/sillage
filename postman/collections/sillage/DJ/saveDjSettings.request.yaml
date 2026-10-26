@@ -1,8 +1,9 @@
 $kind: http-request
 description: >-
-  La première configuration exige apiKey. Ensuite model seul conserve la clé existante. Chiffrement AES-256-GCM côté
-  serveur avec contexte du compte ; clé jamais renvoyée. L’enregistrement ne vérifie pas Google : utiliser /check pour
-  tester, ce qui consomme le quota du fournisseur.
+  provider vaut google par défaut pour les clients existants. La première configuration de chaque fournisseur exige
+  apiKey ; ensuite model seul conserve sa clé. Changer de fournisseur conserve les autres clés et modèles. Chiffrement
+  AES-256-GCM côté serveur avec contexte du compte ; clé jamais renvoyée. L’enregistrement ne vérifie pas le fournisseur
+  : utiliser /check pour tester, ce qui consomme le quota du fournisseur.
 
 
   Effet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la

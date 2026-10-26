@@ -1,8 +1,9 @@
 $kind: http-request
 description: >-
-  Appel réel à Google, sans enregistrer les paramètres fournis. Sans apiKey, teste la clé existante. ok=false ou
-  voice=false peuvent être retournés avec HTTP 200 : lire le résultat métier. Une seule opération DJ par compte et deux
-  au maximum sur cette instance.
+  Appel réel au fournisseur sélectionné (google par défaut), sans enregistrer les paramètres fournis. Sans apiKey, teste
+  uniquement sa clé existante. Avec Claude, voice reste false : la voix macOS est locale. ok=false ou voice=false
+  peuvent être retournés avec HTTP 200 : lire le résultat métier. Une seule opération DJ par compte et deux au maximum
+  sur cette instance.
 
 
   Effet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la

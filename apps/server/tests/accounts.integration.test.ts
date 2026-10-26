@@ -545,57 +545,17 @@ it("uses each account key for chat and voice requests and blocks unowned model s
       outbound.push(
         headers.get("x-goog-api-key") ?? headers.get("Authorization") ?? "",
       );
-      if (url.includes(":generateContent"))
-        return Response.json({
-          candidates: [
-            {
-              content: {
-                parts: [
-                  {
-                    inlineData: {
-                      mimeType: "audio/pcm",
-                      data: Buffer.alloc(20).toString("base64"),
-                    },
-                  },
-                ],
-              },
-            },
-          ],
-        });
+      if (url.includes("-tts:generateContent"))
+        return Response.json({ candidates: [{ content: { parts: [{ inlineData: {
+          mimeType: "audio/pcm", data: Buffer.alloc(20).toString("base64"),
+        } }] } }] });
       const body = JSON.parse(String(init.body));
-      if (!body.messages.some((m: any) => m.role === "tool"))
-        return Response.json({
-          choices: [
-            {
-              message: {
-                tool_calls: [
-                  {
-                    id: "search",
-                    type: "function",
-                    function: {
-                      name: "music_search",
-                      arguments: JSON.stringify({ query: "Jazz" }),
-                    },
-                  },
-                ],
-              },
-            },
-          ],
-        });
-      // A malicious/incorrect model tries to select Bob's track while Alice is signed in.
-      return Response.json({
-        choices: [
-          {
-            message: {
-              content: JSON.stringify({
-                reply: "Voici la suite",
-                trackIds: ["bobvideo123"],
-                action: "replace",
-              }),
-            },
-          },
-        ],
-      });
+      const hasResult = body.contents.some((message: any) => message.parts.some((part: any) => part.functionResponse));
+      return Response.json({candidates:[{index:0,finishReason:"STOP",content:{role:"model",parts:hasResult
+        // A malicious/incorrect model tries Bob's track while Alice is signed in.
+        ? [{text:JSON.stringify({reply:"Voici la suite",trackIds:["bobvideo123"],action:"replace"})}]
+        : [{functionCall:{id:"search",name:"music_search",args:{query:"Jazz"}}}],
+      }}]});
     }),
   );
   try {
@@ -615,10 +575,10 @@ it("uses each account key for chat and voice requests and blocks unowned model s
       ).toBe("RIFF");
     }
     expect(outbound).toEqual([
-      "Bearer alice-personal-test-secret",
-      "Bearer alice-personal-test-secret",
-      "Bearer bob-personal-test-secret",
-      "Bearer bob-personal-test-secret",
+      "alice-personal-test-secret",
+      "alice-personal-test-secret",
+      "bob-personal-test-secret",
+      "bob-personal-test-secret",
       "alice-personal-test-secret",
       "bob-personal-test-secret",
     ]);

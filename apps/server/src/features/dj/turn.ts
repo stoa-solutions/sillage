@@ -273,9 +273,7 @@ export async function djTurn(
           role: "assistant",
           content: message.content ?? null,
           tool_calls: calls,
-          ...(message.extra_content
-            ? { extra_content: message.extra_content }
-            : {}),
+          ...(message.providerContent ? { providerContent: message.providerContent } : {}),
         });
         for (const call of calls) {
           toolCalls++;

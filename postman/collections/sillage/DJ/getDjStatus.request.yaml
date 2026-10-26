@@ -1,7 +1,7 @@
 $kind: http-request
 description: >-
-  Retourne les capacités configurées et le modèle sélectionné, sans jamais renvoyer la clé. personal distingue les
-  réglages du compte du mode historique.
+  Retourne le fournisseur actif, le catalogue et les capacités de chaque fournisseur, sans jamais renvoyer les clés.
+  personal distingue les réglages du compte du mode historique.
 
 
   Effet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection

@@ -6,7 +6,7 @@ import type { Database } from "./db.ts";
 export function djVoiceConfigured(config: DjConfig = djConfig()) {
   return (
     config.configured &&
-    config.baseUrl === "https://generativelanguage.googleapis.com/v1beta/openai"
+    (config.provider === "google" || config.baseUrl === "https://generativelanguage.googleapis.com/v1beta/openai")
   );
 }
 export function pcmToWav(pcm: Buffer, rate = 24000): Buffer {
