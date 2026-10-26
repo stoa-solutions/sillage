@@ -26,7 +26,17 @@ struct DJView: View {
   }
   var body: some View {
     Group {
-      if panelOnly { sessionPanel } else if player.studio { studio } else { compact }
+      if panelOnly {
+        if panelCollapsed {
+          reopenPanel.frame(maxHeight: .infinity, alignment: .top)
+        } else {
+          sessionPanel.frame(width: 350).glassPanel()
+        }
+      } else if player.studio {
+        studio
+      } else {
+        compact
+      }
     }.sheet(isPresented: $model.showingRules) {
       VStack(alignment: .leading, spacing: 16) {
         HStack {

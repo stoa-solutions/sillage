@@ -38,7 +38,7 @@ struct DiscoverView: View {
             if discovery.searched { results } else { start }
           }.scrollIndicators(.automatic)
         }.padding(20).frame(maxWidth: .infinity).glassPanel()
-        DJView(model: dj, panelOnly: true, source: discovery.scope).frame(width: 350).glassPanel()
+        DJView(model: dj, panelOnly: true, source: discovery.scope)
       }
       NowPlayingBar(model: dj, player: dj.player, openDJ: openDJ)
     }.padding(16)
