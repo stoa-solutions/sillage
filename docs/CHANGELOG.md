@@ -4,6 +4,8 @@
 
 - Mac 1.7.7 (build 56) : le panneau DJ de Découvrir se replie réellement, libère la place et propose sa réouverture. La recherche, la lecture et l’état partagé avec DJ sont conservés ; parcours de régression ajouté pour l’interface installée.
 
+- Développement : documentation OpenAPI des routes serveur, collection Postman locale sans secrets et Swagger réservé au Mac du développeur ; connexion Google, isolation des comptes, clés Gemini et fonctionnement de Découvrir documentés.
+
 - Mac 1.7.6 (build 55) : reconstruction universelle locale depuis main après intégration des correctifs serveur du DJ et de recherche ; identité Sillage et signature locale conservées.
 
 - Recherche : les noms à apostrophe gardent aussi leur forme séparée issue de la dictée (« M’Dee », « MDee », « M Dee ») ; une correspondance exacte dans le titre d’un autre morceau n’écarte plus les collaborations créditées. Cas reproduit avec le modèle réel et couvert dans PostgreSQL.
