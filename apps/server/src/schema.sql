@@ -201,6 +201,11 @@ DO $$ BEGIN
     INSERT INTO account_ai_credentials(user_id,provider,encrypted_key,model)
       SELECT user_id,'google',encrypted_key,model FROM account_dj_settings
       ON CONFLICT DO NOTHING;
+    -- The global key is available only to an untouched historical account.
+    -- Saving any personal configuration exits this mode permanently.
+    UPDATE users SET dj_provider='legacy'
+      WHERE id='00000000-0000-4000-8000-000000000001'
+      AND NOT EXISTS(SELECT 1 FROM account_dj_settings WHERE user_id=users.id);
     INSERT INTO schema_migrations(version) VALUES(3);
   END IF;
 END $$;

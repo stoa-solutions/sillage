@@ -1,3 +1,4 @@
+import { providerBaseUrl } from "./dj-config.ts";
 import { djSystemPrompt } from "./dj-prompt.ts";
 import { checkDj } from "./dj-check.ts";
 import { Hono } from "hono";
@@ -74,13 +75,13 @@ export function createDjRoutes(db: Database) {
       const stored = await personalDjConfig(db, user, input.provider);
       const config = {
         ...stored,
-        provider: input.provider,
         model: input.model,
         ...(input.apiKey
           ? {
               key: input.apiKey,
               configured: true,
-              baseUrl: stored.baseUrl,
+              provider: input.provider,
+              baseUrl: providerBaseUrl(input.provider),
             }
           : {}),
       };

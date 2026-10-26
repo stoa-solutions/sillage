@@ -225,3 +225,57 @@ it.runIf(Boolean(process.env.AI_SIMULATION_URL))(
     });
   },
 );
+
+it.runIf(Boolean(process.env.AI_SIMULATION_URL)).each(["google", "compatible"])(
+  "keeps the initial %s legacy server check working but never reactivates its global key after personal configuration",
+  async (transport) => {
+    const legacy = "00000000-0000-4000-8000-000000000001";
+    vi.stubEnv("DJ_PROVIDER", transport === "compatible" ? "" : "google");
+    vi.stubEnv("DJ_BASE_URL", `${process.env.AI_SIMULATION_URL}/google/v1`);
+    vi.stubEnv("DJ_MODEL", "gemini-3.8-flash");
+    vi.stubEnv("DJ_API_KEY", "fixture-google-key-never-real");
+    vi.stubEnv(
+      "AI_GOOGLE_BASE_URL",
+      `${process.env.AI_SIMULATION_URL}/google/v1beta`,
+    );
+    vi.stubEnv(
+      "AI_ANTHROPIC_BASE_URL",
+      `${process.env.AI_SIMULATION_URL}/anthropic/v1`,
+    );
+    await db.query("INSERT INTO users(id) VALUES($1)", [legacy]);
+    await db.query(
+      "INSERT INTO tokens(id,name,hash,user_id) VALUES($1,'legacy',$2,$3)",
+      [randomUUID(), hash("legacy-ai-settings-token"), legacy],
+    );
+    await db.query("DELETE FROM schema_migrations WHERE version=3");
+    await migrate(db);
+    const send = (path: string, body?: unknown) =>
+      request(path, body, "legacy-ai-settings-token");
+    expect(await (await send("status")).json()).toMatchObject({
+      configured: true,
+      personal: false,
+    });
+    expect(
+      await (await send("check", { model: "gemini-3.8-flash" })).json(),
+    ).toMatchObject({ ok: true });
+    await send("settings", {
+      provider: "anthropic",
+      model: "claude-sonnet-5-5",
+      apiKey: "fixture-anthropic-key-never-real",
+    });
+    await send("settings/reset", { provider: "anthropic" });
+    expect(await (await send("status")).json()).toMatchObject({
+      configured: false,
+      provider: "anthropic",
+    });
+    await migrate(db);
+    expect(await (await send("status")).json()).toMatchObject({
+      configured: false,
+      provider: "anthropic",
+    });
+    await send("settings/reset", {});
+    expect(await (await send("status")).json()).toMatchObject({
+      configured: false,
+    });
+  },
+);

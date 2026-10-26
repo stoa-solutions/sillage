@@ -93,8 +93,11 @@ struct OnboardingView: View {
     ) {
       AIProviderFields().frame(width: 340).disabled(busy)
       HStack(spacing: 8) {
-        SecureField("Clé API \(session.provider.name)", text: $key)
-          .textFieldStyle(.plain).focused($fieldFocused).onSubmit(saveKey).disabled(busy)
+        SecureField(
+          session.selectedHasKey
+            ? "Nouvelle clé (facultative)" : "Clé API \(session.provider.name)", text: $key
+        )
+        .textFieldStyle(.plain).focused($fieldFocused).onSubmit(saveKey).disabled(busy)
         if busy { ProgressView().controlSize(.small) }
       }
       .padding(.horizontal, 12).frame(width: 340, height: 40)
@@ -106,7 +109,11 @@ struct OnboardingView: View {
       HStack(spacing: 20) {
         Button(busy ? "Vérification…" : "Activer mon DJ", action: saveKey)
           .buttonStyle(ChalkButtonStyle())
-          .disabled(busy || key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+          .disabled(
+            busy
+              || (!session.selectedHasKey
+                && key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+          )
         Link("Obtenir une clé", destination: session.provider.keyURL)
           .font(.callout).foregroundStyle(Stoa.chalk.opacity(0.8))
           .help("La clé et les appels au modèle sont gérés par le fournisseur choisi.")
@@ -164,14 +171,20 @@ struct OnboardingView: View {
   }
 
   private func saveKey() {
-    guard !busy, !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+    guard !busy,
+      session.selectedHasKey || !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    else { return }
     error = ""
     busy = true
     Task {
       defer { busy = false }
       do {
-        try await session.saveAIKey(key, finishOnboarding: false)
-        key = ""
+        if key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+          try await session.saveModel()
+        } else {
+          try await session.saveAIKey(key, finishOnboarding: false)
+          key = ""
+        }
       } catch { self.error = error.localizedDescription }
     }
   }

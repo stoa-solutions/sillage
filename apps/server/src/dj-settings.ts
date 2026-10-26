@@ -105,8 +105,13 @@ export async function personalDjConfig(
     (row) => row.provider === provider,
   );
   if (!saved) {
-    if (owner === LEGACY_USER && !requested)
-      return { ...djConfig(), personal: false };
+    if (owner === LEGACY_USER && preference.rows[0]?.dj_provider === "legacy") {
+      const legacy = djConfig();
+      const legacyProvider =
+        legacy.provider === "anthropic" ? "anthropic" : "google";
+      if (!requested || requested === legacyProvider)
+        return { ...legacy, personal: false };
+    }
     return {
       provider,
       baseUrl: providerBaseUrl(provider),

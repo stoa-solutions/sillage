@@ -554,7 +554,7 @@ it("uses each account key for chat and voice requests and blocks unowned model s
       return Response.json({candidates:[{index:0,finishReason:"STOP",content:{role:"model",parts:hasResult
         // A malicious/incorrect model tries Bob's track while Alice is signed in.
         ? [{text:JSON.stringify({reply:"Voici la suite",trackIds:["bobvideo123"],action:"replace"})}]
-        : [{functionCall:{id:"search",name:"music_search",args:{query:"Jazz"}}}],
+        : [{functionCall:{id:"search",name:"music_search",args:{query:"Jazz"}},thoughtSignature:"opaque-fixture"}],
       }}]});
     }),
   );

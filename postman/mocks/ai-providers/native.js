@@ -15,12 +15,26 @@ http
     }
     const google = /^\/v1beta\/models\/[^/]+:generateContent$/.test(req.url);
     const anthropic = req.url === "/v1/messages";
+    const compatible = req.url === "/v1/chat/completions";
     const json = (status, value) => {
       res.writeHead(status, { "Content-Type": "application/json" });
       res.end(JSON.stringify(value));
     };
-    if (!google && !anthropic)
+    if (!google && !anthropic && !compatible)
       return json(501, { error: { message: "Unmodelled provider endpoint" } });
+    if (compatible) {
+      if (req.headers.authorization !== "Bearer fixture-google-key-never-real")
+        return json(401, { error: { message: "Invalid synthetic key" } });
+      return json(200, {
+        choices: [
+          {
+            message: { role: "assistant", content: "OK" },
+            finish_reason: "stop",
+            index: 0,
+          },
+        ],
+      });
+    }
     const valid = google
       ? req.headers["x-goog-api-key"] === "fixture-google-key-never-real"
       : req.headers["x-api-key"] === "fixture-anthropic-key-never-real";
