@@ -250,7 +250,10 @@ struct LibraryView: View {
   }
 
   @ViewBuilder private var enrichmentChip: some View {
-    if let progress = library.enrichment, progress.enabled, progress.remaining > 0 {
+    // Shown while work remains that the rounded percentage can still reveal.
+    if let progress = library.enrichment, progress.enabled, progress.remaining > 0,
+      progress.fraction < 0.995
+    {
       EnrichmentChip(progress: progress, error: library.enrichmentError)
     }
   }

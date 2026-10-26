@@ -14,8 +14,9 @@ public enum DJCommand: Equatable, Sendable {
     (command: "/aide", label: "Voir les commandes"),
   ]
   public static var helpText: String {
-    suggestions.map { "\($0.command) — \($0.label)" }.joined(separator: "\n")
-      + "\n/suite accepte de 1 à 8 titres. Si les sources n’en fournissent pas assez, le DJ le précise. Les règles sont consultables ; les skills personnalisés ne sont pas encore activés."
+    // A Markdown list: chat replies are rendered as Markdown, which joins plain lines.
+    suggestions.map { "- `\($0.command)` : \($0.label)" }.joined(separator: "\n")
+      + "\n\n`/suite` accepte de 1 à 8 titres. Si les sources n’en fournissent pas assez, le DJ le précise. Les règles sont consultables ; les skills personnalisés ne sont pas encore activés."
   }
   public static func parse(_ text: String) -> Self {
     let words = text.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)

@@ -315,6 +315,13 @@ struct DiscoverView: View {
             Button("Plus de résultats") { discovery.search(more: true) }
               .buttonStyle(SillageChipStyle()).padding(.vertical, 8)
           }
+          if rows.isEmpty && discovery.searching {
+            HStack(spacing: 8) {
+              ProgressView().controlSize(.small)
+              Text("Recherche…").font(.callout).foregroundStyle(.secondary)
+            }.frame(maxWidth: .infinity).padding(.top, 40)
+              .accessibilityElement(children: .combine)
+          }
           if rows.isEmpty && !discovery.searching && discovery.libraryError.isEmpty
             && discovery.youtubeError.isEmpty
           {
