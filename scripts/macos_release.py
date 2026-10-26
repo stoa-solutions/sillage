@@ -1,5 +1,7 @@
 """Small, testable rules shared by the Mac packager and its release checks."""
 import re
+import base64
+from urllib.parse import urlsplit
 from pathlib import Path
 
 VERSION = re.compile(r"\d+\.\d+\.\d+\Z")
@@ -44,3 +46,18 @@ def verify_clean_bundle(bundle):
     for path in Path(bundle).rglob('*'):
         if path.name in forbidden or path.suffix.lower() in {'.p12', '.p8', '.key', '.pem'}:
             raise ValueError(f'Refusing runtime or signing material in bundle: {path.relative_to(bundle)}')
+
+
+def validate_update_configuration(feed, key):
+    if not feed and not key:
+        return
+    if not feed or not key:
+        raise ValueError('Automatic updates need both MAC_UPDATE_FEED_URL and MAC_UPDATE_PUBLIC_KEY')
+    origin = urlsplit(feed)
+    if origin.scheme != 'https' or not origin.hostname or origin.username or origin.password or origin.query or origin.fragment:
+        raise ValueError('Update feeds must use HTTPS without credentials, query or fragment')
+    try:
+        if len(base64.b64decode(key, validate=True)) != 32:
+            raise ValueError()
+    except (ValueError, TypeError):
+        raise ValueError('Updates require a base64 Ed25519 public key') from None
