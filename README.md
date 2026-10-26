@@ -10,7 +10,7 @@ Le serveur utilise le Vercel AI SDK. La voix macOS fonctionne sans clé Google s
 
 ## État du projet
 
-Première publication du code. Le build Mac de référence est 1.8.0 (71).
+Première publication du code. Le build Mac de préparation est 1.8.1 (72).
 Le projet reste en développement : pas de binaire public signé Developer ID et notarisé,
 pas d’installateur universel en un clic, ni d’accès hébergé ouvert garanti.
 Le serveur et le client contiennent encore des origines Stoa à adapter pour un déploiement autonome.
@@ -35,10 +35,10 @@ npm run test:macos
 Pour compiler l’application :
 
 ```sh
-npm run build:macos -- --skip-update-signature
+MAC_SIGNING_IDENTITY=- npm run build:macos -- --dmg --skip-update-signature
 ```
 
-La construction locale et la notarisation Apple sont deux opérations distinctes.
+Le DMG local est marqué aperçu. `--public-release` exige un certificat Developer ID et les outils Apple, signe les composants imbriqués, fait notariser l’app et le DMG et contrôle Gatekeeper avant d’émettre le manifeste. Sans validation Apple, aucun téléchargement public sans avertissement n’est annoncé.
 Pour essayer une build de développement sans la session de votre app habituelle,
 lancez-la avec un `RECALL_DATA_DIR` temporaire et un identifiant de bundle QA distinct.
 

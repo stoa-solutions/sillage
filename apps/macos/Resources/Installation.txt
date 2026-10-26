@@ -1,26 +1,37 @@
-PLAYLIST RECALL — TON COMPTE, TES PLAYLISTS, TON DJ
+SILLAGE — BY STOA
+Bibliothèque musicale, recherche et DJ conversationnel sur Mac.
 
-1. Copie Sillage.app dans Applications et ouvre-la.
-2. Clique sur Continuer avec Google et choisis ton compte.
-3. Ajoute ta propre clé Gemini pour activer le DJ et sa voix expressive.
-   Elle est chiffrée sur le serveur et réservée à ton compte.
-4. Dans Bibliothèque, colle un lien de playlist YouTube publique ou non répertoriée.
-   Aucune clé YouTube à saisir : le serveur s’occupe des imports.
-5. Autorise le micro et la reconnaissance vocale pour parler au DJ.
+INSTALLER
+1. Ouvre le disque Sillage et glisse Sillage.app dans Applications.
+2. Éjecte le disque, puis ouvre Sillage depuis Applications.
+   macOS 14 ou plus récent ; Mac Apple Silicon et Intel.
 
-Les playlists et la recherche restent sur le serveur. La page consultée,
-la file et la conversation sont temporaires et effacées à la déconnexion.
-Seule ta session est mémorisée dans un fichier privé sur ce Mac, sans Trousseau.
-Google reçoit ton chat et les métadonnées nécessaires au DJ avec ta clé Gemini.
-La connexion Google demande uniquement ton identité et ton adresse e-mail.
-Elle ne donne pas accès à tes playlists YouTube privées.
+SE CONNECTER
+3. Clique sur « Continuer avec Google » et choisis ton compte dans ton navigateur.
+   Reviens dans Sillage lorsque la connexion est terminée.
+4. Choisis Gemini ou Claude et colle ta propre clé API.
+   Le lien « Obtenir une clé » ouvre le fournisseur sélectionné.
+   Sillage vérifie la clé avant de l’enregistrer ; les appels utilisent ton quota
+   et peuvent être facturés par ton fournisseur. La clé reste propre à ton compte.
+5. Ajoute le lien d’une playlist YouTube publique ou non répertoriée.
+   La recherche et les imports utilisent le serveur Stoa ; aucune clé YouTube
+   supplémentaire n’est demandée.
 
-Migration : si tu avais déjà une connexion personnelle, connecte Google puis
-choisis « Récupérer mes playlists existantes » après avoir vérifié l’adresse du compte.
-La clé Gemini doit être ajoutée dans les réglages de ce compte.
+LA VOIX
+Le micro n’est nécessaire que pour dicter. Autorise-le à ta première demande.
+Avec Claude, la réponse peut être lue par une voix macOS. La voix Gemini dépend
+également de la disponibilité du fournisseur et du quota de ta clé.
 
-Pour partager : transmets uniquement le ZIP ou le DMG de l’application.
-Aucun fichier de connexion ni clé personnelle ne doit accompagner l’archive.
-Cette version est signée localement, sans notarisation Apple. La distribution
-sans avertissement macOS nécessite un compte Apple Developer et la notarisation.
-Les mises à jour automatiques exigent une publication d’archive signée.
+DONNÉES
+Google ne fournit que ton identité et ton e-mail, sans accès aux playlists privées.
+La bibliothèque, les échanges avec le DJ et les réglages sont traités par le serveur
+Stoa. La clé API est chiffrée côté serveur et n’est pas incluse dans l’app.
+Le fournisseur choisi reçoit les demandes et métadonnées nécessaires au DJ.
+La session de connexion est conservée dans un fichier privé sur ce Mac.
+
+Aucune bibliothèque, session, clé personnelle ou vidéo musicale n’est fournie
+avec l’installateur. Les morceaux YouTube restent soumis à leur disponibilité.
+
+AIDE ET CODE
+https://stoa.solutions/sillage
+https://github.com/stoa-solutions/sillage
