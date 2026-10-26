@@ -18,7 +18,7 @@ Voir [les limites de distribution](docs/distribution.md) avant de commencer.
 
 ## Prérequis
 
-- macOS 14 ou plus récent pour le client natif ; Xcode / Swift compatibles avec `apps/macos/Package.swift`.
+- macOS 14 ou plus récent pour le client natif ; Xcode 26 ou plus récent pour compiler l’interface (SDK 26), même si la cible d’exécution reste macOS 14+.
 - Node.js 24 et npm pour le serveur et l’extension.
 - PostgreSQL et les variables de `.env.example` pour le serveur.
 - Un projet Google OAuth / YouTube configuré pour votre propre déploiement.

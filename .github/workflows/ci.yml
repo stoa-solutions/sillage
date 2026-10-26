@@ -49,11 +49,12 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: npm run verify:node
   macos:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+      - run: xcodebuild -version && swift --version
       # Unsigned debug build and tests only; releases are signed locally by scripts/build-macos.py.
       - run: npm run verify:macos
