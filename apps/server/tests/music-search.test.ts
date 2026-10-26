@@ -246,3 +246,13 @@ it("removes obvious tutorials from mood results without excluding unknown record
   const result=await query("library",{query:"énergie"});
   expect(result.results.map((item:any)=>item.video.id)).toEqual([libraryTrack.id]);
 });
+
+it("does not let a prolific primary artist hide the alternative artists in the final 20 candidates",async()=>{
+ const primary=Array.from({length:24},(_,index)=>({...libraryTrack,id:`primary${String(index).padStart(4,"0")}`,title:`Sean song ${index}`,channel:"Sean"}));
+ const alternative={...libraryTrack,id:"other000001",title:"Neighboring artist",channel:"Other"};
+ mocks.search.mockImplementation(async (_db,input)=>({results:(input.query==="sean"?primary:[alternative]).map(video=>({video})),degraded:null}));
+ db.query.mockResolvedValueOnce({rows:[...primary,alternative]});
+ const result=await query("library",{query:"sean rap français",artist:"sean",alternatives:["melodic rap"]});
+ expect(result.results).toHaveLength(20);
+ expect(result.results.some((item:any)=>item.video.id===alternative.id)).toBe(true);
+});

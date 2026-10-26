@@ -219,7 +219,7 @@ export function musicMcp(
           (mode === "image" || isMusicCandidate(query, t)),
       )
       .sort((a, b) =>
-        artist ? musicMatchRank(query, b) - musicMatchRank(query, a) : 0,
+        artist && queries.length === 1 ? musicMatchRank(query, b) - musicMatchRank(query, a) : 0,
       )
       .slice(0, 20);
     return {
