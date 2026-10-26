@@ -64,6 +64,14 @@ struct StageBackground: View {
         // YouTube first, the downloaded clip fading in over it: the stage never jumps.
         VideoSurface(player: player, fill: true)
           .frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
+        // Until the first frame plays (clip preparing, track not started), the cover holds the
+        // stage: never an empty black rectangle.
+        if let current, !player.playing, player.elapsed < 0.5 {
+          // hqdefault always exists; its 4:3 frame letterboxes 16:9 videos, hence the zoom.
+          Artwork.image(for: current, quality: "hqdefault").scaleEffect(1.34)
+            .frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
+            .transition(.opacity)
+        }
       }
       if current != nil && immersive {
         LinearGradient(
@@ -75,6 +83,7 @@ struct StageBackground: View {
       }
     }
     .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: surface)
+    .animation(reduceMotion ? nil : .easeInOut(duration: 0.4), value: player.playing)
     .accessibilityHidden(true)
   }
 }
