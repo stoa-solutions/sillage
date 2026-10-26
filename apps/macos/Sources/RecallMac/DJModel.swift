@@ -28,6 +28,9 @@ final class DJModel: ObservableObject {
   private var work: Task<Void, Never>?
   private var microphoneSource: DiscoveryScope = .library
   private var subscriptions: Set<AnyCancellable> = []
+  private let journal = DJJournal()
+  private var journalRequests: [Int: (UUID, DiscoveryScope)] = [:]
+  private var journalSource: DiscoveryScope = .library
 
   var messages: [ChatMessage] { listening.messages }
   var queue: [Track] { listening.queue.tracks }
@@ -53,6 +56,14 @@ final class DJModel: ObservableObject {
 
   init(session: Session) {
     self.session = session
+    journal.onSyncIssue = { [weak session] failed in
+      let notice = "Le journal du DJ attend sa synchronisation. La lecture continue."
+      if failed {
+        session?.notice = notice
+      } else if session?.notice == notice {
+        session?.notice = ""
+      }
+    }
     microphone.onText = { [weak self] text in
       guard let self else { return }
       self.send(text, source: self.microphoneSource)
@@ -78,6 +89,9 @@ final class DJModel: ObservableObject {
 
   /// The account changed: the File and the chat belonged to the previous library.
   func reset() {
+    journal.reset()
+    journalRequests = [:]
+    journalSource = .library
     rulesTask?.cancel()
     showingRules = false
     rulesText = ""
@@ -164,8 +178,65 @@ final class DJModel: ObservableObject {
   // MARK: - Effects
 
   private func dispatch(_ event: ListeningSession.Event) {
+    journal.use(session.connection)
+    let previousMessages = listening.messages
     var next = listening
     let effects = next.handle(event)
+    for effect in effects {
+      if case .send(let id, let request) = effect { journalRequests[id] = (UUID(), request.scope) }
+    }
+    if journalRequests.count > 64 {
+      for id in journalRequests.keys.sorted().prefix(journalRequests.count - 64) {
+        journalRequests[id] = nil
+      }
+    }
+    var requestId: UUID?
+    let action: String?
+    switch event {
+    case .ask(_, let source):
+      journalSource = source
+      action = "ask"
+    case .play(_, let source):
+      journalSource = source
+      action = "play"
+    case .enqueue(_, let source):
+      journalSource = source
+      action = "enqueue"
+    case .next: action = "next"
+    case .pause: action = "pause"
+    case .resume: action = "resume"
+    case .cancel: action = "cancel"
+    case .retryContinuation: action = "retry_continuation"
+    case .playUpcoming: action = "play_upcoming"
+    case .moveUpcoming: action = "reorder"
+    case .answer(let id, _):
+      requestId = journalRequests[id]?.0
+      journalSource = journalRequests[id]?.1 ?? journalSource
+      action =
+        previousMessages.last?.id == next.messages.last?.id && effects.isEmpty
+        ? "answer_ignored" : "answer_received"
+    case .failed(let id, _):
+      requestId = journalRequests[id]?.0
+      journalSource = journalRequests[id]?.1 ?? journalSource
+      action = "request_failed"
+    case .playback(.ended): action = "ended"
+    case .playback(.failed), .playback(.unavailable): action = "playback_failed"
+    default: action = nil
+    }
+    if requestId == nil {
+      for effect in effects {
+        if case .send(let id, let request) = effect {
+          requestId = journalRequests[id]?.0
+          journalSource = request.scope
+        }
+      }
+    }
+    if action != nil || previousMessages.last?.id != next.messages.last?.id {
+      journal.capture(
+        before: previousMessages, after: next.messages, action: action, scope: journalSource,
+        visibleScope: searchScope, requestId: requestId, current: next.current,
+        upcoming: Array(next.upcoming))
+    }
     // Progress still drives preparation and continuation precisely. Only meaningful session
     // changes invalidate the chat/history; the player's clock owns the time display.
     let notify: Bool
@@ -207,6 +278,9 @@ final class DJModel: ObservableObject {
         ))
       return
     }
+    var request = request
+    request.conversationId = journal.conversationId
+    request.requestId = journalRequests[id]?.0 ?? UUID()
     work = Task { [weak self] in
       do {
         let response = try await ServerDJ(connection: connection).turn(request)

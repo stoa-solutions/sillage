@@ -531,7 +531,7 @@ add(
   "askDj",
   "DJ",
   "Demander au DJ",
-  "scope est la source explicite : library, youtube ou all. Le serveur exécute les outils puis retourne une opération validée ; le Mac joue ensuite les tracks. replace remplace maintenant, append ajoute sans interrompre, keep conserve la lecture. discoveries propose des cartes ; sources accompagne une recherche d’information. Envoyer playbackContext, historique et exclusions pour une suite cohérente. Aucun ajout à la bibliothèque par cette route. Une opération DJ simultanée par compte ; 429 peut signifier occupé, pas forcément quota épuisé.",
+  "scope est la source explicite : library, youtube ou all. Le serveur exécute les outils puis retourne une opération validée ; le Mac joue ensuite les tracks. replace remplace maintenant, append ajoute sans interrompre, keep conserve la lecture. discoveries propose des cartes ; sources accompagne une recherche d’information. Envoyer playbackContext, historique et exclusions pour une suite cohérente. conversationId et requestId optionnels relient le chat aux actions du client ; trigger distingue demande et continuation. X-Sillage-Trace-Id identifie le tour, X-Sillage-Journal vaut saved ou unavailable sans changer la réponse JSON. Aucun ajout à la bibliothèque par cette route. Une opération DJ simultanée par compte ; 429 peut signifier occupé, pas forcément quota épuisé.",
   "DjResponse",
   {
     effect: "provider",
@@ -768,6 +768,125 @@ add(
   },
 );
 
+// The journal remains private to the authenticated account, including developer tokens.
+add(
+  "get",
+  "/v1/dj/conversations",
+  "getDjConversations",
+  "Journal DJ",
+  "Lister les conversations",
+  "Conversations de ton compte uniquement, paginées de la plus récente à la plus ancienne. Les messages réels du client et les tours du serveur sont comptés séparément.",
+  object({
+    conversations: array(ref("JournalConversation")),
+    nextCursor: { type: ["string", "null"], format: "uuid" },
+  }),
+  { parameters: query("JournalPage") },
+);
+add(
+  "get",
+  "/v1/dj/conversations/{conversationId}/turns",
+  "getDjConversationTurns",
+  "Journal DJ",
+  "Lire les tours du DJ",
+  "Mode effectif et demandé, modèle, action finale, erreurs, statut et complétude du journal. stale indique un tour resté en cours plus de cinq minutes, par exemple après un arrêt du serveur.",
+  object({
+    turns: array(ref("JournalTurnSummary")),
+    nextCursor: { type: ["string", "null"], format: "uuid" },
+  }),
+  {
+    parameters: [
+      id("conversationId", "UUID de la conversation"),
+      ...query("JournalPage"),
+    ],
+    responses: { "404": error("Conversation inconnue pour ce compte") },
+  },
+);
+add(
+  "get",
+  "/v1/dj/conversations/{conversationId}/events",
+  "getDjConversationEvents",
+  "Journal DJ",
+  "Lire messages, outils et actions",
+  "Journal chronologique par ordre de réception. Après une reconnexion, utiliser occurredAt et clientSequence pour l’ordre réel des actions du Mac. payload contient le texte original, les propositions, l’état de file ou l’appel d’outil ; aucun masquage de contenu. Le champ requestId des événements client correspond au request_id du tour serveur.",
+  object({
+    events: array(ref("JournalEvent")),
+    nextCursor: { type: ["string", "null"] },
+  }),
+  {
+    parameters: [
+      id("conversationId", "UUID de la conversation"),
+      ...query("JournalEventPage"),
+    ],
+    responses: { "404": error("Conversation inconnue pour ce compte") },
+  },
+);
+add(
+  "post",
+  "/v1/dj/conversations/{conversationId}/events",
+  "recordDjConversationEvents",
+  "Journal DJ",
+  "Enregistrer les actions et messages de l’app",
+  "Lot de 1 à 50 événements. Identifiant stable par événement : renvoyer un lot après une coupure ne crée pas de doublons. Le serveur impose origin=client et le propriétaire authentifié ; le client ne peut pas fabriquer une trace serveur.",
+  object({ recorded: integer }),
+  {
+    effect: "write",
+    input: "JournalUpload",
+    parameters: [id("conversationId", "UUID de la conversation")],
+    example: {
+      events: [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          sequence: 1,
+          occurredAt: "2026-10-26T12:00:00Z",
+          scope: "all",
+          visibleScope: "all",
+          kind: "message",
+          role: "user",
+          content: "Prépare cinq morceaux à la suite",
+          queueIds: [],
+        },
+      ],
+    },
+  },
+);
+add(
+  "get",
+  "/v1/dj/turns/{turnId}",
+  "getDjTurn",
+  "Journal DJ",
+  "Inspecter un tour et ses appels",
+  "Entrée validée, contexte, décision, réponse finale et tours du fournisseur avec noms, arguments, résultats et durées des outils. Les champs historiques de la ligne SQL utilisent snake_case. Les clés configurées, en-têtes d’authentification et signatures internes du fournisseur ne sont pas collectés.",
+  object({
+    turn: ref("JournalTurn"),
+    events: array(
+      object({
+        sequence: string(),
+        kind: string(),
+        payload: { type: "object", additionalProperties: true },
+        receivedAt: { type: "string", format: "date-time" },
+      }),
+    ),
+  }),
+  {
+    parameters: [id("turnId", "UUID renvoyé dans X-Sillage-Trace-Id")],
+    responses: { "404": error("Tour inconnu pour ce compte") },
+  },
+);
+add(
+  "delete",
+  "/v1/dj/conversations/{conversationId}",
+  "deleteDjConversation",
+  "Journal DJ",
+  "Effacer une conversation et ses traces",
+  "Effacement définitif de cette conversation du compte uniquement. Ne touche ni aux playlists, ni à l’historique d’écoute, ni à la clé Gemini. Les sauvegardes suivent leur propre rétention.",
+  object({ deleted: { const: true } }),
+  {
+    effect: "write",
+    parameters: [id("conversationId", "UUID de la conversation à effacer")],
+    responses: { "404": error("Conversation inconnue pour ce compte") },
+  },
+);
+
 export const openapi = {
   openapi: "3.1.0",
   info: {
@@ -795,6 +914,7 @@ export const openapi = {
     "Découvrir",
     "DJ",
     "Historique",
+    "Journal DJ",
     "Paroles",
     "Outils MCP",
     "Maintenance",

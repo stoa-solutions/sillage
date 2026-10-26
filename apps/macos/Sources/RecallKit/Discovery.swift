@@ -1,6 +1,6 @@
 import Foundation
 
-public enum DiscoveryScope: String, CaseIterable, Identifiable, Sendable {
+public enum DiscoveryScope: String, CaseIterable, Identifiable, Codable, Sendable {
   case all, youtube, library
   public var id: Self { self }
   public var title: String {

@@ -311,7 +311,9 @@ public struct ListeningSession: Sendable {
     pending = Pending(
       id: lastRequest, automatic: automatic, text: text, source: source,
       transportRevision: transportRevision)
-    effects.append(.send(request: lastRequest, withDiscoveryContext(request)))
+    var loggedRequest = withDiscoveryContext(request)
+    loggedRequest.trigger = automatic ? .continuation : .user
+    effects.append(.send(request: lastRequest, loggedRequest))
   }
 
   private var latestDiscoveries: [DiscoveryItem] {
@@ -320,6 +322,7 @@ public struct ListeningSession: Sendable {
 
   private func withDiscoveryContext(_ request: DJRequest) -> DJRequest {
     var request = request
+    if pending?.automatic == true { request.trigger = .continuation }
     request.rejectedIds = rejectedDiscoveryIDs
     request.discoveryContext = latestDiscoveries.prefix(8).map { DJDiscoveryContext($0.video) }
     return request

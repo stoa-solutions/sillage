@@ -131,7 +131,7 @@ struct SettingsView: View {
         text: $key
       ).disabled(busy)
         .help(
-          "Chiffrée sur le serveur, réservée à ton compte. Les demandes au DJ sont transmises à Google avec ton quota Gemini."
+          "Chiffrée sur le serveur, réservée à ton compte. Les demandes au DJ sont transmises à Google avec ton quota Gemini. Les échanges, propositions et outils sont conservés dans le journal privé de ton compte pour diagnostiquer le DJ."
         )
       Link(
         "Obtenir une clé Gemini", destination: URL(string: "https://aistudio.google.com/api-keys")!

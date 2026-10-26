@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Journal DJ privé en PostgreSQL : conversations, demandes, réponses complètes, source choisie et effective, propositions, appels d’outils et durées, modèle et version serveur. Les actions et messages réellement affichés par le Mac sont corrélés aux tours du serveur, avec envois idempotents. Aucun anonymiseur de contenu ; clés configurées et jetons non collectés. Six routes authentifiées documentées dans Swagger/Postman, pagination et effacement par compte. App Mac 1.7.8 (57).
+
 - Développement : accès personnel séparé pour Swagger et Postman via le serveur local, sans recopier de session de l’app ni ajouter de rôle administrateur global ; jeton privé, création idempotente et révocation indépendante.
 
 - Mac 1.7.7 (build 56) : le panneau DJ de Découvrir se replie réellement, libère la place et propose sa réouverture. La recherche, la lecture et l’état partagé avec DJ sont conservés ; parcours de régression ajouté pour l’interface installée.

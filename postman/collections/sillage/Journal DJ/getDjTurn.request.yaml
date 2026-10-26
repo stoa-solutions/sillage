@@ -1,0 +1,20 @@
+$kind: http-request
+description: >-
+  Entrée validée, contexte, décision, réponse finale et tours du fournisseur avec noms, arguments, résultats et durées
+  des outils. Les champs historiques de la ligne SQL utilisent snake_case. Les clés configurées, en-têtes
+  d’authentification et signatures internes du fournisseur ne sont pas collectés.
+
+
+  Effet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection
+  sur son compte.
+url: "{{base_url}}/v1/dj/turns/:turnId"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  turnId: "{{turnId}}"
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 5000

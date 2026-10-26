@@ -61,7 +61,7 @@ it("keeps developer documentation out of the public API and protected routes aut
 
 it("exports one Postman request per operation with inherited auth and empty secrets", () => {
   const collection = postmanCollection();
-  expect(collection.item.flatMap((group) => group.item).length).toBe(41);
+  expect(collection.item.flatMap((group) => group.item).length).toBe(47);
   expect(collection.auth.bearer[0].value).toBe("{{api_token}}");
   for (const item of Object.values(artifacts()))
     expect(JSON.stringify(item)).not.toMatch(/AIza[\w-]{25,}/);

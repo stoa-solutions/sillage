@@ -2,6 +2,9 @@ import { z } from "zod";
 
 /** Validated HTTP input and structured provider output. No effects in this module. */
 export const djInput = z.object({
+  conversationId: z.string().uuid().optional(),
+  requestId: z.string().uuid().optional(),
+  trigger: z.enum(["user", "continuation"]).optional(),
   scope: z.enum(["library", "youtube", "all"]).optional(),
   playbackContext: z
     .object({

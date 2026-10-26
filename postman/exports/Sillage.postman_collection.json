@@ -36,6 +36,16 @@
       "type": "string"
     },
     {
+      "key": "conversationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "turnId",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "archive",
       "value": "",
       "type": "string"
@@ -1279,7 +1289,7 @@
               "query": [],
               "variable": []
             },
-            "description": "scope est la source explicite : library, youtube ou all. Le serveur exécute les outils puis retourne une opération validée ; le Mac joue ensuite les tracks. replace remplace maintenant, append ajoute sans interrompre, keep conserve la lecture. discoveries propose des cartes ; sources accompagne une recherche d’information. Envoyer playbackContext, historique et exclusions pour une suite cohérente. Aucun ajout à la bibliothèque par cette route. Une opération DJ simultanée par compte ; 429 peut signifier occupé, pas forcément quota épuisé.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "description": "scope est la source explicite : library, youtube ou all. Le serveur exécute les outils puis retourne une opération validée ; le Mac joue ensuite les tracks. replace remplace maintenant, append ajoute sans interrompre, keep conserve la lecture. discoveries propose des cartes ; sources accompagne une recherche d’information. Envoyer playbackContext, historique et exclusions pour une suite cohérente. conversationId et requestId optionnels relient le chat aux actions du client ; trigger distingue demande et continuation. X-Sillage-Trace-Id identifie le tour, X-Sillage-Journal vaut saved ou unavailable sans changer la réponse JSON. Aucun ajout à la bibliothèque par cette route. Une opération DJ simultanée par compte ; 429 peut signifier occupé, pas forcément quota épuisé.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"message\": \"Propose du jazz sans lancer la lecture.\",\n  \"scope\": \"library\",\n  \"history\": [],\n  \"excludeIds\": [],\n  \"discoveryContext\": [],\n  \"rejectedIds\": []\n}",
@@ -1939,6 +1949,324 @@
             "auth": {
               "type": "noauth"
             }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Journal DJ",
+      "item": [
+        {
+          "name": "getDjConversations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/conversations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "conversations"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "25",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "before",
+                  "value": "{{before}}",
+                  "disabled": true,
+                  "description": ""
+                }
+              ],
+              "variable": []
+            },
+            "description": "Conversations de ton compte uniquement, paginées de la plus récente à la plus ancienne. Les messages réels du client et les tours du serveur sont comptés séparément.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getDjConversationTurns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/conversations/:conversationId/turns",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "conversations",
+                ":conversationId",
+                "turns"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "25",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "before",
+                  "value": "{{before}}",
+                  "disabled": true,
+                  "description": ""
+                }
+              ],
+              "variable": [
+                {
+                  "key": "conversationId",
+                  "value": "{{conversationId}}"
+                }
+              ]
+            },
+            "description": "Mode effectif et demandé, modèle, action finale, erreurs, statut et complétude du journal. stale indique un tour resté en cours plus de cinq minutes, par exemple après un arrêt du serveur.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getDjConversationEvents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/conversations/:conversationId/events",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "conversations",
+                ":conversationId",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "after",
+                  "value": "0",
+                  "disabled": true,
+                  "description": ""
+                }
+              ],
+              "variable": [
+                {
+                  "key": "conversationId",
+                  "value": "{{conversationId}}"
+                }
+              ]
+            },
+            "description": "Journal chronologique par ordre de réception. Après une reconnexion, utiliser occurredAt et clientSequence pour l’ordre réel des actions du Mac. payload contient le texte original, les propositions, l’état de file ou l’appel d’outil ; aucun masquage de contenu. Le champ requestId des événements client correspond au request_id du tour serveur.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "recordDjConversationEvents",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/conversations/:conversationId/events",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "conversations",
+                ":conversationId",
+                "events"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "conversationId",
+                  "value": "{{conversationId}}"
+                }
+              ]
+            },
+            "description": "Lot de 1 à 50 événements. Identifiant stable par événement : renvoyer un lot après une coupure ne crée pas de doublons. Le serveur impose origin=client et le propriétaire authentifié ; le client ne peut pas fabriquer une trace serveur.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"events\": [\n    {\n      \"id\": \"11111111-1111-4111-8111-111111111111\",\n      \"sequence\": 1,\n      \"occurredAt\": \"2026-10-26T12:00:00Z\",\n      \"scope\": \"all\",\n      \"visibleScope\": \"all\",\n      \"kind\": \"message\",\n      \"role\": \"user\",\n      \"content\": \"Prépare cinq morceaux à la suite\",\n      \"queueIds\": []\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getDjTurn",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/turns/:turnId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "turns",
+                ":turnId"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "turnId",
+                  "value": "{{turnId}}"
+                }
+              ]
+            },
+            "description": "Entrée validée, contexte, décision, réponse finale et tours du fournisseur avec noms, arguments, résultats et durées des outils. Les champs historiques de la ligne SQL utilisent snake_case. Les clés configurées, en-têtes d’authentification et signatures internes du fournisseur ne sont pas collectés.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "deleteDjConversation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/conversations/:conversationId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "conversations",
+                ":conversationId"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "conversationId",
+                  "value": "{{conversationId}}"
+                }
+              ]
+            },
+            "description": "Effacement définitif de cette conversation du compte uniquement. Ne touche ni aux playlists, ni à l’historique d’écoute, ni à la clé Gemini. Les sauvegardes suivent leur propre rétention.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
           },
           "response": [],
           "event": [

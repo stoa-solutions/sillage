@@ -17,7 +17,11 @@ public struct DJDiscoveryContext: Codable, Sendable {
   }
 }
 
+public enum DJTrigger: String, Sendable { case user, continuation }
 public struct DJRequest: Sendable {
+  public var conversationId: UUID?
+  public var requestId: UUID?
+  public var trigger: DJTrigger = .user
   public var scope: DiscoveryScope = .library
   public var playbackContext: DJPlaybackContext?
   /// Explicitly rejected suggestions, unlike songs merely queued or previously played.
@@ -59,6 +63,9 @@ public struct ServerDJ: DJ {
       "excludeIds": Array(request.queued.prefix(100)),
     ]
     body["rejectedIds"] = Array(request.rejectedIds.suffix(100))
+    body["conversationId"] = request.conversationId?.uuidString.lowercased()
+    body["requestId"] = request.requestId?.uuidString.lowercased()
+    body["trigger"] = request.trigger.rawValue
     if !request.discoveryContext.isEmpty {
       body["discoveryContext"] = try JSONSerialization.jsonObject(
         with: JSONEncoder().encode(Array(request.discoveryContext.prefix(8))))

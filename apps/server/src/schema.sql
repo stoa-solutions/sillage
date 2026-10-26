@@ -80,6 +80,43 @@ INSERT INTO users(id,name) VALUES('00000000-0000-4000-8000-000000000001','Biblio
 ALTER TABLE tokens ADD COLUMN IF NOT EXISTS user_id uuid NOT NULL DEFAULT '00000000-0000-4000-8000-000000000001' REFERENCES users(id);
 ALTER TABLE tokens ADD COLUMN IF NOT EXISTS expires_at timestamptz;
 CREATE INDEX IF NOT EXISTS tokens_user ON tokens(user_id);
+
+-- Private conversation diagnostics. Public catalogue rows and credentials are not copied.
+CREATE TABLE IF NOT EXISTS dj_conversations (
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id uuid NOT NULL, created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(user_id,id)
+);
+CREATE TABLE IF NOT EXISTS dj_turns (
+  id uuid NOT NULL, user_id uuid NOT NULL,
+  conversation_id uuid NOT NULL, installation_id uuid,
+  request_id uuid, scope text NOT NULL CHECK(scope IN ('library','youtube','all')),
+  requested_scope text CHECK(requested_scope IN ('library','youtube','all')),
+  trigger text NOT NULL CHECK(trigger IN ('user','continuation')),
+  status text NOT NULL DEFAULT 'running' CHECK(status IN ('running','completed','error','canceled','busy')),
+  input jsonb NOT NULL, plan jsonb NOT NULL, response jsonb,
+  model text, prompt_hash text NOT NULL, release_sha text NOT NULL,
+  started_at timestamptz NOT NULL DEFAULT now(), completed_at timestamptz,
+  journal_complete boolean NOT NULL DEFAULT false,
+  PRIMARY KEY(user_id,id),
+  FOREIGN KEY(user_id,conversation_id) REFERENCES dj_conversations(user_id,id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS dj_journal_events (
+  sequence bigint GENERATED ALWAYS AS IDENTITY,
+  user_id uuid NOT NULL, id uuid NOT NULL, conversation_id uuid NOT NULL, turn_id uuid,
+  scope text NOT NULL CHECK(scope IN ('library','youtube','all')),
+  origin text NOT NULL CHECK(origin IN ('client','server')),
+  kind text NOT NULL, payload jsonb NOT NULL, client_sequence int,
+  occurred_at timestamptz, received_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY(user_id,id),
+  FOREIGN KEY(user_id,conversation_id) REFERENCES dj_conversations(user_id,id) ON DELETE CASCADE,
+  FOREIGN KEY(user_id,turn_id) REFERENCES dj_turns(user_id,id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS dj_conversations_recent ON dj_conversations(user_id,created_at DESC,id DESC);
+CREATE INDEX IF NOT EXISTS dj_turns_conversation ON dj_turns(user_id,conversation_id,started_at DESC,id DESC);
+CREATE INDEX IF NOT EXISTS dj_turns_request ON dj_turns(user_id,request_id) WHERE request_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS dj_journal_conversation ON dj_journal_events(user_id,conversation_id,sequence);
+CREATE INDEX IF NOT EXISTS dj_journal_turn ON dj_journal_events(user_id,turn_id,sequence) WHERE turn_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS user_playlists (
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   playlist_id text NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,

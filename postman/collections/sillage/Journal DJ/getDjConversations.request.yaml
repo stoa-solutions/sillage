@@ -1,0 +1,24 @@
+$kind: http-request
+description: >-
+  Conversations de ton compte uniquement, paginées de la plus récente à la plus ancienne. Les messages réels du client
+  et les tours du serveur sont comptés séparément.
+
+
+  Effet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection
+  sur son compte.
+url: "{{base_url}}/v1/dj/conversations"
+method: GET
+headers:
+  Accept: application/json
+queryParams:
+  - key: limit
+    value: "25"
+    disabled: true
+  - key: before
+    value: "{{before}}"
+    disabled: true
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 1000

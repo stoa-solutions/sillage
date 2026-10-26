@@ -21,6 +21,7 @@ import { reserveDj } from "./quota.ts";
 import { catalogSelection } from "./catalog.ts";
 import { planTurn, initialMessages } from "./context.ts";
 import { completeTurn, MAX_ROUNDS, type ChatTool } from "./provider.ts";
+import type { TraceObserver } from "./journal/contracts.ts";
 
 /** Bounded orchestration: gather evidence, validate selection, then return an operation. */
 export async function djTurn(
@@ -29,10 +30,13 @@ export async function djTurn(
   signal?: AbortSignal,
   config: DjConfig = djConfig(),
   userId = LEGACY_USER,
+  observe?: TraceObserver,
 ) {
   const plan = planTurn(input);
   const { intent, targetCount, avoidRepeats, externalSearch } = plan;
+  const catalogStarted = Date.now();
   const requested = await catalogSelection(db, input, userId, plan);
+  observe?.({ kind:"catalog", name:"catalog_lookup", status:"ok", durationMs:Date.now()-catalogStarted, output: requested ?? { matched:false } });
   if (requested) return requested;
   let expandedSelection = false;
   let partialIds: string[] = [];
@@ -123,6 +127,8 @@ export async function djTurn(
         "music_search",
       ].includes(name);
       let text: string;
+      const started = Date.now();
+      let status: "ok" | "partial" | "error" = "ok";
       try {
         const result = await mcp.client.callTool(
           { name, arguments: args },
@@ -130,6 +136,7 @@ export async function djTurn(
           { signal: timeout },
         );
         const evidence = readToolEvidence(name, result);
+        if (evidence.failedSources) status = evidence.items.length ? "partial" : "error";
         text = evidence.text;
         if (name === "seekInformation") {
           informationRequested = true;
@@ -157,6 +164,8 @@ export async function djTurn(
         youtubeDailyQuota ||= evidence.youtubeDailyQuota;
         visualUnsupported ||= evidence.visualUnsupported;
       } catch (error) {
+        status = "error";
+        if (timeout.aborted) observe?.({kind:"tool",name,callId:id,status,durationMs:Date.now()-started,input:args,output:{error:"canceled"}});
         timeout.throwIfAborted();
         if (name === "seekInformation") {
           informationRequested = true;
@@ -180,6 +189,9 @@ export async function djTurn(
           tracks: [],
         });
       }
+      let output: unknown = text;
+      try { output = JSON.parse(text); } catch { /* Preserve non-JSON tool text. */ }
+      observe?.({kind:"tool",name,callId:id,status,durationMs:Date.now()-started,input:args,output});
       messages.push({ role: "tool", tool_call_id: id, content: text });
     }
     for (let turn = 0; turn < MAX_ROUNDS; turn++) {
@@ -189,6 +201,7 @@ export async function djTurn(
         tools,
         turn,
         timeout,
+        observe,
       );
       const calls = message.tool_calls;
       if (Array.isArray(calls) && calls.length) {

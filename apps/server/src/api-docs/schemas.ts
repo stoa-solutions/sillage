@@ -2,6 +2,11 @@ import { z } from "zod";
 import { authExchangeInput, authStartInput } from "../auth.ts";
 import { discoveryAddInput, discoveryInput } from "../discovery.ts";
 import { djSettingsInput } from "../dj-settings.ts";
+import {
+  journalPage,
+  journalEventPage,
+  journalUpload,
+} from "../features/dj/journal/contracts.ts";
 import { djInput } from "../features/dj/contracts.ts";
 import { historyEvent, historyPage, historyUpload } from "../history.ts";
 import { librarySearchInput } from "../library-contracts.ts";
@@ -37,6 +42,63 @@ export function jsonSchema(schema: z.ZodType): Schema {
 }
 
 export const schemas: Record<string, Schema> = {
+  JournalPage: jsonSchema(journalPage),
+  JournalEventPage: jsonSchema(journalEventPage),
+  JournalUpload: jsonSchema(journalUpload),
+  JournalConversation: object({
+    id: uuid,
+    createdAt: date,
+    updatedAt: date,
+    turns: integer,
+    messages: integer,
+  }),
+  JournalTurnSummary: object({
+    id: uuid,
+    requestId: nullable(uuid),
+    scope: { enum: ["library", "youtube", "all"] },
+    requestedScope: nullable(string()),
+    trigger: { enum: ["user", "continuation"] },
+    status: { enum: ["running", "completed", "error", "canceled", "busy"] },
+    model: nullable(string()),
+    startedAt: date,
+    completedAt: nullable(date),
+    journalComplete: boolean,
+    action: nullable(string()),
+    reply: nullable(string()),
+    stale: boolean,
+  }),
+  JournalEvent: object({
+    sequence: string("Curseur bigint renvoyé en chaîne, à conserver tel quel."),
+    id: uuid,
+    turnId: nullable(uuid),
+    scope: { enum: ["library", "youtube", "all"] },
+    origin: { enum: ["client", "server"] },
+    kind: string(),
+    payload: { type: "object", additionalProperties: true },
+    clientSequence: nullable(integer),
+    occurredAt: nullable(date),
+    receivedAt: date,
+  }),
+  JournalTurn: object({
+    id: uuid,
+    user_id: uuid,
+    conversation_id: uuid,
+    installation_id: nullable(uuid),
+    request_id: nullable(uuid),
+    scope: string(),
+    requested_scope: nullable(string()),
+    trigger: string(),
+    status: string(),
+    input: ref("DjRequest"),
+    plan: { type: "object", additionalProperties: true },
+    response: nullable({ type: "object", additionalProperties: true }),
+    model: nullable(string()),
+    prompt_hash: string(),
+    release_sha: string(),
+    started_at: date,
+    completed_at: nullable(date),
+    journal_complete: boolean,
+  }),
   AuthStart: jsonSchema(authStartInput),
   AuthExchange: jsonSchema(authExchangeInput),
   LibrarySearch: jsonSchema(librarySearchInput),

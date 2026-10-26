@@ -132,6 +132,8 @@ export function postmanCollection() {
         "api_token",
         "video_id",
         "playlist_id",
+        "conversationId",
+        "turnId",
         "archive",
         "challenge",
         "app_state",

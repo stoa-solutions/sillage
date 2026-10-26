@@ -561,3 +561,15 @@ it("does not fabricate an anecdote after an information search outage", async ()
   expect(result.reply).toContain("Web est momentanément indisponible");
   expect(result.reply).not.toContain("Invented");
 });
+
+
+it("observes actual catalog, provider and MCP rounds without changing selection or source", async () => {
+  const events: import("../src/features/dj/journal/contracts.ts").TraceEvent[] = [];
+  responses.push(searchCall("cumbia"), selection([external[0].id], "append"));
+  const result = await djTurn(db as unknown as Database, djInput.parse({message:"Ajoute 1 morceau de cumbia à la suite",scope:"all"}), undefined, config, "alice", event=>events.push(event));
+  expect(result.action).toBe("append");
+  expect(events.map(event=>event.kind)).toEqual(["catalog","provider","tool","provider"]);
+  expect(events.find(event=>event.kind==="tool")).toMatchObject({name:"music_search",callId:"search",input:{query:"cumbia"},status:"ok"});
+  expect(boundaries.search).toHaveBeenCalledOnce();
+  expect(boundaries.youtube).toHaveBeenCalledOnce();
+});

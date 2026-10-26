@@ -12,11 +12,17 @@ import {
   saveDjSettings,
   settingsKey,
 } from "./dj-settings.ts";
+import { journalRoutes } from "./features/dj/journal/routes.ts";
+import {
+  beginJournal,
+  publicJournalError,
+} from "./features/dj/journal/store.ts";
 export type ApiEnvironment = {
   Variables: { installationId: string; userId: string };
 };
 export function createDjRoutes(db: Database) {
   const app = new Hono<ApiEnvironment>();
+  app.route("/", journalRoutes(db));
   app.get("/rules", (c) => c.json({ prompt: djSystemPrompt }));
   app.get("/status", async (c) => {
     const config = await personalDjConfig(db, c.get("userId"));
@@ -83,25 +89,63 @@ export function createDjRoutes(db: Database) {
   app.post("/chat", async (c) => {
     const input = djInput.parse(await c.req.json());
     const installation = c.get("userId");
-    if (djActive.has(installation))
+    const journal = await beginJournal(
+      db,
+      installation,
+      c.get("installationId"),
+      input,
+    );
+    c.header("X-Sillage-Trace-Id", journal.id);
+    async function finish(
+      status: Parameters<typeof journal.finish>[0],
+      response: unknown,
+      model?: string,
+    ) {
+      c.header(
+        "X-Sillage-Journal",
+        (await journal.finish(status, response, model))
+          ? "saved"
+          : "unavailable",
+      );
+    }
+    if (djActive.has(installation)) {
+      await finish("busy", {
+        error: "Le DJ prépare déjà ta sélection.",
+        status: 429,
+      });
       return c.json({ error: "Le DJ prépare déjà ta sélection." }, 429);
-    if (djActive.size >= 2)
+    }
+    if (djActive.size >= 2) {
+      await finish("busy", {
+        error: "Le DJ est occupé. Réessaie dans un instant.",
+        status: 429,
+      });
       return c.json(
         { error: "Le DJ est occupé. Réessaie dans un instant." },
         429,
       );
+    }
     djActive.add(installation);
+    let model: string | undefined;
     try {
-      return c.json(
-        await djTurn(
-          db,
-          input,
-          c.req.raw.signal,
-          await personalDjConfig(db, c.get("userId")),
-          c.get("userId"),
-        ),
+      const config = await personalDjConfig(db, c.get("userId"));
+      model = config.model;
+      const response = await djTurn(
+        db,
+        input,
+        c.req.raw.signal,
+        config,
+        c.get("userId"),
+        journal.observe,
       );
+      await finish("completed", response, model);
+      return c.json(response);
     } catch (error) {
+      await finish(
+        c.req.raw.signal.aborted ? "canceled" : "error",
+        publicJournalError(error),
+        model,
+      );
       if (error instanceof DjUnavailable)
         return c.json({ error: error.message }, error.status);
       throw error;

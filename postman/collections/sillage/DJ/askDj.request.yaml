@@ -3,7 +3,9 @@ description: >-
   scope est la source explicite : library, youtube ou all. Le serveur exécute les outils puis retourne une opération
   validée ; le Mac joue ensuite les tracks. replace remplace maintenant, append ajoute sans interrompre, keep conserve
   la lecture. discoveries propose des cartes ; sources accompagne une recherche d’information. Envoyer playbackContext,
-  historique et exclusions pour une suite cohérente. Aucun ajout à la bibliothèque par cette route. Une opération DJ
+  historique et exclusions pour une suite cohérente. conversationId et requestId optionnels relient le chat aux actions
+  du client ; trigger distingue demande et continuation. X-Sillage-Trace-Id identifie le tour, X-Sillage-Journal vaut
+  saved ou unavailable sans changer la réponse JSON. Aucun ajout à la bibliothèque par cette route. Une opération DJ
   simultanée par compte ; 429 peut signifier occupé, pas forcément quota épuisé.
 
 

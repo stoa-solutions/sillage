@@ -152,3 +152,12 @@ npm run verify:node
 ```
 
 `npm run check` inclut la vérification des fichiers générés. Un test compare les routes Hono montées et les opérations documentées, pour détecter un endpoint ajouté sans contrat. Les tests de documentation vérifient aussi l’absence de routes publiques Swagger, l’authentification, le relais à cible fixe et les restrictions d’origine. Les assertions Postman fournies contrôlent le succès HTTP ; elles ne prouvent pas à elles seules la pertinence d’une réponse DJ ni la lecture effective dans l’app.
+
+
+## Journal du DJ
+
+Le groupe **Journal DJ** permet de lister les conversations du compte, parcourir leurs tours et événements, inspecter un tour ou effacer une conversation. Réutiliser le jeton développeur personnel ; il ne donne aucun accès aux autres comptes. Dans Postman, renseigner `conversationId` ou `turnId` après une première lecture. Le navigateur peut utiliser le proxy local existant sans recopier le jeton.
+
+`POST /v1/dj/chat` accepte désormais `conversationId`, `requestId` (UUID optionnels) et `trigger` (`user` ou `continuation`). La réponse JSON reste compatible ; `X-Sillage-Trace-Id` identifie le tour et `X-Sillage-Journal` confirme `saved` ou `unavailable`. Une erreur du journal ne remplace pas une sélection réussie. Les anciens clients sont journalisés côté serveur avec une conversation distincte par requête.
+
+Voir [dj-journal.md](dj-journal.md) pour les données collectées, les limites et leur cycle de vie.

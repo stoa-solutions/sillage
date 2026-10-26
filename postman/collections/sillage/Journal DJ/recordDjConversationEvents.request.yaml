@@ -1,0 +1,39 @@
+$kind: http-request
+description: >-
+  Lot de 1 à 50 événements. Identifiant stable par événement : renvoyer un lot après une coupure ne crée pas de
+  doublons. Le serveur impose origin=client et le propriétaire authentifié ; le client ne peut pas fabriquer une trace
+  serveur.
+
+
+  Effet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/dj/conversations/:conversationId/events"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+pathVariables:
+  conversationId: "{{conversationId}}"
+body:
+  type: json
+  content: |-
+    {
+      "events": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "sequence": 1,
+          "occurredAt": "2026-10-26T12:00:00Z",
+          "scope": "all",
+          "visibleScope": "all",
+          "kind": "message",
+          "role": "user",
+          "content": "Prépare cinq morceaux à la suite",
+          "queueIds": []
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 4000
