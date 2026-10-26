@@ -61,7 +61,7 @@ struct SongRow: View {
     .padding(.horizontal, 8).padding(.vertical, 5)
     .background(RoundedRectangle(cornerRadius: 8).fill(hovering ? Color.sillageHover : .clear))
     .overlay(alignment: .bottom) {
-      SillageRule().opacity(0.5).padding(.leading, index == nil ? 76 : 110)
+      SillageRule().opacity(0.5).padding(.leading, index == nil ? 76 : 114)
     }
     .contentShape(Rectangle())
     .onHover { hovering = $0 }

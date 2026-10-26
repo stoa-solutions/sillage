@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Interface Sillage « Atelier de lumière » (cahier des charges UI) : apparence claire et sombre selon le système, vitre chaude sur la lumière Stoa (opaque avec Réduire la transparence), une seule palette contrôlée (textes ≥ 4,5:1, aussi mesurés sur le rendu). Compact à la taille de son contenu (≈ 520 × 224, panneau plafonné à 560, retour à sa place sans dérive). Bibliothèque et Découvrir d’un seul tenant : barre latérale, filtre en haut, en-tête compact, lignes en colonnes ; résultats de recherche en liste avec aperçu, recommandations en grille. Barre de lecture d’un bord à l’autre avec mini-clip (même lecteur, même audio ; pochette en repli).
+
 - Journal DJ privé en PostgreSQL : conversations, demandes, réponses complètes, source choisie et effective, propositions, appels d’outils et durées, modèle et version serveur. Les actions et messages réellement affichés par le Mac sont corrélés aux tours du serveur, avec envois idempotents. Aucun anonymiseur de contenu ; clés configurées et jetons non collectés. Six routes authentifiées documentées dans Swagger/Postman, pagination et effacement par compte. App Mac 1.7.8 (57).
 
 - Développement : accès personnel séparé pour Swagger et Postman via le serveur local, sans recopier de session de l’app ni ajouter de rôle administrateur global ; jeton privé, création idempotente et révocation indépendante.

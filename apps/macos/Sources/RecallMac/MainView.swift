@@ -62,13 +62,16 @@ struct MainView: View {
       }.withoutSystemBackground()
       ToolbarItem(placement: .primaryAction) {
         HStack(spacing: 10) {
-          DisplayPicker(player: dj.player, iconOnly: pocket)
+          DisplayPicker(player: dj.player, iconOnly: false)
           SettingsLink { Image(systemName: "gearshape") }
             .help("Réglages").accessibilityLabel("Réglages")
         }
         .buttonStyle(.plain)
         .padding(.horizontal, pocket ? 9 : 12).padding(.vertical, pocket ? 5 : 7)
-        .background(.ultraThinMaterial, in: Capsule())
+        .background {
+          Capsule().fill(Color.primary.opacity(0.07))
+            .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08)))
+        }
         .studioChrome(immersion.visible)
       }.withoutSystemBackground()
     }
@@ -141,6 +144,19 @@ private struct Shell<Content: View>: View {
             SillageBackdrop()
           }
         }.ignoresSafeArea().allowsHitTesting(false).transition(.opacity)
+      }
+      // The toolbar band is the same glass as the page under it, edged by a faint rule.
+      // An overlay keeps the content's safe area, so the toolbar height is measurable; the band
+      // sits above the content, where nothing else is drawn.
+      .overlay(alignment: .top) {
+        if !stage {
+          GeometryReader { geometry in
+            Color.clear.sillageSurface(.chrome)
+              .overlay(alignment: .bottom) { SillageRule() }
+              .frame(height: geometry.safeAreaInsets.top)
+              .offset(y: -geometry.safeAreaInsets.top)
+          }.allowsHitTesting(false).accessibilityHidden(true)
+        }
       }
       .environment(\.surface, stage && focused ? .immersive : .reading)
       .environment(\.studioControlsVisible, immersion.visible)
@@ -215,7 +231,8 @@ enum WindowPresentation: Equatable {
 
 /// Applies RecallWindowLayout when the presentation changes: Compact follows its content
 /// under a fixed top edge, reading pages return to the size the person last chose.
-/// Only presentation changes resize; switching between reading tabs never does.
+/// Switching between reading tabs never resizes; neither does the person's own resizing get
+/// undone: a pocket height change only applies while the window still has the size we gave it.
 private struct WindowSizer: NSViewRepresentable {
   let presentation: WindowPresentation
   let animate: Bool
@@ -225,58 +242,108 @@ private struct WindowSizer: NSViewRepresentable {
     let presentation = presentation
     let animate = animate
     let coordinator = context.coordinator
-    DispatchQueue.main.async { coordinator.apply(presentation, in: view.window, animate: animate) }
+    DispatchQueue.main.async {
+      coordinator.request(presentation, in: view.window, animate: animate)
+    }
   }
 
   @MainActor final class Coordinator {
+    private var requested: WindowPresentation?
     private var applied: WindowPresentation?
-    private var readingFrame: LayoutRect?
+    private var appliedFrame: NSRect?
+    private var readingSize: (width: Double, height: Double)?
     private var compactWidth: Double?
-    private var observer: NSObjectProtocol?
+    /// The pocket's home top edge while its panel is open.
+    private var anchorTop: Double?
+    private weak var window: NSWindow?
+    nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
 
-    func apply(_ presentation: WindowPresentation, in window: NSWindow?, animate: Bool) {
-      guard let window, !window.styleMask.contains(.fullScreen),
-        let screen = window.screen ?? NSScreen.main
+    deinit { observers.forEach(NotificationCenter.default.removeObserver) }
+
+    func request(_ presentation: WindowPresentation, in window: NSWindow?, animate: Bool) {
+      guard let window else { return }
+      watch(window)
+      requested = presentation
+      apply(animate: animate)
+    }
+
+    private func apply(animate: Bool) {
+      guard let window, let presentation = requested, !window.inLiveResize,
+        !window.styleMask.contains(.fullScreen), let screen = window.screen ?? NSScreen.main
       else { return }
-      watchResizes(of: window)
       if case .compact(let rest, _) = presentation, rest <= 0 { return }
       guard presentation != applied else { return }
       let previous = applied
       applied = presentation
-      // A first layout keeps the restored window; afterwards each change is applied.
-      if previous == nil, case .reading = presentation { return }
       let current = rect(window.frame)
       let visible = rect(screen.visibleFrame)
       let target: LayoutRect
-      switch presentation {
-      case .reading:
+      switch (previous, presentation) {
+      case (nil, .reading):
+        // Launch: keep the restored window unless it is still pocket-sized.
+        guard RecallWindowLayout.needsReadingSize(current) else { return }
         target = RecallWindowLayout.readingFrame(
-          from: current, remembered: readingFrame, visible: visible)
-      case .compact(let rest, let open):
-        let chrome = window.frame.height - window.contentLayoutRect.height
-        target = RecallWindowLayout.compactFrame(
-          from: current, rememberedWidth: compactWidth, restHeight: Double(rest + chrome),
-          panelOpen: open, visible: visible)
+          from: current, rememberedSize: readingSize, visible: visible)
+      case (_, .reading):
+        target = RecallWindowLayout.readingFrame(
+          from: current, rememberedSize: readingSize, visible: visible)
+      case (.compact(_, let wasOpen)?, .compact(let rest, let open)) where wasOpen == open:
+        // Only the pocket's content changed: follow it if the window is still ours.
+        guard !open, let appliedFrame, window.frame == appliedFrame else { return }
+        target = compact(rest: rest, open: open, from: current, in: window, visible: visible)
+      case (_, .compact(let rest, let open)):
+        if open && anchorTop == nil { anchorTop = current.maxY }
+        target = compact(rest: rest, open: open, from: current, in: window, visible: visible)
+        if !open { anchorTop = nil }
       }
       let frame = NSRect(x: target.x, y: target.y, width: target.width, height: target.height)
+      appliedFrame = frame
       if frame != window.frame { window.setFrame(frame, display: true, animate: animate) }
     }
 
-    /// The person's own resizing becomes the remembered size of that presentation.
-    private func watchResizes(of window: NSWindow) {
-      guard observer == nil else { return }
-      observer = NotificationCenter.default.addObserver(
-        forName: NSWindow.didEndLiveResizeNotification, object: window, queue: .main
-      ) { [weak self] note in
-        guard let window = note.object as? NSWindow else { return }
-        MainActor.assumeIsolated {
-          switch self?.applied {
-          case .reading: self?.readingFrame = self?.rect(window.frame)
-          case .compact: self?.compactWidth = Double(window.frame.width)
-          case nil: break
+    private func compact(
+      rest: CGFloat, open: Bool, from current: LayoutRect, in window: NSWindow,
+      visible: LayoutRect
+    ) -> LayoutRect {
+      let chrome = window.frame.height - window.contentLayoutRect.height
+      return RecallWindowLayout.compactFrame(
+        from: current, rememberedWidth: compactWidth, restHeight: Double(rest + chrome),
+        panelOpen: open, visible: visible, anchorTop: anchorTop)
+    }
+
+    /// The person's own resizing becomes the remembered size of that presentation; leaving
+    /// full screen applies whatever was asked meanwhile.
+    private func watch(_ window: NSWindow) {
+      guard self.window !== window else { return }
+      self.window = window
+      let center = NotificationCenter.default
+      observers.append(
+        center.addObserver(
+          forName: NSWindow.didEndLiveResizeNotification, object: window, queue: .main
+        ) { [weak self] note in
+          guard let window = note.object as? NSWindow else { return }
+          MainActor.assumeIsolated {
+            guard let self else { return }
+            switch self.applied {
+            case .reading:
+              self.readingSize = (Double(window.frame.width), Double(window.frame.height))
+            case .compact:
+              self.compactWidth = Double(window.frame.width)
+              self.anchorTop = nil
+            case nil: break
+            }
+            self.appliedFrame = window.frame
           }
-        }
-      }
+        })
+      observers.append(
+        center.addObserver(
+          forName: NSWindow.didExitFullScreenNotification, object: window, queue: .main
+        ) { [weak self] _ in
+          MainActor.assumeIsolated {
+            self?.applied = nil
+            self?.apply(animate: false)
+          }
+        })
     }
 
     private func rect(_ frame: NSRect) -> LayoutRect {

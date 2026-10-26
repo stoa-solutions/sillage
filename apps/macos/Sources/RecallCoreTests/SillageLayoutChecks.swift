@@ -41,20 +41,38 @@ func sillageLayoutChecks() throws {
       && fitted.x >= small.x && fitted.maxX <= small.maxX,
     "Open panel left the usable screen: \(fitted)")
 
+  // A pocket parked near the bottom: opening pushes the window up, folding returns it home.
+  let parked = LayoutRect(x: 200, y: 10, width: 520, height: 224)
+  let lifted = RecallWindowLayout.compactFrame(
+    from: parked, rememberedWidth: 520, restHeight: 224, panelOpen: true, visible: screen,
+    anchorTop: parked.maxY)
+  let home = RecallWindowLayout.compactFrame(
+    from: lifted, rememberedWidth: 520, restHeight: 224, panelOpen: false, visible: screen,
+    anchorTop: parked.maxY)
+  try expect(
+    lifted.y == 0 && home == parked, "Folding near the bottom edge left the pocket raised: \(home)")
+
   // Reading pages: preferred size first, then the size the person chose; always on screen.
-  let first = RecallWindowLayout.readingFrame(from: rest, remembered: nil, visible: screen)
+  let first = RecallWindowLayout.readingFrame(from: rest, rememberedSize: nil, visible: screen)
   try expect(
     first.width == 1080 && first.height == 760 && first.maxY == rest.maxY && first.x == rest.x,
     "Reading window did not open at its preferred size from the Compact top edge: \(first)")
-  let chosen = LayoutRect(x: 50, y: 40, width: 1300, height: 820)
+  // The chosen size comes back where the window is now, not where it was resized.
+  let restored = RecallWindowLayout.readingFrame(
+    from: rest, rememberedSize: (1300, 820), visible: screen)
   try expect(
-    RecallWindowLayout.readingFrame(from: rest, remembered: chosen, visible: screen) == chosen,
-    "Reading window forgot the size the person chose")
+    restored.width == 1300 && restored.height == 820 && restored.x == rest.x
+      && restored.maxY == rest.maxY,
+    "Reading window forgot the chosen size or jumped to an old place: \(restored)")
   let laptop = LayoutRect(x: 0, y: 0, width: 1024, height: 640)
-  let squeezed = RecallWindowLayout.readingFrame(from: rest, remembered: nil, visible: laptop)
+  let squeezed = RecallWindowLayout.readingFrame(from: rest, rememberedSize: nil, visible: laptop)
   try expect(
     squeezed.width == 1024 && squeezed.height == 640 && squeezed.x == 0 && squeezed.y == 0,
     "Reading window grew past a small screen: \(squeezed)")
+  try expect(
+    RecallWindowLayout.needsReadingSize(LayoutRect(x: 0, y: 0, width: 760, height: 572))
+      && !RecallWindowLayout.needsReadingSize(reading),
+    "A pocket-sized window restored on a reading page would stay without its sidebar")
   try expect(
     RecallWindowLayout.minimumWidth(studio: false, reading: false) <= 520
       && RecallWindowLayout.minimumHeight(studio: false, reading: false) <= 224
@@ -74,6 +92,10 @@ func sillageLayoutChecks() throws {
     try expect(
       SillagePalette.contrast(palette[.primaryIcon], palette[.primaryFill]) >= 4.5,
       "Icon on the orange button is unreadable in \(appearance)")
+    for role in [SillageRole.text, .secondaryText, .actionText] {
+      let ratio = SillagePalette.contrast(palette[role], palette[.selection])
+      try expect(ratio >= 4.5, "\(role) on a selected row in \(appearance) is only \(ratio):1")
+    }
     try expect(
       SillagePalette.contrast(palette[.focus], palette[.reading]) >= 3,
       "Focus indication is too faint in \(appearance)")

@@ -77,7 +77,6 @@ struct DJView: View {
           playerStatus.frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12).padding(.bottom, 10)
         }
-        SillageRule()
         panelBar
       }
       .fixedSize(horizontal: false, vertical: true)
@@ -99,8 +98,8 @@ struct DJView: View {
   /// Thumbnail clip, song, transport, position and volume.
   private var pocket: some View {
     HStack(alignment: .center, spacing: 14) {
-      VideoSurface(player: player, cornerRadius: 6).frame(width: 136, height: 76.5)
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+      VideoSurface(player: player, cornerRadius: 8).frame(width: 200, height: 112.5)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay {
           if model.current == nil {
             idleScreen
@@ -110,12 +109,12 @@ struct DJView: View {
         }
       VStack(alignment: .leading, spacing: 8) {
         TrackHeadline(
-          track: model.current, titleFont: .system(size: 15, weight: .semibold),
-          detailFont: .system(size: 12)
+          track: model.current, titleFont: .system(size: 17, weight: .semibold),
+          detailFont: .system(size: 14)
         )
         .help(model.current.map { TrackTitle($0).spoken } ?? "")
-        HStack(spacing: 10) {
-          playButton(size: 30)
+        HStack(spacing: 12) {
+          playButton(size: 38)
           Button {
             model.next()
           } label: {
@@ -132,6 +131,7 @@ struct DJView: View {
             .font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
             .frame(width: 34, alignment: .trailing)
           VolumeControl(player: player, compact: true)
+            .fixedSize()
         }
       }
     }
@@ -158,7 +158,9 @@ struct DJView: View {
         .accessibilityLabel("DJ et file")
         .accessibilityValue(panelCollapsed ? "Replié" : "Ouvert")
       sessionMenu
-    }.padding(.horizontal, 12).frame(height: 38)
+    }.padding(.horizontal, 12).frame(height: 40)
+      .background(Color.sillageHover, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+      .padding(.horizontal, 8).padding(.bottom, 8)
   }
 
   /// Voix du DJ, Enchaîner and the YouTube link in the pocket format; states stay visible
@@ -183,22 +185,17 @@ struct DJView: View {
       )
   }
 
+  /// Compact only: the Studio-only lines of playerStatus never show here.
   private var hasStatus: Bool {
-    (player.preparingClip && !player.playing && player.studio)
-      || (model.waitingForNext && model.busy)
-      || !model.continuationNotice.isEmpty || (!player.failure.isEmpty && !model.playbackBlocked)
-      || (player.studio && player.clipFailure != nil && !model.playbackBlocked)
+    (model.waitingForNext && model.busy) || !model.continuationNotice.isEmpty
+      || (!player.failure.isEmpty && !model.playbackBlocked)
   }
 
   private func playButton(size: CGFloat) -> some View {
     Button {
       model.togglePlayback()
     } label: {
-      Image(systemName: player.playing ? "pause.fill" : "play.fill")
-        .font(.system(size: size * 0.42, weight: .bold))
-        .frame(width: size, height: size)
-        .foregroundStyle(Color.sillage(.primaryIcon))
-        .background(Circle().fill(Color.sillage(.primaryFill)))
+      PlayDisc(size: size, symbol: player.playing ? "pause.fill" : "play.fill")
     }.buttonStyle(.plain).accessibilityLabel(player.playing ? "Pause" : "Lecture")
       .disabled(model.current == nil)
   }
@@ -308,13 +305,6 @@ struct DJView: View {
         .foregroundStyle(.secondary)
         .help("Ouvrir sur YouTube").accessibilityLabel("Ouvrir sur YouTube")
     }
-  }
-
-  private var preparation: some View {
-    VStack(spacing: 10) {
-      ProgressView().controlSize(.small)
-      Text("Préparation du clip…").font(.caption).foregroundStyle(.secondary)
-    }.frame(maxWidth: .infinity, maxHeight: .infinity).background(.black.opacity(0.25))
   }
 
   @ViewBuilder private var playerStatus: some View {

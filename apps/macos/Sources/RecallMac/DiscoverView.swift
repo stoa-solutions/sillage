@@ -264,28 +264,31 @@ struct DiscoverView: View {
     }
     return rows
   }
-  private var selected: DiscoveryRow? {
-    rows.first { $0.id == selectedID } ?? rows.first
-  }
 
+  /// Rows and the selection are computed once per update, then passed down.
   private var results: some View {
-    GeometryReader { geometry in
+    let rows = self.rows
+    let selected = rows.first { $0.id == selectedID } ?? rows.first
+    return GeometryReader { geometry in
       let preview = geometry.size.width >= 640
       HStack(alignment: .top, spacing: 16) {
-        resultList
+        resultList(rows, selected: selected, saveInRows: !preview)
         if preview, let selected { ResultPreview(row: selected, source: discovery.scope) }
       }
     }
   }
 
-  private var resultList: some View {
-    ScrollViewReader { proxy in
+  private func resultList(_ rows: [DiscoveryRow], selected: DiscoveryRow?, saveInRows: Bool)
+    -> some View
+  {
+    let lastID = rows.last?.id
+    return ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 2) {
           ForEach(rows) { row in
             DiscoveryResultRow(
               row: row, selected: row.id == selected?.id, playing: dj.current?.id == row.track.id,
-              source: discovery.scope,
+              source: discovery.scope, showsSave: saveInRows,
               select: {
                 selectedID = row.id
                 listFocused = true
@@ -293,7 +296,7 @@ struct DiscoverView: View {
             )
             .id(row.id)
             .onAppear {
-              if row.id == rows.last?.id && discovery.nextPage != nil
+              if row.id == lastID && discovery.nextPage != nil
                 && discovery.query.trimmingCharacters(in: .whitespacesAndNewlines)
                   == discovery.submittedQuery
               {
@@ -364,15 +367,18 @@ private struct DiscoveryResultRow: View {
   let selected: Bool
   let playing: Bool
   let source: DiscoveryScope
+  /// When the preview is folded, saving a YouTube result stays on the row itself.
+  var showsSave = false
   let select: () -> Void
   @EnvironmentObject var dj: DJModel
+  @EnvironmentObject var discovery: DiscoveryModel
   @State private var hovering = false
   var body: some View {
     let name = TrackTitle(row.track)
     HStack(spacing: 12) {
-      Artwork(track: row.track, showsDuration: false).frame(width: 72)
-      VStack(alignment: .leading, spacing: 2) {
-        Text(name.title).font(.system(size: 13, weight: .medium)).lineLimit(2)
+      Artwork(track: row.track, showsDuration: false).frame(width: 96)
+      VStack(alignment: .leading, spacing: 3) {
+        Text(name.title).font(.system(size: 14, weight: .medium)).lineLimit(2)
           .foregroundStyle(playing ? Color.sillage(.actionText) : Color.primary)
         Text(name.artist ?? row.track.channel ?? "YouTube").font(.system(size: 12))
           .foregroundStyle(.secondary).lineLimit(1)
@@ -382,8 +388,12 @@ private struct DiscoveryResultRow: View {
       IconButton(symbol: "text.badge.plus", help: "Lire ensuite") {
         dj.enqueue(row.track, source: source)
       }
+      if showsSave, let item = row.item { SaveButton(item: item, source: source) }
     }
-    .padding(.horizontal, 8).padding(.vertical, 6)
+    .padding(.horizontal, 8).padding(.vertical, 8)
+    .overlay(alignment: .bottom) {
+      if !selected { SillageRule().opacity(0.5).padding(.leading, 116) }
+    }
     .background {
       RoundedRectangle(cornerRadius: 8)
         .fill(selected ? Color.sillage(.selection) : hovering ? Color.sillageHover : .clear)
@@ -409,6 +419,34 @@ private struct DiscoveryResultRow: View {
     .accessibilityAction(named: "Lire") { dj.play(row.track, source: source) }
     .accessibilityAction(named: "Lire ensuite") { dj.enqueue(row.track, source: source) }
     .accessibilityAction(named: "Aperçu", select)
+    .accessibilityAction(named: "Ouvrir sur YouTube") { NSWorkspace.shared.open(row.track.url) }
+    .modifier(SaveAction(item: row.item))
+    .contextMenu {
+      Button("Lire maintenant", systemImage: "play.fill") { dj.play(row.track, source: source) }
+      Button("Lire ensuite", systemImage: "text.badge.plus") {
+        dj.enqueue(row.track, source: source)
+      }
+      if let item = row.item, !(item.inLibrary || discovery.savedIDs.contains(item.id)) {
+        Button("Ajouter à Mes découvertes", systemImage: "plus.circle") { discovery.add(item) }
+      }
+      Divider()
+      Button("Ouvrir sur YouTube", systemImage: "arrow.up.right.square") {
+        NSWorkspace.shared.open(row.track.url)
+      }
+    }
+  }
+}
+
+/// VoiceOver can save a YouTube result from its row, whatever the window width.
+private struct SaveAction: ViewModifier {
+  let item: DiscoveryItem?
+  @EnvironmentObject var discovery: DiscoveryModel
+  func body(content: Content) -> some View {
+    if let item, !(item.inLibrary || discovery.savedIDs.contains(item.id)) {
+      content.accessibilityAction(named: "Ajouter à Mes découvertes") { discovery.add(item) }
+    } else {
+      content
+    }
   }
 }
 
@@ -421,20 +459,29 @@ private struct ResultPreview: View {
   var body: some View {
     let name = TrackTitle(row.track)
     VStack(alignment: .leading, spacing: 10) {
+      // A square cut from the picture itself: YouTube's 4:3 frame letterboxes 16:9 videos,
+      // so the image is enlarged past its bands before the centre is kept.
       Color.clear.aspectRatio(1, contentMode: .fit)
-        .overlay { Artwork.image(for: row.track, quality: "hqdefault") }
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+          GeometryReader { geometry in
+            let side = geometry.size.width
+            Artwork.image(for: row.track, quality: "hqdefault")
+              .frame(width: side / 0.75 * 4 / 3, height: side / 0.75)
+              .position(x: side / 2, y: side / 2)
+          }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .accessibilityHidden(true)
-      Text(name.title).font(.system(size: 17, weight: .semibold)).lineLimit(3)
-      Text(name.artist ?? row.track.channel ?? "YouTube").font(.system(size: 13))
+      Text(name.title).font(.system(size: 20, weight: .semibold)).lineLimit(3)
+      Text(name.artist ?? row.track.channel ?? "YouTube").font(.system(size: 15))
         .foregroundStyle(.secondary).lineLimit(1)
       HStack(spacing: 10) {
         Button {
           dj.play(row.track, source: source)
         } label: {
-          PlayDisc(size: 34)
+          PlayDisc(size: 40)
         }.buttonStyle(.plain).accessibilityLabel("Lire " + name.title)
-        Text(row.track.durationSeconds.map(clock) ?? "").font(.system(size: 12).monospacedDigit())
+        Text(row.track.durationSeconds.map(clock) ?? "").font(.system(size: 13).monospacedDigit())
           .foregroundStyle(.secondary)
         Spacer(minLength: 0)
         IconButton(symbol: "text.badge.plus", help: "Lire ensuite") {
@@ -446,7 +493,7 @@ private struct ResultPreview: View {
         }
       }
     }
-    .padding(12).frame(width: 240)
+    .padding(14).frame(width: 260)
     .background(RoundedRectangle(cornerRadius: 12).fill(Color.sillageHover))
     .accessibilityElement(children: .contain).accessibilityLabel("Aperçu")
   }

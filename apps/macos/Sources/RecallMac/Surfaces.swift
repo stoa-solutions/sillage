@@ -26,7 +26,7 @@ struct GlassPanel: ViewModifier {
     content.background {
       switch surface {
       case .standard, .reading:
-        Color.clear.sillageSurface(.reading)
+        Color.clear.sillageSurface(.reading).clipShape(shape)
           .overlay(
             shape.strokeBorder(Color.sillage(.separator).opacity(contrast == .increased ? 1 : 0.6)))
       case .immersive:

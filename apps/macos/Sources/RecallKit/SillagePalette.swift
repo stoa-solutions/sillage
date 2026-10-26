@@ -35,7 +35,7 @@ public struct SillagePalette: Sendable {
     case (.light, .text): Self.ink
     case (.light, .secondaryText): 0x62625C
     case (.light, .actionText), (.light, .focus): Self.deepOrange
-    case (.light, .selection): 0xE7E3DA
+    case (.light, .selection): 0xEEEBE5
     case (.light, .separator): 0xDAD7D0
     case (.dark, .canvas): Self.ink
     case (.dark, .reading): Self.graphite

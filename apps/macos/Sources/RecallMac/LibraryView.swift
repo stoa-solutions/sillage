@@ -20,7 +20,7 @@ struct LibraryView: View {
         let wide = geometry.size.width >= 780
         HStack(spacing: 0) {
           if wide && session.hasServer {
-            sidebar.frame(width: 210).sillageSurface(.sidebar)
+            sidebar.frame(width: 220).sillageSurface(.sidebar)
             SillageRule(vertical: true)
           }
           main(wide: wide).frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -52,7 +52,7 @@ struct LibraryView: View {
   private var sidebar: some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(spacing: 2) {
-        Text("Playlists").font(.system(size: 13, weight: .semibold))
+        Text("Playlists").font(.system(size: 14, weight: .semibold))
         Spacer()
         IconButton(symbol: "plus", help: "Ajouter une playlist YouTube") { adding = true }
           .popover(isPresented: $adding, arrowEdge: .bottom) { importForm.padding(16) }
@@ -96,16 +96,16 @@ struct LibraryView: View {
       library.selectedPlaylist = id
     } label: {
       HStack(spacing: 10) {
-        PlaylistTile(title: title, symbol: symbol, size: 32)
+        PlaylistTile(title: title, symbol: symbol, size: 40)
         VStack(alignment: .leading, spacing: 1) {
-          Text(title).font(.system(size: 13, weight: .medium)).lineLimit(1).help(title)
-          Text("\(count.formatted()) vidéos").font(.system(size: 11)).foregroundStyle(.secondary)
+          Text(title).font(.system(size: 14, weight: .medium)).lineLimit(1).help(title)
+          Text("\(count.formatted()) vidéos").font(.system(size: 12)).foregroundStyle(.secondary)
         }
         Spacer(minLength: 0)
       }
       .padding(6)
       .background(
-        RoundedRectangle(cornerRadius: 8).fill(selected ? Color.sillage(.selection) : .clear)
+        RoundedRectangle(cornerRadius: 10).fill(selected ? Color.sillageSelectionGlass : .clear)
       )
       .contentShape(Rectangle())
     }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
@@ -114,17 +114,17 @@ struct LibraryView: View {
   private var historyItem: some View {
     Button(action: openHistory) {
       HStack(spacing: 10) {
-        PlaylistTile(title: "Écoutes récentes", symbol: "clock.arrow.circlepath", size: 32)
+        PlaylistTile(title: "Écoutes récentes", symbol: "clock.arrow.circlepath", size: 40)
         VStack(alignment: .leading, spacing: 1) {
-          Text("Écoutes récentes").font(.system(size: 13, weight: .medium)).lineLimit(1)
-          Text("Historique").font(.system(size: 11)).foregroundStyle(.secondary)
+          Text("Écoutes récentes").font(.system(size: 14, weight: .medium)).lineLimit(1)
+          Text("Historique").font(.system(size: 12)).foregroundStyle(.secondary)
         }
         Spacer(minLength: 0)
       }
       .padding(6)
       .background(
-        RoundedRectangle(cornerRadius: 8).fill(
-          showingHistory ? Color.sillage(.selection) : .clear)
+        RoundedRectangle(cornerRadius: 10).fill(
+          showingHistory ? Color.sillageSelectionGlass : .clear)
       )
       .contentShape(Rectangle())
     }.buttonStyle(.plain).accessibilityAddTraits(showingHistory ? .isSelected : [])
@@ -182,10 +182,10 @@ struct LibraryView: View {
       HStack(alignment: .center, spacing: 12) {
         PlaylistTile(
           title: title, symbol: library.selectedPlaylist.isEmpty ? "music.note.list" : nil,
-          size: 48)
+          size: 56)
         VStack(alignment: .leading, spacing: 2) {
           if wide {
-            Text(title).font(.system(size: 22, weight: .semibold)).lineLimit(1)
+            Text(title).font(.system(size: 22, weight: .medium)).lineLimit(1)
               .truncationMode(.tail).help(title).accessibilityAddTraits(.isHeader)
           } else {
             playlistMenu
@@ -198,7 +198,7 @@ struct LibraryView: View {
         Spacer(minLength: 0)
       }
       HStack(spacing: 10) {
-        Button(action: playAll) { PlayDisc(size: 30) }.buttonStyle(.plain)
+        Button(action: playAll) { PlayDisc(size: 32) }.buttonStyle(.plain)
           .disabled(library.results.isEmpty).help("Lire depuis le début")
           .accessibilityLabel("Lire \(title)")
         IconButton(symbol: "shuffle", help: "Lire dans un ordre aléatoire", action: shuffle)

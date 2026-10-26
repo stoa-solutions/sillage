@@ -26,6 +26,13 @@ public enum RecallWindowLayout {
   public static let readingPreferredWidth = 1080.0
   public static let readingPreferredHeight = 760.0
 
+  /// Below this, reading pages fold their sidebar; a window restored smaller than this (or
+  /// lower than 600) at launch on a reading page gets the reading size back.
+  public static let readingComfortWidth = 900.0
+  public static func needsReadingSize(_ frame: LayoutRect) -> Bool {
+    frame.width < readingComfortWidth || frame.height < 600
+  }
+
   /// Content minimums only protect the controls; the presentation sets the real size.
   public static func minimumWidth(studio: Bool, reading: Bool) -> Double {
     studio || reading ? 760 : compactMinimumWidth
@@ -35,26 +42,29 @@ public enum RecallWindowLayout {
   }
 
   /// Compact keeps its top edge: the window grows or shrinks downwards with the panel.
+  /// `anchorTop` is where the pocket's top edge was before the panel had to push the window
+  /// away from the screen's bottom, so folding brings the pocket back home.
   public static func compactFrame(
     from current: LayoutRect, rememberedWidth: Double?, restHeight: Double, panelOpen: Bool,
-    visible: LayoutRect
+    visible: LayoutRect, anchorTop: Double? = nil
   ) -> LayoutRect {
     let width = min(
       max(rememberedWidth ?? compactRestWidth, compactMinimumWidth), compactMaximumWidth)
     let height = panelOpen ? max(compactPanelCeiling, restHeight) : restHeight
-    let frame = LayoutRect(
-      x: current.x, y: current.maxY - height, width: width, height: height)
+    let top = anchorTop ?? current.maxY
+    let frame = LayoutRect(x: current.x, y: top - height, width: width, height: height)
     return constrain(frame, to: visible)
   }
 
-  /// The size the person last chose for reading pages, else the preferred one.
+  /// The size the person last chose for reading pages, else the preferred one, opened from
+  /// where the window is now (same left and top edges).
   public static func readingFrame(
-    from current: LayoutRect, remembered: LayoutRect?, visible: LayoutRect
+    from current: LayoutRect, rememberedSize: (width: Double, height: Double)?,
+    visible: LayoutRect
   ) -> LayoutRect {
-    if let remembered { return constrain(remembered, to: visible) }
-    let frame = LayoutRect(
-      x: current.x, y: current.maxY - readingPreferredHeight, width: readingPreferredWidth,
-      height: readingPreferredHeight)
+    let width = rememberedSize?.width ?? readingPreferredWidth
+    let height = rememberedSize?.height ?? readingPreferredHeight
+    let frame = LayoutRect(x: current.x, y: current.maxY - height, width: width, height: height)
     return constrain(frame, to: visible)
   }
 

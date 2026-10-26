@@ -246,7 +246,7 @@ struct NowPlayingBar: View {
       if let track = model.current {
         if player.failure.isEmpty {
           // The shared player moves here while no other page shows it.
-          VideoSurface(player: player, cornerRadius: 6)
+          VideoSurface(player: player, cornerRadius: 6, interactive: false)
             .overlay { if player.preparingClip && !player.playing { coverOverlay(track) } }
         } else {
           Artwork(track: track, showsDuration: false)
@@ -263,30 +263,57 @@ struct NowPlayingBar: View {
   }
 }
 
-/// Music volume; the speaker mutes and restores the previous level.
+/// Music volume; the speaker mutes and restores the previous level. In the pocket format the
+/// speaker opens the slider in a popover, so the row stays as airy as the planche.
 struct VolumeControl: View {
   @ObservedObject var player: Player
-  /// Pocket format: a shorter slider.
   var compact = false
   @State private var beforeMute = 1.0
+  @State private var open = false
   var body: some View {
-    HStack(spacing: 6) {
+    if compact {
       Button {
-        if player.volume > 0 {
-          beforeMute = player.volume
-          player.volume = 0
-        } else {
-          player.volume = max(beforeMute, 0.1)
-        }
+        open.toggle()
       } label: {
-        Image(systemName: player.volume == 0 ? "speaker.slash.fill" : "speaker.wave.2.fill")
-          .frame(width: 20)
+        speaker
       }.buttonStyle(.plain).foregroundStyle(.secondary)
-        .accessibilityLabel(player.volume == 0 ? "Remettre le son" : "Couper le son")
-      Slider(value: $player.volume, in: 0...1).frame(width: compact ? 64 : 90)
-        .controlSize(compact ? .mini : .small)
-        .tint(Color.sillage(.primaryFill)).accessibilityLabel("Volume de la musique")
-    }.help("Volume de la musique")
+        .accessibilityLabel("Volume de la musique")
+        .accessibilityValue("\(Int((player.volume * 100).rounded())) %")
+        .help("Volume de la musique")
+        .popover(isPresented: $open, arrowEdge: .bottom) {
+          HStack(spacing: 8) {
+            muteButton
+            slider.frame(width: 140)
+          }.padding(12)
+        }
+    } else {
+      HStack(spacing: 6) {
+        muteButton
+        slider.frame(width: 90)
+      }.help("Volume de la musique")
+    }
+  }
+
+  private var speaker: some View {
+    Image(systemName: player.volume == 0 ? "speaker.slash.fill" : "speaker.wave.2.fill")
+      .frame(width: 22, height: 22).contentShape(Rectangle())
+  }
+  private var muteButton: some View {
+    Button {
+      if player.volume > 0 {
+        beforeMute = player.volume
+        player.volume = 0
+      } else {
+        player.volume = max(beforeMute, 0.1)
+      }
+    } label: {
+      speaker
+    }.buttonStyle(.plain).foregroundStyle(.secondary)
+      .accessibilityLabel(player.volume == 0 ? "Remettre le son" : "Couper le son")
+  }
+  private var slider: some View {
+    Slider(value: $player.volume, in: 0...1).controlSize(.small)
+      .tint(Color.sillage(.primaryFill)).accessibilityLabel("Volume de la musique")
   }
 }
 
@@ -302,7 +329,7 @@ struct SearchField: View {
   var body: some View {
     HStack(spacing: 8) {
       Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
-      TextField(prompt, text: $text).textFieldStyle(.plain).font(.system(size: 13))
+      TextField(prompt, text: $text).textFieldStyle(.plain).font(.system(size: 14))
         .focused($focused).onSubmit(onSubmit).onExitCommand { text = "" }
       ZStack {
         if busy {
@@ -316,7 +343,7 @@ struct SearchField: View {
         }
       }.frame(width: 18, height: 18)
     }
-    .padding(.horizontal, 10).frame(height: 32)
+    .padding(.horizontal, 12).frame(height: 36)
     .background(Color.sillageHover, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     .overlay(
       RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(

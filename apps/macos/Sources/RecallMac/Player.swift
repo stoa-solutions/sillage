@@ -306,20 +306,24 @@ struct VideoSurface: View {
   @ObservedObject var player: Player
   var fill = false
   var cornerRadius: CGFloat = 10
+  /// False where the video is only a picture (the player bar): clicks go to the SwiftUI
+  /// control around it instead of the web page or AVPlayerView.
+  var interactive = true
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   var body: some View {
     ZStack {
       Color.black
       // WebKit paints over sibling views, whatever the SwiftUI order: hide it once the clip is in.
       PlayerView(
-        player: player, cornerRadius: fill ? 0 : cornerRadius, hidden: player.youtubeHidden
+        player: player, cornerRadius: fill ? 0 : cornerRadius, hidden: player.youtubeHidden,
+        interactive: interactive
       )
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       // AVPlayerView would otherwise keep the clip's natural size instead of the frame's.
-      StudioPlayerView(player: player.nativePlayer, fill: fill)
+      StudioPlayerView(player: player.nativePlayer, fill: fill, interactive: interactive)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .opacity(player.clipActive ? 1 : 0)
-        .allowsHitTesting(player.clipActive)
+        .allowsHitTesting(player.clipActive && interactive)
     }.animation(reduceMotion ? nil : .easeInOut(duration: 0.6), value: player.clipActive)
   }
 }
@@ -327,14 +331,24 @@ struct VideoSurface: View {
 struct StudioPlayerView: NSViewRepresentable {
   let player: AVPlayer
   var fill = true
-  func makeNSView(context: Context) -> AVPlayerView {
-    let view = AVPlayerView()
+  var interactive = true
+  /// AVPlayerView that lets clicks through when it only shows a picture.
+  final class PassiveAware: AVPlayerView {
+    var interactive = true
+    override func hitTest(_ point: NSPoint) -> NSView? {
+      interactive ? super.hitTest(point) : nil
+    }
+  }
+  func makeNSView(context: Context) -> PassiveAware {
+    let view = PassiveAware()
+    view.interactive = interactive
     view.player = player
     view.controlsStyle = .none
     view.videoGravity = fill ? .resizeAspectFill : .resizeAspect
     return view
   }
-  func updateNSView(_ view: AVPlayerView, context: Context) {
+  func updateNSView(_ view: PassiveAware, context: Context) {
+    view.interactive = interactive
     view.player = player
     view.videoGravity = fill ? .resizeAspectFill : .resizeAspect
   }
@@ -342,6 +356,10 @@ struct StudioPlayerView: NSViewRepresentable {
 // SwiftUI sizes this container, while WebKit remains free to reparent its view for fullscreen.
 // Direct AutoLayout constraints on WKWebView collapse its viewport during that transition.
 final class PlayerContainerView: NSView {
+  var interactive = true
+  override func hitTest(_ point: NSPoint) -> NSView? {
+    interactive ? super.hitTest(point) : nil
+  }
   init(webView: WKWebView, cornerRadius: CGFloat) {
     super.init(frame: .zero)
     webView.translatesAutoresizingMaskIntoConstraints = true
@@ -360,8 +378,14 @@ struct PlayerView: NSViewRepresentable {
   let player: Player
   var cornerRadius: CGFloat = 10
   var hidden = false
+  var interactive = true
   func makeNSView(context: Context) -> PlayerContainerView {
-    PlayerContainerView(webView: player.webView, cornerRadius: cornerRadius)
+    let view = PlayerContainerView(webView: player.webView, cornerRadius: cornerRadius)
+    view.interactive = interactive
+    return view
   }
-  func updateNSView(_ nsView: PlayerContainerView, context: Context) { nsView.isHidden = hidden }
+  func updateNSView(_ nsView: PlayerContainerView, context: Context) {
+    nsView.isHidden = hidden
+    nsView.interactive = interactive
+  }
 }
