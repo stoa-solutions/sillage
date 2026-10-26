@@ -126,6 +126,53 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+it("acknowledges the identified track and owned credits without searching or changing playback", async () => {
+  const track = {
+    id: "TRwTWnarBtE", title: "basqany :(", channel: "Ayau", duration_seconds: 220,
+    music_metadata: { status: "matched", artists: [{ name: "Ayau" }, { name: "M’Dee" }] },
+  };
+  owned.push(track as typeof collaboration);
+  const reply = "Oui, c’est bien basqany :(, avec M’Dee dans les crédits MusicBrainz.";
+  responses.push({ content: JSON.stringify({ kind: "conversation", action: "keep", trackIds: [], reply }) });
+  const result = await run({
+    message: "voila ça y'a m'dee et c basqany",
+    scope: "library",
+    discoveryContext: [{ id: track.id, title: track.title, channel: track.channel }],
+    excludeIds: [track.id],
+  });
+  expect(result).toMatchObject({ action: "keep", tracks: [], reply });
+  expect(requests).toHaveLength(1);
+  expect(requests[0].tool_choice).toBe("auto");
+  expect(JSON.stringify(requests[0].messages)).toContain("M’Dee");
+  expect(boundaries.search).not.toHaveBeenCalled();
+  expect(boundaries.youtube).not.toHaveBeenCalled();
+  expect(boundaries.information).not.toHaveBeenCalled();
+});
+
+it("never hydrates another account's metadata into a confirmation", async () => {
+  responses.push({ content: JSON.stringify({ kind: "conversation", action: "keep", trackIds: [], reply: "Merci pour la précision." }) });
+  await run({
+    message: "voilà c'est ça",
+    discoveryContext: [{ id: collaboration.id, title: "A supplied title", channel: "A supplied artist" }],
+  }, "bob");
+  expect(JSON.stringify(requests[0].messages)).not.toContain("Béesau");
+  expect(JSON.stringify(requests[0].messages)).not.toContain("Titres récents revérifiés");
+});
+
+it("still requires a verified selection when a confirmation includes a new playback request", async () => {
+  responses.push(searchCall("cumbia"), selection([external[0].id], "replace"));
+  const result = await run({ message: "Oui c'est ça, joue ce morceau maintenant", scope: "all" });
+  expect(result).toMatchObject({ action: "replace", tracks: [{ id: external[0].id }] });
+  expect(boundaries.youtube).toHaveBeenCalledOnce();
+});
+
+it("cannot use a conversation label to execute unverified tracks", async () => {
+  responses.push({ content: JSON.stringify({ kind: "conversation", action: "replace", trackIds: [external[0].id], reply: "Je lance !" }) });
+  responses.push({ content: JSON.stringify({ kind: "conversation", action: "replace", trackIds: [external[0].id], reply: "Je lance !" }) });
+  await expect(run({ message: "oui", scope: "all" })).rejects.toThrow("Je n’ai pas pu rechercher ces indices");
+  expect(requests).toHaveLength(2);
+});
+
 it.each(["library", "youtube", "all"] as const)(
   "routes the real agent tools through %s only",
   async (scope) => {

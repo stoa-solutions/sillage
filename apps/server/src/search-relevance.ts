@@ -2,7 +2,28 @@ import { normalizeMusic, versionPenalty } from "./music-matching.ts";
 
 const filler = new Set("de du des par et the a un une moi stp la le les of and".split(" "));
 export function lookupTokens(query: string): string[] {
-  return [...new Set(normalizeMusic(query).split(" ").filter(w => w && !filler.has(w)))];
+  // Apostrophes inside credited names are not word boundaries (M’Dee / MDee).
+  return [...new Set(normalizeMusic(query.replace(/[’']/g, "")).split(" ").filter(w => w && !filler.has(w)))];
+}
+
+/** Bounded lexical recall for small spelling errors, before vector inference.
+ * Patterns are passed as SQL values, never interpolated into the statement.
+ */
+export function approximateLookupPatterns(query: string): string[] {
+  const tokens = lookupTokens(query);
+  if (!tokens.length || tokens.length > 4 || tokens.some(t => t.length < 4 || t.length > 32)) return [];
+  return tokens.map(token => {
+    const variants = new Set([token + "[[:alnum:]]*"]);
+    for (let i = 0; i <= token.length; i++) {
+      variants.add(token.slice(0, i) + "[[:alnum:]]" + token.slice(i));
+      if (i < token.length) {
+        variants.add(token.slice(0, i) + token.slice(i + 1));
+        variants.add(token.slice(0, i) + "[[:alnum:]]" + token.slice(i + 1));
+      }
+      if (i + 1 < token.length) variants.add(token.slice(0, i) + token[i + 1] + token[i] + token.slice(i + 2));
+    }
+    return "\\m(" + [...variants].join("|") + ")\\M";
+  });
 }
 export function isDescriptiveQuery(query: string): boolean {
   if (/^(jazz|classique|classical|reggae|metal|techno)$/.test(normalizeMusic(query))) return true;
@@ -10,6 +31,11 @@ export function isDescriptiveQuery(query: string): boolean {
 }
 function nearWord(a: string, b: string): boolean {
   if (a === b || (a.length >= 4 && b.startsWith(a))) return true;
+  if (a.length === b.length && a.length >= 4) {
+    const first = [...a].findIndex((letter, index) => letter !== b[index]);
+    if (first >= 0 && a[first] === b[first + 1] && a[first + 1] === b[first]
+      && a.slice(first + 2) === b.slice(first + 2)) return true;
+  }
   // One insertion, deletion or substitution on words of at least four letters.
   if (Math.min(a.length, b.length) < 3 || Math.max(a.length,b.length) < 4 || Math.abs(a.length-b.length)>1) return false;
   let i=0,j=0,edits=0;

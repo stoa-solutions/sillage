@@ -93,8 +93,8 @@ it("recovers when a provider asks for an exact title before searching, then retu
     config,
     "alice",
   );
-  expect(bodies[0].tool_choice).toBe("required");
-  expect(bodies[0].response_format).toBeUndefined();
+  expect(bodies[0].tool_choice).toBe("auto");
+  expect(bodies[0].response_format).toEqual({ type: "json_object" });
   expect(mocks.call).toHaveBeenCalledWith(
     { name: "music_search", arguments: { query: "Edge", mode: "text" } },
     undefined,
@@ -145,7 +145,7 @@ it("bounds a provider that never searches and does not claim the music is absent
       "alice",
     ),
   ).rejects.toThrow("pas pu rechercher");
-  expect(bodies).toHaveLength(5);
+  expect(bodies).toHaveLength(2); // One reminder, then a truthful failure.
   expect(mocks.close).toHaveBeenCalledOnce();
 });
 it("immediate correction overrides append while keeping the verified external track", async () => {

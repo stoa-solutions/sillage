@@ -6,7 +6,7 @@ import { infer } from "./inference-client.ts";
 import { TEXT_KEY, VISION_KEY } from "./indexing.ts";
 import { videoFromRow } from "./library.ts";
 import { vectorSql } from "./content.ts";
-import { hasGenreEvidence, isDescriptiveQuery, lookupTokens, matchesLookup, genreNameCollision, descriptiveRank } from "./search-relevance.ts";
+import { approximateLookupPatterns, hasGenreEvidence, isDescriptiveQuery, lookupTokens, matchesLookup, genreNameCollision, descriptiveRank } from "./search-relevance.ts";
 import { musicMatchRank, normalizeMusic } from "./music-matching.ts";
 export interface SearchInput {
   query: string;
@@ -136,6 +136,24 @@ export async function search(
         direct = true;
         lexical.push(...corrected.map(r => r.id));
       } else if (!direct) lexical.push(...result.rows.map((r) => r.id));
+      if (!direct && !descriptive) {
+        const patterns = approximateLookupPatterns(parsed.text);
+        if (patterns.length) {
+          // No extension or model startup is needed for a one-letter typo.
+          // Keep the same account, playlist, availability and rejection filters.
+          const approximate = await db.query(
+            `SELECT v.id,v.title,v.channel,v.music_metadata FROM videos v WHERE ${filter}
+             AND regexp_replace(unaccent(lower(coalesce(v.title,'') || ' ' || coalesce(v.channel,'') || ' ' || coalesce(v.music_metadata->>'searchText',''))), '[''’]', '', 'g') ~ ALL($${params.length + 1}::text[])
+             ORDER BY v.id LIMIT 200`,
+            [...params, patterns],
+          );
+          const accepted = approximate.rows.filter(r => matchesLookup(parsed.text, enrichedLookup(r), input.fuzzy));
+          if (accepted.length) {
+            direct = true;
+            lexical.push(...accepted.map(r => r.id));
+          }
+        }
+      }
     }
     if (!direct) try {
       const cacheKey = `${input.mode}:${parsed.text}`;

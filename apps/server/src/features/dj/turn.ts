@@ -6,6 +6,7 @@ import {
   readToolEvidence,
   discoveryReply,
   noSelectionReply,
+  compactVideo,
 } from "./evidence.ts";
 import type { InformationSource } from "../../information.ts";
 import { selectionReply } from "../../dj-selection.ts";
@@ -40,6 +41,14 @@ export async function djTurn(
       "Le mode DJ attend la configuration de son IA côté serveur. Ta bibliothèque reste disponible.",
     );
   await reserveDj(db, userId);
+  // A confirmation can refer to a card that is already playing/excluded from a
+  // continuation. Hydrate its owned metadata without treating it as a new pick.
+  const recentIds = [...new Set([
+    ...input.discoveryContext.map(({ id }) => id),
+    ...(plan.playback?.current ? [plan.playback.current.id] : []),
+  ])].filter(id => !input.rejectedIds.includes(id));
+  const recentTracks = recentIds.length ? await musicTracks(db, recentIds, userId) : [];
+  const messages = initialMessages(input, plan, recentTracks.slice(-8).map(compactVideo));
   const mcp = await connectMusicMcp(
     db,
     input.excludeIds,
@@ -50,7 +59,6 @@ export async function djTurn(
   );
   const candidates = new Map<string, DjTrack>();
   const discoveries = new Map<string, { video: DjTrack; inLibrary: boolean }>();
-  const messages = initialMessages(input, plan);
   const timeout = AbortSignal.any([
     AbortSignal.timeout(90000),
     ...(signal ? [signal] : []),
@@ -232,9 +240,24 @@ export async function djTurn(
         }
         continue;
       }
-      // Some providers ignore required tool choice. One bounded reminder avoids
-      // declaring music absent without ever searching the catalog.
-      if (!searched && !informationRequested && turn < MAX_ROUNDS - 1) {
+      let output: Selection;
+      try {
+        output = selection.parse(JSON.parse(message.content ?? ""));
+      } catch {
+        throw new DjUnavailable(
+          "Le DJ n’a pas renvoyé une sélection lisible. Réessaie.",
+          502,
+        );
+      }
+      // Let the model acknowledge a correction or discuss known context without
+      // executing a tool or manufacturing another musical selection.
+      if (!informationRequested && output.kind === "conversation"
+        && output.action === "keep" && !output.trackIds.length && !output.discoveryIds?.length) {
+        return { action: "keep" as const, tracks: [], reply: output.reply, source: "mcp" as const };
+      }
+      // A musical conclusion still needs evidence. This reminder does not force
+      // ordinary conversation through search and remains bounded to one retry.
+      if (!searched && !informationRequested && turn === 0) {
         messages.push({ role: "assistant", content: message.content ?? "" });
         messages.push({
           role: "user",
@@ -248,15 +271,6 @@ export async function djTurn(
           "Je n’ai pas pu rechercher ces indices. Réessaie ; ta musique continue.",
           502,
         );
-      let output: Selection;
-      try {
-        output = selection.parse(JSON.parse(message.content ?? ""));
-      } catch {
-        throw new DjUnavailable(
-          "Le DJ n’a pas renvoyé une sélection lisible. Réessaie.",
-          502,
-        );
-      }
       if (
         informationRequested &&
         output.action === "keep" &&

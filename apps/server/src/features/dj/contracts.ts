@@ -47,6 +47,8 @@ export const djInput = z.object({
     .default([]),
 });
 export const selection = z.object({
+  // Conversation is an explicit no-operation, not a failed musical selection.
+  kind: z.enum(["music", "information", "conversation"]).default("music"),
   discoveryIds: z
     .array(z.string().regex(/^[\w-]{11}$/))
     .max(8)

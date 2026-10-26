@@ -21,7 +21,7 @@ const tools = [
 ];
 afterEach(() => vi.unstubAllGlobals());
 
-it("keeps forced search, JSON mode and final-round tools compatible with Gemini", async () => {
+it("allows natural replies and tool calls in JSON mode, then concludes without tools", async () => {
   const bodies: Record<string, unknown>[] = [];
   vi.stubGlobal(
     "fetch",
@@ -40,10 +40,10 @@ it("keeps forced search, JSON mode and final-round tools compatible with Gemini"
     );
   }
   expect(bodies[0]).toMatchObject({
-    tool_choice: "required",
+    tool_choice: "auto",
     reasoning_effort: "low",
   });
-  expect(bodies[0].response_format).toBeUndefined();
+  expect(bodies[0].response_format).toEqual({ type: "json_object" });
   expect(bodies[1]).toMatchObject({
     tool_choice: "auto",
     response_format: { type: "json_object" },

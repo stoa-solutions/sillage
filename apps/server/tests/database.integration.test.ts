@@ -601,6 +601,11 @@ it.skipIf(!process.env.DJ_SIMULATION_URL)(
         source: "mcp",
         tracks: [{ id: "abcdefghijk", title: "Jazz du soir" }],
       });
+      const confirmation = await send("SIMULATE_CONFIRMATION voilà c’est ça");
+      expect(confirmation.status).toBe(200);
+      expect(await confirmation.json()).toMatchObject({
+        action: "keep", tracks: [], reply: "Oui, c’est bien ce morceau.",
+      });
       const hallucination = await send("SIMULATE_HALLUCINATION");
       expect(hallucination.status).toBe(502);
       expect((await hallucination.json()).error).toContain("non vérifié");

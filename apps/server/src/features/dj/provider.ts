@@ -54,14 +54,15 @@ export async function completeTurn(
       messages,
       // No tools on the last round: conclude from evidence already collected.
       ...(round < MAX_ROUNDS - 1
-        ? { tools, tool_choice: round === 0 ? "required" : "auto" }
+        ? { tools, tool_choice: "auto" }
         : {}),
       max_completion_tokens: config.model === "gemini-4-argon" ? 32768 : 4096,
       ...(["gemini-4-argon", "gemini-3.8-flash"].includes(config.model ?? "")
         ? { reasoning_effort: "low" }
         : {}),
-      // Gemini rejects JSON response mode when function calling is forced.
-      ...(round > 0 ? { response_format: { type: "json_object" } } : {}),
+      // AUTO permits both tool calls and ordinary structured replies. Requiring
+      // a tool here turns acknowledgements into unnecessary catalog searches.
+      response_format: { type: "json_object" },
     }),
   });
   if (!response.ok) {

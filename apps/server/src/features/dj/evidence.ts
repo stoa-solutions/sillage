@@ -21,7 +21,7 @@ function shortList(value: unknown, count: number, length: number) {
 }
 
 /** Retain musical clues; images, URLs and the duplicate search document cost context but add no evidence. */
-function compactVideo(video: DjTrack) {
+export function compactVideo(video: DjTrack) {
   const metadata = video.musicMetadata;
   return {
     id: video.id,

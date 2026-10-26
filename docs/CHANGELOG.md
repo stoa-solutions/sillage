@@ -4,6 +4,8 @@
 
 - Mac 1.7.5 (build 54), Sillage — by Stoa : nouveau nom affiché, icône orange haute résolution pour Mac et Chrome, signature Stoa et accents visuels harmonisés. Identifiants de connexion, dossiers de données, exécutable et compatibilité des mises à jour conservés.
 
+- DJ : les confirmations peuvent recevoir une réponse naturelle sans nouvelle recherche ni changement de lecture ; crédits récents relus pour le compte courant, rappel de recherche borné et priorité aux demandes musicales face aux indices géographiques. Recherche lexicale des petites fautes et apostrophes de noms avant les vecteurs, sans alias d’artiste codés en dur. Pilote AI SDK indépendant du transport de production.
+
 - Expérience Mac isolée : MixLab utilise AudioKit 5.7.2 pour comparer passage direct, fondu de quatre secondes et transfert progressif des basses. Rendus hors ligne testés sur signaux 44,1/48 kHz et deux extraits déjà en cache. Aucun branchement au lecteur installé ; démonstrations, mesures et retour arrière documentés.
 
 - Mac 1.7.4 : préparation des clips avec le moteur JavaScript Node installé explicitement indiqué à yt-dlp, sinon comportement Deno habituel. Les erreurs de préparation native sont visibles pendant la lecture YouTube et peuvent être retentées sans redémarrer le morceau. Circuit réel vérifié sur « Réseaux » de Niska en AV1 2160p, sans proxy ni cookie.

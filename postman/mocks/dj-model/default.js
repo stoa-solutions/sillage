@@ -8,9 +8,11 @@ http.createServer(async (req,res) => {
   if(prompt.includes('SIMULATE_503')){res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:{message:'Provider unavailable'}}));return;}
   let message;
   const output=body.messages.filter(x=>x.role==='tool').at(-1);
-  if(!output){message={role:'assistant',content:null,tool_calls:[{id:'search-1',type:'function',function:{name:'library_search',arguments:JSON.stringify({query:'jazz',maxDurationSeconds:1200})}}]};}
+  if(prompt.includes('SIMULATE_CONFIRMATION')){message={role:'assistant',content:JSON.stringify({kind:'conversation',reply:'Oui, c’est bien ce morceau.',trackIds:[],action:'keep'})};}
+  else if(!output){message={role:'assistant',content:null,tool_calls:[{id:'search-1',type:'function',function:{name:'music_search',arguments:JSON.stringify({query:'jazz',maxDurationSeconds:1200})}}]};}
   else {
-    const tracks=JSON.parse(output.content).tracks || [];
+    const evidence=JSON.parse(output.content);
+    const tracks=evidence.tracks || (evidence.results || []).map(item=>item.video);
     const ids=prompt.includes('SIMULATE_HALLUCINATION')?['invented123']:tracks.slice(0,3).map(x=>x.id);
     message={role:'assistant',content:JSON.stringify({reply:'On commence doucement, avec du jazz de ta bibliothèque.',trackIds:ids,action:ids.length?'replace':'keep'})};
   }
