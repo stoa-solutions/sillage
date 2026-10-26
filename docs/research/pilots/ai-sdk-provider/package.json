@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "@ai-sdk/google": "4.0.105",
+    "ai": "7.0.153",
+    "zod": "4.3.6"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node pilot.mjs"
+  }
+}
