@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage 1.7.9 (67) : Découvrir reprend le design de la Bibliothèque (barre latérale, en-tête, mêmes lignes, recommandations en liste). Onglets revenus dans le Compact (Studio en icône), redimensionnement borné (Compact jusqu’à 620, hauteur de la poche quand le panneau est replié), curseurs sans focus parasite au lancement.
+
 - Sillage 1.7.9 (66) : alignement sur la planche « Atelier de lumière » à la demande de Samuel. Barre latérale à un tiers de la fenêtre (220 à 380 points), titre en lecture en orange en sombre comme en clair, poche Compact sans onglets (⌘1, ⌘2, ⌘3 pour DJ, Bibliothèque, Découvrir), commandes de la poche dans l’ordre de la planche.
 
 - App 1.7.9 (58) : interface Sillage « Atelier de lumière » (cahier des charges UI) : apparence claire et sombre selon le système, vitre chaude sur la lumière Stoa (opaque avec Réduire la transparence), une seule palette contrôlée (textes ≥ 4,5:1, aussi mesurés sur le rendu). Compact à la taille de son contenu (≈ 520 × 224, panneau plafonné à 560, retour à sa place sans dérive). Bibliothèque et Découvrir d’un seul tenant : barre latérale, filtre en haut, en-tête compact, lignes en colonnes ; résultats de recherche en liste avec aperçu, recommandations en grille. Barre de lecture d’un bord à l’autre avec mini-clip (même lecteur, même audio ; pochette en repli).

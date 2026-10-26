@@ -24,30 +24,22 @@ struct DiscoverView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      HStack(spacing: 0) {
-        VStack(alignment: .leading, spacing: 12) {
-          SearchField(
-            prompt: "Un titre, un artiste, une envie…", text: $discovery.query,
-            onSubmit: { submit() }, busy: discovery.searching
-          ).accessibilityLabel("Rechercher un morceau")
-          filters
-          if !session.hasServer {
-            Button("Continuer avec Google") { session.showOnboarding = true }
-              .buttonStyle(.borderedProminent)
+      GeometryReader { geometry in
+        let wide = geometry.size.width >= (djCollapsed ? 780 : 1120)
+        HStack(spacing: 0) {
+          if wide {
+            sidebar.frame(width: LibraryView.sidebarWidth(geometry.size.width))
+              .sillageSurface(.sidebar)
+            SillageRule(vertical: true)
           }
-          if discovery.searched {
-            results
-          } else {
-            ScrollView { start }.scrollIndicators(.automatic)
+          main.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .sillageSurface(.reading)
+          if !djCollapsed {
+            SillageRule(vertical: true)
+            DJView(model: dj, panelOnly: true, source: discovery.scope)
+              .frame(width: 340).sillageSurface(.sidebar)
+              .transition(.move(edge: .trailing).combined(with: .opacity))
           }
-        }.padding(.top, 12).padding(.horizontal, 16)
-          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-          .sillageSurface(.reading)
-        if !djCollapsed {
-          SillageRule(vertical: true)
-          DJView(model: dj, panelOnly: true, source: discovery.scope)
-            .frame(width: 340).sillageSurface(.sidebar)
-            .transition(.move(edge: .trailing).combined(with: .opacity))
         }
       }
       NowPlayingBar(model: dj, player: dj.player, openDJ: openDJ)
@@ -145,111 +137,174 @@ struct DiscoverView: View {
     submit()
   }
 
-  // MARK: Before searching
+  // MARK: Sidebar (same structure as Bibliothèque)
 
-  private var start: some View {
-    VStack(alignment: .leading, spacing: 24) {
-      recommendations
-      if !recent.isEmpty {
-        VStack(alignment: .leading, spacing: 10) {
+  private var sidebar: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 2) {
+        sideTitle("Découvrir")
+        sideItem(
+          "Pour toi", detail: "Selon tes écoutes", symbol: "sparkles",
+          selected: !discovery.searched
+        ) {
+          discovery.query = ""
+          discovery.clearResults()
+        }
+        if !recent.isEmpty {
           HStack {
-            Text("Recherches récentes").font(.headline)
+            sideTitle("Récentes")
             Spacer()
-            Button("Effacer") { recentText = "" }.buttonStyle(.plain).font(.callout)
-              .foregroundStyle(.secondary)
+            Button("Effacer") { recentText = "" }.buttonStyle(.plain).font(.system(size: 12))
+              .foregroundStyle(.secondary).padding(.trailing, 8)
           }
-          FlowChips(items: recent, symbol: "clock.arrow.circlepath", action: run)
+          ForEach(recent.prefix(6), id: \.self) { query in
+            sideItem(
+              query, symbol: "clock.arrow.circlepath",
+              selected: discovery.searched && discovery.submittedQuery == query
+            ) { run(query) }
+          }
         }
-      }
-      if let artist = dj.current.flatMap({ TrackTitle($0).artist }) {
-        VStack(alignment: .leading, spacing: 10) {
-          Text("Autour de ce que tu écoutes").font(.headline)
-          FlowChips(
-            items: [artist, "\(artist) live", "\(artist) remix"], symbol: "sparkles", action: run)
+        sideTitle("Envies")
+        ForEach(Self.ideas.prefix(5), id: \.self) { idea in
+          sideItem(
+            idea, symbol: "music.note",
+            selected: discovery.searched && discovery.submittedQuery == idea
+          ) { run(idea) }
         }
-      }
-      VStack(alignment: .leading, spacing: 10) {
-        Text("Des envies pour commencer").font(.headline)
-        FlowChips(items: Self.ideas, action: run)
-      }
-      if !library.playlists.isEmpty {
-        VStack(alignment: .leading, spacing: 10) {
-          Text("Chercher dans une playlist").font(.headline)
-          LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: 200), spacing: 10, alignment: .leading)],
-            spacing: 10
-          ) {
-            ForEach(library.playlists.prefix(8)) { playlist in
-              Button {
-                discovery.scope = .library
-                discovery.playlistID = playlist.id
-              } label: {
-                HStack(spacing: 10) {
-                  PlaylistTile(title: playlist.title, size: 40)
-                  VStack(alignment: .leading, spacing: 1) {
-                    Text(playlist.title).font(.callout.weight(.medium)).lineLimit(1)
-                    Text("\(playlist.entries) vidéos").font(.caption).foregroundStyle(.secondary)
-                  }
-                  Spacer(minLength: 0)
-                }
-                .padding(8)
-                .background(
-                  RoundedRectangle(cornerRadius: 10).fill(
-                    discovery.playlistID == playlist.id
-                      ? Color.sillage(.selection) : Color.sillageHover)
-                )
-                .contentShape(Rectangle())
-              }.buttonStyle(.plain)
+        if !library.playlists.isEmpty {
+          sideTitle("Dans une playlist")
+          ForEach(library.playlists) { playlist in
+            sideItem(
+              playlist.title, detail: "\(playlist.entries.formatted()) vidéos",
+              tile: playlist.title,
+              selected: discovery.scope == .library && discovery.playlistID == playlist.id
+            ) {
+              discovery.scope = .library
+              discovery.playlistID = playlist.id
             }
           }
         }
-      }
-    }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+      }.padding(.horizontal, 8).padding(.vertical, 12)
+    }
   }
 
-  private var recommendations: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        Text("À découvrir pour toi").font(.headline)
-        Spacer()
-        if discovery.homeLoading { ProgressView().controlSize(.small) }
-        Button("Actualiser") { discovery.loadHome(force: true) }
-          .buttonStyle(.plain).font(.callout).foregroundStyle(.secondary)
-          .disabled(discovery.homeLoading || !session.hasServer)
-      }
-      if let home = discovery.home {
-        LazyVGrid(
-          columns: [GridItem(.adaptive(minimum: 190, maximum: 280), spacing: 16, alignment: .top)],
-          alignment: .leading, spacing: 20
-        ) {
-          ForEach(home.suggestions) { suggestion in
-            VStack(alignment: .leading, spacing: 6) {
-              ResultCard(
-                track: suggestion.video, onPlay: { dj.play(suggestion.video, source: .all) }
-              ) {
-                HStack(spacing: 4) {
-                  IconButton(symbol: "text.badge.plus", help: "Lire ensuite") {
-                    dj.enqueue(suggestion.video, source: .all)
-                  }
-                  SaveButton(
-                    item: DiscoveryItem(video: suggestion.video, inLibrary: suggestion.inLibrary),
-                    source: .all)
-                }
-              }
-              Text(suggestion.reason).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-            }
+  private func sideTitle(_ text: String) -> some View {
+    Text(text).font(.system(size: 14, weight: .semibold))
+      .padding(.horizontal, 8).padding(.top, 10).padding(.bottom, 4)
+      .accessibilityAddTraits(.isHeader)
+  }
+
+  private func sideItem(
+    _ title: String, detail: String? = nil, symbol: String? = nil, tile: String? = nil,
+    selected: Bool, action: @escaping () -> Void
+  ) -> some View {
+    Button(action: action) {
+      HStack(spacing: 10) {
+        if let tile {
+          PlaylistTile(title: tile, size: 40)
+        } else if let symbol {
+          PlaylistTile(title: title, symbol: symbol, size: detail == nil ? 28 : 40)
+        }
+        VStack(alignment: .leading, spacing: 1) {
+          Text(title).font(.system(size: 14, weight: .medium)).lineLimit(1).help(title)
+          if let detail {
+            Text(detail).font(.system(size: 12)).foregroundStyle(.secondary)
           }
         }
-        if let notice = home.notice { Text(notice).font(.callout).foregroundStyle(.secondary) }
-        if let empty = home.emptyReason { Text(empty).font(.callout).foregroundStyle(.secondary) }
+        Spacer(minLength: 0)
       }
-      if !discovery.homeError.isEmpty {
-        Text(discovery.homeError).font(.callout).foregroundStyle(.orange)
-      }
+      .padding(6)
+      .background(
+        RoundedRectangle(cornerRadius: 10).fill(selected ? Color.sillageSelectionGlass : .clear)
+      )
+      .contentShape(Rectangle())
+    }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
+  }
+
+  // MARK: Main
+
+  private var main: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      SearchField(
+        prompt: "Un titre, un artiste, une envie…", text: $discovery.query,
+        onSubmit: { submit() }, busy: discovery.searching
+      ).accessibilityLabel("Rechercher un morceau")
+      filters
       if !session.hasServer {
-        Text("Connecte-toi pour découvrir selon tes écoutes.").foregroundStyle(.secondary)
+        Button("Continuer avec Google") { session.showOnboarding = true }
+          .buttonStyle(.borderedProminent)
+      }
+      header
+      if discovery.searched { results } else { recommendations }
+    }.padding(.top, 12).padding(.horizontal, 16)
+  }
+
+  /// A small context block, as in Bibliothèque: tile, title, count.
+  private var header: some View {
+    let playlist = library.playlists.first { $0.id == discovery.playlistID }
+    let title =
+      discovery.searched
+      ? "« \(discovery.submittedQuery) »" : "Pour toi"
+    let detail: String =
+      discovery.searched
+      ? [
+        discovery.scope.title + (playlist.map { " · " + $0.title } ?? ""),
+        rows.isEmpty ? nil : "\(rows.count) résultats",
+      ].compactMap { $0 }.joined(separator: ", ")
+      : (discovery.home.map { "\($0.suggestions.count) titres selon tes écoutes" }
+        ?? "Selon tes écoutes")
+    return HStack(spacing: 12) {
+      PlaylistTile(
+        title: title, symbol: discovery.searched ? "magnifyingglass" : "sparkles", size: 56)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(title).font(.system(size: 22, weight: .medium)).lineLimit(1).truncationMode(.tail)
+          .help(title).accessibilityAddTraits(.isHeader)
+        Text(detail).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
+      }
+      Spacer(minLength: 0)
+      if !discovery.searched {
+        if discovery.homeLoading { ProgressView().controlSize(.small) }
+        IconButton(symbol: "arrow.clockwise", help: "Actualiser les recommandations") {
+          discovery.loadHome(force: true)
+        }.disabled(discovery.homeLoading || !session.hasServer)
       }
     }
+  }
+
+  /// Recommendations in the same rows as Bibliothèque; the reason is one hover away.
+  private var recommendations: some View {
+    ScrollView {
+      LazyVStack(spacing: 0) {
+        if let home = discovery.home {
+          ForEach(Array(home.suggestions.enumerated()), id: \.element.id) { index, suggestion in
+            SongRow(
+              index: index + 1, track: suggestion.video,
+              playing: dj.current?.id == suggestion.video.id,
+              onPlay: { dj.play(suggestion.video, source: .all) },
+              onEnqueue: { dj.enqueue(suggestion.video, source: .all) },
+              accessory: AnyView(
+                SaveButton(
+                  item: DiscoveryItem(video: suggestion.video, inLibrary: suggestion.inLibrary),
+                  source: .all)),
+              note: suggestion.reason)
+          }
+          if let notice = home.notice {
+            Text(notice).font(.callout).foregroundStyle(.secondary).padding(.vertical, 8)
+          }
+          if let empty = home.emptyReason {
+            EmptyState(symbol: "sparkles", message: empty)
+          }
+        }
+        if !discovery.homeError.isEmpty {
+          Text(discovery.homeError).font(.callout).foregroundStyle(Color.sillage(.actionText))
+            .padding(.vertical, 8)
+        }
+        if !session.hasServer {
+          EmptyState(
+            symbol: "person.crop.circle", message: "Connecte-toi pour découvrir selon tes écoutes.")
+        }
+      }.padding(.bottom, 12)
+    }.padding(.horizontal, -8)
   }
 
   // MARK: Results
@@ -290,15 +345,22 @@ struct DiscoverView: View {
     return ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 2) {
-          ForEach(rows) { row in
-            DiscoveryResultRow(
-              row: row, selected: row.id == selected?.id, playing: dj.current?.id == row.track.id,
-              source: discovery.scope, showsSave: saveInRows,
-              select: {
+          ForEach(Array(rows.enumerated()), id: \.element.id) { position, row in
+            SongRow(
+              index: position + 1, track: row.track,
+              playing: dj.current?.id == row.track.id,
+              onPlay: { dj.play(row.track, source: discovery.scope) },
+              onEnqueue: { dj.enqueue(row.track, source: discovery.scope) },
+              selected: row.id == selected?.id,
+              onSelect: {
                 selectedID = row.id
                 listFocused = true
-              }
+              },
+              accessory: saveInRows && row.item != nil
+                ? AnyView(SaveButton(item: row.item!, source: discovery.scope)) : nil
             )
+            .modifier(SaveAction(item: row.item))
+            .accessibilityAction(named: "Aperçu") { selectedID = row.id }
             .id(row.id)
             .onAppear {
               if row.id == lastID && discovery.nextPage != nil
@@ -373,91 +435,6 @@ struct DiscoveryRow: Identifiable, Equatable {
   /// The YouTube result, when the row did not come from the person's playlists.
   let item: DiscoveryItem?
   static func == (a: Self, b: Self) -> Bool { a.id == b.id }
-}
-
-/// A search result in the list: thumbnail, song on up to two lines, artist, duration and the
-/// queue action. One click selects (preview), a double click or Return plays.
-private struct DiscoveryResultRow: View {
-  let row: DiscoveryRow
-  let selected: Bool
-  let playing: Bool
-  let source: DiscoveryScope
-  /// When the preview is folded, saving a YouTube result stays on the row itself.
-  var showsSave = false
-  let select: () -> Void
-  @EnvironmentObject var dj: DJModel
-  @EnvironmentObject var discovery: DiscoveryModel
-  @State private var hovering = false
-  var body: some View {
-    let name = TrackTitle(row.track)
-    HStack(spacing: 12) {
-      Artwork(track: row.track, showsDuration: false).frame(width: 96)
-      VStack(alignment: .leading, spacing: 3) {
-        Text(name.title).font(.system(size: 14, weight: .medium)).lineLimit(2)
-          .foregroundStyle(playing ? Color.sillage(.playingText) : Color.primary)
-        Text(name.artist ?? row.track.channel ?? "YouTube").font(.system(size: 12))
-          .foregroundStyle(.secondary).lineLimit(1)
-      }.frame(maxWidth: .infinity, alignment: .leading)
-      if playing {
-        // The playing song is marked by a symbol too, never by colour alone.
-        Image(systemName: "speaker.wave.2.fill").font(.system(size: 11))
-          .foregroundStyle(Color.sillage(.primaryFill)).accessibilityHidden(true)
-      }
-      Text(row.track.durationSeconds.map(clock) ?? "").font(.system(size: 12).monospacedDigit())
-        .foregroundStyle(.secondary)
-      IconButton(symbol: "text.badge.plus", help: "Lire ensuite") {
-        dj.enqueue(row.track, source: source)
-      }
-      if showsSave, let item = row.item { SaveButton(item: item, source: source) }
-    }
-    .padding(.horizontal, 8).padding(.vertical, 8)
-    .overlay(alignment: .bottom) {
-      if !selected { SillageRule().opacity(0.5).padding(.leading, 116) }
-    }
-    .background {
-      RoundedRectangle(cornerRadius: 8)
-        .fill(selected ? Color.sillage(.selection) : hovering ? Color.sillageHover : .clear)
-        .overlay {
-          if selected {
-            RoundedRectangle(cornerRadius: 8).strokeBorder(
-              Color.sillage(.primaryFill), lineWidth: 1.5)
-          }
-        }
-    }
-    .contentShape(Rectangle())
-    .onHover { hovering = $0 }
-    .onTapGesture(count: 2) { dj.play(row.track, source: source) }
-    .onTapGesture(perform: select)
-    .help(name.artist.map { "\(name.title), \($0)" } ?? name.title)
-    .accessibilityElement(children: .contain)
-    .accessibilityLabel(name.artist.map { "\(name.title), \($0)" } ?? name.title)
-    .accessibilityValue(
-      [
-        selected ? "Sélectionné" : nil, playing ? "En lecture" : nil,
-        row.track.durationSeconds.map(spokenDuration),
-      ].compactMap { $0 }
-        .joined(separator: ", ")
-    )
-    .accessibilityAddTraits(selected ? .isSelected : [])
-    .accessibilityAction(named: "Lire") { dj.play(row.track, source: source) }
-    .accessibilityAction(named: "Lire ensuite") { dj.enqueue(row.track, source: source) }
-    .accessibilityAction(named: "Aperçu", select)
-    .accessibilityAction(named: "Ouvrir sur YouTube") { NSWorkspace.shared.open(row.track.url) }
-    .modifier(SaveAction(item: row.item))
-    .contextMenu {
-      Button("Lire maintenant", systemImage: "play.fill") { dj.play(row.track, source: source) }
-      Button("Lire ensuite", systemImage: "text.badge.plus") {
-        dj.enqueue(row.track, source: source)
-      }
-      if let item = row.item, !(item.inLibrary || discovery.savedIDs.contains(item.id)) {
-        Button("Ajouter à Mes découvertes", systemImage: "plus.circle") { discovery.add(item) }
-      }
-      Divider()
-      Button("Ouvrir sur YouTube", systemImage: "arrow.up.right.square") {
-        NSWorkspace.shared.open(row.track.url)
-      }
-    }
-  }
 }
 
 /// VoiceOver can save a YouTube result from its row, whatever the window width. The action
@@ -547,61 +524,6 @@ private struct SaveButton: View {
       IconButton(symbol: "plus.circle", help: "Ajouter à Mes découvertes") {
         discovery.add(item)
       }
-    }
-  }
-}
-
-/// Chips that wrap onto several lines.
-private struct FlowChips: View {
-  let items: [String]
-  var symbol: String? = nil
-  let action: (String) -> Void
-  var body: some View {
-    FlowLayout(spacing: 8) {
-      ForEach(items, id: \.self) { item in
-        Chip(title: item, symbol: symbol) { action(item) }
-      }
-    }
-  }
-}
-
-private struct FlowLayout: Layout {
-  var spacing: CGFloat
-  func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-    let width = proposal.width ?? .infinity
-    var x: CGFloat = 0
-    var y: CGFloat = 0
-    var line: CGFloat = 0
-    var widest: CGFloat = 0
-    for view in subviews {
-      let size = view.sizeThatFits(.unspecified)
-      if x > 0 && x + size.width > width {
-        y += line + spacing
-        x = 0
-        line = 0
-      }
-      x += size.width + spacing
-      widest = max(widest, x - spacing)
-      line = max(line, size.height)
-    }
-    return CGSize(width: min(widest, width), height: y + line)
-  }
-  func placeSubviews(
-    in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()
-  ) {
-    var x = bounds.minX
-    var y = bounds.minY
-    var line: CGFloat = 0
-    for view in subviews {
-      let size = view.sizeThatFits(.unspecified)
-      if x > bounds.minX && x + size.width > bounds.maxX {
-        y += line + spacing
-        x = bounds.minX
-        line = 0
-      }
-      view.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-      x += size.width + spacing
-      line = max(line, size.height)
     }
   }
 }

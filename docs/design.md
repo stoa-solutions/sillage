@@ -87,4 +87,10 @@ Le renommage reste visuel : bundle ID, chemins de données, Trousseau, schéma O
 Samuel a choisi de suivre la planche « Atelier de lumière » plutôt que le cahier sur trois points :
 - barre latérale de la Bibliothèque à 34,5 % de la fenêtre (220 à 380 points) au lieu de 190 à 220 ;
 - titre en lecture en orange Stoa sur graphite (4,44:1), toujours accompagné du haut-parleur ;
-- poche Compact sans onglets ; ⌘1, ⌘2 et ⌘3 mènent au DJ, à la Bibliothèque et à Découvrir, et le mini-clip ouvre le DJ.
+- (revenu le 26 octobre, à la demande de Samuel) la poche Compact garde ses onglets, en petite taille, avec Studio en icône ; ouvrir la Bibliothèque ou Découvrir agrandit la fenêtre à la taille de lecture. ⌘1, ⌘2 et ⌘3 restent disponibles.
+
+## Découvrir comme la Bibliothèque (26 octobre 2026)
+
+Même structure que la Bibliothèque : barre latérale (Pour toi, Récentes, Envies, Dans une playlist), recherche en haut, petit en-tête (tuile, titre, compte), puis les mêmes lignes `SongRow`. « Pour toi » liste les recommandations, la raison au survol et l’ajout à Mes découvertes en fin de ligne. Les résultats gardent la sélection cerclée d’orange et l’aperçu à droite quand la place le permet.
+
+Fenêtre : ses limites sont celles du contenu (scène `.contentSize`). Compact s’élargit jusqu’à 620 et, panneau replié, garde exactement la hauteur de sa poche ; les pages de lecture se redimensionnent librement et retrouvent la taille choisie.

@@ -56,21 +56,23 @@ struct MainView: View {
       page
     }
     .onPreferenceChange(CompactRestHeightKey.self) { compactRestHeight = $0 }
-    .frame(minWidth: minimumWidth, minHeight: minimumHeight)
+    // Content bounds are the window bounds (scene resizability .contentSize): Compact can be
+    // widened up to 620 and, panel folded, is exactly as tall as its pocket.
+    .frame(
+      minWidth: minimumWidth,
+      maxWidth: pocket ? CGFloat(RecallWindowLayout.compactMaximumWidth) : .infinity,
+      minHeight: minimumHeight,
+      maxHeight: pocket && panelCollapsed && compactRestHeight > 0 ? compactRestHeight : .infinity
+    )
     .toolbar {
       ToolbarItem(placement: .principal) {
-        // The pocket shows no tabs (Atelier board); ⌘1, ⌘2, ⌘3 and the Présentation menu
-        // still reach every page.
-        if pocket {
-          // An empty centre keeps Studio and Réglages on the right, as on the board.
-          Color.clear.frame(width: 1, height: 1).accessibilityHidden(true)
-        } else {
-          picker
-        }
+        // Every page stays one click away, Compact included (⌘1, ⌘2, ⌘3 too); opening
+        // Bibliothèque or Découvrir from Compact grows the window to the reading size.
+        picker.controlSize(pocket ? .small : .regular)
       }.withoutSystemBackground()
       ToolbarItem(placement: .primaryAction) {
         HStack(spacing: 10) {
-          DisplayPicker(player: dj.player)
+          DisplayPicker(player: dj.player, iconOnly: pocket)
           SettingsLink {
             Image(systemName: "gearshape").frame(width: 24, height: 24).contentShape(Rectangle())
           }
@@ -226,11 +228,14 @@ private struct Banner: View {
 /// The window follows through WindowSizer; this toggle only changes the presentation.
 private struct DisplayPicker: View {
   @ObservedObject var player: Player
+  /// Compact's narrow toolbar keeps the tabs and shows Studio as its icon only.
+  let iconOnly: Bool
   var body: some View {
     Toggle(
       isOn: Binding(get: { player.studio }, set: { player.setStudio($0) })
     ) {
-      Label("Studio", systemImage: "play.rectangle.on.rectangle").labelStyle(.titleAndIcon)
+      Label("Studio", systemImage: "play.rectangle.on.rectangle")
+        .labelStyle(iconOnly ? AnyLabelStyle(.iconOnly) : AnyLabelStyle(.titleAndIcon))
     }.toggleStyle(ToolbarToggleStyle())
       .accessibilityLabel("Studio")
       .help(

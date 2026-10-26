@@ -228,7 +228,10 @@ struct SillageSlider: View {
       RoundedRectangle(cornerRadius: 6, style: .continuous)
         .strokeBorder(Color.sillage(.focus), lineWidth: 2).opacity(focused ? 1 : 0)
     }
-    .focusable(isEnabled).focused($focused).focusEffectDisabled()
+    // Like AppKit sliders: reachable by Tab only with Full Keyboard Access, so a click or the
+    // window opening never parks the focus ring on it.
+    .focusable(isEnabled && NSApp.isFullKeyboardAccessEnabled).focused($focused)
+    .focusEffectDisabled()
     .onMoveCommand { direction in
       switch direction {
       case .left, .down: value = max(range.lowerBound, value - step)

@@ -2,8 +2,7 @@ import AppKit
 import RecallKit
 import SwiftUI
 
-// Pieces shared by Bibliothèque and Découvrir: a dense song list (Spotify), result cards
-// (YouTube Music) and a quiet command bar (Raycast). docs/design.md explains the rules.
+// Pieces shared by Bibliothèque and Découvrir: the song row, buttons, tiles and chips. docs/design.md explains the rules.
 
 /// One song in a list (Sillage Atelier): number or play on hover, 16:9 thumbnail, song and
 /// artist, hover actions, duration. Regular columns; rows separated by a faint rule only.
@@ -14,6 +13,13 @@ struct SongRow: View {
   let playing: Bool
   let onPlay: () -> Void
   let onEnqueue: () -> Void
+  /// Découvrir: one click selects the row for the preview; it is outlined in orange.
+  var selected = false
+  var onSelect: (() -> Void)? = nil
+  /// Extra control kept visible at the end (Découvrir's « add to Mes découvertes »).
+  var accessory: AnyView? = nil
+  /// Why the row is shown (a recommendation's reason), one hover away.
+  var note: String? = nil
   @State private var hovering = false
   var body: some View {
     let name = TrackTitle(track)
@@ -55,17 +61,28 @@ struct SongRow: View {
             .help("Plus d’actions").accessibilityLabel("Plus d’actions pour \(name.title)")
         }
       }.frame(width: 54, alignment: .trailing)
+      if let accessory { accessory }
       Text(track.durationSeconds.map(clock) ?? "").font(.system(size: 12).monospacedDigit())
         .foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
     }
     .padding(.horizontal, 8).padding(.vertical, 5)
-    .background(RoundedRectangle(cornerRadius: 8).fill(hovering ? Color.sillageHover : .clear))
+    .background {
+      RoundedRectangle(cornerRadius: 8)
+        .fill(selected ? Color.sillage(.selection) : hovering ? Color.sillageHover : .clear)
+        .overlay {
+          if selected {
+            RoundedRectangle(cornerRadius: 8).strokeBorder(
+              Color.sillage(.primaryFill), lineWidth: 1.5)
+          }
+        }
+    }
     .overlay(alignment: .bottom) {
-      SillageRule().opacity(0.5).padding(.leading, index == nil ? 76 : 114)
+      if !selected { SillageRule().opacity(0.5).padding(.leading, index == nil ? 76 : 114) }
     }
     .contentShape(Rectangle())
     .onHover { hovering = $0 }
     .onTapGesture(count: 2, perform: onPlay)
+    .onTapGesture { onSelect?() }
     .overlay(alignment: .leading) {
       // The number column doubles as a play button, as in Spotify.
       if index != nil {
@@ -82,7 +99,7 @@ struct SongRow: View {
       [playing ? "En lecture" : nil, track.durationSeconds.map(spokenDuration)]
         .compactMap { $0 }.joined(separator: ", ")
     )
-    .accessibilityAddTraits(playing ? .isSelected : [])
+    .accessibilityAddTraits(playing || selected ? .isSelected : [])
     .accessibilityAction(named: "Lire", onPlay)
     .accessibilityAction(named: "Lire ensuite", onEnqueue)
   }
@@ -90,43 +107,12 @@ struct SongRow: View {
   /// Full title, credits and genres stay one hover away instead of crowding the row.
   private func help(_ name: TrackTitle) -> String {
     var lines = [name.artist.map { "\(name.title) — \($0)" } ?? name.title]
+    if let note { lines.append(note) }
     if let metadata = track.musicMetadata, metadata.matched, !metadata.genres.isEmpty {
       lines.append(metadata.genres.prefix(3).joined(separator: ", "))
     }
     if let summary = track.description.flatMap(shortDescription) { lines.append(summary) }
     return lines.joined(separator: "\n")
-  }
-}
-
-/// A YouTube Music style card: 16:9 artwork with a play button on hover, song, artist.
-struct ResultCard<Accessory: View>: View {
-  let track: Track
-  let onPlay: () -> Void
-  @ViewBuilder var accessory: Accessory
-  @State private var hovering = false
-  var body: some View {
-    let name = TrackTitle(track)
-    VStack(alignment: .leading, spacing: 8) {
-      Button(action: onPlay) {
-        Artwork(track: track)
-          .overlay(alignment: .bottomTrailing) {
-            PlayDisc(size: 36).padding(8)
-              .opacity(hovering ? 1 : 0).offset(y: hovering ? 0 : 6)
-          }
-          .scaleEffect(hovering ? 1.02 : 1)
-      }.buttonStyle(.plain).accessibilityLabel("Lire " + name.title)
-      HStack(alignment: .top, spacing: 8) {
-        VStack(alignment: .leading, spacing: 2) {
-          Text(name.title).fontWeight(.medium).lineLimit(2)
-          Text(name.artist ?? track.channel ?? "YouTube").font(.callout)
-            .foregroundStyle(.secondary).lineLimit(1)
-        }.frame(maxWidth: .infinity, alignment: .leading)
-        accessory
-      }
-    }
-    .onHover { hovering = $0 }
-    .animation(.easeOut(duration: 0.15), value: hovering)
-    .accessibilityElement(children: .contain)
   }
 }
 
