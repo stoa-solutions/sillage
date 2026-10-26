@@ -11,6 +11,7 @@ it("recognizes credited apostrophes and adjacent transpositions without artist a
  expect(lookupTokens("M’Dee")).toEqual(["mdee"]);
  expect(matchesLookup("Madee basquany", { title: "basqany :( M’Dee", channel: "Ayau" })).toBe(true);
  expect(matchesLookup("MDee baqsany", { title: "basqany :( M’Dee", channel: "Ayau" })).toBe(true);
+ expect(matchesLookup("M Dee basquany", { title: "basqany :( M’Dee", channel: "Ayau" })).toBe(true);
  expect(matchesLookup("MDee completelydifferent", { title: "basqany :( M’Dee" })).toBe(false);
 });
 it("bounds approximate retrieval patterns and strips regex operators from user words", () => {

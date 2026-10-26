@@ -24,6 +24,9 @@ beforeAll(async () => {
     status: "matched", searchText: "basqany Ayau Shiza M’Dee", artists: [{ name: "M’Dee" }],
   }]);
   await db.query("INSERT INTO memberships(key,playlist_id,video_id,position,seen_generation) VALUES('typo','PLtypoAlice',$1,1,1)", [id]);
+  // An exact artist/title hit must not hide a collaboration indexed as metadata.
+  await db.query("INSERT INTO videos(id,title,channel,thumbnail_url,content_hash) VALUES('0VyNRvcx8Q4','M''Dee - Север','M''Dee','https://i.ytimg.com/vi/0VyNRvcx8Q4/hqdefault.jpg','fixture')");
+  await db.query("INSERT INTO memberships(key,playlist_id,video_id,position,seen_generation) VALUES('artist','PLtypoAlice','0VyNRvcx8Q4',2,1)");
 });
 beforeEach(() => { vi.mocked(infer).mockClear(); });
 afterAll(async () => {
@@ -32,12 +35,19 @@ afterAll(async () => {
   await admin.end();
 });
 
-it.each(["basquany", "baqsany", "Madee basquany", "MDee", "M’Dee"])(
+it.each(["basquany", "baqsany", "Madee basquany", "M Dee basquany"])(
   "retrieves %s lexically, including accepted collaborator credits, without vectors", async query => {
     const result = await search(db, input(query), alice);
     expect(result.results.map(r => r.video.id)).toEqual([id]);
     expect(infer).not.toHaveBeenCalled();
     expect(result.degraded).toBeNull();
+  },
+);
+it.each(["MDee", "M’Dee", "M'Dee", "M Dee"])(
+  "finds both an artist title and a credited collaboration for %s", async query => {
+    const result = await search(db, input(query), alice);
+    expect(result.results.map(r => r.video.id).sort()).toEqual(["0VyNRvcx8Q4", id].sort());
+    expect(infer).not.toHaveBeenCalled();
   },
 );
 it("retains account, playlist and explicit exclusion filters during typo expansion", async () => {

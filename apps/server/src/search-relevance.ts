@@ -49,7 +49,13 @@ function nearWord(a: string, b: string): boolean {
 }
 export function matchesLookup(query: string, track: {title: string; channel?: string | null}, fuzzy = false): boolean {
   const tokens = lookupTokens(query);
-  const metadata = lookupTokens(track.title + " " + (track.channel ?? ""));
+  const text = track.title + " " + (track.channel ?? "");
+  // Spoken names can arrive with a space instead of their apostrophe. Retain
+  // both forms so a short initial is not lost after candidate retrieval.
+  const metadata = [...new Set([
+    ...lookupTokens(text),
+    ...lookupTokens(text.replace(/[’']/g, " ")),
+  ])];
   return tokens.length > 0 && tokens.every(t => metadata.some(w => nearWord(t,w) || (fuzzy && t.length >= 4 && w.length - t.length <= 2 && w.includes(t))));
 }
 /** Avoid treating an artist's name as evidence of a requested musical genre. */

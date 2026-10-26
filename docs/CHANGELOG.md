@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Recherche : les noms à apostrophe gardent aussi leur forme séparée issue de la dictée (« M’Dee », « MDee », « M Dee ») ; une correspondance exacte dans le titre d’un autre morceau n’écarte plus les collaborations créditées. Cas reproduit avec le modèle réel et couvert dans PostgreSQL.
+
 - Mac 1.7.5 (build 54), Sillage — by Stoa : nouveau nom affiché, icône orange haute résolution pour Mac et Chrome, signature Stoa et accents visuels harmonisés. Identifiants de connexion, dossiers de données, exécutable et compatibilité des mises à jour conservés.
 
 - DJ : les confirmations peuvent recevoir une réponse naturelle sans nouvelle recherche ni changement de lecture ; crédits récents relus pour le compte courant, rappel de recherche borné et priorité aux demandes musicales face aux indices géographiques. Recherche lexicale des petites fautes et apostrophes de noms avant les vecteurs, sans alias d’artiste codés en dur. Pilote AI SDK indépendant du transport de production.

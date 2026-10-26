@@ -8,6 +8,10 @@ import { videoFromRow } from "./library.ts";
 import { vectorSql } from "./content.ts";
 import { approximateLookupPatterns, hasGenreEvidence, isDescriptiveQuery, lookupTokens, matchesLookup, genreNameCollision, descriptiveRank } from "./search-relevance.ts";
 import { musicMatchRank, normalizeMusic } from "./music-matching.ts";
+const lookupDocument = "coalesce(v.title,'') || ' ' || coalesce(v.channel,'') || ' ' || coalesce(v.music_metadata->>'searchText','')";
+// Index both tokenizations in this bounded lookup: M’Dee, MDee and M Dee.
+// This applies even when an exact title elsewhere already matched the artist.
+const nameLookupDocument = `regexp_replace(${lookupDocument}, '[''’]', '', 'g') || ' ' || regexp_replace(${lookupDocument}, '[''’]', ' ', 'g')`;
 export interface SearchInput {
   query: string;
   fuzzy?: boolean;
@@ -101,7 +105,7 @@ export async function search(
       const precise = !descriptive && lookupTokens(parsed.text).length
         ? await db.query(
           `SELECT v.id FROM videos v WHERE ${filter}
-          AND to_tsvector('recall_simple',coalesce(v.title,'') || ' ' || coalesce(v.channel,'') || ' ' || coalesce(v.music_metadata->>'searchText','')) @@ plainto_tsquery('recall_simple',$${params.length + 1})
+          AND to_tsvector('recall_simple',${nameLookupDocument}) @@ plainto_tsquery('recall_simple',$${params.length + 1})
           ORDER BY v.id LIMIT 200`, [...params, lookupTokens(parsed.text).join(" ")])
         : { rows: [] };
       direct = knownAlbum || precise.rows.length > 0;
