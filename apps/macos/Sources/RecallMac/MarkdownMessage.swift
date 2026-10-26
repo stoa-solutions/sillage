@@ -24,7 +24,7 @@ struct MarkdownMessage: View {
           ScrollView(.horizontal) {
             Text(block.text).font(.system(.callout, design: .monospaced)).fixedSize(
               horizontal: true, vertical: false)
-          }.padding(10).background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
+          }.padding(10).background(Color.sillageHover, in: RoundedRectangle(cornerRadius: 8))
         case .quote:
           HStack(alignment: .top, spacing: 10) {
             RoundedRectangle(cornerRadius: 1).fill(.secondary.opacity(0.4)).frame(width: 2)

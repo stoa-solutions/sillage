@@ -1,7 +1,7 @@
 import RecallKit
 import SwiftUI
 
-/// Reading pages use a stable dark surface; only the DJ stage is immersive.
+/// Reading pages use the Sillage reading material; only the Studio DJ stage is immersive.
 /// Context is inherited by panels, including the shared DJ chat and mini-player.
 enum Surface { case standard, immersive, reading }
 
@@ -13,22 +13,22 @@ extension EnvironmentValues {
   }
 }
 
+/// A grouped surface with rounded corners (12 pt): Sillage reading material in both
+/// appearances, the dark glass over the Studio clip. Reduce Transparency makes both opaque.
 struct GlassPanel: ViewModifier {
   @Environment(\.surface) private var surface
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-  var radius: CGFloat = 20
+  @Environment(\.colorSchemeContrast) private var contrast
+  var radius: CGFloat = 12
 
   func body(content: Content) -> some View {
     let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
     content.background {
       switch surface {
-      case .standard:
-        shape.fill(.background.secondary)
-          .overlay(shape.strokeBorder(.separator.opacity(0.5)))
-      case .reading:
-        // An explicit fill keeps text contrast independent of the clip's brightness.
-        shape.fill(Color(white: 0.075).opacity(reduceTransparency ? 1 : 0.86))
-          .overlay(shape.strokeBorder(.white.opacity(0.09)))
+      case .standard, .reading:
+        Color.clear.sillageSurface(.reading)
+          .overlay(
+            shape.strokeBorder(Color.sillage(.separator).opacity(contrast == .increased ? 1 : 0.6)))
       case .immersive:
         if reduceTransparency {
           shape.fill(Color(white: 0.075))
@@ -42,7 +42,7 @@ struct GlassPanel: ViewModifier {
   }
 }
 extension View {
-  func glassPanel(radius: CGFloat = 20) -> some View { modifier(GlassPanel(radius: radius)) }
+  func glassPanel(radius: CGFloat = 12) -> some View { modifier(GlassPanel(radius: radius)) }
 }
 
 /// The clip keeps playing across navigation; its presentation follows the page context.
@@ -76,28 +76,5 @@ struct StageBackground: View {
     }
     .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: surface)
     .accessibilityHidden(true)
-  }
-}
-
-/// Compact uses a still cover; reading pages keep only a restrained hint of its colour.
-struct AmbientBackground: View {
-  let current: Track?
-  @Environment(\.surface) private var surface
-  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  var body: some View {
-    ZStack {
-      LinearGradient(
-        colors: [Color(white: 0.11), Color(white: 0.05)], startPoint: .top, endPoint: .bottom)
-      if current == nil {
-        IdleBackground()
-      } else if !reduceTransparency, let current {
-        Artwork.image(for: current, quality: "hqdefault").blur(radius: 60)
-          .opacity(surface == .reading ? 0.18 : 0.45)
-          .clipped().transition(.opacity).id(current.id)
-      }
-      if current != nil { Color.black.opacity(0.35) }
-    }.animation(reduceMotion ? nil : .easeInOut(duration: 0.4), value: current?.id)
-      .accessibilityHidden(true)
   }
 }

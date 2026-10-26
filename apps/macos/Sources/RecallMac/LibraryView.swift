@@ -1,8 +1,9 @@
 import RecallKit
 import SwiftUI
 
-/// Playlists on the left, the chosen one on the right as a dense song list, as in Spotify.
-/// Rows load while scrolling; a narrow window swaps the sidebar for a playlist menu.
+/// Sillage « Atelier de lumière »: one surface, playlists on the left, the filter on top,
+/// a small collection header and a dense song list. Rows load while scrolling; a narrow
+/// window swaps the sidebar for a playlist menu on the title.
 struct LibraryView: View {
   let onPlay: () -> Void
   @EnvironmentObject var session: Session
@@ -14,42 +15,44 @@ struct LibraryView: View {
   @EnvironmentObject var history: ListeningHistoryModel
 
   var body: some View {
-    VStack(spacing: 12) {
+    VStack(spacing: 0) {
       GeometryReader { geometry in
         let wide = geometry.size.width >= 780
-        HStack(spacing: 12) {
+        HStack(spacing: 0) {
           if wide && session.hasServer {
-            sidebar.frame(width: 230).glassPanel()
+            sidebar.frame(width: 210).sillageSurface(.sidebar)
+            SillageRule(vertical: true)
           }
-          main(wide: wide).glassPanel()
+          main(wide: wide).frame(maxWidth: .infinity, maxHeight: .infinity)
+            .sillageSurface(.reading)
         }
       }
       NowPlayingBar(model: dj, player: dj.player, openDJ: onPlay)
-    }.padding(16)
-      .task(id: session.generation) { await library.watchEnrichment() }
-      .onChange(of: session.generation) { _, _ in
-        showingHistory = false
-      }
-      .confirmationDialog(
-        "Retirer « \(deleting?.title ?? "") » ?", isPresented: deletingBinding,
-        titleVisibility: .visible, presenting: deleting
-      ) { playlist in
-        Button("Retirer", role: .destructive) { library.deletePlaylist(playlist) }
-      } message: { playlist in
-        Text(
-          playlist.syncEnabled
-            ? "Ses vidéos quittent ta bibliothèque, sauf celles présentes dans une autre de tes playlists. La playlist reste intacte sur YouTube ; tu pourras la rajouter avec son lien."
-            : "Ses vidéos quittent ta bibliothèque, sauf celles présentes dans une autre de tes playlists."
-        )
-      }
+    }
+    .task(id: session.generation) { await library.watchEnrichment() }
+    .onChange(of: session.generation) { _, _ in
+      showingHistory = false
+    }
+    .confirmationDialog(
+      "Retirer « \(deleting?.title ?? "") » ?", isPresented: deletingBinding,
+      titleVisibility: .visible, presenting: deleting
+    ) { playlist in
+      Button("Retirer", role: .destructive) { library.deletePlaylist(playlist) }
+    } message: { playlist in
+      Text(
+        playlist.syncEnabled
+          ? "Ses vidéos quittent ta bibliothèque, sauf celles présentes dans une autre de tes playlists. La playlist reste intacte sur YouTube ; tu pourras la rajouter avec son lien."
+          : "Ses vidéos quittent ta bibliothèque, sauf celles présentes dans une autre de tes playlists."
+      )
+    }
   }
 
   // MARK: Sidebar
 
   private var sidebar: some View {
     VStack(alignment: .leading, spacing: 0) {
-      HStack {
-        Text("Playlists").font(.headline)
+      HStack(spacing: 2) {
+        Text("Playlists").font(.system(size: 13, weight: .semibold))
         Spacer()
         IconButton(symbol: "plus", help: "Ajouter une playlist YouTube") { adding = true }
           .popover(isPresented: $adding, arrowEdge: .bottom) { importForm.padding(16) }
@@ -61,7 +64,7 @@ struct LibraryView: View {
         .animation(
           library.syncing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default,
           value: library.syncing)
-      }.padding(.horizontal, 14).padding(.top, 14).padding(.bottom, 8)
+      }.padding(.leading, 16).padding(.trailing, 8).padding(.top, 12).padding(.bottom, 8)
       ScrollView {
         VStack(spacing: 2) {
           historyItem
@@ -93,16 +96,16 @@ struct LibraryView: View {
       library.selectedPlaylist = id
     } label: {
       HStack(spacing: 10) {
-        PlaylistTile(title: title, symbol: symbol, size: 36)
+        PlaylistTile(title: title, symbol: symbol, size: 32)
         VStack(alignment: .leading, spacing: 1) {
-          Text(title).font(.callout.weight(.medium)).lineLimit(1)
-          Text("\(count) vidéos").font(.caption).foregroundStyle(.secondary)
+          Text(title).font(.system(size: 13, weight: .medium)).lineLimit(1).help(title)
+          Text("\(count.formatted()) vidéos").font(.system(size: 11)).foregroundStyle(.secondary)
         }
         Spacer(minLength: 0)
       }
       .padding(6)
       .background(
-        RoundedRectangle(cornerRadius: 8).fill(.white.opacity(selected ? 0.1 : 0))
+        RoundedRectangle(cornerRadius: 8).fill(selected ? Color.sillage(.selection) : .clear)
       )
       .contentShape(Rectangle())
     }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
@@ -111,16 +114,17 @@ struct LibraryView: View {
   private var historyItem: some View {
     Button(action: openHistory) {
       HStack(spacing: 10) {
-        PlaylistTile(title: "Écoutes récentes", symbol: "clock.arrow.circlepath", size: 36)
+        PlaylistTile(title: "Écoutes récentes", symbol: "clock.arrow.circlepath", size: 32)
         VStack(alignment: .leading, spacing: 1) {
-          Text("Écoutes récentes").font(.callout.weight(.medium)).lineLimit(1)
-          Text("Historique").font(.caption).foregroundStyle(.secondary)
+          Text("Écoutes récentes").font(.system(size: 13, weight: .medium)).lineLimit(1)
+          Text("Historique").font(.system(size: 11)).foregroundStyle(.secondary)
         }
         Spacer(minLength: 0)
       }
       .padding(6)
       .background(
-        RoundedRectangle(cornerRadius: 8).fill(.white.opacity(showingHistory ? 0.1 : 0))
+        RoundedRectangle(cornerRadius: 8).fill(
+          showingHistory ? Color.sillage(.selection) : .clear)
       )
       .contentShape(Rectangle())
     }.buttonStyle(.plain).accessibilityAddTraits(showingHistory ? .isSelected : [])
@@ -156,10 +160,13 @@ struct LibraryView: View {
         if library.importing { importStatus }
       }.padding(32).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     } else {
-      VStack(alignment: .leading, spacing: 0) {
-        header(wide: wide).padding(20)
+      VStack(alignment: .leading, spacing: 12) {
+        SearchField(prompt: "Filtrer : artiste, titre, souvenir…", text: $library.query)
+          .onChange(of: library.query) { _, _ in library.search() }
+          .accessibilityLabel("Filtrer la bibliothèque")
+        header(wide: wide)
         songs
-      }
+      }.padding(.top, 12).padding(.horizontal, 16)
     }
   }
 
@@ -169,41 +176,40 @@ struct LibraryView: View {
   private var title: String { library.selectedPlaylistSummary?.title ?? "Toutes les vidéos" }
   private var count: Int { library.selectedPlaylistSummary?.entries ?? library.libraryCount }
 
+  /// A small context block, not a hero: tile, title, count, then play and shuffle.
   private func header(wide: Bool) -> some View {
-    VStack(alignment: .leading, spacing: 16) {
-      HStack(alignment: .bottom, spacing: 18) {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(alignment: .center, spacing: 12) {
         PlaylistTile(
           title: title, symbol: library.selectedPlaylist.isEmpty ? "music.note.list" : nil,
-          size: 104
-        ).shadow(color: .black.opacity(0.4), radius: 12, y: 6)
-        VStack(alignment: .leading, spacing: 6) {
-          Text(library.selectedPlaylist.isEmpty ? "Bibliothèque" : "Playlist").font(.callout)
-            .foregroundStyle(.secondary)
+          size: 48)
+        VStack(alignment: .leading, spacing: 2) {
           if wide {
-            Text(title).font(.system(size: 34, weight: .bold)).lineLimit(1)
-              .minimumScaleFactor(0.6)
+            Text(title).font(.system(size: 22, weight: .semibold)).lineLimit(1)
+              .truncationMode(.tail).help(title).accessibilityAddTraits(.isHeader)
           } else {
             playlistMenu
           }
-          HStack(spacing: 10) {
-            Text("\(count) vidéos").foregroundStyle(.secondary)
+          HStack(spacing: 8) {
+            Text("\(count.formatted()) vidéos").foregroundStyle(.secondary)
             enrichmentChip
-          }.font(.callout)
+          }.font(.system(size: 12))
         }
+        Spacer(minLength: 0)
       }
-      HStack(spacing: 12) {
-        Button(action: playAll) { PlayDisc(size: 44) }.buttonStyle(.plain)
+      HStack(spacing: 10) {
+        Button(action: playAll) { PlayDisc(size: 30) }.buttonStyle(.plain)
           .disabled(library.results.isEmpty).help("Lire depuis le début")
           .accessibilityLabel("Lire \(title)")
         IconButton(symbol: "shuffle", help: "Lire dans un ordre aléatoire", action: shuffle)
-          .font(.title3).disabled(library.results.isEmpty)
+          .disabled(library.results.isEmpty)
         if let playlist = library.selectedPlaylistSummary {
           Menu {
             Button("Retirer de ma bibliothèque…", systemImage: "trash", role: .destructive) {
               deleting = playlist
             }
           } label: {
-            Image(systemName: "ellipsis").font(.title3).frame(width: 26, height: 26)
+            Image(systemName: "ellipsis").frame(width: 26, height: 26)
               .contentShape(Rectangle())
           }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
             .foregroundStyle(.secondary).help("Plus d’actions pour cette playlist")
@@ -211,13 +217,9 @@ struct LibraryView: View {
         }
         if !wide {
           IconButton(symbol: "plus", help: "Ajouter une playlist YouTube") { adding = true }
-            .font(.title3)
             .popover(isPresented: $adding, arrowEdge: .bottom) { importForm.padding(16) }
         }
-        Spacer()
-        SearchField(prompt: "Filtrer : artiste, titre, souvenir…", text: $library.query)
-          .frame(maxWidth: 300)
-          .onChange(of: library.query) { _, _ in library.search() }
+        Spacer(minLength: 0)
       }
       if !wide && library.importing { importStatus }
     }
@@ -240,7 +242,7 @@ struct LibraryView: View {
       }
     } label: {
       HStack(spacing: 6) {
-        Text(title).font(.system(size: 28, weight: .bold)).lineLimit(1)
+        Text(title).font(.system(size: 22, weight: .semibold)).lineLimit(1)
         Image(systemName: "chevron.down").font(.callout.weight(.semibold))
           .foregroundStyle(.secondary)
       }
@@ -270,8 +272,9 @@ struct LibraryView: View {
         if library.loadingMore {
           ProgressView().controlSize(.small).padding(12)
         }
-      }.padding(.horizontal, 10).padding(.bottom, 12)
+      }.padding(.bottom, 12)
     }
+    .padding(.horizontal, -8)
     .id("\(library.selectedPlaylist)|\(library.query)")
     .overlay {
       if library.searching && library.results.isEmpty {
@@ -351,7 +354,7 @@ private struct EnrichmentChip: View {
       }
       .foregroundStyle(.secondary)
       .padding(.horizontal, 8).padding(.vertical, 3)
-      .background(Capsule().fill(.white.opacity(0.07)))
+      .background(Capsule().fill(Color.sillageHover))
     }.buttonStyle(.plain).help("Détails de l’enrichissement MusicBrainz")
       .popover(isPresented: $open) {
         EnrichmentProgressView(progress: progress, error: error).padding(12).frame(width: 420)

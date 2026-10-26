@@ -1,17 +1,20 @@
 import RecallKit
 import SwiftUI
 
-/// One search across the account's playlists and YouTube, with the DJ panel alongside.
-/// A Raycast-like bar searches while typing; results read like YouTube Music: the best match
-/// large, songs from the playlists as a list, YouTube videos as cards.
+/// One search across the account's playlists and YouTube (Sillage « Atelier de lumière »).
+/// The bar searches while typing; results read as one list with a preview on the right,
+/// which folds before the list gets too narrow. Recommendations keep their own grid.
+/// The DJ and the queue stay one click away in a panel that opens on demand.
 struct DiscoverView: View {
   let openDJ: () -> Void
   @EnvironmentObject var discovery: DiscoveryModel
   @EnvironmentObject var library: LibraryModel
   @EnvironmentObject var session: Session
   @EnvironmentObject var dj: DJModel
-  @State private var showAllLibrary = false
   @State private var typing: Task<Void, Never>?
+  @State private var selectedID: String?
+  @AppStorage("discoverDJPanelCollapsed") private var djCollapsed = true
+  @FocusState private var listFocused: Bool
   @AppStorage("discover.recent") private var recentText = ""
   private static let ideas = [
     "Rap français", "Afrobeat", "Jazz doux", "Années 80", "Lo-fi pour travailler",
@@ -20,37 +23,52 @@ struct DiscoverView: View {
   private var recent: [String] { recentText.split(separator: "\n").map(String.init) }
 
   var body: some View {
-    VStack(spacing: 12) {
-      HStack(spacing: 12) {
-        VStack(alignment: .leading, spacing: 14) {
-          CommandBar(
+    VStack(spacing: 0) {
+      HStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 12) {
+          SearchField(
             prompt: "Un titre, un artiste, une envie…", text: $discovery.query,
-            onSubmit: { submit() }
-          ) {
-            if discovery.searching { ProgressView().controlSize(.small) }
-          }.accessibilityLabel("Rechercher un morceau")
+            onSubmit: { submit() }, busy: discovery.searching
+          ).accessibilityLabel("Rechercher un morceau")
           filters
           if !session.hasServer {
             Button("Continuer avec Google") { session.showOnboarding = true }
               .buttonStyle(.borderedProminent)
           }
-          ScrollView {
-            if discovery.searched { results } else { start }
-          }.scrollIndicators(.automatic)
-        }.padding(20).frame(maxWidth: .infinity).glassPanel()
-        DJView(model: dj, panelOnly: true, source: discovery.scope)
+          if discovery.searched {
+            results
+          } else {
+            ScrollView { start }.scrollIndicators(.automatic)
+          }
+        }.padding(.top, 12).padding(.horizontal, 16)
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+          .sillageSurface(.reading)
+        if !djCollapsed {
+          SillageRule(vertical: true)
+          DJView(model: dj, panelOnly: true, source: discovery.scope)
+            .frame(width: 340).sillageSurface(.sidebar)
+            .transition(.move(edge: .trailing).combined(with: .opacity))
+        }
       }
       NowPlayingBar(model: dj, player: dj.player, openDJ: openDJ)
-    }.padding(16)
-      .task(id: session.generation) { discovery.loadHome() }
-      .onChange(of: discovery.query) { _, text in searchWhileTyping(text) }
-      .onChange(of: discovery.submittedQuery) { _, _ in showAllLibrary = false }
-      .onChange(of: discovery.scope) { _, _ in
-        if discovery.searched { discovery.search() }
+    }
+    .task(id: session.generation) {
+      discovery.loadHome()
+      // Recette: a test build can open on results without scripted typing.
+      if let query = ProcessInfo.processInfo.environment["SILLAGE_QA_QUERY"],
+        discovery.query.isEmpty
+      {
+        discovery.query = query
       }
-      .onChange(of: discovery.playlistID) { _, _ in
-        if discovery.searched && discovery.scope != .youtube { discovery.search() }
-      }
+    }
+    .onChange(of: discovery.query) { _, text in searchWhileTyping(text) }
+    .onChange(of: discovery.submittedQuery) { _, _ in selectedID = nil }
+    .onChange(of: discovery.scope) { _, _ in
+      if discovery.searched { discovery.search() }
+    }
+    .onChange(of: discovery.playlistID) { _, _ in
+      if discovery.searched && discovery.scope != .youtube { discovery.search() }
+    }
   }
 
   // MARK: Search
@@ -61,6 +79,13 @@ struct DiscoverView: View {
         Chip(title: scope.title, selected: discovery.scope == scope) { discovery.scope = scope }
       }
       Spacer()
+      Button {
+        withAnimation(.easeOut(duration: 0.2)) { djCollapsed.toggle() }
+      } label: {
+        Label("DJ et file", systemImage: "sidebar.right")
+      }.buttonStyle(SillageChipStyle(selected: !djCollapsed))
+        .help(djCollapsed ? "Ouvrir le DJ et la file" : "Replier le DJ et la file")
+        .accessibilityValue(djCollapsed ? "Replié" : "Ouvert")
       if discovery.scope != .youtube && !library.playlists.isEmpty {
         Menu {
           Button("Toutes mes playlists") { discovery.playlistID = "" }
@@ -165,7 +190,8 @@ struct DiscoverView: View {
                 .padding(8)
                 .background(
                   RoundedRectangle(cornerRadius: 10).fill(
-                    .white.opacity(discovery.playlistID == playlist.id ? 0.12 : 0.05))
+                    discovery.playlistID == playlist.id
+                      ? Color.sillage(.selection) : Color.sillageHover)
                 )
                 .contentShape(Rectangle())
               }.buttonStyle(.plain)
@@ -223,139 +249,95 @@ struct DiscoverView: View {
 
   // MARK: Results
 
-  private var best: Track? {
-    discovery.scope == .youtube
-      ? discovery.youtube.first?.video
-      : discovery.libraryTracks.first ?? discovery.youtube.first?.video
+  /// One list: playlist matches first (unless YouTube only), then YouTube videos.
+  private var rows: [DiscoveryRow] {
+    var rows: [DiscoveryRow] = []
+    if discovery.scope != .youtube {
+      rows += discovery.libraryTracks.map {
+        DiscoveryRow(id: "library:" + $0.id, track: $0, item: nil)
+      }
+    }
+    if discovery.scope != .library {
+      rows += discovery.youtube.map {
+        DiscoveryRow(id: "youtube:" + $0.id, track: $0.video, item: $0)
+      }
+    }
+    return rows
   }
-  /// The best result shows once: the lists below leave it out while its card is visible.
-  private var bestShown: String? { showAllLibrary && discovery.scope != .youtube ? nil : best?.id }
-  private var libraryShown: [Track] {
-    let others = discovery.libraryTracks.filter { $0.id != bestShown }
-    return showAllLibrary ? others : Array(others.prefix(4))
+  private var selected: DiscoveryRow? {
+    rows.first { $0.id == selectedID } ?? rows.first
   }
 
   private var results: some View {
-    LazyVStack(alignment: .leading, spacing: 24) {
-      if let best, !showAllLibrary || discovery.scope == .youtube {
-        ViewThatFits(in: .horizontal) {
-          HStack(alignment: .top, spacing: 20) {
-            bestResult(best).frame(width: 300)
-            songsSection.frame(maxWidth: .infinity)
-          }
-          VStack(alignment: .leading, spacing: 20) {
-            bestResult(best).frame(maxWidth: 360)
-            songsSection
-          }
-        }
-      } else if discovery.scope != .youtube {
-        songsSection
-      }
-      if discovery.scope != .library { youtubeSection }
-    }.padding(.vertical, 4)
-  }
-
-  private func bestResult(_ track: Track) -> some View {
-    let name = TrackTitle(track)
-    return VStack(alignment: .leading, spacing: 12) {
-      Text("Meilleur résultat").font(.headline)
-      VStack(alignment: .leading, spacing: 10) {
-        Artwork(track: track)
-        Text(name.title).font(.title2.bold()).lineLimit(2)
-        HStack(spacing: 6) {
-          ChannelAvatar(name: name.artist ?? track.channel ?? "?", photo: track.channelAvatarURL)
-          Text(name.artist ?? track.channel ?? "YouTube").foregroundStyle(.secondary).lineLimit(1)
-        }
-        HStack(spacing: 10) {
-          Button {
-            dj.play(track, source: discovery.scope)
-          } label: {
-            PlayDisc(size: 44)
-          }
-          .buttonStyle(.plain).accessibilityLabel("Lire " + name.title)
-          IconButton(symbol: "text.badge.plus", help: "Lire ensuite") {
-            dj.enqueue(track, source: discovery.scope)
-          }.font(.title3)
-        }
-      }
-      .padding(14)
-      .background(RoundedRectangle(cornerRadius: 12).fill(.white.opacity(0.05)))
-    }
-  }
-
-  @ViewBuilder private var songsSection: some View {
-    let tracks =
-      discovery.scope == .youtube
-      ? Array(discovery.youtube.dropFirst().prefix(4).map(\.video)) : libraryShown
-    if discovery.scope != .youtube || !tracks.isEmpty {
-      VStack(alignment: .leading, spacing: 8) {
-        HStack {
-          Text(discovery.scope == .youtube ? "Morceaux" : "Dans tes playlists").font(.headline)
-          if discovery.scope != .youtube && discovery.libraryTotal > 0 {
-            Text("\(discovery.libraryTotal)").foregroundStyle(.secondary)
-          }
-          Spacer()
-          if discovery.scope != .youtube && discovery.libraryTracks.count > 4 {
-            Button(showAllLibrary ? "Réduire" : "Tout voir") { showAllLibrary.toggle() }
-              .buttonStyle(.plain).font(.callout.weight(.medium)).foregroundStyle(.secondary)
-          }
-        }
-        if !discovery.libraryError.isEmpty && discovery.scope != .youtube {
-          error(discovery.libraryError)
-        }
-        ForEach(tracks, id: \.id) { track in
-          SongRow(
-            index: nil, track: track, playing: dj.current?.id == track.id,
-            onPlay: { dj.play(track, source: discovery.scope) },
-            onEnqueue: { dj.enqueue(track, source: discovery.scope) })
-        }
-        if tracks.isEmpty && !discovery.searching && discovery.libraryError.isEmpty {
-          Text("Rien dans tes playlists pour cette recherche.").foregroundStyle(.secondary)
-            .padding(.vertical, 8)
-        }
+    GeometryReader { geometry in
+      let preview = geometry.size.width >= 640
+      HStack(alignment: .top, spacing: 16) {
+        resultList
+        if preview, let selected { ResultPreview(row: selected, source: discovery.scope) }
       }
     }
   }
 
-  private var youtubeSection: some View {
-    let items =
-      discovery.scope == .youtube
-      ? Array(discovery.youtube.dropFirst(5))
-      : discovery.youtube.filter { $0.id != bestShown }
-    return VStack(alignment: .leading, spacing: 12) {
-      Text("Sur YouTube").font(.headline)
-      if !discovery.youtubeError.isEmpty { error(discovery.youtubeError) }
-      LazyVGrid(
-        columns: [GridItem(.adaptive(minimum: 190, maximum: 280), spacing: 16, alignment: .top)],
-        alignment: .leading, spacing: 20
-      ) {
-        ForEach(items) { item in
-          ResultCard(track: item.video, onPlay: { dj.play(item.video, source: discovery.scope) }) {
-            SaveButton(item: item, source: discovery.scope)
-          }
-          .onAppear {
-            if item.id == discovery.youtube.last?.id && discovery.nextPage != nil
-              && discovery.query.trimmingCharacters(in: .whitespacesAndNewlines)
-                == discovery.submittedQuery
-            {
-              discovery.search(more: true)
+  private var resultList: some View {
+    ScrollViewReader { proxy in
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 2) {
+          ForEach(rows) { row in
+            DiscoveryResultRow(
+              row: row, selected: row.id == selected?.id, playing: dj.current?.id == row.track.id,
+              source: discovery.scope,
+              select: {
+                selectedID = row.id
+                listFocused = true
+              }
+            )
+            .id(row.id)
+            .onAppear {
+              if row.id == rows.last?.id && discovery.nextPage != nil
+                && discovery.query.trimmingCharacters(in: .whitespacesAndNewlines)
+                  == discovery.submittedQuery
+              {
+                discovery.search(more: true)
+              }
             }
           }
-        }
+          if !discovery.libraryError.isEmpty && discovery.scope != .youtube {
+            error(discovery.libraryError)
+          }
+          if !discovery.youtubeError.isEmpty && discovery.scope != .library {
+            error(discovery.youtubeError)
+          }
+          // Cards load more on scroll; the button covers a page too short to scroll.
+          if discovery.nextPage != nil && !discovery.searching && discovery.scope != .library {
+            Button("Plus de résultats") { discovery.search(more: true) }
+              .buttonStyle(SillageChipStyle()).padding(.vertical, 8)
+          }
+          if rows.isEmpty && !discovery.searching && discovery.libraryError.isEmpty
+            && discovery.youtubeError.isEmpty
+          {
+            EmptyState(
+              symbol: "magnifyingglass",
+              message: "Aucun résultat. Essaie un titre ou un artiste plus précis.")
+          }
+        }.padding(.bottom, 12)
       }
-      // Cards load more on scroll; the button covers a page too short to scroll.
-      if discovery.nextPage != nil && !discovery.searching {
-        Button("Plus de résultats") { discovery.search(more: true) }.buttonStyle(.plain)
-          .font(.callout.weight(.medium)).foregroundStyle(.secondary)
-          .disabled(
-            discovery.query.trimmingCharacters(in: .whitespacesAndNewlines)
-              != discovery.submittedQuery)
+      .focusable()
+      .focused($listFocused)
+      .focusEffectDisabled()
+      .onMoveCommand { direction in
+        guard let index = rows.firstIndex(where: { $0.id == selected?.id }) else { return }
+        let next = direction == .down ? index + 1 : direction == .up ? index - 1 : index
+        guard rows.indices.contains(next) else { return }
+        selectedID = rows[next].id
+        proxy.scrollTo(rows[next].id)
       }
-      if discovery.youtube.isEmpty && !discovery.searching && discovery.youtubeError.isEmpty {
-        Text("Aucun résultat YouTube. Essaie un titre ou un artiste plus précis.")
-          .foregroundStyle(.secondary)
+      .onKeyPress(.return) {
+        guard let selected else { return .ignored }
+        dj.play(selected.track, source: discovery.scope)
+        return .handled
       }
     }
+    .frame(maxWidth: .infinity)
   }
 
   private func error(_ message: String) -> some View {
@@ -363,7 +345,110 @@ struct DiscoverView: View {
       Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
         .font(.callout)
       Button("Réessayer") { discovery.search() }.buttonStyle(.link)
+    }.padding(8)
+  }
+}
+
+struct DiscoveryRow: Identifiable, Equatable {
+  let id: String
+  let track: Track
+  /// The YouTube result, when the row did not come from the person's playlists.
+  let item: DiscoveryItem?
+  static func == (a: Self, b: Self) -> Bool { a.id == b.id }
+}
+
+/// A search result in the list: thumbnail, song on up to two lines, artist, duration and the
+/// queue action. One click selects (preview), a double click or Return plays.
+private struct DiscoveryResultRow: View {
+  let row: DiscoveryRow
+  let selected: Bool
+  let playing: Bool
+  let source: DiscoveryScope
+  let select: () -> Void
+  @EnvironmentObject var dj: DJModel
+  @State private var hovering = false
+  var body: some View {
+    let name = TrackTitle(row.track)
+    HStack(spacing: 12) {
+      Artwork(track: row.track, showsDuration: false).frame(width: 72)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(name.title).font(.system(size: 13, weight: .medium)).lineLimit(2)
+          .foregroundStyle(playing ? Color.sillage(.actionText) : Color.primary)
+        Text(name.artist ?? row.track.channel ?? "YouTube").font(.system(size: 12))
+          .foregroundStyle(.secondary).lineLimit(1)
+      }.frame(maxWidth: .infinity, alignment: .leading)
+      Text(row.track.durationSeconds.map(clock) ?? "").font(.system(size: 12).monospacedDigit())
+        .foregroundStyle(.secondary)
+      IconButton(symbol: "text.badge.plus", help: "Lire ensuite") {
+        dj.enqueue(row.track, source: source)
+      }
     }
+    .padding(.horizontal, 8).padding(.vertical, 6)
+    .background {
+      RoundedRectangle(cornerRadius: 8)
+        .fill(selected ? Color.sillage(.selection) : hovering ? Color.sillageHover : .clear)
+        .overlay {
+          if selected {
+            RoundedRectangle(cornerRadius: 8).strokeBorder(
+              Color.sillage(.primaryFill), lineWidth: 1.5)
+          }
+        }
+    }
+    .contentShape(Rectangle())
+    .onHover { hovering = $0 }
+    .onTapGesture(count: 2) { dj.play(row.track, source: source) }
+    .onTapGesture(perform: select)
+    .help(name.artist.map { "\(name.title), \($0)" } ?? name.title)
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel(name.artist.map { "\(name.title), \($0)" } ?? name.title)
+    .accessibilityValue(
+      [selected ? "Sélectionné" : nil, playing ? "En lecture" : nil].compactMap { $0 }
+        .joined(separator: ", ")
+    )
+    .accessibilityAddTraits(selected ? .isSelected : [])
+    .accessibilityAction(named: "Lire") { dj.play(row.track, source: source) }
+    .accessibilityAction(named: "Lire ensuite") { dj.enqueue(row.track, source: source) }
+    .accessibilityAction(named: "Aperçu", select)
+  }
+}
+
+/// The selected result, larger: cover, song, artist, play with its duration, then the
+/// secondary actions. Nothing plays until asked.
+private struct ResultPreview: View {
+  let row: DiscoveryRow
+  let source: DiscoveryScope
+  @EnvironmentObject var dj: DJModel
+  var body: some View {
+    let name = TrackTitle(row.track)
+    VStack(alignment: .leading, spacing: 10) {
+      Color.clear.aspectRatio(1, contentMode: .fit)
+        .overlay { Artwork.image(for: row.track, quality: "hqdefault") }
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .accessibilityHidden(true)
+      Text(name.title).font(.system(size: 17, weight: .semibold)).lineLimit(3)
+      Text(name.artist ?? row.track.channel ?? "YouTube").font(.system(size: 13))
+        .foregroundStyle(.secondary).lineLimit(1)
+      HStack(spacing: 10) {
+        Button {
+          dj.play(row.track, source: source)
+        } label: {
+          PlayDisc(size: 34)
+        }.buttonStyle(.plain).accessibilityLabel("Lire " + name.title)
+        Text(row.track.durationSeconds.map(clock) ?? "").font(.system(size: 12).monospacedDigit())
+          .foregroundStyle(.secondary)
+        Spacer(minLength: 0)
+        IconButton(symbol: "text.badge.plus", help: "Lire ensuite") {
+          dj.enqueue(row.track, source: source)
+        }
+        if let item = row.item { SaveButton(item: item, source: source) }
+        IconButton(symbol: "arrow.up.right.square", help: "Ouvrir sur YouTube") {
+          NSWorkspace.shared.open(row.track.url)
+        }
+      }
+    }
+    .padding(12).frame(width: 240)
+    .background(RoundedRectangle(cornerRadius: 12).fill(Color.sillageHover))
+    .accessibilityElement(children: .contain).accessibilityLabel("Aperçu")
   }
 }
 

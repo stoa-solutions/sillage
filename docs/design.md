@@ -8,20 +8,25 @@ Référence commune pour toute nouvelle vue Mac, Découvrir comprise. Plan valid
 - **Le titre, pas le nom de fichier.** On affiche « Beds Are Burning » et « Midnight Oil », jamais « Midnight Oil - Beds Are Burning » au-dessus de « MidnightOilVEVO ». Le découpage artiste et titre suit les mêmes règles que les paroles côté serveur (`lyrics.ts`).
 - **Une action principale par écran.** Les explications longues vont dans l’aide au survol (`.help`), pas sous chaque champ.
 - **Le mouvement montre ce qui change** : un nouveau morceau, un changement de mode ou d’onglet. Pas d’animation décorative. Avec « Réduire les animations », tout passe en fondu court ou sans animation.
-- **Une seule scène, deux profondeurs.** L’app est sombre dans les deux modes. Toutes les pages reposent sur la même scène, sous une barre d’outils transparente : en Studio, le clip (atténué hors de la page DJ) ; en Compact, la pochette floutée du morceau. Les panneaux partagent `glassPanel`, avec deux contextes définis dans `Surfaces.swift` : `.immersive` pour le DJ, `.reading` pour Bibliothèque et Découvrir (chat et mini-lecteur compris). En lecture, fond sombre à 86 % et clip atténué à 55 % ; avec Réduire la transparence, panneaux opaques et aucun clip visible derrière les pages de lecture. Le DJ Studio garde son clip net.
-- **L’orange est une action, pas une décoration.** `Color.recall` conserve son identifiant technique ; il utilise l’orange Stoa `#f15a24` en sombre et l’orange profond `#bd3b12` en clair. Il sert au bouton de lecture, à la progression, à la ligne chantée et aux boutons principaux. Les bascules (Studio, Voix du DJ, Enchaîner), les suggestions et les sélecteurs segmentés restent neutres : blanc quand actif, gris sinon (`GlassToggleStyle`, `ToolbarToggleStyle`, `neutralSelection`).
+- **Clair et sombre, la même application** (cahier des charges UI Sillage, direction « Atelier de lumière », 26 octobre 2026). Le système choisit l’apparence, y compris en automatique ; les deux montrent les mêmes contenus aux mêmes endroits. Seule la scène Studio de la page DJ garde sa protection sombre (barre d’outils comprise) pour rester lisible sur n’importe quel clip.
+- **Trois couches.** Le fond : l’image Stoa choisie dans Apparence, fixe et adoucie (`SillageBackdrop`), jamais de vidéo derrière les listes. La lecture : matière fine voilée de papier ou de graphite (`sillageSurface(.reading)`). Le cadre et la barre latérale : matière plus légère (`.chrome`, `.sidebar`). Une seule surface par page, d’un bord à l’autre ; pas de carte de verre par ligne. Réduire la transparence rend tout opaque dans la même famille de couleurs ; Augmenter le contraste renforce voiles et filets.
+- **Une seule source de couleurs.** `RecallKit/SillagePalette` porte les rôles du cahier (fond, lecture, texte, secondaire, petit texte d’action, focus, bouton principal et son pictogramme, sélection, filet) ; `Color.sillage(_:)` les rend adaptatifs. Les contrôles natifs vérifient les contrastes : textes ≥ 4,5:1 sur papier et graphite, pictogramme encre sur orange ≥ 4,5:1. L’orange Stoa sur graphite (4,44:1) ne porte jamais de petit texte : le titre en lecture reste craie en sombre, avec un repère orange (haut-parleur).
+- **L’orange est une action.** Bouton principal : orange Stoa `#F15A24`, pictogramme encre, dans les deux apparences. `Color.recall` reste l’accent des liens et des petits textes (orange profond en clair). Les bascules, portées et onglets restent neutres : blanc ou craie avec texte encre quand actifs.
 
 ## Repères
 
 | Élément | Valeur |
 |---|---|
 | Espacements | 4, 8, 12, 16, 24, 32 |
-| Rayons | 6 (miniature de ligne), 10 (lecteur, cartes), 20 (panneaux flottants) |
-| Titre Studio | 40 gras, deux lignes au plus |
-| Titre d’écran | `.largeTitle` gras (Bibliothèque, Réglages) |
-| Titre de section | `.headline`, en casse de phrase : « En cours », « À suivre (3) » |
-| Corps | `.body` ; secondaire en `.callout` ou `.caption` avec `.secondary` |
-| Accent | `Color.recall` : bouton principal, ligne chantée, état actif |
+| Rayons | 6 (vignettes), 8 (lignes, champs), 12 (surfaces groupées), capsules natives |
+| Texte | 13–14 corps, 12 secondaire, 22 titre de collection (semi-gras) ; typographie système |
+| Compact | repos ≈ 520 × 192 (selon contenu), largeur 440 à 620, panneau ouvert plafonné à 560 |
+| Lecture | préférée 1 080 × 760, barre latérale 210, barre de lecture 68 |
+| Mouvement | pression 80–120 ms, panneau 180–220 ms, onglets 120–180 ms ; rien avec Réduire les animations |
+
+La géométrie vit dans `RecallKit/RecallWindowLayout` (contrôles natifs : retour au format de poche sous le même bord haut, aucune dérive après dix replis, fenêtre toujours dans l’espace utile, taille de lecture mémorisée). `WindowSizer` l’applique seulement quand la présentation change : changer d’onglet de lecture ne redimensionne jamais.
+
+Pour la recette, une copie de test peut s’ouvrir sur une page (`SILLAGE_QA_SECTION=dj|library|discover`) ou une recherche (`SILLAGE_QA_QUERY`), et l’apparence se force par argument (`-AppleInterfaceStyle Dark` ou `-NSRequiresAquaSystemAppearance YES`) : captures sans clic simulé.
 
 Pas de libellés en capitales, pas de points médians en séparateur, pas de numéros devant les étapes ou les lignes quand l’ordre est déjà visible.
 
@@ -41,6 +46,12 @@ Pas de libellés en capitales, pas de points médians en séparateur, pas de num
 - **StatusLine** : un seul endroit pour l’état en cours (le DJ cherche, l’écoute du micro, une préparation du clip, une erreur). Une ligne, avec un indicateur et une action « Annuler » si utile.
 - **NowPlaying** : titre et artiste nettoyés. Quand le morceau change, l’ancien titre glisse vers le haut en fondu et le nouveau arrive par le bas, en 250 ms. La pochette passe en fondu.
 
+## Lecteur, Compact et mini-clip
+
+- **Un seul lecteur, un seul audio.** `VideoSurface` affiche le lecteur partagé là où la page le place : scène Studio, vignette du Compact ou mini-clip de la barre de lecture. Le déplacer ne recharge pas le média. En cas d’échec ou sans morceau, la pochette prend la place.
+- **Compact** : une poche (vignette-clip, titre et artiste, lecture, suivant, position, volume), puis « DJ et file » qui ouvre le panneau dessous ; Voix du DJ, Enchaîner et le lien YouTube restent dans le menu « ⋯ » de cette barre, avec leur état. La fenêtre suit la hauteur de la poche (`CompactRestHeightKey`) sous un bord haut fixe ; panneau ouvert, 560 au plus. Barre d’outils réduite : onglets en petite taille, Studio en icône.
+- **Barre de lecture** (Bibliothèque, Découvrir) : d’un bord à l’autre, hauteur 68 ; mini-clip, titre, lecture, suivant, position, volume ; un clic sur la vignette ouvre le DJ.
+
 ## Enchaînements
 
 - **Accueil** : trois écrans dans une feuille de taille fixe, mis en page comme Studio : le fond choisi dans Apparence (Stoa par défaut) sous un voile encre, texte aligné à gauche, couleurs Stoa (encre `#20201e`, craie `#f5f3ee`, orange `#f15a24` réservé à la progression, au champ actif et aux erreurs). Trois traits de progression en haut, un seul bouton craie par écran.
@@ -49,8 +60,8 @@ Pas de libellés en capitales, pas de points médians en séparateur, pas de num
   3. Première playlist : un champ pour coller le lien et « Importer ». À la fin, on arrive dans la Bibliothèque, où l’import progresse.
 
   Une étape déjà faite est sautée. « Plus tard » reste discret en bas. Les erreurs s’affichent sous le champ concerné.
-- **Bibliothèque** (inspiration Spotify) : playlists dans une colonne à gauche (« Toutes les vidéos » en tête, « + » pour ajouter une playlist YouTube, actualisation à côté). À droite, en-tête de la playlist : tuile, titre, nombre de vidéos, pastille d’enrichissement (détails au clic), bouton rond de lecture et aléatoire, filtre. Liste dense `SongRow` : numéro (lecture au survol, haut-parleur pour le titre en cours), miniature, titre et artiste, actions au survol, durée. Chargement par pages de 50 au défilement, sans pagination. Fenêtre étroite : la colonne devient un menu sur le titre.
-- **Découvrir** (inspiration Raycast et YouTube Music) : barre `CommandBar` qui cherche dès que la frappe s’arrête (450 ms), Échap efface. Portée en pastilles (Partout, YouTube, Mes playlists) et menu de playlist. Avant la recherche : recherches récentes, idées de départ, autour du titre en cours, raccourcis de playlists. Résultats : meilleur résultat en grand avec lecture, titres de tes playlists en `SongRow`, vidéos YouTube en cartes (`ResultCard`) avec ajout à Mes découvertes ; la suite se charge au défilement.
+- **Bibliothèque** (Atelier) : une seule surface. Barre latérale de playlists (« Écoutes récentes », « Toutes les vidéos », puis les playlists ; « + » et actualisation en tête). À droite : le filtre en haut, puis un petit en-tête de collection (tuile 48, titre 22, nombre de vidéos, pastille d’enrichissement), le bouton rond de lecture, l’aléatoire et le menu. Liste dense `SongRow` en colonnes régulières : numéro (lecture au survol, haut-parleur pour le titre en cours), vignette 16:9, titre et artiste, actions au survol, durée ; un filet discret entre les lignes. Pages de 50 au défilement. Fenêtre étroite : la barre latérale devient un menu sur le titre.
+- **Découvrir** (Atelier) : recherche en haut, qui cherche dès que la frappe s’arrête (450 ms), Échap efface ; portées en pastilles, menu de playlist et « DJ et file » qui ouvre le panneau DJ à droite à la demande. Avant la recherche : la grille de recommandations « À découvrir pour toi », les recherches récentes, des idées et les playlists. Résultats : une liste (vignette, titre sur deux lignes, artiste, durée, « Lire ensuite ») avec un aperçu à droite (pochette, titre, artiste, lecture, ajout à Mes découvertes). Un clic sélectionne et met à jour l’aperçu, un double clic ou Entrée lit, les flèches parcourent la liste ; l’aperçu se replie quand la liste deviendrait trop étroite. La suite se charge au défilement.
 - **Bibliothèque → DJ** : lire un morceau bascule sur DJ. Le titre arrive avec l’animation NowPlaying, la file s’ouvre sur « À suivre ».
 - **Compact ⇄ Studio** : bouton « Studio » sobre dans la barre d’outils, visible sur toutes les pages. Fondu de 300 ms entre les scènes pendant que la fenêtre s’anime à sa nouvelle largeur ; l’onglet courant ne change pas.
 - **Onglets du panneau** (DJ, À suivre, Historique, Paroles) : fondu court. Chaque onglet garde sa position de défilement.

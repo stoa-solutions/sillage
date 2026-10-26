@@ -3,13 +3,13 @@ import RecallKit
 
 func studioPresentationChecks() throws {
   try expect(
-    RecallWindowLayout.minimumWidth(studio: false, reading: false) == 600,
+    RecallWindowLayout.minimumWidth(studio: false, reading: false) == 440,
     "Compact DJ cannot fit its supported narrow window")
   try expect(
-    RecallWindowLayout.minimumWidth(studio: true, reading: false) == 900,
+    RecallWindowLayout.minimumWidth(studio: true, reading: false) == 760,
     "Studio can shrink below the width needed for player and sidebar")
   try expect(
-    RecallWindowLayout.minimumWidth(studio: false, reading: true) == 900,
+    RecallWindowLayout.minimumWidth(studio: false, reading: true) == 760,
     "Reading pages can shrink below their supported layout")
   var chrome = StudioChrome()
   chrome.configure(enabled: true, at: 10)

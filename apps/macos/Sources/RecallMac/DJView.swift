@@ -5,6 +5,8 @@ import SwiftUI
 /// Compact: one column beside your work. Studio: the clip fills the window, chat floats on glass.
 struct DJView: View {
   @AppStorage("djPanelCollapsed") private var panelCollapsed = false
+  /// Découvrir keeps its own state: folding it there must not fold Compact.
+  @AppStorage("discoverDJPanelCollapsed") private var discoverCollapsed = true
   @Environment(\.studioControlsVisible) private var controlsVisible
   @State private var panelTab = SessionPanelTab.dj
   @StateObject private var lyrics = LyricsModel()
@@ -27,11 +29,7 @@ struct DJView: View {
   var body: some View {
     Group {
       if panelOnly {
-        if panelCollapsed {
-          reopenPanel.frame(maxHeight: .infinity, alignment: .top)
-        } else {
-          sessionPanel.frame(width: 350).glassPanel()
-        }
+        sessionPanel
       } else if player.studio {
         studio
       } else {
@@ -69,41 +67,140 @@ struct DJView: View {
       }
   }
 
-  /// Same glass as Studio: the player on one panel, the session on another.
+  /// Compact (Sillage spec): a pocket near 520 × 224, then the panel below it when opened.
+  /// The window follows the pocket's height (CompactRestHeightKey), capped at 560 when open.
   private var compact: some View {
-    GeometryReader { geometry in
-      compactContent(videoHeight: min(315, geometry.size.height * 0.32))
+    VStack(spacing: 0) {
+      VStack(spacing: 0) {
+        pocket.padding(12)
+        if hasStatus {
+          playerStatus.frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12).padding(.bottom, 10)
+        }
+        SillageRule()
+        panelBar
+      }
+      .fixedSize(horizontal: false, vertical: true)
+      .background {
+        GeometryReader { proxy in
+          Color.clear.preference(key: CompactRestHeightKey.self, value: proxy.size.height)
+        }
+      }
+      if !panelCollapsed {
+        SillageRule()
+        sessionPanel.frame(maxHeight: .infinity)
+      }
+      Spacer(minLength: 0)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    .sillageSurface(.reading)
+  }
+
+  /// Thumbnail clip, song, transport, position and volume.
+  private var pocket: some View {
+    HStack(alignment: .center, spacing: 14) {
+      VideoSurface(player: player, cornerRadius: 6).frame(width: 136, height: 76.5)
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .overlay {
+          if model.current == nil {
+            idleScreen
+          } else if player.preparingClip && !player.playing, let current = model.current {
+            Artwork(track: current, showsDuration: false)
+          }
+        }
+      VStack(alignment: .leading, spacing: 8) {
+        TrackHeadline(
+          track: model.current, titleFont: .system(size: 15, weight: .semibold),
+          detailFont: .system(size: 12)
+        )
+        .help(model.current.map { TrackTitle($0).spoken } ?? "")
+        HStack(spacing: 10) {
+          playButton(size: 30)
+          Button {
+            model.next()
+          } label: {
+            Image(systemName: "forward.fill").frame(width: 26, height: 26)
+          }.buttonStyle(.plain).help("Morceau suivant").accessibilityLabel("Morceau suivant")
+            .disabled(model.current == nil)
+          Slider(
+            value: Binding(get: { player.elapsed }, set: { model.seek($0) }),
+            in: 0...max(1, player.duration)
+          ).controlSize(.mini).tint(Color.sillage(.primaryFill))
+            .disabled(player.duration <= 0).accessibilityLabel("Position du morceau")
+            .accessibilityValue(clock(player.elapsed))
+          Text(clock(player.duration > 0 ? player.elapsed : 0))
+            .font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
+            .frame(width: 34, alignment: .trailing)
+          VolumeControl(player: player, compact: true)
+        }
+      }
     }
   }
 
-  /// Reserve room for the conversation at the minimum window height; the video yields first.
-  private func compactContent(videoHeight: CGFloat) -> some View {
-    VStack(spacing: 12) {
-      VStack(alignment: .leading, spacing: 12) {
-        VideoSurface(player: player).aspectRatio(16 / 9, contentMode: .fit)
-          .frame(maxHeight: panelCollapsed ? 315 : videoHeight)
-          .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-          .frame(maxWidth: .infinity).overlay {
-            if model.current == nil {
-              idleScreen
-            } else if player.preparingClip && !player.playing {
-              preparation
-            }
+  /// « DJ et file »: opens or folds the panel; the session options stay in a menu here.
+  private var panelBar: some View {
+    HStack(spacing: 8) {
+      Button {
+        panelCollapsed.toggle()
+      } label: {
+        HStack(spacing: 8) {
+          Image(systemName: "sidebar.right").foregroundStyle(.secondary)
+          Text("DJ et file").font(.system(size: 13, weight: .medium))
+          if !model.allUpcoming.isEmpty {
+            Text("\(model.allUpcoming.count)").font(.system(size: 11).monospacedDigit())
+              .foregroundStyle(.secondary)
           }
-        TrackHeadline(track: model.current, titleFont: .title3.weight(.semibold), detailFont: .body)
-        transport
-        playerStatus
-      }.padding(14).glassPanel().layoutPriority(1)
-      if panelCollapsed {
-        HStack {
-          reopenPanel
-          Spacer()
+          Spacer(minLength: 0)
+          Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(.secondary).rotationEffect(.degrees(panelCollapsed ? 0 : 90))
+        }.contentShape(Rectangle())
+      }.buttonStyle(.plain)
+        .accessibilityLabel("DJ et file")
+        .accessibilityValue(panelCollapsed ? "Replié" : "Ouvert")
+      sessionMenu
+    }.padding(.horizontal, 12).frame(height: 38)
+  }
+
+  /// Voix du DJ, Enchaîner and the YouTube link in the pocket format; states stay visible
+  /// as checkmarks and their names are unchanged for VoiceOver.
+  private var sessionMenu: some View {
+    Menu {
+      Toggle(isOn: $model.spoken) { Label("Voix du DJ", systemImage: "person.wave.2") }
+      Toggle(isOn: $model.continuous) { Label("Enchaîner", systemImage: "infinity") }
+      if let current = model.current {
+        Divider()
+        Link(destination: current.url) {
+          Label("Ouvrir sur YouTube", systemImage: "arrow.up.right.square")
         }
-        Spacer(minLength: 0)
-      } else {
-        sessionPanel.glassPanel().frame(minHeight: 200)
       }
-    }.padding(12).frame(maxWidth: 600).frame(maxWidth: .infinity)
+    } label: {
+      Image(systemName: "ellipsis.circle").frame(width: 26, height: 26).contentShape(Rectangle())
+    }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+      .foregroundStyle(.secondary).help("Voix du DJ, Enchaîner")
+      .accessibilityLabel("Options de la session")
+      .accessibilityValue(
+        "Voix du DJ \(model.spoken ? "activée" : "désactivée"), Enchaîner \(model.continuous ? "activé" : "désactivé")"
+      )
+  }
+
+  private var hasStatus: Bool {
+    (player.preparingClip && !player.playing && player.studio)
+      || (model.waitingForNext && model.busy)
+      || !model.continuationNotice.isEmpty || (!player.failure.isEmpty && !model.playbackBlocked)
+      || (player.studio && player.clipFailure != nil && !model.playbackBlocked)
+  }
+
+  private func playButton(size: CGFloat) -> some View {
+    Button {
+      model.togglePlayback()
+    } label: {
+      Image(systemName: player.playing ? "pause.fill" : "play.fill")
+        .font(.system(size: size * 0.42, weight: .bold))
+        .frame(width: size, height: size)
+        .foregroundStyle(Color.sillage(.primaryIcon))
+        .background(Circle().fill(Color.sillage(.primaryFill)))
+    }.buttonStyle(.plain).accessibilityLabel(player.playing ? "Pause" : "Lecture")
+      .disabled(model.current == nil)
   }
 
   private var studio: some View {
@@ -127,9 +224,9 @@ struct DJView: View {
   }
 
   private var idleScreen: some View {
-    RoundedRectangle(cornerRadius: 10).fill(.black).overlay {
-      Image(systemName: "dot.radiowaves.left.and.right").font(.system(size: 34))
-        .foregroundStyle(Color.recall)
+    RoundedRectangle(cornerRadius: 6).fill(Color.sillage(.selection)).overlay {
+      Image(systemName: "waveform").font(.system(size: 24, weight: .medium))
+        .foregroundStyle(Color.sillage(.primaryFill))
     }.accessibilityHidden(true)
   }
 
@@ -172,8 +269,8 @@ struct DJView: View {
     } label: {
       Image(systemName: player.playing ? "pause.fill" : "play.fill").font(.title3)
         .frame(width: 40, height: 40)
-        .foregroundStyle(Color(nsColor: .windowBackgroundColor))
-        .background(Circle().fill(Color.recall))
+        .foregroundStyle(Color.sillage(.primaryIcon))
+        .background(Circle().fill(Color.sillage(.primaryFill)))
     }.buttonStyle(.plain).accessibilityLabel(player.playing ? "Pause" : "Lecture")
       .disabled(model.current == nil)
     Button {
@@ -275,12 +372,14 @@ struct DJView: View {
       HStack(spacing: 8) {
         PanelTabBar(selection: $panelTab, queueCount: model.allUpcoming.count)
         Spacer(minLength: 0)
-        Button {
-          panelCollapsed = true
-        } label: {
-          Image(systemName: "sidebar.right").frame(width: 26, height: 26)
-        }.buttonStyle(.plain).foregroundStyle(.secondary).help("Replier le panneau")
-          .accessibilityLabel("Replier le panneau")
+        if panelOnly || player.studio {
+          Button {
+            if panelOnly { discoverCollapsed = true } else { panelCollapsed = true }
+          } label: {
+            Image(systemName: "sidebar.right").frame(width: 26, height: 26)
+          }.buttonStyle(.plain).foregroundStyle(.secondary).help("Replier le panneau")
+            .accessibilityLabel("Replier le panneau")
+        }
       }.padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 4)
       switch panelTab {
       case .dj:
@@ -445,7 +544,7 @@ struct DJView: View {
                 }
                 .padding(8)
                 .background(
-                  .white.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                  Color.sillageHover, in: RoundedRectangle(cornerRadius: 12, style: .continuous)
                 )
                 .padding(.leading, 36)
               }
@@ -534,18 +633,19 @@ struct DJView: View {
             model.send(source: source)
           } label: {
             Image(systemName: "arrow.up").fontWeight(.bold).frame(width: 28, height: 28)
-              .foregroundStyle(canSend ? Color.black : Color.secondary)
-              .background(Circle().fill(canSend ? Color.white : Color.white.opacity(0.08)))
+              .foregroundStyle(canSend ? Color.sillage(.primaryIcon) : Color.secondary)
+              .background(
+                Circle().fill(canSend ? Color.sillage(.primaryFill) : Color.sillageHover))
           }.buttonStyle(.plain).accessibilityLabel("Envoyer").disabled(!canSend)
             .keyboardShortcut(.return, modifiers: [.command])
         }
       }
       .padding(.horizontal, 12).padding(.top, 10).padding(.bottom, 8)
       .background(
-        RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.white.opacity(0.06))
+        RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.sillageHover)
           .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(
-              .white.opacity(0.1)))
+              Color.sillage(.separator)))
       )
     }
   }

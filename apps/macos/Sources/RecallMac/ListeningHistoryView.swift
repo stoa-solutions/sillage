@@ -124,7 +124,7 @@ struct ListeningHistoryView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      header.padding(20)
+      header.padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 8)
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 0, pinnedViews: []) {
           ForEach(days, id: \.title) { day in
@@ -172,24 +172,23 @@ struct ListeningHistoryView: View {
   }
 
   private var header: some View {
-    HStack(alignment: .bottom, spacing: 18) {
-      PlaylistTile(title: "Écoutes récentes", symbol: "clock.arrow.circlepath", size: 104)
-        .shadow(color: .black.opacity(0.4), radius: 12, y: 6)
-      VStack(alignment: .leading, spacing: 6) {
-        Text("Historique").font(.callout).foregroundStyle(.secondary)
-        Text("Écoutes récentes").font(.system(size: 34, weight: .bold)).lineLimit(1)
+    HStack(alignment: .center, spacing: 12) {
+      PlaylistTile(title: "Écoutes récentes", symbol: "clock.arrow.circlepath", size: 48)
+      VStack(alignment: .leading, spacing: 2) {
+        Text("Écoutes récentes").font(.system(size: 22, weight: .semibold)).lineLimit(1)
+          .accessibilityAddTraits(.isHeader)
         Text("Enregistrées sur ton compte, de la plus récente à la plus ancienne.")
-          .font(.callout).foregroundStyle(.secondary)
+          .font(.system(size: 12)).foregroundStyle(.secondary)
       }
       Spacer()
-      IconButton(symbol: "arrow.clockwise", help: "Actualiser", action: refresh).font(.title3)
+      IconButton(symbol: "arrow.clockwise", help: "Actualiser", action: refresh)
         .disabled(model.loading)
       Menu {
         Button("Effacer l’historique…", systemImage: "trash", role: .destructive) {
           confirming = true
         }.disabled(model.plays.isEmpty)
       } label: {
-        Image(systemName: "ellipsis").font(.title3).frame(width: 26, height: 26)
+        Image(systemName: "ellipsis").frame(width: 26, height: 26)
           .contentShape(Rectangle())
       }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
         .foregroundStyle(.secondary).help("Plus d’actions")
@@ -226,7 +225,7 @@ struct HistoryRow: View {
       }.buttonStyle(.plain).accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 2) {
         Text(name.title).fontWeight(.medium).lineLimit(1)
-          .foregroundStyle(playing ? Color.recall : Color.primary)
+          .foregroundStyle(playing ? Color.sillage(.actionText) : Color.primary)
         Text(name.artist ?? listened.track.channel ?? "YouTube").font(.callout)
           .foregroundStyle(.secondary).lineLimit(1)
         if compact {
@@ -249,7 +248,7 @@ struct HistoryRow: View {
       }
     }
     .padding(.horizontal, 10).padding(.vertical, 6)
-    .background(RoundedRectangle(cornerRadius: 8).fill(.white.opacity(hovering ? 0.07 : 0)))
+    .background(RoundedRectangle(cornerRadius: 8).fill(hovering ? Color.sillageHover : .clear))
     .contentShape(Rectangle())
     .onHover { hovering = $0 }
     .onTapGesture(count: 2, perform: onPlay)

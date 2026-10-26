@@ -300,16 +300,21 @@ private final class WeakPlayerMessageHandler: NSObject, WKScriptMessageHandler {
 }
 
 /// Both players stacked in one frame: the clip fades in over YouTube, so nothing moves.
+/// The one shared player, shown where the page puts it: Studio stage, Compact pocket or the
+/// mini-clip of the player bar. Moving it never reloads the media nor adds a second audio.
 struct VideoSurface: View {
   @ObservedObject var player: Player
   var fill = false
+  var cornerRadius: CGFloat = 10
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   var body: some View {
     ZStack {
       Color.black
       // WebKit paints over sibling views, whatever the SwiftUI order: hide it once the clip is in.
-      PlayerView(player: player, cornerRadius: fill ? 0 : 10, hidden: player.youtubeHidden)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+      PlayerView(
+        player: player, cornerRadius: fill ? 0 : cornerRadius, hidden: player.youtubeHidden
+      )
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
       // AVPlayerView would otherwise keep the clip's natural size instead of the frame's.
       StudioPlayerView(player: player.nativePlayer, fill: fill)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

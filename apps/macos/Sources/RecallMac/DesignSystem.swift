@@ -189,34 +189,33 @@ extension TrackRow where Actions == EmptyView {
   }
 }
 
-/// Mini player shown under Library and Découvrir, so the music is always one click away.
+/// The player bar under Bibliothèque and Découvrir, edge to edge on the chrome material.
+/// Stable height; its thumbnail is the mini-clip of the shared player, or the cover when no
+/// clip can show (nothing playing, failure). Clicking it opens the DJ page.
 struct NowPlayingBar: View {
   @ObservedObject var model: DJModel
   @ObservedObject var player: Player
   var openDJ: () -> Void
   var body: some View {
-    HStack(spacing: 14) {
-      Group {
-        if let track = model.current {
-          Artwork(track: track, showsDuration: false).frame(width: 72)
-        } else {
-          RoundedRectangle(cornerRadius: 6).fill(.quaternary).frame(width: 72, height: 40.5)
-        }
-      }.onTapGesture(perform: openDJ).help("Ouvrir le DJ")
-      VStack(alignment: .leading, spacing: 4) {
+    HStack(spacing: 16) {
+      Button(action: openDJ) { thumbnail }.buttonStyle(.plain).help("Ouvrir le DJ")
+        .accessibilityLabel("Ouvrir le DJ")
+      VStack(alignment: .leading, spacing: 2) {
         TrackHeadline(
           track: model.current, detail: "Choisis un morceau ou parle au DJ.",
-          titleFont: .callout.weight(.semibold), detailFont: .caption)
+          titleFont: .system(size: 13, weight: .semibold), detailFont: .system(size: 12))
         if !player.failure.isEmpty {
-          Text(player.failure).font(.caption).foregroundStyle(.orange).lineLimit(2)
+          Text(player.failure).font(.caption).foregroundStyle(.orange).lineLimit(1)
         }
-      }.frame(maxWidth: .infinity, alignment: .leading).clipped()
+      }.frame(minWidth: 120, maxWidth: 240, alignment: .leading).clipped()
+      Spacer(minLength: 8)
       Button {
         model.togglePlayback()
       } label: {
-        Image(systemName: player.playing ? "pause.fill" : "play.fill").frame(width: 34, height: 34)
-          .foregroundStyle(Color(nsColor: .windowBackgroundColor))
-          .background(Circle().fill(Color.recall))
+        Image(systemName: player.playing ? "pause.fill" : "play.fill")
+          .font(.system(size: 14, weight: .bold)).frame(width: 34, height: 34)
+          .foregroundStyle(Color.sillage(.primaryIcon))
+          .background(Circle().fill(Color.sillage(.primaryFill)))
       }.buttonStyle(.plain).disabled(model.current == nil)
         .accessibilityLabel(player.playing ? "Pause" : "Lecture")
       Button {
@@ -224,21 +223,51 @@ struct NowPlayingBar: View {
       } label: {
         Image(systemName: "forward.fill").frame(width: 28, height: 28)
       }.buttonStyle(.plain).disabled(model.current == nil).accessibilityLabel("Morceau suivant")
-      if player.duration > 0 {
+      HStack(spacing: 8) {
         Text(clock(player.elapsed)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+          .frame(width: 38, alignment: .trailing)
         Slider(
           value: Binding(get: { player.elapsed }, set: { player.seek($0) }),
           in: 0...max(1, player.duration)
-        ).frame(maxWidth: 220).controlSize(.small).accessibilityLabel("Position du morceau")
-      }
+        ).controlSize(.small).tint(Color.sillage(.primaryFill))
+          .disabled(player.duration <= 0).accessibilityLabel("Position du morceau")
+          .accessibilityValue(clock(player.elapsed))
+      }.frame(minWidth: 140, maxWidth: 260)
+      Spacer(minLength: 8)
       VolumeControl(player: player)
-    }.padding(.horizontal, 14).padding(.vertical, 10).glassPanel(radius: 16)
+    }
+    .padding(.horizontal, 16).frame(height: 68)
+    .sillageSurface(.chrome)
+    .overlay(alignment: .top) { SillageRule() }
+  }
+
+  @ViewBuilder private var thumbnail: some View {
+    Group {
+      if let track = model.current {
+        if player.failure.isEmpty {
+          // The shared player moves here while no other page shows it.
+          VideoSurface(player: player, cornerRadius: 6)
+            .overlay { if player.preparingClip && !player.playing { coverOverlay(track) } }
+        } else {
+          Artwork(track: track, showsDuration: false)
+        }
+      } else {
+        RoundedRectangle(cornerRadius: 6).fill(Color.sillageHover)
+      }
+    }
+    .frame(width: 84, height: 47.25).clipShape(RoundedRectangle(cornerRadius: 6))
+  }
+
+  private func coverOverlay(_ track: Track) -> some View {
+    Artwork(track: track, showsDuration: false).allowsHitTesting(false)
   }
 }
 
 /// Music volume; the speaker mutes and restores the previous level.
 struct VolumeControl: View {
   @ObservedObject var player: Player
+  /// Pocket format: a shorter slider.
+  var compact = false
   @State private var beforeMute = 1.0
   var body: some View {
     HStack(spacing: 6) {
@@ -254,30 +283,45 @@ struct VolumeControl: View {
           .frame(width: 20)
       }.buttonStyle(.plain).foregroundStyle(.secondary)
         .accessibilityLabel(player.volume == 0 ? "Remettre le son" : "Couper le son")
-      Slider(value: $player.volume, in: 0...1).frame(width: 90).controlSize(.small)
-        .accessibilityLabel("Volume de la musique")
+      Slider(value: $player.volume, in: 0...1).frame(width: compact ? 64 : 90)
+        .controlSize(compact ? .mini : .small)
+        .tint(Color.sillage(.primaryFill)).accessibilityLabel("Volume de la musique")
     }.help("Volume de la musique")
   }
 }
 
-/// Search field shared by Library and Découvrir.
+/// Search field shared by Bibliothèque and Découvrir. Same size whatever its state: empty,
+/// typing, searching (a spinner replaces the clear button), focus (an orange outline).
+/// Escape clears it.
 struct SearchField: View {
   let prompt: String
   @Binding var text: String
   var onSubmit: () -> Void = {}
+  var busy = false
+  @FocusState private var focused: Bool
   var body: some View {
     HStack(spacing: 8) {
-      Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-      TextField(prompt, text: $text).textFieldStyle(.plain).onSubmit(onSubmit)
-      if !text.isEmpty {
-        Button {
-          text = ""
-        } label: {
-          Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
-        }.buttonStyle(.plain).accessibilityLabel("Effacer la recherche")
-      }
-    }.padding(.horizontal, 12).padding(.vertical, 9)
-      .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
+      Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
+      TextField(prompt, text: $text).textFieldStyle(.plain).font(.system(size: 13))
+        .focused($focused).onSubmit(onSubmit).onExitCommand { text = "" }
+      ZStack {
+        if busy {
+          ProgressView().controlSize(.small).accessibilityLabel("Recherche en cours")
+        } else if !text.isEmpty {
+          Button {
+            text = ""
+          } label: {
+            Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+          }.buttonStyle(.plain).accessibilityLabel("Effacer la recherche")
+        }
+      }.frame(width: 18, height: 18)
+    }
+    .padding(.horizontal, 10).frame(height: 32)
+    .background(Color.sillageHover, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    .overlay(
+      RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(
+        focused ? Color.sillage(.focus) : Color.sillage(.separator).opacity(0.6),
+        lineWidth: focused ? 1.5 : 1))
   }
 }
 
@@ -293,8 +337,9 @@ struct GlassToggleStyle: ToggleStyle {
         .foregroundStyle(configuration.isOn ? Color.primary : Color.secondary)
         .padding(.horizontal, 12).padding(.vertical, 6)
         .background {
-          Capsule().fill(.white.opacity(configuration.isOn ? 0.16 : 0.04))
-            .overlay(Capsule().strokeBorder(.white.opacity(configuration.isOn ? 0.22 : 0.1)))
+          Capsule().fill(Color.primary.opacity(configuration.isOn ? 0.14 : 0.04))
+            .overlay(
+              Capsule().strokeBorder(Color.primary.opacity(configuration.isOn ? 0.22 : 0.1)))
         }.contentShape(Capsule())
     }.buttonStyle(.plain).accessibilityValue(configuration.isOn ? "Activé" : "Désactivé")
       .animation(.easeOut(duration: 0.15), value: configuration.isOn)
@@ -309,8 +354,8 @@ struct GlassButtonStyle: ButtonStyle {
       .foregroundStyle(emphasized ? Color.primary : Color.secondary)
       .padding(.horizontal, 10).padding(.vertical, 6)
       .background {
-        Capsule().fill(.white.opacity(configuration.isPressed ? 0.16 : 0.04))
-          .overlay(Capsule().strokeBorder(.white.opacity(0.1)))
+        Capsule().fill(Color.primary.opacity(configuration.isPressed ? 0.14 : 0.04))
+          .overlay(Capsule().strokeBorder(Color.primary.opacity(0.1)))
       }.contentShape(Capsule())
   }
 }
@@ -321,7 +366,7 @@ struct ToolbarToggleStyle: ToggleStyle {
     Button {
       configuration.isOn.toggle()
     } label: {
-      configuration.label.labelStyle(.titleAndIcon)
+      configuration.label
         .foregroundStyle(configuration.isOn ? Color.primary : Color.secondary)
         .symbolVariant(configuration.isOn ? .fill : .none)
     }.accessibilityValue(configuration.isOn ? "Activé" : "Désactivé")

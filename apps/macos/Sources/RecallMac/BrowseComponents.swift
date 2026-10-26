@@ -5,8 +5,9 @@ import SwiftUI
 // Pieces shared by Bibliothèque and Découvrir: a dense song list (Spotify), result cards
 // (YouTube Music) and a quiet command bar (Raycast). docs/design.md explains the rules.
 
-/// One song in a list: number or play on hover, artwork, song and artist, duration, actions.
-/// The playing song shows in the accent with a speaker instead of its number.
+/// One song in a list (Sillage Atelier): number or play on hover, 16:9 thumbnail, song and
+/// artist, hover actions, duration. Regular columns; rows separated by a faint rule only.
+/// The playing song shows a speaker marker; its title uses the action text role.
 struct SongRow: View {
   let index: Int?
   let track: Track
@@ -20,27 +21,21 @@ struct SongRow: View {
       if let index {
         ZStack {
           if hovering {
-            Image(systemName: "play.fill").font(.caption)
+            Image(systemName: "play.fill").font(.system(size: 11))
           } else if playing {
-            Image(systemName: "speaker.wave.2.fill").font(.caption).foregroundStyle(Color.recall)
+            Image(systemName: "speaker.wave.2.fill").font(.system(size: 11))
+              .foregroundStyle(Color.sillage(.primaryFill))
           } else {
-            Text("\(index)").font(.callout.monospacedDigit()).foregroundStyle(.secondary)
+            Text("\(index)").font(.system(size: 12).monospacedDigit()).foregroundStyle(.secondary)
           }
-        }.frame(width: 28).accessibilityHidden(true)
+        }.frame(width: 26).accessibilityHidden(true)
       }
-      Artwork(track: track, showsDuration: false).frame(width: 64)
+      Artwork(track: track, showsDuration: false).frame(width: 56)
       VStack(alignment: .leading, spacing: 2) {
-        Text(name.title).fontWeight(.medium).lineLimit(1)
-          .foregroundStyle(playing ? Color.recall : Color.primary)
-        HStack(spacing: 6) {
-          ChannelAvatar(name: name.artist ?? track.channel ?? "?", photo: track.channelAvatarURL)
-          Text(name.artist ?? track.channel ?? "YouTube").font(.callout)
-            .foregroundStyle(.secondary).lineLimit(1)
-          if let metadata = track.musicMetadata, metadata.matched, !metadata.genres.isEmpty {
-            Text(metadata.genres.prefix(2).joined(separator: ", ")).font(.caption)
-              .foregroundStyle(.tertiary).lineLimit(1)
-          }
-        }
+        Text(name.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
+          .foregroundStyle(playing ? Color.sillage(.actionText) : Color.primary)
+        Text(name.artist ?? track.channel ?? "YouTube").font(.system(size: 12))
+          .foregroundStyle(.secondary).lineLimit(1)
       }.frame(maxWidth: .infinity, alignment: .leading)
       // Hover actions leave the view when hidden, so keyboard focus never lands on them;
       // the row's accessibility actions offer the same choices.
@@ -60,29 +55,41 @@ struct SongRow: View {
             .help("Plus d’actions").accessibilityLabel("Plus d’actions pour \(name.title)")
         }
       }.frame(width: 54, alignment: .trailing)
-      Text(track.durationSeconds.map(clock) ?? "").font(.callout.monospacedDigit())
+      Text(track.durationSeconds.map(clock) ?? "").font(.system(size: 12).monospacedDigit())
         .foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
     }
-    .padding(.horizontal, 10).padding(.vertical, 6)
-    .background(
-      RoundedRectangle(cornerRadius: 8).fill(.white.opacity(hovering ? 0.07 : 0))
-    )
+    .padding(.horizontal, 8).padding(.vertical, 5)
+    .background(RoundedRectangle(cornerRadius: 8).fill(hovering ? Color.sillageHover : .clear))
+    .overlay(alignment: .bottom) {
+      SillageRule().opacity(0.5).padding(.leading, index == nil ? 76 : 110)
+    }
     .contentShape(Rectangle())
     .onHover { hovering = $0 }
     .onTapGesture(count: 2, perform: onPlay)
     .overlay(alignment: .leading) {
       // The number column doubles as a play button, as in Spotify.
       if index != nil {
-        Button(action: onPlay) { Color.clear.frame(width: 48) }.buttonStyle(.plain)
+        Button(action: onPlay) { Color.clear.frame(width: 40) }.buttonStyle(.plain)
           .accessibilityHidden(true)
       }
     }
-    .help(track.description.flatMap(shortDescription) ?? "")
+    .help(help(name))
     .accessibilityElement(children: .contain)
     .accessibilityLabel(name.artist.map { "\(name.title), \($0)" } ?? name.title)
+    .accessibilityValue(playing ? "En lecture" : "")
     .accessibilityAddTraits(playing ? .isSelected : [])
     .accessibilityAction(named: "Lire", onPlay)
     .accessibilityAction(named: "Lire ensuite", onEnqueue)
+  }
+
+  /// Full title, credits and genres stay one hover away instead of crowding the row.
+  private func help(_ name: TrackTitle) -> String {
+    var lines = [name.artist.map { "\(name.title) — \($0)" } ?? name.title]
+    if let metadata = track.musicMetadata, metadata.matched, !metadata.genres.isEmpty {
+      lines.append(metadata.genres.prefix(3).joined(separator: ", "))
+    }
+    if let summary = track.description.flatMap(shortDescription) { lines.append(summary) }
+    return lines.joined(separator: "\n")
   }
 }
 
@@ -124,9 +131,9 @@ struct PlayDisc: View {
   var symbol = "play.fill"
   var body: some View {
     Image(systemName: symbol).font(.system(size: size * 0.38, weight: .bold))
-      .foregroundStyle(.black).frame(width: size, height: size)
-      .background(Circle().fill(Color.recall))
-      .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+      .foregroundStyle(Color.sillage(.primaryIcon)).frame(width: size, height: size)
+      .background(Circle().fill(Color.sillage(.primaryFill)))
+      .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
   }
 }
 
@@ -170,39 +177,7 @@ struct PlaylistTile: View {
   }
 }
 
-/// Raycast-like command bar: large field, scope chips inside, Escape clears.
-struct CommandBar<Trailing: View>: View {
-  let prompt: String
-  @Binding var text: String
-  var onSubmit: () -> Void = {}
-  @ViewBuilder var trailing: Trailing
-  @FocusState private var focused: Bool
-  var body: some View {
-    HStack(spacing: 10) {
-      Image(systemName: "magnifyingglass").font(.title3).foregroundStyle(.secondary)
-      TextField(prompt, text: $text).textFieldStyle(.plain).font(.title3)
-        .focused($focused).onSubmit(onSubmit)
-        .onExitCommand { text = "" }
-      if !text.isEmpty {
-        Button {
-          text = ""
-          focused = true
-        } label: {
-          Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
-        }.buttonStyle(.plain).accessibilityLabel("Effacer la recherche")
-      }
-      trailing
-    }
-    .padding(.horizontal, 16).frame(height: 52)
-    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
-    .overlay(
-      RoundedRectangle(cornerRadius: 12).strokeBorder(.white.opacity(focused ? 0.22 : 0.08))
-    )
-    .onAppear { focused = true }
-  }
-}
-
-/// Neutral chip, white when selected: scopes, recent searches, ideas.
+/// Neutral chip, white (chalk) with ink text when selected; recents, ideas, scopes.
 struct Chip: View {
   let title: String
   var symbol: String? = nil
@@ -214,12 +189,8 @@ struct Chip: View {
         if let symbol { Image(systemName: symbol).imageScale(.small) }
         Text(title).lineLimit(1)
       }
-      .font(.callout.weight(.medium))
-      .foregroundStyle(selected ? Color.black : Color.primary.opacity(0.85))
-      .padding(.horizontal, 12).padding(.vertical, 6)
-      .background(Capsule().fill(selected ? Color.white : Color.white.opacity(0.08)))
-      .contentShape(Capsule())
-    }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
+    }.buttonStyle(SillageChipStyle(selected: selected))
+      .accessibilityAddTraits(selected ? .isSelected : [])
   }
 }
 

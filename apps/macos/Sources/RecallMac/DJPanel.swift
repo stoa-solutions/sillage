@@ -39,15 +39,15 @@ struct PanelTabBar: View {
             if tab == .queue && queueCount > 0 && !selected {
               Text("\(queueCount)").font(.caption2.monospacedDigit().weight(.semibold))
                 .padding(.horizontal, 5).padding(.vertical, 1)
-                .background(Capsule().fill(.white.opacity(0.15)))
+                .background(Capsule().fill(Color.primary.opacity(0.12)))
             }
           }
           .font(.callout.weight(.medium))
-          .foregroundStyle(selected ? Color.black : Color.secondary)
+          .foregroundStyle(selected ? Color.sillage(.primaryIcon) : Color.secondary)
           .padding(.horizontal, selected ? 12 : 9).frame(height: 28)
           .background {
             if selected {
-              Capsule().fill(.white).matchedGeometryEffect(id: "tab", in: pill)
+              Capsule().fill(Color.sillageSelectedFill).matchedGeometryEffect(id: "tab", in: pill)
             }
           }
           .contentShape(Capsule())
@@ -57,7 +57,7 @@ struct PanelTabBar: View {
       }
     }
     .padding(3)
-    .background(Capsule().fill(.white.opacity(0.06)))
+    .background(Capsule().fill(Color.sillageHover))
     .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: selection)
   }
 }
@@ -85,7 +85,7 @@ struct ChatBubble: View {
         Text(message.content).textSelection(.enabled)
           .padding(.horizontal, 13).padding(.vertical, 8)
           .background(
-            .white.opacity(0.1), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
       }
     } else {
       HStack(alignment: .top, spacing: 10) {
@@ -126,7 +126,7 @@ struct TypingIndicator: View {
         }
       }
       .padding(.horizontal, 12).padding(.vertical, 10)
-      .background(.white.opacity(0.06), in: Capsule())
+      .background(Color.sillageHover, in: Capsule())
       .accessibilityHidden(true)
       Text(label).font(.caption).foregroundStyle(.secondary)
       Spacer(minLength: 0)
@@ -154,7 +154,7 @@ struct ScopeMenu: View {
       }
       .font(.caption.weight(.medium)).foregroundStyle(.secondary)
       .padding(.horizontal, 8).padding(.vertical, 4)
-      .background(Capsule().fill(.white.opacity(0.07)))
+      .background(Capsule().fill(Color.sillageHover))
     }
     .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
     .help("Choisis où le DJ cherche. « Joue » lance maintenant ; « ajoute » garde la lecture.")
@@ -187,10 +187,10 @@ struct CommandSuggestions: View {
       }
       .padding(.bottom, 4)
       .background(
-        RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.black.opacity(0.35))
+        RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.sillage(.reading))
           .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(
-              .white.opacity(0.08)))
+              Color.sillage(.separator)))
       )
     }
   }
@@ -211,7 +211,7 @@ private struct CommandRow: View {
       }
       .padding(.horizontal, 10).padding(.vertical, 6)
       .background(
-        RoundedRectangle(cornerRadius: 8).fill(.white.opacity(hovering ? 0.08 : 0))
+        RoundedRectangle(cornerRadius: 8).fill(hovering ? Color.sillageHover : .clear)
       )
       .contentShape(Rectangle())
     }.buttonStyle(.plain).onHover { hovering = $0 }.padding(.horizontal, 4)
