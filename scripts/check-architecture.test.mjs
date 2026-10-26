@@ -32,7 +32,7 @@ test("client bundles cannot import server code or Node via dynamic imports", () 
   );
 });
 test("pure policy allows type-only adapter references, but rejects runtime imports and effects", () => {
-  const file = "apps/server/src/features/dj/context.ts";
+  const file = "apps/server/src/features/dj/decision.ts";
   assert.equal(
     violations(file, 'import type { ChatMessage } from "./provider.ts"').length,
     0,
@@ -79,7 +79,7 @@ test("checks bare Node/workspace imports and permits type-only re-exports", () =
   );
   assert.equal(
     violations(
-      "apps/server/src/features/dj/context.ts",
+      "apps/server/src/features/dj/decision.ts",
       'export { type ChatMessage } from "./provider.ts"',
     ).length,
     0,

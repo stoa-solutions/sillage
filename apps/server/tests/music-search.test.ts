@@ -83,7 +83,7 @@ it.each(["library", "youtube", "all"] as const)(
     expect(names).toEqual(
       scope === "youtube"
         ? ["seekInformation", "music_search"]
-        : ["seekInformation", "library_overview", "music_search"],
+        : ["seekInformation", "library_browse", "music_search"],
     );
     const result = await query(scope);
     expect(mocks.search).toHaveBeenCalledTimes(scope === "youtube" ? 0 : 1);
@@ -202,18 +202,18 @@ it("classifies YouTube throttling without leaking its private response", async (
 });
 
 it("rejects invented playlist filters without searching or treating them as an empty catalog", async () => {
-  const result = await query("all", { query: "afro", playlistId: "_library_all" });
+  db.query.mockResolvedValueOnce({ rows: [{ id: "owned-playlist", title: "My playlist", tracks: 3 }] } as never);
+  const result = await query("all", { query: "afro", playlist: "_library_all" });
   expect(result.sources).toContainEqual({ source: "library", status: "invalid_request", reason: "invalid_playlist" });
-  expect(result.note).toContain("omit it");
+  expect(result.note).toContain("omit playlist");
   expect(mocks.search).not.toHaveBeenCalled();
   expect(mocks.youtube).not.toHaveBeenCalled();
 });
-it("accepts the owned playlist ID returned by overview in the same agent session", async () => {
+it("resolves a playlist the listener names, without a prior listing call", async () => {
   const mcp = await connectMusicMcp(db as unknown as Database, [], "alice", true, "all");
   try {
-    db.query.mockResolvedValueOnce({ rows: [{ ...libraryTrack, id: "owned-playlist", title: "My playlist" }] });
-    await mcp.client.callTool({ name: "library_overview", arguments: {} });
-    await mcp.client.callTool({ name: "music_search", arguments: { query: "afro", playlistId: "owned-playlist" } });
+    db.query.mockResolvedValueOnce({ rows: [{ id: "owned-playlist", title: "Soirée d’été", tracks: 12 }] } as never);
+    await mcp.client.callTool({ name: "music_search", arguments: { query: "afro", playlist: "soiree d'ete" } });
     expect(mocks.search).toHaveBeenCalledWith(db, expect.objectContaining({ playlistId: "owned-playlist" }), "alice");
     expect(mocks.youtube).not.toHaveBeenCalled();
   } finally { await mcp.close(); }

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Database } from "./db.ts";
-import type { ApiEnvironment } from "./dj-routes.ts";
+import type { ApiEnvironment } from "./api-environment.ts";
 
 // Listening history: what each account played and how it ended. The Mac sends events in
 // batches with its own IDs, so a retried upload never counts a play twice. Title and channel

@@ -5303,6 +5303,21 @@
               "direction"
             ]
           },
+          "continuation": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "default": 5,
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8
+              },
+              "broaden": {
+                "default": false,
+                "type": "boolean"
+              }
+            }
+          },
           "message": {
             "type": "string",
             "minLength": 1,

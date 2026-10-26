@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS dj_turns (
   request_id uuid, scope text NOT NULL CHECK(scope IN ('library','youtube','all')),
   requested_scope text CHECK(requested_scope IN ('library','youtube','all')),
   trigger text NOT NULL CHECK(trigger IN ('user','continuation')),
-  status text NOT NULL DEFAULT 'running' CHECK(status IN ('running','completed','error','canceled','busy')),
+  status text NOT NULL DEFAULT 'running',
   input jsonb NOT NULL, plan jsonb NOT NULL, response jsonb,
   model text, prompt_hash text NOT NULL, release_sha text NOT NULL,
   started_at timestamptz NOT NULL DEFAULT now(), completed_at timestamptz,
@@ -207,5 +207,14 @@ DO $$ BEGIN
       WHERE id='00000000-0000-4000-8000-000000000001'
       AND NOT EXISTS(SELECT 1 FROM account_dj_settings WHERE user_id=users.id);
     INSERT INTO schema_migrations(version) VALUES(3);
+  END IF;
+END $$;
+-- A forced message supersedes the running turn; a restart interrupts it.
+DO $$ BEGIN
+  IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='dj_turns_status_check'
+    AND pg_get_constraintdef(oid) LIKE '%interrupted%') THEN
+    ALTER TABLE dj_turns DROP CONSTRAINT IF EXISTS dj_turns_status_check;
+    ALTER TABLE dj_turns ADD CONSTRAINT dj_turns_status_check
+      CHECK(status IN ('running','completed','error','canceled','busy','superseded','interrupted'));
   END IF;
 END $$;

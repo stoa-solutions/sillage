@@ -5,15 +5,24 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const pureDj = new Set(["contracts.ts", "context.ts", "errors.ts", "evidence.ts", "composition.ts", "retrieval.ts"]);
+// Policy modules: deterministic, testable without a network, database or clock.
+const pureDj = new Set([
+  "contracts.ts",
+  "plan.ts",
+  "intent.ts",
+  "prompt.ts",
+  "messages.ts",
+  "memory.ts",
+  "decision.ts",
+  "reply.ts",
+  "errors.ts",
+  "evidence.ts",
+  "composition.ts",
+  "retrieval.ts",
+]);
 const pureDjImports = new Set([
   "zod",
-  "./contracts.ts",
-  "./errors.ts",
-  "./context.ts",
-  "./evidence.ts",
-  "../../dj-intent.ts",
-  "../../dj-prompt.ts",
+  ...[...pureDj].map((file) => `./${file}`),
 ]);
 
 /** Inspect syntax, not text matches: comments and type-only dependencies are harmless. */

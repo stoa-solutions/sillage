@@ -3,7 +3,7 @@ import { z } from "zod";
 import { transaction, type Database } from "./db.ts";
 import { hash } from "./content.ts";
 import { LEGACY_USER } from "./accounts.ts";
-import type { ApiEnvironment } from "./dj-routes.ts";
+import type { ApiEnvironment } from "./api-environment.ts";
 export function accountRoutes(db: Database) {
   const app = new Hono<ApiEnvironment>();
   app.post("/claim-library", async (c) => {

@@ -1,10 +1,10 @@
 import type { DjInput, Selection } from "./contracts.ts";
-import type { TurnPlan } from "./context.ts";
-import { initialMessages } from "./context.ts";
+import type { TurnPlan } from "./plan.ts";
 import { compactVideo, type DiscoveryEvidence } from "./evidence.ts";
-import { playbackAction } from "../../dj-intent.ts";
+import { playbackAction } from "./intent.ts";
 import { DjUnavailable } from "./errors.ts";
 import type { InformationSource } from "../../information.ts";
+import type { ChatMessage } from "./provider.ts";
 
 export interface ComposedSelection {
   action: "replace" | "append" | "keep";
@@ -38,9 +38,9 @@ export class Composition {
     const proposing =
       this.plan.intent === "browse" ||
       (output.action === "keep" &&
-        Boolean(output.discoveryIds?.length || output.trackIds.length));
+        Boolean(output.discoveryIds.length || output.trackIds.length));
     const requested =
-      proposing && output.discoveryIds?.length
+      proposing && output.discoveryIds.length
         ? output.discoveryIds
         : output.trackIds;
     if (requested.some((id) => !this.candidates.has(id)))
@@ -94,14 +94,18 @@ export class Composition {
   }
 
   /** A fresh selection-only exchange avoids teaching the final round to call another tool. */
-  finalMessages(information: InformationSource[], failures: unknown[]) {
+  finalMessages(
+    base: ChatMessage[],
+    information: InformationSource[],
+    failures: unknown[],
+  ): ChatMessage[] {
     const selected = new Set(this.checkpoint?.ids ?? []);
     const candidates = [...this.candidates.values()].sort(
       (a, b) =>
         Number(selected.has(b.video.id)) - Number(selected.has(a.video.id)),
     );
     return [
-      ...initialMessages(this.input, this.plan),
+      ...base,
       {
         role: "user" as const,
         content:

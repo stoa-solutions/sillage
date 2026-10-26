@@ -4,7 +4,7 @@ import {
   musicQueries,
   isMusicCandidate,
 } from "../src/features/dj/retrieval.ts";
-import { planTurn } from "../src/features/dj/context.ts";
+import { planTurn } from "../src/features/dj/plan.ts";
 import { djInput, selection } from "../src/features/dj/contracts.ts";
 const items = Array.from({ length: 6 }, (_, i) => ({
   inLibrary: true,

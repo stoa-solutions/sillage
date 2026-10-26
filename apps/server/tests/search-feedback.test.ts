@@ -6,10 +6,8 @@ import {
 import { Discovery, discoveryRoutes } from "../src/discovery.ts";
 import { SearxngError } from "../src/searxng.ts";
 import { YouTubeError, youtubeError } from "../src/youtube-errors.ts";
-import {
-  readToolEvidence,
-  noSelectionReply,
-} from "../src/features/dj/evidence.ts";
+import { readToolEvidence } from "../src/features/dj/evidence.ts";
+import { noSelectionReply } from "../src/features/dj/reply.ts";
 import type { Database } from "../src/db.ts";
 
 const now = Date.parse("2026-10-25T20:00:00Z");

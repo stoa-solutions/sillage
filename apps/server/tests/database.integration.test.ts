@@ -517,7 +517,7 @@ it("searches available music through an MCP client and respects exclusions", asy
     expect((await mcp.client.listTools()).tools.map((t) => t.name)).toEqual([
       "seekInformation",
       "library_search",
-      "library_overview",
+      "library_browse",
     ]);
     const result = await mcp.client.callTool({
       name: "library_search",

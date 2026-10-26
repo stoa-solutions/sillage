@@ -4,7 +4,11 @@ import { randomUUID } from "node:crypto";
 import { migrate } from "../src/migrate.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
-import { beginJournal } from "../src/features/dj/journal/store.ts";
+import {
+  beginJournal,
+  closeInterruptedTurns,
+  loadConversationMemory,
+} from "../src/features/dj/journal/store.ts";
 import { djInput } from "../src/features/dj/contracts.ts";
 const url = process.env.TEST_DATABASE_URL;
 if (!url || !new URL(url).pathname.endsWith("_test"))
@@ -310,4 +314,43 @@ it("paginates conversations and rejects another account's conversation cursor", 
     (await (await req("GET", `/conversations?before=${foreign}`)).json())
       .conversations,
   ).toEqual([]);
+});
+
+it("rebuilds the conversation memory from the journal, including a superseded turn's searches", async () => {
+  const conversationId = randomUUID();
+  const turn = async (message: string) =>
+    beginJournal(db, alice, installation, djInput.parse({ message, conversationId }));
+  const first = await turn("Mets du Elvis");
+  await first.finish("completed", {
+    reply: "C’est parti : My Way.",
+    action: "replace",
+    tracks: [{ id: "abcdefghijk", title: "My Way" }],
+  });
+  const forced = await turn("Un mood russe");
+  forced.observe({
+    kind: "tool",
+    name: "music_search",
+    status: "ok",
+    input: { query: "russian doomer" },
+    output: { results: [{ video: { id: "bcdefghijkl", title: "Группа крови" }, inLibrary: false }] },
+  });
+  await forced.finish("superseded", { error: "remplacé", status: 409 });
+  const current = await turn("Plutôt du Basta");
+  const memory = await loadConversationMemory(db, alice, conversationId, current.id);
+  expect(memory.exchanges).toEqual([
+    { request: "Mets du Elvis", trigger: "user", reply: "C’est parti : My Way.", tracks: ["My Way"] },
+  ]);
+  expect(memory.interrupted).toEqual({
+    request: "Un mood russe",
+    searches: ["russian doomer"],
+    candidates: ["Группа крови"],
+  });
+  expect((await loadConversationMemory(db, bob, conversationId, current.id)).exchanges).toEqual([]);
+});
+
+it("closes turns a restart cut off, so none stays running forever", async () => {
+  const running = await beginJournal(db, alice, installation, djInput.parse({ message: "Du jazz" }));
+  expect(await closeInterruptedTurns(db)).toBe(1);
+  const { rows } = await db.query("SELECT status,response FROM dj_turns WHERE id=$1", [running.id]);
+  expect(rows[0]).toMatchObject({ status: "interrupted", response: { status: 503 } });
 });

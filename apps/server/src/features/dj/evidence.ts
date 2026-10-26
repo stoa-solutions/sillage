@@ -53,6 +53,7 @@ export function compactVideo(video: DjTrack) {
       (video as DjTrack & { matchReason?: string }).matchReason,
       220,
     ),
+    addedAt: shortText((video as DjTrack & { addedAt?: string }).addedAt, 10),
   };
 }
 
@@ -77,7 +78,8 @@ function compactSearch(
   data: Record<string, unknown>,
   items: DiscoveryEvidence[],
 ) {
-  const key = name === "library_search" ? "tracks" : "results";
+  const owned = name === "library_search" || name === "library_browse";
+  const key = owned ? "tracks" : "results";
   const values: unknown[] = [];
   const shown: DiscoveryEvidence[] = [];
   const envelope = {
@@ -91,6 +93,13 @@ function compactSearch(
           note: shortText(source?.note, 200),
         }))
       : undefined,
+    ...(name === "library_browse"
+      ? {
+          playlists: compactPlaylists(data.playlists),
+          order: shortText(data.order, 10),
+          playlist: shortText(data.playlist, 300),
+        }
+      : {}),
     mode: shortText(data.mode, 20),
     degraded: shortText(data.degraded, 220),
     note: shortText(data.note, 220),
@@ -98,9 +107,7 @@ function compactSearch(
   };
   for (const item of balancedCandidates(items)) {
     const video = compactVideo(item.video);
-    values.push(
-      name === "library_search" ? video : { video, inLibrary: item.inLibrary },
-    );
+    values.push(owned ? video : { video, inLibrary: item.inLibrary });
     envelope.omittedCandidates = items.length - shown.length - 1;
     if (JSON.stringify(envelope).length > TOOL_CONTEXT_LIMIT) {
       values.pop();
@@ -111,16 +118,16 @@ function compactSearch(
   return { text: JSON.stringify(envelope), items: shown };
 }
 
-function compactOverview(data: Record<string, unknown>) {
-  if (!Array.isArray(data.playlists)) throw new Error("invalid tool result");
-  const playlists = data.playlists.slice(0, 30).map((playlist) => ({
+function compactPlaylists(value: unknown) {
+  if (!Array.isArray(value)) throw new Error("invalid tool result");
+  const playlists = value.slice(0, 30).map((playlist) => ({
     id: shortText(playlist?.id, 160),
     title: shortText(playlist?.title, 300),
     tracks: typeof playlist?.tracks === "number" ? playlist.tracks : undefined,
   }));
-  while (JSON.stringify({ playlists }).length > TOOL_CONTEXT_LIMIT)
+  while (JSON.stringify({ playlists }).length > TOOL_CONTEXT_LIMIT / 4)
     playlists.pop();
-  return JSON.stringify({ playlists });
+  return playlists;
 }
 
 /** A whole tool response is validated before any candidate becomes executable. */
@@ -153,17 +160,16 @@ export function readToolEvidence(
   }
   const isSearch = [
     "library_search",
+    "library_browse",
     "youtube_search",
     "music_search",
   ].includes(name);
   let items: DiscoveryEvidence[] = [];
   if (isSearch) {
-    const values = name === "library_search" ? data.tracks : data.results;
+    const owned = name === "library_search" || name === "library_browse";
+    const values = owned ? data.tracks : data.results;
     if (!Array.isArray(values)) throw new Error("invalid tool result");
-    items =
-      name === "library_search"
-        ? values.map((video) => ({ video, inLibrary: true }))
-        : values;
+    items = owned ? values.map((video) => ({ video, inLibrary: true })) : values;
     if (
       items.some(
         (item) =>
@@ -216,9 +222,8 @@ export function readToolEvidence(
     data.sources.every(
       (source: { status?: string }) => source.status === "unsupported",
     );
-  const context = isSearch
-    ? compactSearch(name, data, items)
-    : { text: compactOverview(data), items: [] };
+  if (!isSearch) throw new Error("unknown tool result");
+  const context = compactSearch(name, data, items);
   return {
     ...context,
     isSearch,
@@ -237,32 +242,4 @@ export function readToolEvidence(
     visualUnsupported,
     youtubeDailyQuota,
   };
-}
-
-/** Explain catalog facts, never repeat a provider's unexecuted action or diagnosis. */
-export function discoveryReply(cards: DiscoveryEvidence[], explanation?: string) {
-  const credits = cards
-    .flatMap(({ video }) => {
-      const metadata = video.musicMetadata;
-      const artists =
-        metadata?.status === "matched" && Array.isArray(metadata.artists)
-          ? metadata.artists
-              .filter((artist) => typeof artist?.name === "string")
-              .map((artist) => artist.name)
-          : [];
-      return artists.length
-        ? [`« ${video.title} » : ${artists.join(", ")} (crédits MusicBrainz).`]
-        : [];
-    })
-    .slice(0, 2)
-    .join(" ")
-    .slice(0, 700);
-  return `Je te propose ${cards.length === 1 ? "ce morceau" : `ces ${cards.length} morceaux`}. ${credits ? credits + " " : ""}Choisis celui que tu veux écouter.${explanation?.trim() ? " " + explanation.trim() : ""}`;
-}
-
-export function noSelectionReply(failureSummary = "", currentTitle?: string) {
-  const reference = currentTitle ? ` autour de « ${currentTitle} »` : "";
-  return failureSummary
-    ? `${failureSummary} Je n’ai pas de nouvelle sélection vérifiée${reference}. Ta lecture et ta file sont conservées.`
-    : `Je n’ai pas trouvé de nouvelle sélection compatible${reference} dans les sources choisies. Ta lecture et ta file sont conservées. Tu peux élargir la recherche ou demander une autre ambiance.`;
 }

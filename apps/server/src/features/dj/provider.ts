@@ -11,7 +11,7 @@ import { aiModel, providerHttpStatus, thinkingOptions } from "./ai-model.ts";
 import { DjUnavailable } from "./errors.ts";
 import type { TraceObserver } from "./journal/contracts.ts";
 
-interface ToolCall {
+export interface ToolCall {
   id: string;
   type: "function";
   function: { name: string; arguments: string };

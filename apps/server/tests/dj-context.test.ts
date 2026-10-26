@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
-import { initialMessages, planTurn } from "../src/features/dj/context.ts";
+import { planTurn } from "../src/features/dj/plan.ts";
+import { initialMessages } from "../src/features/dj/messages.ts";
 import type { DjInput } from "../src/features/dj/contracts.ts";
 
 function request(message: string): DjInput {
@@ -45,7 +46,7 @@ it("retains YouTube hints only for clients without a source selector", () => {
 it.each(["Prépare la suite dans cette ambiance", "Prépare la suite dans la même veine"])("uses current playback for %s", (message) => {
   const plan = planTurn(request(message));
   expect(plan.relative).toBe(true);
-  expect(plan.grounded).toEqual(request(message).playbackContext?.current);
+  expect(plan.grounded).toBe(true);
 });
 
 it("retains recent proposal and explicit rejections even for a relative follow-up", () => {

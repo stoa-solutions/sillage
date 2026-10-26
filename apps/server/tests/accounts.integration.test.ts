@@ -130,11 +130,11 @@ it("isolates browsing, text search, pagination, counts, exports and shared-video
     expect((await req("/v1/jobs/retry", token, {})).status).toBe(403);
   }
 });
-it("isolates MCP overview/search and final DJ candidate validation", async () => {
+it("isolates MCP browsing/search and final DJ candidate validation", async () => {
   const mcp = await connectMusicMcp(db, [], alice);
   try {
     const overview = JSON.stringify(
-      await mcp.client.callTool({ name: "library_overview", arguments: {} }),
+      await mcp.client.callTool({ name: "library_browse", arguments: {} }),
     );
     expect(overview).toContain("Alice privée");
     expect(overview).not.toContain("Bob privée");
@@ -151,6 +151,30 @@ it("isolates MCP overview/search and final DJ candidate validation", async () =>
         (t) => t.id,
       ),
     ).toEqual(["shared12345"]);
+  } finally {
+    await mcp.close();
+  }
+});
+it("browses one account's library by date added, by playlist name, artist or genre", async () => {
+  await db.query(`UPDATE memberships SET added_at=CASE video_id
+    WHEN 'alicevideo1' THEN '2019-03-01'::timestamptz
+    WHEN 'shared12345' THEN '2024-06-01'::timestamptz END`);
+  await db.query(`UPDATE videos SET music_metadata='{"status":"matched","artists":[{"name":"Erykah Badu"}],"genres":["Neo Soul"]}'::jsonb WHERE id='shared12345'`);
+  const mcp = await connectMusicMcp(db, [], alice, false, "library");
+  const browse = async (args: Record<string, unknown>) =>
+    JSON.parse(((await mcp.client.callTool({ name: "library_browse", arguments: args })).content as { text: string }[])[0].text);
+  try {
+    const oldest = await browse({ order: "oldest" });
+    expect(oldest.tracks.map((t: { id: string }) => t.id)).toEqual(["alicevideo1", "shared12345"]);
+    expect(oldest.tracks[0].addedAt).toBe("2019-03-01");
+    expect(JSON.stringify(oldest)).not.toContain("bobvideo123");
+    expect(JSON.stringify(oldest.playlists)).not.toContain("Bob privée");
+    expect((await browse({ order: "recent", limit: 1 })).tracks[0].id).toBe("shared12345");
+    expect((await browse({ playlist: "alice privee" })).playlist).toBe("Alice privée");
+    expect((await browse({ playlist: "Bob privée" })).note).toContain("No playlist matches");
+    expect((await browse({ artist: "badu" })).tracks.map((t: { id: string }) => t.id)).toEqual(["shared12345"]);
+    expect((await browse({ genre: "soul" })).tracks.map((t: { id: string }) => t.id)).toEqual(["shared12345"]);
+    expect((await browse({ genre: "100%" })).tracks).toEqual([]);
   } finally {
     await mcp.close();
   }
@@ -598,7 +622,7 @@ it("scopes the public HTTP MCP endpoint to the authenticated user", async () => 
       jsonrpc: "2.0",
       id: 1,
       method: "tools/call",
-      params: { name: "library_overview", arguments: {} },
+      params: { name: "library_browse", arguments: {} },
     }),
   });
   expect(response.status).toBe(200);

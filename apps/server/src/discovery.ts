@@ -13,7 +13,7 @@ import {
   type SearchFailureReason,
 } from "./search-feedback.ts";
 import { nextYouTubeQuotaReset, YouTubeError } from "./youtube-errors.ts";
-import type { ApiEnvironment } from "./dj-routes.ts";
+import type { ApiEnvironment } from "./api-environment.ts";
 
 export const discoveryInput = z.object({
   query: z.string().trim().min(2).max(200),

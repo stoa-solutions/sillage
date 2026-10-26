@@ -43,6 +43,8 @@ const db = {
     }
     // Exact catalog resolution is a separate fast path. These cases exercise tools.
     if (sql.includes("LIMIT 10001")) return { rows: [], rowCount: 0 };
+    if (sql.includes("FROM playlists p"))
+      return { rows: [{ id: "PLsoul", title: "Soul du dimanche", tracks: 3 }], rowCount: 1 };
     throw new Error("Unexpected SQL in agent fixture");
   }),
 };
@@ -459,11 +461,11 @@ it("keeps a genuinely ambiguous proposal after one reconsideration even with a s
 
 it("does not let a later empty filtered search erase earlier candidates during a quota outage", async () => {
   boundaries.youtube.mockRejectedValue(new DiscoveryError("private", 429, "daily_quota"));
-  responses.push(searchCall("afro"), searchCall("afro", { playlistId: "_library_all" }), selection([], "keep"), selection([library[0].id], "replace"));
+  responses.push(searchCall("afro"), searchCall("afro", { playlist: "_library_all" }), selection([], "keep"), selection([library[0].id], "replace"));
   const result = await run({ message: "Fais-moi une playlist de musique afro", scope: "all" });
   expect(result).toMatchObject({ action: "replace", tracks: [{ id: library[0].id }] });
   expect(boundaries.search).toHaveBeenCalledOnce();
-  expect(toolEvidence()).toContainEqual(expect.objectContaining({ note: expect.stringContaining("Unknown playlistId") }));
+  expect(toolEvidence()).toContainEqual(expect.objectContaining({ note: expect.stringContaining("No playlist matches") }));
   expect(requests).toHaveLength(4);
 });
 
@@ -568,7 +570,9 @@ it("observes actual catalog, provider and MCP rounds without changing selection 
   responses.push(searchCall("cumbia"), selection([external[0].id], "append"));
   const result = await djTurn(db as unknown as Database, djInput.parse({message:"Ajoute 1 morceau de cumbia à la suite",scope:"all"}), undefined, config, "alice", event=>events.push(event));
   expect(result.action).toBe("append");
-  expect(events.map(event=>event.kind)).toEqual(["catalog","provider","tool","provider"]);
+  expect(events.map(event=>event.kind)).toEqual(["catalog","provider","tool","provider","policy"]);
+  // The journal records why the answer became this outcome.
+  expect(events.at(-1)).toMatchObject({name:"decision",output:{kind:"play",reason:"selection"}});
   expect(events.find(event=>event.kind==="tool")).toMatchObject({name:"music_search",callId:"search",input:{query:"cumbia"},status:"ok"});
   expect(boundaries.search).toHaveBeenCalledOnce();
   expect(boundaries.youtube).toHaveBeenCalledOnce();
@@ -614,4 +618,62 @@ it("keeps the musical explanation on exploratory cards without executing the pro
  const result=await run({message:"Propose un morceau sans le lancer",scope:"library"});
  expect(result.action).toBe("keep");expect(result.tracks).toEqual([]);
  expect(result.reply).toContain("couleur tropicale");expect(result.reply).not.toContain("Je lance");
+});
+
+// Real journal, 26 October: both answers were correct and were refused as « pas lisible ».
+it("answers a question planned as playback when the provider writes null for unused fields", async () => {
+  boundaries.information.mockResolvedValue({
+    status: "ok",
+    sources: [{ id: 1, title: "Erykah Badu", url: "https://fr.wikipedia.org/wiki/Erykah_Badu", snippet: "Chanteuse américaine." }],
+  });
+  const reply = "Erykah Badu est une figure de la néo-soul [1].";
+  responses.push(
+    { tool_calls: [{ id: "info", type: "function", function: { name: "seekInformation", arguments: JSON.stringify({ query: "Erykah Badu" }) } }] },
+    { content: JSON.stringify({ kind: "information", reply, explanation: null, trackIds: [], citationIds: [1], discoveryIds: null, action: "keep" }) },
+  );
+  const result = await run({ message: "donne des infos sur elle", scope: "all" });
+  expect(result).toMatchObject({ action: "keep", tracks: [], reply, source: "web" });
+  expect(result).toHaveProperty("sources.0.id", 1);
+});
+
+it("answers a conversational question without searching even when its wording looks like a command", async () => {
+  const reply = "Oui, je vois les morceaux de notre session, pas ton historique d’écoute global.";
+  responses.push({ content: JSON.stringify({ kind: "conversation", reply, explanation: null, trackIds: [], citationIds: [], action: "keep" }) });
+  const result = await run({ message: "Est-ce que t'as accès à mon historique là par hasard", scope: "all" });
+  expect(result).toMatchObject({ action: "keep", tracks: [], reply });
+  expect(boundaries.search).not.toHaveBeenCalled();
+});
+
+it("keeps a sourced identification in the DJ's words and names every proposed card", async () => {
+  boundaries.information.mockResolvedValue({
+    status: "ok",
+    sources: [{ id: 1, title: "Paroles", url: "https://lyrics.test/cest-ecrit", snippet: "Dans les vapeurs des ports" }],
+  });
+  const reply = "C’est **C’est écrit**, sur l’album *Sarbacane* [1].";
+  responses.push(
+    { tool_calls: [{ id: "info", type: "function", function: { name: "seekInformation", arguments: JSON.stringify({ query: "Cabrel vapeurs des ports" }) } }] },
+    searchCall("C'est écrit", { artist: "Francis Cabrel" }),
+    { content: JSON.stringify({ kind: "music", reply, trackIds: [], discoveryIds: [library[0].id, library[1].id], citationIds: [1], action: "keep" }) },
+  );
+  const result = await run({ message: "C'est laquelle de Francis Cabrel où il parle des vapeurs du port", scope: "library" });
+  expect(result.reply).toBe(reply);
+  expect(result.discoveries).toHaveLength(2);
+  expect(result).toHaveProperty("sources.0.url", "https://lyrics.test/cest-ecrit");
+});
+
+it("names each card when it proposes several, so the count matches what is shown", async () => {
+  responses.push(searchCall("jazz"), cards([library[0].id, library[1].id]));
+  const result = await run({ message: "Propose deux morceaux de jazz sans les lancer", scope: "library" });
+  expect(result.reply).toContain(`« ${library[0].title} »`);
+  expect(result.reply).toContain(`« ${library[1].title} »`);
+  expect(result.reply).not.toContain("immédiatement");
+});
+
+it("plans a structured refill from its count, whatever the accompanying text says", async () => {
+  responses.push(searchCall("cumbia"), selection(library.slice(0, 3).map((track) => track.id), "replace"));
+  const result = await run({ message: "Mets du rock maintenant", continuation: { count: 3 }, scope: "library" });
+  expect(result.action).toBe("append");
+  expect(result.tracks).toHaveLength(3);
+  const prompt = requests[0].messages.at(-1).content;
+  expect(prompt).toContain("Continue cette session avec 3 nouveaux vrais morceaux");
 });
