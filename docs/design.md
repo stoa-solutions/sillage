@@ -93,4 +93,4 @@ Samuel a choisi de suivre la planche « Atelier de lumière » plutôt que le ca
 
 Même structure que la Bibliothèque : barre latérale (Pour toi, Récentes, Envies, Dans une playlist), recherche en haut, petit en-tête (tuile, titre, compte), puis les mêmes lignes `SongRow`. « Pour toi » liste les recommandations, la raison au survol et l’ajout à Mes découvertes en fin de ligne. Les résultats gardent la sélection cerclée d’orange et l’aperçu à droite quand la place le permet.
 
-Fenêtre : ses limites sont celles du contenu (scène `.contentSize`). Compact s’élargit jusqu’à 620 et, panneau replié, garde exactement la hauteur de sa poche ; les pages de lecture se redimensionnent librement et retrouvent la taille choisie.
+Fenêtre : seuls des minimums sont imposés. `WindowSizer` ajuste le Compact : largeur gardée jusqu’à 620, et poche repliée remise à la hauteur de son contenu (bannières comprises) après un redimensionnement ; panneau ouvert, la hauteur choisie reste. Les pages de lecture retrouvent la taille choisie.

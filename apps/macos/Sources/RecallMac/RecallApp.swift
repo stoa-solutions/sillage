@@ -135,7 +135,7 @@ import SwiftUI
         }
     }
     .defaultSize(width: 600, height: 840)
-    .windowResizability(.contentSize)
+    .windowResizability(.contentMinSize)
     .windowToolbarStyle(.unified(showsTitle: false))
     .commands {
       CommandGroup(after: .appInfo) {

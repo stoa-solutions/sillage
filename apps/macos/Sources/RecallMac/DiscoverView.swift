@@ -18,7 +18,6 @@ struct DiscoverView: View {
   @AppStorage("discover.recent") private var recentText = ""
   private static let ideas = [
     "Rap français", "Afrobeat", "Jazz doux", "Années 80", "Lo-fi pour travailler",
-    "Soul", "House", "Acoustique", "Live sessions",
   ]
   private var recent: [String] { recentText.split(separator: "\n").map(String.init) }
 
@@ -32,7 +31,7 @@ struct DiscoverView: View {
               .sillageSurface(.sidebar)
             SillageRule(vertical: true)
           }
-          main.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+          main(wide: wide).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .sillageSurface(.reading)
           if !djCollapsed {
             SillageRule(vertical: true)
@@ -142,41 +141,37 @@ struct DiscoverView: View {
   private var sidebar: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 2) {
-        sideTitle("Découvrir")
-        sideItem(
-          "Pour toi", detail: "Selon tes écoutes", symbol: "sparkles",
-          selected: !discovery.searched
-        ) {
-          discovery.query = ""
-          discovery.clearResults()
-        }
+        SidebarTitle("Découvrir")
+        SidebarItem(
+          title: "Pour toi", detail: "Selon tes écoutes", symbol: "sparkles",
+          selected: !discovery.searched, action: showForYou)
         if !recent.isEmpty {
           HStack {
-            sideTitle("Récentes")
+            SidebarTitle("Récentes")
             Spacer()
             Button("Effacer") { recentText = "" }.buttonStyle(.plain).font(.system(size: 12))
               .foregroundStyle(.secondary).padding(.trailing, 8)
           }
           ForEach(recent.prefix(6), id: \.self) { query in
-            sideItem(
-              query, symbol: "clock.arrow.circlepath",
+            SidebarItem(
+              title: query, symbol: "clock.arrow.circlepath",
               selected: discovery.searched && discovery.submittedQuery == query
             ) { run(query) }
           }
         }
-        sideTitle("Envies")
-        ForEach(Self.ideas.prefix(5), id: \.self) { idea in
-          sideItem(
-            idea, symbol: "music.note",
+        SidebarTitle("Envies")
+        ForEach(Self.ideas, id: \.self) { idea in
+          SidebarItem(
+            title: idea, symbol: "music.note",
             selected: discovery.searched && discovery.submittedQuery == idea
           ) { run(idea) }
         }
         if !library.playlists.isEmpty {
-          sideTitle("Dans une playlist")
+          SidebarTitle("Dans une playlist")
           ForEach(library.playlists) { playlist in
-            sideItem(
-              playlist.title, detail: "\(playlist.entries.formatted()) vidéos",
-              tile: playlist.title,
+            SidebarItem(
+              title: playlist.title, detail: "\(playlist.entries.formatted()) vidéos",
+              tileTitle: playlist.title,
               selected: discovery.scope == .library && discovery.playlistID == playlist.id
             ) {
               discovery.scope = .library
@@ -188,60 +183,53 @@ struct DiscoverView: View {
     }
   }
 
-  private func sideTitle(_ text: String) -> some View {
-    Text(text).font(.system(size: 14, weight: .semibold))
-      .padding(.horizontal, 8).padding(.top, 10).padding(.bottom, 4)
-      .accessibilityAddTraits(.isHeader)
+  private func showForYou() {
+    discovery.query = ""
+    discovery.clearResults()
   }
 
-  private func sideItem(
-    _ title: String, detail: String? = nil, symbol: String? = nil, tile: String? = nil,
-    selected: Bool, action: @escaping () -> Void
-  ) -> some View {
-    Button(action: action) {
-      HStack(spacing: 10) {
-        if let tile {
-          PlaylistTile(title: tile, size: 40)
-        } else if let symbol {
-          PlaylistTile(title: title, symbol: symbol, size: detail == nil ? 28 : 40)
+  /// When the sidebar is hidden (narrow window or DJ panel open), its shortcuts move here.
+  private var shortcuts: some View {
+    ScrollView(.horizontal, showsIndicators: false) {
+      HStack(spacing: 8) {
+        if discovery.searched {
+          Chip(title: "Pour toi", symbol: "sparkles", action: showForYou)
         }
-        VStack(alignment: .leading, spacing: 1) {
-          Text(title).font(.system(size: 14, weight: .medium)).lineLimit(1).help(title)
-          if let detail {
-            Text(detail).font(.system(size: 12)).foregroundStyle(.secondary)
-          }
+        ForEach(recent.prefix(4), id: \.self) { query in
+          Chip(title: query, symbol: "clock.arrow.circlepath") { run(query) }
         }
-        Spacer(minLength: 0)
+        ForEach(Self.ideas, id: \.self) { idea in
+          Chip(title: idea) { run(idea) }
+        }
       }
-      .padding(6)
-      .background(
-        RoundedRectangle(cornerRadius: 10).fill(selected ? Color.sillageSelectionGlass : .clear)
-      )
-      .contentShape(Rectangle())
-    }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
+    }
   }
 
   // MARK: Main
 
-  private var main: some View {
-    VStack(alignment: .leading, spacing: 12) {
+  private func main(wide: Bool) -> some View {
+    let rows = self.rows
+    return VStack(alignment: .leading, spacing: 12) {
       SearchField(
         prompt: "Un titre, un artiste, une envie…", text: $discovery.query,
         onSubmit: { submit() }, busy: discovery.searching
       ).accessibilityLabel("Rechercher un morceau")
       filters
+      if !wide { shortcuts }
       if !session.hasServer {
         Button("Continuer avec Google") { session.showOnboarding = true }
           .buttonStyle(.borderedProminent)
       }
-      header
-      if discovery.searched { results } else { recommendations }
+      header(rows)
+      if discovery.searched { results(rows) } else { recommendations }
     }.padding(.top, 12).padding(.horizontal, 16)
   }
 
   /// A small context block, as in Bibliothèque: tile, title, count.
-  private var header: some View {
-    let playlist = library.playlists.first { $0.id == discovery.playlistID }
+  private func header(_ rows: [DiscoveryRow]) -> some View {
+    let playlist =
+      discovery.scope == .youtube
+      ? nil : library.playlists.first { $0.id == discovery.playlistID }
     let title =
       discovery.searched
       ? "« \(discovery.submittedQuery) »" : "Pour toi"
@@ -249,7 +237,7 @@ struct DiscoverView: View {
       discovery.searched
       ? [
         discovery.scope.title + (playlist.map { " · " + $0.title } ?? ""),
-        rows.isEmpty ? nil : "\(rows.count) résultats",
+        rows.isEmpty ? nil : "\(rows.count) résultat\(rows.count > 1 ? "s" : "")",
       ].compactMap { $0 }.joined(separator: ", ")
       : (discovery.home.map { "\($0.suggestions.count) titres selon tes écoutes" }
         ?? "Selon tes écoutes")
@@ -262,7 +250,9 @@ struct DiscoverView: View {
         Text(detail).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
       }
       Spacer(minLength: 0)
-      if !discovery.searched {
+      if discovery.searched {
+        IconButton(symbol: "xmark", help: "Revenir à Pour toi", action: showForYou)
+      } else {
         if discovery.homeLoading { ProgressView().controlSize(.small) }
         IconButton(symbol: "arrow.clockwise", help: "Actualiser les recommandations") {
           discovery.loadHome(force: true)
@@ -286,7 +276,9 @@ struct DiscoverView: View {
                 SaveButton(
                   item: DiscoveryItem(video: suggestion.video, inLibrary: suggestion.inLibrary),
                   source: .all)),
-              note: suggestion.reason)
+              note: suggestion.reason,
+              onSave: saveAction(
+                DiscoveryItem(video: suggestion.video, inLibrary: suggestion.inLibrary)))
           }
           if let notice = home.notice {
             Text(notice).font(.callout).foregroundStyle(.secondary).padding(.vertical, 8)
@@ -326,8 +318,7 @@ struct DiscoverView: View {
   }
 
   /// Rows and the selection are computed once per update, then passed down.
-  private var results: some View {
-    let rows = self.rows
+  private func results(_ rows: [DiscoveryRow]) -> some View {
     let selected = rows.first { $0.id == selectedID } ?? rows.first
     return GeometryReader { geometry in
       let preview = geometry.size.width >= 640
@@ -342,6 +333,8 @@ struct DiscoverView: View {
     -> some View
   {
     let lastID = rows.last?.id
+    // Same accessory column on every row as soon as one row has a save button.
+    let accessorySlot: CGFloat? = saveInRows && rows.contains { $0.item != nil } ? 26 : nil
     return ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 2) {
@@ -357,9 +350,10 @@ struct DiscoverView: View {
                 listFocused = true
               },
               accessory: saveInRows && row.item != nil
-                ? AnyView(SaveButton(item: row.item!, source: discovery.scope)) : nil
+                ? AnyView(SaveButton(item: row.item!, source: discovery.scope)) : nil,
+              onSave: row.item.flatMap(saveAction),
+              accessoryWidth: accessorySlot
             )
-            .modifier(SaveAction(item: row.item))
             .accessibilityAction(named: "Aperçu") { selectedID = row.id }
             .id(row.id)
             .onAppear {
@@ -420,6 +414,11 @@ struct DiscoverView: View {
     .frame(maxWidth: .infinity)
   }
 
+  /// Saving is offered only for YouTube results not already in the library.
+  private func saveAction(_ item: DiscoveryItem) -> (() -> Void)? {
+    item.inLibrary || discovery.savedIDs.contains(item.id) ? nil : { discovery.add(item) }
+  }
+
   private func error(_ message: String) -> some View {
     HStack {
       Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
@@ -435,20 +434,6 @@ struct DiscoveryRow: Identifiable, Equatable {
   /// The YouTube result, when the row did not come from the person's playlists.
   let item: DiscoveryItem?
   static func == (a: Self, b: Self) -> Bool { a.id == b.id }
-}
-
-/// VoiceOver can save a YouTube result from its row, whatever the window width. The action
-/// list changes, never the row's identity, so focus stays on the row just saved.
-private struct SaveAction: ViewModifier {
-  let item: DiscoveryItem?
-  @EnvironmentObject var discovery: DiscoveryModel
-  func body(content: Content) -> some View {
-    content.accessibilityActions {
-      if let item, !(item.inLibrary || discovery.savedIDs.contains(item.id)) {
-        Button("Ajouter à Mes découvertes") { discovery.add(item) }
-      }
-    }
-  }
 }
 
 /// The selected result, larger: cover, song, artist, play with its duration, then the

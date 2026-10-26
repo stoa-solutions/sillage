@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage 1.7.9 (68) : relecture de la 67. Fenêtre sans maximum rigide (bannières et plein écran ne coupent plus la poche ; une poche repliée revient à sa hauteur après un redimensionnement), clic droit et « Ouvrir sur YouTube » sur toutes les lignes, ajout à Mes découvertes au menu et à VoiceOver, colonnes alignées dans les résultats, raccourcis de Découvrir visibles quand la barre latérale est masquée, bouton de retour à « Pour toi », barre latérale partagée avec la Bibliothèque.
+
 - Sillage 1.7.9 (67) : Découvrir reprend le design de la Bibliothèque (barre latérale, en-tête, mêmes lignes, recommandations en liste). Onglets revenus dans le Compact (Studio en icône), redimensionnement borné (Compact jusqu’à 620, hauteur de la poche quand le panneau est replié), curseurs sans focus parasite au lancement.
 
 - Sillage 1.7.9 (66) : alignement sur la planche « Atelier de lumière » à la demande de Samuel. Barre latérale à un tiers de la fenêtre (220 à 380 points), titre en lecture en orange en sombre comme en clair, poche Compact sans onglets (⌘1, ⌘2, ⌘3 pour DJ, Bibliothèque, Découvrir), commandes de la poche dans l’ordre de la planche.

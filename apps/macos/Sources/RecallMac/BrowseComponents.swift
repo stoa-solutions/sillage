@@ -20,6 +20,10 @@ struct SongRow: View {
   var accessory: AnyView? = nil
   /// Why the row is shown (a recommendation's reason), one hover away.
   var note: String? = nil
+  /// Découvrir: save a YouTube result to Mes découvertes (context menu and VoiceOver).
+  var onSave: (() -> Void)? = nil
+  /// Keeps the accessory column even on rows without one, so durations stay aligned.
+  var accessoryWidth: CGFloat? = nil
   @State private var hovering = false
   var body: some View {
     let name = TrackTitle(track)
@@ -61,7 +65,11 @@ struct SongRow: View {
             .help("Plus d’actions").accessibilityLabel("Plus d’actions pour \(name.title)")
         }
       }.frame(width: 54, alignment: .trailing)
-      if let accessory { accessory }
+      if let accessory {
+        accessory.frame(width: accessoryWidth)
+      } else if let accessoryWidth {
+        Color.clear.frame(width: accessoryWidth, height: 1)
+      }
       Text(track.durationSeconds.map(clock) ?? "").font(.system(size: 12).monospacedDigit())
         .foregroundStyle(.secondary).frame(width: 44, alignment: .trailing)
     }
@@ -102,6 +110,21 @@ struct SongRow: View {
     .accessibilityAddTraits(playing || selected ? .isSelected : [])
     .accessibilityAction(named: "Lire", onPlay)
     .accessibilityAction(named: "Lire ensuite", onEnqueue)
+    .accessibilityAction(named: "Ouvrir sur YouTube") { NSWorkspace.shared.open(track.url) }
+    .accessibilityActions {
+      if let onSave { Button("Ajouter à Mes découvertes", action: onSave) }
+    }
+    .contextMenu {
+      Button("Lire maintenant", systemImage: "play.fill", action: onPlay)
+      Button("Lire ensuite", systemImage: "text.badge.plus", action: onEnqueue)
+      if let onSave {
+        Button("Ajouter à Mes découvertes", systemImage: "plus.circle", action: onSave)
+      }
+      Divider()
+      Button("Ouvrir sur YouTube", systemImage: "arrow.up.right.square") {
+        NSWorkspace.shared.open(track.url)
+      }
+    }
   }
 
   /// Full title, credits and genres stay one hover away instead of crowding the row.
@@ -206,4 +229,46 @@ func spokenDuration(_ seconds: Double) -> String {
   if minutes > 0 { parts.append("\(minutes) minute\(minutes > 1 ? "s" : "")") }
   if rest > 0 || parts.isEmpty { parts.append("\(rest)") }
   return parts.joined(separator: " ")
+}
+
+/// A row of the sidebar shared by Bibliothèque and Découvrir: tile, title, optional detail.
+struct SidebarItem: View {
+  let title: String
+  var detail: String? = nil
+  var symbol: String? = nil
+  var tileTitle: String? = nil
+  let selected: Bool
+  let action: () -> Void
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 10) {
+        PlaylistTile(
+          title: tileTitle ?? title, symbol: tileTitle == nil ? symbol : nil,
+          size: detail == nil ? 28 : 40)
+        VStack(alignment: .leading, spacing: 1) {
+          Text(title).font(.system(size: 14, weight: .medium)).lineLimit(1).help(title)
+          if let detail {
+            Text(detail).font(.system(size: 12)).foregroundStyle(.secondary)
+          }
+        }
+        Spacer(minLength: 0)
+      }
+      .padding(6)
+      .background(
+        RoundedRectangle(cornerRadius: 10).fill(selected ? Color.sillageSelectionGlass : .clear)
+      )
+      .contentShape(Rectangle())
+    }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
+  }
+}
+
+/// Section title of a sidebar.
+struct SidebarTitle: View {
+  let text: String
+  init(_ text: String) { self.text = text }
+  var body: some View {
+    Text(text).font(.system(size: 14, weight: .semibold))
+      .padding(.horizontal, 8).padding(.top, 10).padding(.bottom, 4)
+      .accessibilityAddTraits(.isHeader)
+  }
 }

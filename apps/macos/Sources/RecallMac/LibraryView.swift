@@ -95,44 +95,20 @@ struct LibraryView: View {
   private func playlistItem(id: String, title: String, count: Int, symbol: String? = nil)
     -> some View
   {
-    let selected = !showingHistory && library.selectedPlaylist == id
-    return Button {
+    SidebarItem(
+      title: title, detail: "\(count.formatted()) vidéos", symbol: symbol,
+      tileTitle: symbol == nil ? title : nil,
+      selected: !showingHistory && library.selectedPlaylist == id
+    ) {
       showingHistory = false
       library.selectedPlaylist = id
-    } label: {
-      HStack(spacing: 10) {
-        PlaylistTile(title: title, symbol: symbol, size: 40)
-        VStack(alignment: .leading, spacing: 1) {
-          Text(title).font(.system(size: 14, weight: .medium)).lineLimit(1).help(title)
-          Text("\(count.formatted()) vidéos").font(.system(size: 12)).foregroundStyle(.secondary)
-        }
-        Spacer(minLength: 0)
-      }
-      .padding(6)
-      .background(
-        RoundedRectangle(cornerRadius: 10).fill(selected ? Color.sillageSelectionGlass : .clear)
-      )
-      .contentShape(Rectangle())
-    }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
+    }
   }
 
   private var historyItem: some View {
-    Button(action: openHistory) {
-      HStack(spacing: 10) {
-        PlaylistTile(title: "Écoutes récentes", symbol: "clock.arrow.circlepath", size: 40)
-        VStack(alignment: .leading, spacing: 1) {
-          Text("Écoutes récentes").font(.system(size: 14, weight: .medium)).lineLimit(1)
-          Text("Historique").font(.system(size: 12)).foregroundStyle(.secondary)
-        }
-        Spacer(minLength: 0)
-      }
-      .padding(6)
-      .background(
-        RoundedRectangle(cornerRadius: 10).fill(
-          showingHistory ? Color.sillageSelectionGlass : .clear)
-      )
-      .contentShape(Rectangle())
-    }.buttonStyle(.plain).accessibilityAddTraits(showingHistory ? .isSelected : [])
+    SidebarItem(
+      title: "Écoutes récentes", detail: "Historique", symbol: "clock.arrow.circlepath",
+      selected: showingHistory, action: openHistory)
   }
 
   private func openHistory() {

@@ -18,7 +18,7 @@ private enum Destination: String, Hashable { case dj, library, discover }
 struct CompactRestHeightKey: PreferenceKey {
   static let defaultValue: CGFloat = 0
   static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-    value = max(value, nextValue())
+    value += nextValue()
   }
 }
 
@@ -56,14 +56,10 @@ struct MainView: View {
       page
     }
     .onPreferenceChange(CompactRestHeightKey.self) { compactRestHeight = $0 }
-    // Content bounds are the window bounds (scene resizability .contentSize): Compact can be
-    // widened up to 620 and, panel folded, is exactly as tall as its pocket.
-    .frame(
-      minWidth: minimumWidth,
-      maxWidth: pocket ? CGFloat(RecallWindowLayout.compactMaximumWidth) : .infinity,
-      minHeight: minimumHeight,
-      maxHeight: pocket && panelCollapsed && compactRestHeight > 0 ? compactRestHeight : .infinity
-    )
+    // Minimums protect the controls; WindowSizer fits Compact (width up to 620, a folded pocket
+    // snaps back to its height after a drag). No hard maximum: banners and full screen must
+    // always be able to grow the window.
+    .frame(minWidth: minimumWidth, minHeight: minimumHeight)
     .toolbar {
       ToolbarItem(placement: .principal) {
         // Every page stays one click away, Compact included (⌘1, ⌘2, ⌘3 too); opening
@@ -132,14 +128,22 @@ struct MainView: View {
   /// Banners on top, then the page; pages fade into each other.
   @ViewBuilder private var page: some View {
     VStack(spacing: 0) {
-      if !session.error.isEmpty {
-        Banner(text: session.error, symbol: "exclamationmark.triangle.fill", color: .orange) {
-          session.error = ""
+      VStack(spacing: 0) {
+        if !session.error.isEmpty {
+          Banner(text: session.error, symbol: "exclamationmark.triangle.fill", color: .orange) {
+            session.error = ""
+          }
+        }
+        if !session.notice.isEmpty {
+          Banner(text: session.notice, symbol: "info.circle.fill", color: .recall) {
+            session.notice = ""
+          }
         }
       }
-      if !session.notice.isEmpty {
-        Banner(text: session.notice, symbol: "info.circle.fill", color: .recall) {
-          session.notice = ""
+      // Banners sit above the pocket: Compact's height includes them.
+      .background {
+        GeometryReader { proxy in
+          Color.clear.preference(key: CompactRestHeightKey.self, value: proxy.size.height)
         }
       }
       ZStack {
@@ -370,11 +374,17 @@ private struct WindowSizer: NSViewRepresentable {
             switch self.applied {
             case .reading:
               self.readingSize = (Double(window.frame.width), Double(window.frame.height))
-            case .compact:
+            case .compact(_, let open):
               self.compactWidth = Double(window.frame.width)
               self.anchorTop = nil
-              // A height the person chose stays until the panel opens or folds.
-              self.appliedFrame = nil
+              if open {
+                // A height the person chose for the open panel stays until it folds.
+                self.appliedFrame = nil
+              } else {
+                // A folded pocket only has its content's height: refit, keeping the width
+                // (up to 620).
+                self.applied = nil
+              }
             case nil: break
             }
             if case .reading = self.applied { self.appliedFrame = window.frame }

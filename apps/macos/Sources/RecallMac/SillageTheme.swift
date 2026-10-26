@@ -192,6 +192,8 @@ struct SillageSlider: View {
   var height: CGFloat = 16
   @FocusState private var focused: Bool
   @State private var dragging = false
+  /// Re-read when the app comes back to the front, where the setting is usually changed.
+  @State private var keyboardAccess = NSApp.isFullKeyboardAccessEnabled
   @Environment(\.isEnabled) private var isEnabled
   var body: some View {
     GeometryReader { geometry in
@@ -230,7 +232,11 @@ struct SillageSlider: View {
     }
     // Like AppKit sliders: reachable by Tab only with Full Keyboard Access, so a click or the
     // window opening never parks the focus ring on it.
-    .focusable(isEnabled && NSApp.isFullKeyboardAccessEnabled).focused($focused)
+    .focusable(isEnabled && keyboardAccess).focused($focused)
+    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification))
+    {
+      _ in keyboardAccess = NSApp.isFullKeyboardAccessEnabled
+    }
     .focusEffectDisabled()
     .onMoveCommand { direction in
       switch direction {
