@@ -61,6 +61,7 @@ beforeEach(async () => {
   await db.query(
     "TRUNCATE tokens,playlists,videos,channels,jobs,quota_usage,dj_usage,account_dj_usage,account_dj_settings,account_ai_credentials CASCADE",
   );
+  await db.query("UPDATE users SET dj_provider='legacy' WHERE id=$1", [LEGACY_USER]);
   await db.query("INSERT INTO tokens(id,name,hash) VALUES($1,$2,$3)", [
     randomUUID(),
     "test",
