@@ -69,7 +69,9 @@ struct SongRow: View {
     .overlay(alignment: .leading) {
       // The number column doubles as a play button, as in Spotify.
       if index != nil {
-        Button(action: onPlay) { Color.clear.frame(width: 40) }.buttonStyle(.plain)
+        // A clear colour takes no clicks by itself: the shape makes the column clickable.
+        Button(action: onPlay) { Color.clear.frame(width: 40).contentShape(Rectangle()) }
+          .buttonStyle(.plain)
           .accessibilityHidden(true)
       }
     }

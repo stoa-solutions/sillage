@@ -42,7 +42,13 @@ struct MainView: View {
     section == .dj && !dj.player.studio
       ? .compact(restHeight: compactRestHeight, panelOpen: !panelCollapsed) : .reading
   }
+  /// The window depends on the player (Studio on or off), which MainView does not observe
+  /// by itself: the scene is rebuilt whenever the player changes.
   var body: some View {
+    ObservingPlayer(player: dj.player) { scene }
+  }
+
+  private var scene: some View {
     Shell(
       player: dj.player, current: dj.current, focused: section == .dj && !session.showOnboarding,
       stage: stage, immersion: immersion
@@ -123,6 +129,12 @@ struct MainView: View {
       }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
   }
+}
+
+private struct ObservingPlayer<Content: View>: View {
+  @ObservedObject var player: Player
+  @ViewBuilder var content: () -> Content
+  var body: some View { content() }
 }
 
 /// Every page sits under a transparent toolbar: the Studio clip behind the DJ page, the
