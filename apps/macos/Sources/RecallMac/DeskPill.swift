@@ -47,7 +47,9 @@ final class DeskPill: ObservableObject {
   private var subscriptions: Set<AnyCancellable> = []
   private var errorAtStart = ""
   private var demoTask: Task<Void, Never>?
-  private static let size = NSSize(width: 480, height: 180)
+  /// Hovering keeps an answer on screen; leaving gives it a few more seconds.
+  private var hovering = false
+  private static let size = NSSize(width: 500, height: 210)
 
   init(dj: DJModel, session: Session) {
     self.dj = dj
@@ -110,7 +112,12 @@ final class DeskPill: ObservableObject {
       show(.listening)
     case "thinking": show(.thinking)
     case "reply":
-      show(.reply("Je lance une sélection soul douce pour bosser, en commençant par Masego.", nil))
+      // A real video ID (SILLAGE_QA_PILL_TRACK) shows the song card with its cover.
+      let track = ProcessInfo.processInfo.environment["SILLAGE_QA_PILL_TRACK"].map {
+        Track(id: $0, title: "Rick Astley - Never Gonna Give You Up", channel: "Rick Astley", durationSeconds: 213)
+      }
+      show(
+        .reply("Je lance une sélection soul douce pour bosser, en commençant par Masego.", track))
     default: show(.problem("Je n’ai pas entendu de parole. Vérifie l’entrée audio et réessaie."))
     }
   }
@@ -149,7 +156,7 @@ final class DeskPill: ObservableObject {
       show(.thinking)
     } else if phase == .thinking {
       let reply = dj.messages.last { $0.role != "user" }?.content ?? ""
-      show(.reply(Self.firstLines(reply), dj.current), hidingAfter: 7)
+      show(.reply(Self.firstLines(reply), dj.current), hidingAfter: dj.current == nil ? 7 : 9)
     } else if session.error != errorAtStart, !session.error.isEmpty {
       show(.problem(session.error), hidingAfter: 5)
     } else {
@@ -179,12 +186,22 @@ final class DeskPill: ObservableObject {
     } else {
       withAnimation(Self.motion) { shown = next }
     }
-    if let seconds {
+    if let seconds, !hovering {
       hideTask = Task { [weak self] in
         try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
         guard !Task.isCancelled else { return }
         self?.hide()
       }
+    }
+  }
+
+  func holdOpen(_ hovering: Bool) {
+    self.hovering = hovering
+    switch phase {
+    case .reply, .problem:
+      hideTask?.cancel()
+      if !hovering { show(phase, hidingAfter: 3) }
+    default: break
     }
   }
 
@@ -325,18 +342,38 @@ struct DeskPillView: View {
       inner
       .background { background }
       .overlay { glow }
+      .onHover { model.holdOpen($0) }
   }
 
   @ViewBuilder private var background: some View {
-    if model.notch {
-      shape.fill(Color.black)
-    } else {
-      ZStack {
+    ZStack {
+      if model.notch {
+        shape.fill(Color.black)
+      } else {
         shape.fill(.ultraThinMaterial)
         shape.fill(Color.black.opacity(0.86))
-        shape.strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5)
       }
+      if let track = shownTrack {
+        // The cover's colours bleed into the glass, like a sleeve under smoked glass. Under the
+        // notch they start below it, so the pill still grows out of pure black.
+        Color.clear
+          .overlay { Artwork.image(for: track, quality: "mqdefault") }
+          .blur(radius: 38).saturation(1.35).opacity(0.42)
+          .mask {
+            LinearGradient(
+              colors: [model.notch ? .clear : .black, .black], startPoint: .top,
+              endPoint: .init(x: 0.5, y: 0.45))
+          }
+          .clipShape(shape)
+          .transition(.opacity)
+      }
+      if !model.notch { shape.strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5) }
     }
+  }
+
+  private var shownTrack: Track? {
+    if case .reply(_, let track) = model.shown { return track }
+    return nil
   }
 
   @ViewBuilder private var glow: some View {
@@ -368,7 +405,7 @@ struct DeskPillView: View {
 
   private var width: CGFloat {
     switch model.shown {
-    case .reply: return 430
+    case .reply(_, let track): return track == nil ? 430 : 440
     case .finishing, .thinking: return 300
     case .problem: return 390
     default: return 360
@@ -408,31 +445,14 @@ struct DeskPillView: View {
         }.frame(maxWidth: .infinity)
         closeButton
       }
-    case .reply(let text, let track):
+    case .reply(let text, let track?):
+      DeskSongCard(
+        model: model, player: model.dj.player, text: text, track: track, still: reduceMotion)
+    case .reply(let text, nil):
       HStack(alignment: .center, spacing: 12) {
-        if let track {
-          Artwork(track: track, showsDuration: false).frame(width: 72)
-            .shadow(color: .black.opacity(0.4), radius: 6, y: 3)
-        } else {
-          Image(nsImage: SillageGlyph.image(listening: true)).frame(width: 22)
-        }
-        VStack(alignment: .leading, spacing: 3) {
-          if let track {
-            let title = TrackTitle(track)
-            Text(title.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
-            if let artist = title.artist {
-              Text(artist).font(.system(size: 11)).foregroundStyle(.white.opacity(0.6))
-                .lineLimit(1)
-            }
-          }
-          if !text.isEmpty {
-            Text(text).font(.system(size: 12)).foregroundStyle(.white.opacity(0.8))
-              .lineLimit(track == nil ? 3 : 2)
-              .multilineTextAlignment(track == nil ? .center : .leading)
-              .frame(maxWidth: .infinity, alignment: track == nil ? .center : .leading)
-          }
-        }.foregroundStyle(.white)
-        Spacer(minLength: 4)
+        Image(nsImage: SillageGlyph.image(listening: true)).frame(width: 22)
+        Text(text).font(.system(size: 12)).foregroundStyle(.white.opacity(0.8))
+          .lineLimit(3).multilineTextAlignment(.center).frame(maxWidth: .infinity)
         Button("Ouvrir") { model.openSillage() }.buttonStyle(.plain)
           .font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.recall)
       }
@@ -580,5 +600,141 @@ private struct SignalDot: View {
       withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) { breathe = true }
     }
     .accessibilityLabel("Micro ouvert")
+  }
+}
+
+/// The song the DJ just started, presented like a record sleeve: the cover settles in, the title
+/// rises after it, and the progress keeps running for as long as the card stays.
+private struct DeskSongCard: View {
+  let model: DeskPill
+  @ObservedObject var player: Player
+  let text: String
+  let track: Track
+  let still: Bool
+  @State private var appeared = false
+
+  var body: some View {
+    let title = TrackTitle(track)
+    VStack(alignment: .leading, spacing: 11) {
+      HStack(alignment: .center, spacing: 13) {
+        Artwork(track: track, showsDuration: false).frame(width: 98)
+          .overlay {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+              .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+          }
+          .shadow(color: .black.opacity(0.5), radius: 10, y: 5)
+          .scaleEffect(appeared ? 1 : 0.84, anchor: .leading)
+          .opacity(appeared ? 1 : 0)
+        VStack(alignment: .leading, spacing: 2) {
+          HStack(spacing: 6) {
+            Equalizer(playing: player.playing, still: still)
+            Text(player.playing ? "LE DJ LANCE" : "PRÊT À JOUER")
+              .font(.system(size: 9.5, weight: .semibold, design: .monospaced)).tracking(1.3)
+              .foregroundStyle(Color.recall)
+          }.padding(.bottom, 3)
+          Text(title.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+          if let artist = title.artist ?? track.channel {
+            Text(artist).font(.system(size: 11.5)).foregroundStyle(.white.opacity(0.58))
+              .lineLimit(1)
+          }
+        }
+        .foregroundStyle(.white)
+        .offset(y: appeared ? 0 : 7).opacity(appeared ? 1 : 0)
+        Spacer(minLength: 4)
+        controls.opacity(appeared ? 1 : 0)
+      }
+      progress.opacity(appeared ? 1 : 0)
+      if !text.isEmpty {
+        HStack(alignment: .lastTextBaseline, spacing: 10) {
+          Text(text).font(.system(size: 11.5)).foregroundStyle(.white.opacity(0.7))
+            .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+          Spacer(minLength: 0)
+          Button {
+            model.openSillage()
+          } label: {
+            HStack(spacing: 2) {
+              Text("Ouvrir")
+              Image(systemName: "chevron.right").font(.system(size: 8, weight: .bold))
+            }
+          }
+          .buttonStyle(.plain).font(.system(size: 11, weight: .semibold))
+          .foregroundStyle(Color.recall)
+        }
+        .offset(y: appeared ? 0 : 5).opacity(appeared ? 1 : 0)
+      }
+    }
+    .onAppear {
+      guard !still else {
+        appeared = true
+        return
+      }
+      // Cover first, then the words: a short stagger reads as one gesture.
+      withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.05)) { appeared = true }
+    }
+  }
+
+  private var controls: some View {
+    HStack(spacing: 6) {
+      button(player.playing ? "pause.fill" : "play.fill", prominent: true) {
+        model.dj.togglePlayback()
+      }.accessibilityLabel(player.playing ? "Pause" : "Lecture")
+      button("forward.fill") { model.dj.next() }.accessibilityLabel("Morceau suivant")
+      button("xmark", size: 8) { model.hide() }.accessibilityLabel("Fermer")
+    }
+  }
+
+  private func button(
+    _ symbol: String, prominent: Bool = false, size: CGFloat = 10,
+    action: @escaping () -> Void
+  ) -> some View {
+    Button(action: action) {
+      Image(systemName: symbol).font(.system(size: size, weight: .bold))
+        .contentTransition(.symbolEffect(.replace))
+        .foregroundStyle(prominent ? Color.black : .white.opacity(0.75))
+        .frame(width: 26, height: 26)
+        .background(Circle().fill(prominent ? Color.white : .white.opacity(0.09)))
+        .contentShape(Circle())
+    }.buttonStyle(.plain)
+  }
+
+  private var progress: some View {
+    let duration = player.duration > 0 ? player.duration : track.durationSeconds ?? 0
+    let fraction = duration > 0 ? min(1, player.elapsed / duration) : 0
+    return HStack(spacing: 8) {
+      Text(clock(player.elapsed))
+      GeometryReader { geometry in
+        ZStack(alignment: .leading) {
+          Capsule().fill(.white.opacity(0.12))
+          Capsule().fill(Color.recall)
+            .frame(width: max(2, geometry.size.width * fraction * (appeared ? 1 : 0)))
+        }
+      }
+      .frame(height: 2.5)
+      .animation(.linear(duration: 0.5), value: fraction)
+      Text(clock(duration))
+    }
+    .font(.system(size: 9.5, design: .monospaced)).foregroundStyle(.white.opacity(0.45))
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("Position \(clock(player.elapsed)) sur \(clock(duration))")
+  }
+}
+
+/// Three bars dancing while the song plays, resting low when it pauses.
+private struct Equalizer: View {
+  let playing: Bool
+  let still: Bool
+  var body: some View {
+    TimelineView(.animation(paused: still || !playing)) { context in
+      let time = context.date.timeIntervalSinceReferenceDate
+      HStack(alignment: .bottom, spacing: 1.5) {
+        ForEach(0..<3, id: \.self) { index in
+          let wave = (sin(time * (6.5 + Double(index) * 2.3) + Double(index) * 1.7) + 1) / 2
+          Capsule().fill(Color.recall)
+            .frame(width: 2, height: playing && !still ? 3 + 6 * wave : 3)
+        }
+      }
+      .frame(width: 9, height: 9, alignment: .bottom)
+    }
+    .accessibilityHidden(true)
   }
 }
