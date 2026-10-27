@@ -6,10 +6,10 @@ import {
   type AssistantModelMessage,
   type ModelMessage,
 } from "ai";
-import type { DjConfig } from "../../dj-config.ts";
+import type { DjConfig } from "./dj.config.ts";
 import { aiModel, providerHttpStatus, thinkingOptions } from "./ai-model.ts";
 import { DjUnavailable } from "./errors.ts";
-import type { TraceObserver } from "./journal/contracts.ts";
+import type { TraceObserver } from "./journal/journal.contracts.ts";
 
 export interface ToolCall {
   id: string;

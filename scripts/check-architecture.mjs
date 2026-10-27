@@ -6,9 +6,8 @@ import ts from "typescript";
 const root = fileURLToPath(new URL("../", import.meta.url));
 // Policy modules: deterministic, testable without a network, database or clock.
 const pureDj = new Set([
-  "contracts.ts",
+  "dj.contracts.ts",
   "plan.ts",
-  "intent.ts",
   "prompt.ts",
   "messages.ts",
   "memory.ts",
@@ -17,10 +16,7 @@ const pureDj = new Set([
   "errors.ts",
   "evidence.ts",
   "composition.ts",
-  "retrieval.ts",
 ]);
-// Modules still reached through a facade outside their folder until their own refactor lot.
-const featuresWithoutIndex = new Set(["dj"]);
 const pureDjImports = new Set([
   "zod",
   ...[...pureDj].map((file) => `./${file}`),
@@ -57,19 +53,24 @@ export function violations(file, source) {
       server &&
       to &&
       from !== to &&
-      !featuresWithoutIndex.has(to) &&
       !target.endsWith(`modules/${to}/index.ts`)
     )
       report(
         node,
         `a module is used through its index.ts, not modules/${to} internals`,
       );
-    if (dj && target === "apps/server/src/dj.ts")
+    if (dj && target === "apps/server/src/modules/dj/index.ts")
       report(
         node,
-        "DJ internals must not import their public facade (circular dependency)",
+        "DJ internals must not import their own index (circular dependency)",
       );
-    if (dj && pure && !typeOnly && !pureDjImports.has(specifier))
+    if (
+      dj &&
+      pure &&
+      !typeOnly &&
+      !pureDjImports.has(specifier) &&
+      !specifier.startsWith("@playlist-recall/core/")
+    )
       report(node, "pure DJ policy must not import an effect adapter");
   };
   function visit(node) {

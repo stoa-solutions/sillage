@@ -1,7 +1,7 @@
-import type { DjInput, Selection } from "./contracts.ts";
+import type { DjInput, Selection } from "./dj.contracts.ts";
 import type { TurnPlan } from "./plan.ts";
 import { compactVideo, type DiscoveryEvidence } from "./evidence.ts";
-import { playbackAction } from "./intent.ts";
+import { playbackAction } from "@playlist-recall/core/intent";
 import { DjUnavailable } from "./errors.ts";
 import type { InformationSource } from "../../integrations/searxng/index.ts";
 import type { ChatMessage } from "./provider.ts";

@@ -2,7 +2,7 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { APICallError, generateText } from "ai";
-import type { DjConfig } from "../../dj-config.ts";
+import type { DjConfig } from "./dj.config.ts";
 
 /** Provider adapters own the wire format; the DJ owns tool execution and retries. */
 export function aiModel(config: DjConfig) {

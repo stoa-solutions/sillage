@@ -75,78 +75,6 @@
     }
   ],
   "paths": {
-    "/health": {
-      "get": {
-        "operationId": "getHealth",
-        "tags": [
-          "Système"
-        ],
-        "summary": "État du serveur",
-        "description": "Vérifie PostgreSQL et retourne la version ainsi que le SHA déployé. Ne valide pas à lui seul la progression du worker.",
-        "x-sillage-effect": "read",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Health"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Base indisponible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "ok": {
-                      "const": false
-                    }
-                  },
-                  "required": [
-                    "ok"
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/auth/status": {
       "get": {
         "operationId": "getAuthStatus",
@@ -461,6 +389,398 @@
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "État du serveur",
+        "description": "Vérifie PostgreSQL et retourne la version ainsi que le SHA déployé. Ne valide pas à lui seul la progression du worker.",
+        "tags": [
+          "Système"
+        ],
+        "x-sillage-effect": "read",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Base indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dj/player": {
+      "get": {
+        "operationId": "getYouTubePlayer",
+        "summary": "Lecteur public YouTube",
+        "description": "Ressource publique utilisée par WebKit ; ne reçoit aucun jeton privé ni clé Gemini. Les contrôles du lecteur ne sont pas des endpoints REST. Le paramètre native=1 active le mode discret prévu par l’app.",
+        "tags": [
+          "Lecteur et distribution"
+        ],
+        "x-sillage-effect": "read",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": false,
+            "name": "native",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lecteur public YouTube",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dj/player.js": {
+      "get": {
+        "operationId": "getYouTubePlayerScript",
+        "summary": "Script du lecteur",
+        "description": "Ressource publique utilisée par WebKit ; ne reçoit aucun jeton privé ni clé Gemini. Les contrôles du lecteur ne sont pas des endpoints REST. Le paramètre native=1 active le mode discret prévu par l’app.",
+        "tags": [
+          "Lecteur et distribution"
+        ],
+        "x-sillage-effect": "read",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Script du lecteur",
+            "content": {
+              "text/javascript": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dj/player.css": {
+      "get": {
+        "operationId": "getYouTubePlayerStyle",
+        "summary": "Style du lecteur",
+        "description": "Ressource publique utilisée par WebKit ; ne reçoit aucun jeton privé ni clé Gemini. Les contrôles du lecteur ne sont pas des endpoints REST. Le paramètre native=1 active le mode discret prévu par l’app.",
+        "tags": [
+          "Lecteur et distribution"
+        ],
+        "x-sillage-effect": "read",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Style du lecteur",
+            "content": {
+              "text/css": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/macos/appcast.xml": {
+      "get": {
+        "operationId": "getMacUpdateFeed",
+        "summary": "Flux de mises à jour Mac",
+        "description": "Flux Sparkle public. Un flux vide est normal tant qu’aucune archive signée n’a été volontairement publiée. Une installation locale n’active pas automatiquement une mise à jour publique.",
+        "tags": [
+          "Lecteur et distribution"
+        ],
+        "x-sillage-effect": "read",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Flux Sparkle",
+            "content": {
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Flux temporairement indisponible",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/macos/{archive}": {
+      "get": {
+        "operationId": "downloadMacArchive",
+        "summary": "Télécharger une archive publiée",
+        "description": "Uniquement les archives ZIP nommées Playlist-Recall-version-architecture.zip présentes dans le répertoire de publication. Le nom technique historique reste stable malgré la marque Sillage.",
+        "tags": [
+          "Lecteur et distribution"
+        ],
+        "x-sillage-effect": "read",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^Playlist-Recall-[0-9]+\\.[0-9]+\\.[0-9]+-(arm64|x86_64|universal)\\.zip$",
+              "description": "Nom exact de l’archive publiée"
+            },
+            "required": true,
+            "description": "Nom exact de l’archive publiée",
+            "name": "archive",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archive ZIP",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Archive absente ou nom refusé",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -995,6 +1315,1444 @@
           },
           "404": {
             "description": "Vidéo absente ou inaccessible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Fournisseur temporairement indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Configuration ou service indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dj/conversations": {
+      "get": {
+        "operationId": "getDjConversations",
+        "summary": "Lister les conversations",
+        "description": "Conversations de ton compte uniquement, paginées de la plus récente à la plus ancienne. Les messages réels du client et les tours du serveur sont comptés séparément.",
+        "tags": [
+          "Journal DJ"
+        ],
+        "x-sillage-effect": "read",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "before",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conversations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/JournalConversation"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "conversations",
+                    "nextCursor"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dj/conversations/{conversationId}/turns": {
+      "get": {
+        "operationId": "getDjConversationTurns",
+        "summary": "Lire les tours du DJ",
+        "description": "Mode effectif et demandé, modèle, action finale, erreurs, statut et complétude du journal. stale indique un tour resté en cours plus de cinq minutes, par exemple après un arrêt du serveur.",
+        "tags": [
+          "Journal DJ"
+        ],
+        "x-sillage-effect": "read",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID de la conversation"
+            },
+            "required": true,
+            "description": "UUID de la conversation",
+            "name": "conversationId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "before",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "turns": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/JournalTurnSummary"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "turns",
+                    "nextCursor"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Conversation inconnue pour ce compte",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dj/conversations/{conversationId}/events": {
+      "get": {
+        "operationId": "getDjConversationEvents",
+        "summary": "Lire messages, outils et actions",
+        "description": "Journal chronologique par ordre de réception. Après une reconnexion, utiliser occurredAt et clientSequence pour l’ordre réel des actions du Mac. payload contient le texte original, les propositions, l’état de file ou l’appel d’outil ; aucun masquage de contenu. Le champ requestId des événements client correspond au request_id du tour serveur.",
+        "tags": [
+          "Journal DJ"
+        ],
+        "x-sillage-effect": "read",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID de la conversation"
+            },
+            "required": true,
+            "description": "UUID de la conversation",
+            "name": "conversationId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,19}$",
+              "default": "0"
+            },
+            "required": false,
+            "name": "after",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/JournalEvent"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "events",
+                    "nextCursor"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Conversation inconnue pour ce compte",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "recordDjConversationEvents",
+        "summary": "Enregistrer les actions et messages de l’app",
+        "description": "Lot de 1 à 50 événements. Identifiant stable par événement : renvoyer un lot après une coupure ne crée pas de doublons. Le serveur impose origin=client et le propriétaire authentifié ; le client ne peut pas fabriquer une trace serveur.",
+        "tags": [
+          "Journal DJ"
+        ],
+        "x-sillage-effect": "write",
+        "x-sillage-example": {
+          "events": [
+            {
+              "id": "11111111-1111-4111-8111-111111111111",
+              "sequence": 1,
+              "occurredAt": "2026-10-26T12:00:00Z",
+              "scope": "all",
+              "visibleScope": "all",
+              "kind": "message",
+              "role": "user",
+              "content": "Prépare cinq morceaux à la suite",
+              "queueIds": []
+            }
+          ]
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID de la conversation"
+            },
+            "required": true,
+            "description": "UUID de la conversation",
+            "name": "conversationId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "events": [
+                  {
+                    "id": "11111111-1111-4111-8111-111111111111",
+                    "sequence": 1,
+                    "occurredAt": "2026-10-26T12:00:00Z",
+                    "scope": "all",
+                    "visibleScope": "all",
+                    "kind": "message",
+                    "role": "user",
+                    "content": "Prépare cinq morceaux à la suite",
+                    "queueIds": []
+                  }
+                ]
+              },
+              "schema": {
+                "$ref": "#/components/schemas/JournalUpload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "recorded": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "recorded"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dj/turns/{turnId}": {
+      "get": {
+        "operationId": "getDjTurn",
+        "summary": "Inspecter un tour et ses appels",
+        "description": "Entrée validée, contexte, décision, réponse finale et tours du fournisseur avec noms, arguments, résultats et durées des outils. Les champs historiques de la ligne SQL utilisent snake_case. Les clés configurées, en-têtes d’authentification et signatures internes du fournisseur ne sont pas collectés.",
+        "tags": [
+          "Journal DJ"
+        ],
+        "x-sillage-effect": "read",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID renvoyé dans X-Sillage-Trace-Id"
+            },
+            "required": true,
+            "description": "UUID renvoyé dans X-Sillage-Trace-Id",
+            "name": "turnId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "turn": {
+                      "$ref": "#/components/schemas/JournalTurn"
+                    },
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "sequence": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "payload": {
+                            "type": "object",
+                            "additionalProperties": true
+                          },
+                          "receivedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "sequence",
+                          "kind",
+                          "receivedAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "turn",
+                    "events"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tour inconnu pour ce compte",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dj/conversations/{conversationId}": {
+      "delete": {
+        "operationId": "deleteDjConversation",
+        "summary": "Effacer une conversation et ses traces",
+        "description": "Effacement définitif de cette conversation du compte uniquement. Ne touche ni aux playlists, ni à l’historique d’écoute, ni à la clé Gemini. Les sauvegardes suivent leur propre rétention.",
+        "tags": [
+          "Journal DJ"
+        ],
+        "x-sillage-effect": "write",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID de la conversation à effacer"
+            },
+            "required": true,
+            "description": "UUID de la conversation à effacer",
+            "name": "conversationId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "deleted": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "deleted"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Conversation inconnue pour ce compte",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dj/rules": {
+      "get": {
+        "operationId": "getDjRules",
+        "summary": "Prompt système actuel",
+        "description": "Règles de l’agent côté serveur, consultables par un compte connecté. Cette route ne modifie pas le prompt.",
+        "tags": [
+          "DJ"
+        ],
+        "x-sillage-effect": "read",
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "prompt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "prompt"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dj/status": {
+      "get": {
+        "operationId": "getDjStatus",
+        "summary": "État du modèle et de la voix",
+        "description": "Retourne le fournisseur actif, le catalogue et les capacités de chaque fournisseur, sans jamais renvoyer les clés. personal distingue les réglages du compte du mode historique.",
+        "tags": [
+          "DJ"
+        ],
+        "x-sillage-effect": "read",
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DjStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dj/settings": {
+      "post": {
+        "operationId": "saveDjSettings",
+        "summary": "Enregistrer sa clé ou changer de modèle",
+        "description": "provider vaut google par défaut pour les clients existants. La première configuration de chaque fournisseur exige apiKey ; ensuite model seul conserve sa clé. Changer de fournisseur conserve les autres clés et modèles. Chiffrement AES-256-GCM côté serveur avec contexte du compte ; clé jamais renvoyée. L’enregistrement ne vérifie pas le fournisseur : utiliser /check pour tester, ce qui consomme le quota du fournisseur.",
+        "tags": [
+          "DJ"
+        ],
+        "x-sillage-effect": "write",
+        "x-sillage-example": {
+          "apiKey": "{{gemini_api_key}}",
+          "model": "gemini-3.5-flash-lite"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "apiKey": "{{gemini_api_key}}",
+                "model": "gemini-3.5-flash-lite"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DjSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Saved"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Chiffrement des réglages non configuré",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dj/settings/reset": {
+      "post": {
+        "operationId": "resetDjSettings",
+        "summary": "Supprimer la clé enregistrée du compte",
+        "description": "Avec provider, supprime uniquement sa clé ; sans provider, supprime toutes les clés du compte courant. Aucun changement automatique de fournisseur après suppression. Le DJ d’un utilisateur Google sera à reconfigurer ; les playlists restent disponibles.",
+        "tags": [
+          "DJ"
+        ],
+        "x-sillage-effect": "write",
+        "x-sillage-example": {
+          "provider": "google"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "provider": "google"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DjReset"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Saved"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dj/check": {
+      "post": {
+        "operationId": "checkDjProvider",
+        "summary": "Tester clé, modèle et voix",
+        "description": "Appel réel au fournisseur sélectionné (google par défaut), sans enregistrer les paramètres fournis. Sans apiKey, teste uniquement sa clé existante. Avec Claude, voice reste false : la voix macOS est locale. ok=false ou voice=false peuvent être retournés avec HTTP 200 : lire le résultat métier. Une seule opération DJ par compte et deux au maximum sur cette instance.",
+        "tags": [
+          "DJ"
+        ],
+        "x-sillage-effect": "provider",
+        "x-sillage-example": {
+          "model": "gemini-3.5-flash-lite",
+          "voice": false
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "model": "gemini-3.5-flash-lite",
+                "voice": false
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DjCheck"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dj/chat": {
+      "post": {
+        "operationId": "askDj",
+        "summary": "Demander au DJ",
+        "description": "scope est la source explicite : library, youtube ou all. Le serveur exécute les outils puis retourne une opération validée ; le Mac joue ensuite les tracks. replace remplace maintenant, append ajoute sans interrompre, keep conserve la lecture. discoveries propose des cartes ; sources accompagne une recherche d’information. Envoyer playbackContext, historique et exclusions pour une suite cohérente. conversationId et requestId optionnels relient le chat aux actions du client ; trigger distingue demande et continuation. X-Sillage-Trace-Id identifie le tour, X-Sillage-Journal vaut saved ou unavailable sans changer la réponse JSON. Aucun ajout à la bibliothèque par cette route. Une opération DJ simultanée par compte ; 429 peut signifier occupé, pas forcément quota épuisé.",
+        "tags": [
+          "DJ"
+        ],
+        "x-sillage-effect": "provider",
+        "x-sillage-example": {
+          "message": "Propose du jazz sans lancer la lecture.",
+          "scope": "library",
+          "history": [],
+          "excludeIds": [],
+          "discoveryContext": [],
+          "rejectedIds": []
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "message": "Propose du jazz sans lancer la lecture.",
+                "scope": "library",
+                "history": [],
+                "excludeIds": [],
+                "discoveryContext": [],
+                "rejectedIds": []
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DjRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DjResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tour remplacé par une demande plus récente ou suite refusée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Fournisseur temporairement indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Configuration ou service indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Délai du tour dépassé ; la file de lecture est conservée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dj/speech": {
+      "post": {
+        "operationId": "synthesizeDjSpeech",
+        "summary": "Préparer une annonce vocale",
+        "description": "Synthèse vocale Gemini avec la clé du compte ; renvoie un WAV encodé en base64, pas un flux audio direct. Consomme le quota fournisseur. La demande peut être annulée avec la connexion HTTP. L’app utilise une voix locale si cette synthèse échoue.",
+        "tags": [
+          "DJ"
+        ],
+        "x-sillage-effect": "provider",
+        "x-sillage-example": {
+          "text": "La suite est prête."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "text": "La suite est prête."
+              },
+              "schema": {
+                "$ref": "#/components/schemas/SpeechRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpeechResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
             "content": {
               "application/json": {
                 "schema": {
@@ -2764,1730 +4522,6 @@
           }
         }
       }
-    },
-    "/v1/dj/rules": {
-      "get": {
-        "operationId": "getDjRules",
-        "tags": [
-          "DJ"
-        ],
-        "summary": "Prompt système actuel",
-        "description": "Règles de l’agent côté serveur, consultables par un compte connecté. Cette route ne modifie pas le prompt.",
-        "x-sillage-effect": "read",
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "prompt": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "prompt"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/dj/status": {
-      "get": {
-        "operationId": "getDjStatus",
-        "tags": [
-          "DJ"
-        ],
-        "summary": "État du modèle et de la voix",
-        "description": "Retourne le fournisseur actif, le catalogue et les capacités de chaque fournisseur, sans jamais renvoyer les clés. personal distingue les réglages du compte du mode historique.",
-        "x-sillage-effect": "read",
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DjStatus"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/dj/settings": {
-      "post": {
-        "operationId": "saveDjSettings",
-        "tags": [
-          "DJ"
-        ],
-        "summary": "Enregistrer sa clé ou changer de modèle",
-        "description": "provider vaut google par défaut pour les clients existants. La première configuration de chaque fournisseur exige apiKey ; ensuite model seul conserve sa clé. Changer de fournisseur conserve les autres clés et modèles. Chiffrement AES-256-GCM côté serveur avec contexte du compte ; clé jamais renvoyée. L’enregistrement ne vérifie pas le fournisseur : utiliser /check pour tester, ce qui consomme le quota du fournisseur.",
-        "x-sillage-effect": "write",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DjSettings"
-              },
-              "example": {
-                "apiKey": "{{gemini_api_key}}",
-                "model": "gemini-3.5-flash-lite"
-              }
-            }
-          }
-        },
-        "x-sillage-example": {
-          "apiKey": "{{gemini_api_key}}",
-          "model": "gemini-3.5-flash-lite"
-        },
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Saved"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Chiffrement des réglages non configuré",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/dj/settings/reset": {
-      "post": {
-        "operationId": "resetDjSettings",
-        "tags": [
-          "DJ"
-        ],
-        "summary": "Supprimer la clé enregistrée du compte",
-        "description": "Avec provider, supprime uniquement sa clé ; sans provider, supprime toutes les clés du compte courant. Aucun changement automatique de fournisseur après suppression. Le DJ d’un utilisateur Google sera à reconfigurer ; les playlists restent disponibles.",
-        "x-sillage-effect": "write",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DjReset"
-              },
-              "example": {
-                "provider": "google"
-              }
-            }
-          }
-        },
-        "x-sillage-example": {
-          "provider": "google"
-        },
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Saved"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/dj/check": {
-      "post": {
-        "operationId": "checkDjProvider",
-        "tags": [
-          "DJ"
-        ],
-        "summary": "Tester clé, modèle et voix",
-        "description": "Appel réel au fournisseur sélectionné (google par défaut), sans enregistrer les paramètres fournis. Sans apiKey, teste uniquement sa clé existante. Avec Claude, voice reste false : la voix macOS est locale. ok=false ou voice=false peuvent être retournés avec HTTP 200 : lire le résultat métier. Une seule opération DJ par compte et deux au maximum sur cette instance.",
-        "x-sillage-effect": "provider",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DjCheck"
-              },
-              "example": {
-                "model": "gemini-3.5-flash-lite",
-                "voice": false
-              }
-            }
-          }
-        },
-        "x-sillage-example": {
-          "model": "gemini-3.5-flash-lite",
-          "voice": false
-        },
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CheckResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/dj/chat": {
-      "post": {
-        "operationId": "askDj",
-        "tags": [
-          "DJ"
-        ],
-        "summary": "Demander au DJ",
-        "description": "scope est la source explicite : library, youtube ou all. Le serveur exécute les outils puis retourne une opération validée ; le Mac joue ensuite les tracks. replace remplace maintenant, append ajoute sans interrompre, keep conserve la lecture. discoveries propose des cartes ; sources accompagne une recherche d’information. Envoyer playbackContext, historique et exclusions pour une suite cohérente. conversationId et requestId optionnels relient le chat aux actions du client ; trigger distingue demande et continuation. X-Sillage-Trace-Id identifie le tour, X-Sillage-Journal vaut saved ou unavailable sans changer la réponse JSON. Aucun ajout à la bibliothèque par cette route. Une opération DJ simultanée par compte ; 429 peut signifier occupé, pas forcément quota épuisé.",
-        "x-sillage-effect": "provider",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DjRequest"
-              },
-              "example": {
-                "message": "Propose du jazz sans lancer la lecture.",
-                "scope": "library",
-                "history": [],
-                "excludeIds": [],
-                "discoveryContext": [],
-                "rejectedIds": []
-              }
-            }
-          }
-        },
-        "x-sillage-example": {
-          "message": "Propose du jazz sans lancer la lecture.",
-          "scope": "library",
-          "history": [],
-          "excludeIds": [],
-          "discoveryContext": [],
-          "rejectedIds": []
-        },
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DjResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Fournisseur temporairement indisponible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Configuration ou service indisponible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/dj/speech": {
-      "post": {
-        "operationId": "synthesizeDjSpeech",
-        "tags": [
-          "DJ"
-        ],
-        "summary": "Préparer une annonce vocale",
-        "description": "Synthèse vocale Gemini avec la clé du compte ; renvoie un WAV encodé en base64, pas un flux audio direct. Consomme le quota fournisseur. La demande peut être annulée avec la connexion HTTP. L’app utilise une voix locale si cette synthèse échoue.",
-        "x-sillage-effect": "provider",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SpeechRequest"
-              },
-              "example": {
-                "text": "La suite est prête."
-              }
-            }
-          }
-        },
-        "x-sillage-example": {
-          "text": "La suite est prête."
-        },
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SpeechResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Fournisseur temporairement indisponible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Configuration ou service indisponible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/dj/player": {
-      "get": {
-        "operationId": "getYouTubePlayer",
-        "tags": [
-          "Lecteur et distribution"
-        ],
-        "summary": "Lecteur public YouTube",
-        "description": "Ressource publique utilisée par WebKit ; ne reçoit aucun jeton privé ni clé Gemini. Les contrôles du lecteur ne sont pas des endpoints REST. Le paramètre native=1 active le mode discret prévu par l’app.",
-        "x-sillage-effect": "read",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Lecteur public YouTube",
-            "content": {
-              "text/html": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "native",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "1"
-              ]
-            }
-          }
-        ]
-      }
-    },
-    "/dj/player.js": {
-      "get": {
-        "operationId": "getYouTubePlayerScript",
-        "tags": [
-          "Lecteur et distribution"
-        ],
-        "summary": "Script du lecteur",
-        "description": "Ressource publique utilisée par WebKit ; ne reçoit aucun jeton privé ni clé Gemini. Les contrôles du lecteur ne sont pas des endpoints REST. Le paramètre native=1 active le mode discret prévu par l’app.",
-        "x-sillage-effect": "read",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Script du lecteur",
-            "content": {
-              "text/javascript": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/dj/player.css": {
-      "get": {
-        "operationId": "getYouTubePlayerStyle",
-        "tags": [
-          "Lecteur et distribution"
-        ],
-        "summary": "Style du lecteur",
-        "description": "Ressource publique utilisée par WebKit ; ne reçoit aucun jeton privé ni clé Gemini. Les contrôles du lecteur ne sont pas des endpoints REST. Le paramètre native=1 active le mode discret prévu par l’app.",
-        "x-sillage-effect": "read",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Style du lecteur",
-            "content": {
-              "text/css": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/macos/appcast.xml": {
-      "get": {
-        "operationId": "getMacUpdateFeed",
-        "tags": [
-          "Lecteur et distribution"
-        ],
-        "summary": "Flux de mises à jour Mac",
-        "description": "Flux Sparkle public. Un flux vide est normal tant qu’aucune archive signée n’a été volontairement publiée. Une installation locale n’active pas automatiquement une mise à jour publique.",
-        "x-sillage-effect": "read",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Flux Sparkle",
-            "content": {
-              "application/rss+xml": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Flux temporairement indisponible",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/macos/{archive}": {
-      "get": {
-        "operationId": "downloadMacArchive",
-        "tags": [
-          "Lecteur et distribution"
-        ],
-        "summary": "Télécharger une archive publiée",
-        "description": "Uniquement les archives ZIP nommées Playlist-Recall-version-architecture.zip présentes dans le répertoire de publication. Le nom technique historique reste stable malgré la marque Sillage.",
-        "x-sillage-effect": "read",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Archive ZIP",
-            "content": {
-              "application/zip": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Archive absente ou nom refusé",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "archive",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^Playlist-Recall-[0-9]+\\.[0-9]+\\.[0-9]+-(arm64|x86_64|universal)\\.zip$"
-            },
-            "description": "Nom exact de l’archive publiée"
-          }
-        ]
-      }
-    },
-    "/v1/dj/conversations": {
-      "get": {
-        "operationId": "getDjConversations",
-        "tags": [
-          "Journal DJ"
-        ],
-        "summary": "Lister les conversations",
-        "description": "Conversations de ton compte uniquement, paginées de la plus récente à la plus ancienne. Les messages réels du client et les tours du serveur sont comptés séparément.",
-        "x-sillage-effect": "read",
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "conversations": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/JournalConversation"
-                      }
-                    },
-                    "nextCursor": {
-                      "type": [
-                        "string",
-                        "null"
-                      ],
-                      "format": "uuid"
-                    }
-                  },
-                  "required": [
-                    "conversations",
-                    "nextCursor"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "default": 25,
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            }
-          },
-          {
-            "name": "before",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          }
-        ]
-      }
-    },
-    "/v1/dj/conversations/{conversationId}/turns": {
-      "get": {
-        "operationId": "getDjConversationTurns",
-        "tags": [
-          "Journal DJ"
-        ],
-        "summary": "Lire les tours du DJ",
-        "description": "Mode effectif et demandé, modèle, action finale, erreurs, statut et complétude du journal. stale indique un tour resté en cours plus de cinq minutes, par exemple après un arrêt du serveur.",
-        "x-sillage-effect": "read",
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "turns": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/JournalTurnSummary"
-                      }
-                    },
-                    "nextCursor": {
-                      "type": [
-                        "string",
-                        "null"
-                      ],
-                      "format": "uuid"
-                    }
-                  },
-                  "required": [
-                    "turns",
-                    "nextCursor"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Conversation inconnue pour ce compte",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "conversationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "UUID de la conversation"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "default": 25,
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            }
-          },
-          {
-            "name": "before",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          }
-        ]
-      }
-    },
-    "/v1/dj/conversations/{conversationId}/events": {
-      "get": {
-        "operationId": "getDjConversationEvents",
-        "tags": [
-          "Journal DJ"
-        ],
-        "summary": "Lire messages, outils et actions",
-        "description": "Journal chronologique par ordre de réception. Après une reconnexion, utiliser occurredAt et clientSequence pour l’ordre réel des actions du Mac. payload contient le texte original, les propositions, l’état de file ou l’appel d’outil ; aucun masquage de contenu. Le champ requestId des événements client correspond au request_id du tour serveur.",
-        "x-sillage-effect": "read",
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "events": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/JournalEvent"
-                      }
-                    },
-                    "nextCursor": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "events",
-                    "nextCursor"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Conversation inconnue pour ce compte",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "conversationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "UUID de la conversation"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "default": 50,
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            }
-          },
-          {
-            "name": "after",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "default": "0",
-              "type": "string",
-              "pattern": "^\\d{1,19}$"
-            }
-          }
-        ]
-      },
-      "post": {
-        "operationId": "recordDjConversationEvents",
-        "tags": [
-          "Journal DJ"
-        ],
-        "summary": "Enregistrer les actions et messages de l’app",
-        "description": "Lot de 1 à 50 événements. Identifiant stable par événement : renvoyer un lot après une coupure ne crée pas de doublons. Le serveur impose origin=client et le propriétaire authentifié ; le client ne peut pas fabriquer une trace serveur.",
-        "x-sillage-effect": "write",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/JournalUpload"
-              },
-              "example": {
-                "events": [
-                  {
-                    "id": "11111111-1111-4111-8111-111111111111",
-                    "sequence": 1,
-                    "occurredAt": "2026-10-26T12:00:00Z",
-                    "scope": "all",
-                    "visibleScope": "all",
-                    "kind": "message",
-                    "role": "user",
-                    "content": "Prépare cinq morceaux à la suite",
-                    "queueIds": []
-                  }
-                ]
-              }
-            }
-          }
-        },
-        "x-sillage-example": {
-          "events": [
-            {
-              "id": "11111111-1111-4111-8111-111111111111",
-              "sequence": 1,
-              "occurredAt": "2026-10-26T12:00:00Z",
-              "scope": "all",
-              "visibleScope": "all",
-              "kind": "message",
-              "role": "user",
-              "content": "Prépare cinq morceaux à la suite",
-              "queueIds": []
-            }
-          ]
-        },
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "recorded": {
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "recorded"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "conversationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "UUID de la conversation"
-          }
-        ]
-      }
-    },
-    "/v1/dj/turns/{turnId}": {
-      "get": {
-        "operationId": "getDjTurn",
-        "tags": [
-          "Journal DJ"
-        ],
-        "summary": "Inspecter un tour et ses appels",
-        "description": "Entrée validée, contexte, décision, réponse finale et tours du fournisseur avec noms, arguments, résultats et durées des outils. Les champs historiques de la ligne SQL utilisent snake_case. Les clés configurées, en-têtes d’authentification et signatures internes du fournisseur ne sont pas collectés.",
-        "x-sillage-effect": "read",
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "turn": {
-                      "$ref": "#/components/schemas/JournalTurn"
-                    },
-                    "events": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "sequence": {
-                            "type": "string"
-                          },
-                          "kind": {
-                            "type": "string"
-                          },
-                          "payload": {
-                            "type": "object",
-                            "additionalProperties": true
-                          },
-                          "receivedAt": {
-                            "type": "string",
-                            "format": "date-time"
-                          }
-                        },
-                        "required": [
-                          "sequence",
-                          "kind",
-                          "payload",
-                          "receivedAt"
-                        ]
-                      }
-                    }
-                  },
-                  "required": [
-                    "turn",
-                    "events"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Tour inconnu pour ce compte",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "turnId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "UUID renvoyé dans X-Sillage-Trace-Id"
-          }
-        ]
-      }
-    },
-    "/v1/dj/conversations/{conversationId}": {
-      "delete": {
-        "operationId": "deleteDjConversation",
-        "tags": [
-          "Journal DJ"
-        ],
-        "summary": "Effacer une conversation et ses traces",
-        "description": "Effacement définitif de cette conversation du compte uniquement. Ne touche ni aux playlists, ni à l’historique d’écoute, ni à la clé Gemini. Les sauvegardes suivent leur propre rétention.",
-        "x-sillage-effect": "write",
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "deleted": {
-                      "const": true
-                    }
-                  },
-                  "required": [
-                    "deleted"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Conversation inconnue pour ce compte",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "conversationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "UUID de la conversation à effacer"
-          }
-        ]
-      }
     }
   },
   "components": {
@@ -4505,1116 +4539,6 @@
       }
     },
     "schemas": {
-      "JournalPage": {
-        "type": "object",
-        "properties": {
-          "limit": {
-            "default": 25,
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 100
-          },
-          "before": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          }
-        }
-      },
-      "JournalEventPage": {
-        "type": "object",
-        "properties": {
-          "limit": {
-            "default": 50,
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 100
-          },
-          "after": {
-            "default": "0",
-            "type": "string",
-            "pattern": "^\\d{1,19}$"
-          }
-        }
-      },
-      "JournalUpload": {
-        "type": "object",
-        "properties": {
-          "events": {
-            "minItems": 1,
-            "maxItems": 50,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "sequence": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 2147483647
-                },
-                "occurredAt": {
-                  "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                },
-                "scope": {
-                  "type": "string",
-                  "enum": [
-                    "library",
-                    "youtube",
-                    "all"
-                  ]
-                },
-                "visibleScope": {
-                  "type": "string",
-                  "enum": [
-                    "library",
-                    "youtube",
-                    "all"
-                  ]
-                },
-                "kind": {
-                  "type": "string",
-                  "enum": [
-                    "message",
-                    "action"
-                  ]
-                },
-                "role": {
-                  "type": "string",
-                  "enum": [
-                    "user",
-                    "assistant"
-                  ]
-                },
-                "content": {
-                  "type": "string",
-                  "maxLength": 8192
-                },
-                "action": {
-                  "type": "string",
-                  "maxLength": 60
-                },
-                "requestId": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "current": {
-                  "anyOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "pattern": "^[\\w-]{11}$"
-                        },
-                        "title": {
-                          "type": "string",
-                          "maxLength": 300
-                        },
-                        "channel": {
-                          "anyOf": [
-                            {
-                              "type": "string",
-                              "maxLength": 200
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "title"
-                      ]
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "queueIds": {
-                  "maxItems": 100,
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "pattern": "^[\\w-]{11}$"
-                  }
-                },
-                "discoveries": {
-                  "maxItems": 8,
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "pattern": "^[\\w-]{11}$"
-                      },
-                      "title": {
-                        "type": "string",
-                        "maxLength": 300
-                      },
-                      "channel": {
-                        "anyOf": [
-                          {
-                            "type": "string",
-                            "maxLength": 200
-                          },
-                          {
-                            "type": "null"
-                          }
-                        ]
-                      },
-                      "inLibrary": {
-                        "type": "boolean"
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "title",
-                      "inLibrary"
-                    ]
-                  }
-                },
-                "sources": {
-                  "maxItems": 5,
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "title": {
-                        "type": "string",
-                        "maxLength": 500
-                      },
-                      "url": {
-                        "type": "string",
-                        "maxLength": 2000,
-                        "format": "uri"
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "title",
-                      "url"
-                    ]
-                  }
-                }
-              },
-              "required": [
-                "id",
-                "sequence",
-                "occurredAt",
-                "scope",
-                "visibleScope",
-                "kind"
-              ]
-            }
-          }
-        },
-        "required": [
-          "events"
-        ]
-      },
-      "JournalConversation": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "turns": {
-            "type": "integer"
-          },
-          "messages": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "createdAt",
-          "updatedAt",
-          "turns",
-          "messages"
-        ]
-      },
-      "JournalTurnSummary": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "requestId": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "scope": {
-            "enum": [
-              "library",
-              "youtube",
-              "all"
-            ]
-          },
-          "requestedScope": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "trigger": {
-            "enum": [
-              "user",
-              "continuation"
-            ]
-          },
-          "status": {
-            "enum": [
-              "running",
-              "completed",
-              "error",
-              "canceled",
-              "busy"
-            ]
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "startedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "completedAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "journalComplete": {
-            "type": "boolean"
-          },
-          "action": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "reply": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "stale": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "requestId",
-          "scope",
-          "requestedScope",
-          "trigger",
-          "status",
-          "model",
-          "startedAt",
-          "completedAt",
-          "journalComplete",
-          "action",
-          "reply",
-          "stale"
-        ]
-      },
-      "JournalEvent": {
-        "type": "object",
-        "properties": {
-          "sequence": {
-            "type": "string",
-            "description": "Curseur bigint renvoyé en chaîne, à conserver tel quel."
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "turnId": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "scope": {
-            "enum": [
-              "library",
-              "youtube",
-              "all"
-            ]
-          },
-          "origin": {
-            "enum": [
-              "client",
-              "server"
-            ]
-          },
-          "kind": {
-            "type": "string"
-          },
-          "payload": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "clientSequence": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "occurredAt": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "receivedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "sequence",
-          "id",
-          "turnId",
-          "scope",
-          "origin",
-          "kind",
-          "payload",
-          "clientSequence",
-          "occurredAt",
-          "receivedAt"
-        ]
-      },
-      "JournalTurn": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "user_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "conversation_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "installation_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "request_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "scope": {
-            "type": "string"
-          },
-          "requested_scope": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "trigger": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "input": {
-            "$ref": "#/components/schemas/DjRequest"
-          },
-          "plan": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "response": {
-            "anyOf": [
-              {
-                "type": "object",
-                "additionalProperties": true
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "prompt_hash": {
-            "type": "string"
-          },
-          "release_sha": {
-            "type": "string"
-          },
-          "started_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "journal_complete": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "user_id",
-          "conversation_id",
-          "installation_id",
-          "request_id",
-          "scope",
-          "requested_scope",
-          "trigger",
-          "status",
-          "input",
-          "plan",
-          "response",
-          "model",
-          "prompt_hash",
-          "release_sha",
-          "started_at",
-          "completed_at",
-          "journal_complete"
-        ]
-      },
-      "AuthStart": {
-        "type": "object",
-        "properties": {
-          "challenge": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{43,128}$"
-          },
-          "app_state": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{43,128}$"
-          }
-        },
-        "required": [
-          "challenge",
-          "app_state"
-        ]
-      },
-      "DjRequest": {
-        "type": "object",
-        "properties": {
-          "conversationId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "requestId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "trigger": {
-            "type": "string",
-            "enum": [
-              "user",
-              "continuation"
-            ]
-          },
-          "scope": {
-            "type": "string",
-            "enum": [
-              "library",
-              "youtube",
-              "all"
-            ]
-          },
-          "playbackContext": {
-            "type": "object",
-            "properties": {
-              "current": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "pattern": "^[\\w-]{11}$"
-                      },
-                      "title": {
-                        "type": "string",
-                        "maxLength": 300
-                      },
-                      "channel": {
-                        "type": "string",
-                        "maxLength": 200
-                      },
-                      "artists": {
-                        "maxItems": 8,
-                        "type": "array",
-                        "items": {
-                          "type": "string",
-                          "maxLength": 100
-                        }
-                      },
-                      "genres": {
-                        "maxItems": 8,
-                        "type": "array",
-                        "items": {
-                          "type": "string",
-                          "maxLength": 80
-                        }
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "title",
-                      "channel",
-                      "artists",
-                      "genres"
-                    ]
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "direction": {
-                "type": "string",
-                "maxLength": 600
-              }
-            },
-            "required": [
-              "direction"
-            ]
-          },
-          "continuation": {
-            "type": "object",
-            "properties": {
-              "count": {
-                "default": 5,
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 8
-              },
-              "broaden": {
-                "default": false,
-                "type": "boolean"
-              }
-            }
-          },
-          "message": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 1500
-          },
-          "history": {
-            "default": [],
-            "maxItems": 12,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "role": {
-                  "type": "string",
-                  "enum": [
-                    "user",
-                    "assistant"
-                  ]
-                },
-                "content": {
-                  "type": "string",
-                  "maxLength": 2000
-                }
-              },
-              "required": [
-                "role",
-                "content"
-              ]
-            }
-          },
-          "discoveryContext": {
-            "default": [],
-            "maxItems": 8,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string",
-                  "pattern": "^[\\w-]{11}$"
-                },
-                "title": {
-                  "type": "string",
-                  "maxLength": 300
-                },
-                "channel": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "maxLength": 200
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                }
-              },
-              "required": [
-                "id",
-                "title"
-              ]
-            }
-          },
-          "rejectedIds": {
-            "default": [],
-            "maxItems": 100,
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^[\\w-]{11}$"
-            }
-          },
-          "excludeIds": {
-            "default": [],
-            "maxItems": 100,
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^[\\w-]{11}$"
-            }
-          }
-        },
-        "required": [
-          "message"
-        ]
-      },
-      "DjSettings": {
-        "type": "object",
-        "properties": {
-          "provider": {
-            "default": "google",
-            "type": "string",
-            "enum": [
-              "google",
-              "anthropic"
-            ]
-          },
-          "apiKey": {
-            "type": "string",
-            "minLength": 20,
-            "maxLength": 256
-          },
-          "model": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 128,
-            "pattern": "^[a-zA-Z0-9._:/-]+$"
-          }
-        },
-        "required": [
-          "model"
-        ]
-      },
-      "DjReset": {
-        "type": "object",
-        "properties": {
-          "provider": {
-            "type": "string",
-            "enum": [
-              "google",
-              "anthropic"
-            ]
-          }
-        }
-      },
-      "DjCheck": {
-        "type": "object",
-        "properties": {
-          "provider": {
-            "default": "google",
-            "type": "string",
-            "enum": [
-              "google",
-              "anthropic"
-            ]
-          },
-          "apiKey": {
-            "type": "string",
-            "minLength": 20,
-            "maxLength": 256
-          },
-          "model": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 128,
-            "pattern": "^[a-zA-Z0-9._:/-]+$"
-          },
-          "voice": {
-            "default": false,
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "model"
-        ]
-      },
-      "SpeechRequest": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 600
-          }
-        },
-        "required": [
-          "text"
-        ],
-        "description": "Le texte est nettoyé des espaces aux extrémités."
-      },
-      "HistoryPage": {
-        "type": "object",
-        "properties": {
-          "limit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 200,
-            "default": 50
-          },
-          "before": {
-            "type": "string",
-            "format": "date-time",
-            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-          },
-          "beforeId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          }
-        }
-      },
-      "Health": {
-        "type": "object",
-        "properties": {
-          "ok": {
-            "type": "boolean"
-          },
-          "version": {
-            "type": "string"
-          },
-          "release": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "ok",
-          "version",
-          "release"
-        ]
-      },
-      "DjStatus": {
-        "type": "object",
-        "properties": {
-          "provider": {
-            "type": "string",
-            "enum": [
-              "google",
-              "anthropic"
-            ]
-          },
-          "providers": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string",
-                  "enum": [
-                    "google",
-                    "anthropic"
-                  ]
-                },
-                "name": {
-                  "type": "string"
-                },
-                "configured": {
-                  "type": "boolean"
-                },
-                "model": {
-                  "type": "string"
-                },
-                "defaultModel": {
-                  "type": "string"
-                },
-                "keyUrl": {
-                  "type": "string"
-                },
-                "models": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string"
-                      },
-                      "name": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "name"
-                    ]
-                  }
-                }
-              },
-              "required": [
-                "id",
-                "name",
-                "configured",
-                "model",
-                "defaultModel",
-                "keyUrl",
-                "models"
-              ]
-            }
-          },
-          "configured": {
-            "type": "boolean"
-          },
-          "voice": {
-            "type": "boolean"
-          },
-          "model": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "personal": {
-            "type": "boolean"
-          },
-          "settingsAvailable": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "provider",
-          "providers",
-          "configured",
-          "voice",
-          "model",
-          "personal",
-          "settingsAvailable"
-        ]
-      },
-      "CheckResult": {
-        "type": "object",
-        "properties": {
-          "ok": {
-            "type": "boolean"
-          },
-          "voice": {
-            "type": "boolean"
-          },
-          "message": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "ok",
-          "voice",
-          "message"
-        ]
-      },
-      "SpeechResult": {
-        "type": "object",
-        "properties": {
-          "audio": {
-            "type": "string",
-            "contentEncoding": "base64",
-            "description": "Fichier WAV encodé en base64."
-          },
-          "mimeType": {
-            "const": "audio/wav"
-          }
-        },
-        "required": [
-          "audio",
-          "mimeType"
-        ]
-      },
-      "InformationSource": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          },
-          "title": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          },
-          "snippet": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "url"
-        ]
-      },
-      "DjResponse": {
-        "type": "object",
-        "properties": {
-          "reply": {
-            "type": "string"
-          },
-          "action": {
-            "enum": [
-              "replace",
-              "append",
-              "keep"
-            ]
-          },
-          "tracks": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DjTrack"
-            }
-          },
-          "discoveries": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DiscoveryItem"
-            }
-          },
-          "sources": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/InformationSource"
-            }
-          },
-          "source": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "reply",
-          "action",
-          "tracks"
-        ]
-      },
       "Error": {
         "type": "object",
         "properties": {
@@ -5651,6 +4575,25 @@
         "required": [
           "code",
           "verifier"
+        ]
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "string"
+          },
+          "release": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "version",
+          "release"
         ]
       },
       "Account": {
@@ -6056,6 +4999,943 @@
         "required": [
           "videoId"
         ]
+      },
+      "JournalConversation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "turns": {
+            "type": "integer"
+          },
+          "messages": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "updatedAt",
+          "turns",
+          "messages"
+        ]
+      },
+      "JournalTurnSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "library",
+              "youtube",
+              "all"
+            ]
+          },
+          "requestedScope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "user",
+              "continuation"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "completed",
+              "error",
+              "canceled",
+              "busy",
+              "superseded",
+              "interrupted"
+            ]
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "journalComplete": {
+            "type": "boolean"
+          },
+          "action": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reply": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stale": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "requestId",
+          "scope",
+          "requestedScope",
+          "trigger",
+          "status",
+          "model",
+          "startedAt",
+          "completedAt",
+          "journalComplete",
+          "action",
+          "reply",
+          "stale"
+        ]
+      },
+      "JournalEvent": {
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "string",
+            "description": "Curseur bigint renvoyé en chaîne, à conserver tel quel."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "turnId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "library",
+              "youtube",
+              "all"
+            ]
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "client",
+              "server"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "clientSequence": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "occurredAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "sequence",
+          "id",
+          "turnId",
+          "scope",
+          "origin",
+          "kind",
+          "clientSequence",
+          "occurredAt",
+          "receivedAt"
+        ]
+      },
+      "JournalUpload": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "sequence": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "occurredAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "library",
+                    "youtube",
+                    "all"
+                  ]
+                },
+                "visibleScope": {
+                  "type": "string",
+                  "enum": [
+                    "library",
+                    "youtube",
+                    "all"
+                  ]
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "message",
+                    "action"
+                  ]
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ]
+                },
+                "content": {
+                  "type": "string",
+                  "maxLength": 8192
+                },
+                "action": {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                "requestId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "current": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[\\w-]{11}$"
+                    },
+                    "title": {
+                      "type": "string",
+                      "maxLength": 300
+                    },
+                    "channel": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 200
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title"
+                  ]
+                },
+                "queueIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[\\w-]{11}$"
+                  },
+                  "maxItems": 100
+                },
+                "discoveries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[\\w-]{11}$"
+                      },
+                      "title": {
+                        "type": "string",
+                        "maxLength": 300
+                      },
+                      "channel": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "maxLength": 200
+                      },
+                      "inLibrary": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "title",
+                      "inLibrary"
+                    ]
+                  },
+                  "maxItems": 8
+                },
+                "sources": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer"
+                      },
+                      "title": {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      "url": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "format": "uri"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "title",
+                      "url"
+                    ]
+                  },
+                  "maxItems": 5
+                }
+              },
+              "required": [
+                "id",
+                "sequence",
+                "occurredAt",
+                "scope",
+                "visibleScope",
+                "kind"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "events"
+        ]
+      },
+      "JournalTurn": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "installation_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "request_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "requested_scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "trigger": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "input": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DjRequest"
+              }
+            ]
+          },
+          "plan": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "response": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prompt_hash": {
+            "type": "string"
+          },
+          "release_sha": {
+            "type": "string"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "journal_complete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "conversation_id",
+          "installation_id",
+          "request_id",
+          "scope",
+          "requested_scope",
+          "trigger",
+          "status",
+          "model",
+          "prompt_hash",
+          "release_sha",
+          "started_at",
+          "completed_at",
+          "journal_complete"
+        ]
+      },
+      "DjStatus": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "google",
+              "anthropic"
+            ]
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "enum": [
+                    "google",
+                    "anthropic"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "configured": {
+                  "type": "boolean"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "defaultModel": {
+                  "type": "string"
+                },
+                "keyUrl": {
+                  "type": "string"
+                },
+                "models": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "configured",
+                "model",
+                "defaultModel",
+                "keyUrl",
+                "models"
+              ]
+            }
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "voice": {
+            "type": "boolean"
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "personal": {
+            "type": "boolean"
+          },
+          "settingsAvailable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "provider",
+          "providers",
+          "configured",
+          "voice",
+          "model",
+          "personal",
+          "settingsAvailable"
+        ]
+      },
+      "DjSettings": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "google",
+              "anthropic"
+            ],
+            "default": "google"
+          },
+          "apiKey": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 256
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9._:/-]+$"
+          }
+        },
+        "required": [
+          "model"
+        ]
+      },
+      "DjReset": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "google",
+              "anthropic"
+            ]
+          }
+        }
+      },
+      "CheckResult": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "voice": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "voice",
+          "message"
+        ]
+      },
+      "DjCheck": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "google",
+              "anthropic"
+            ],
+            "default": "google"
+          },
+          "apiKey": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 256
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-zA-Z0-9._:/-]+$"
+          },
+          "voice": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "model"
+        ]
+      },
+      "DjResponse": {
+        "type": "object",
+        "properties": {
+          "reply": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "replace",
+              "append",
+              "keep"
+            ]
+          },
+          "tracks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DjTrack"
+            }
+          },
+          "discoveries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryItem"
+            }
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InformationSource"
+            }
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reply",
+          "action",
+          "tracks"
+        ]
+      },
+      "InformationSource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "snippet": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "url"
+        ]
+      },
+      "DjRequest": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "user",
+              "continuation"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "library",
+              "youtube",
+              "all"
+            ]
+          },
+          "playbackContext": {
+            "type": "object",
+            "properties": {
+              "current": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[\\w-]{11}$"
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 300
+                  },
+                  "channel": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "artists": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 100
+                    },
+                    "maxItems": 8
+                  },
+                  "genres": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 80
+                    },
+                    "maxItems": 8
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "channel",
+                  "artists",
+                  "genres"
+                ]
+              },
+              "direction": {
+                "type": "string",
+                "maxLength": 600
+              }
+            },
+            "required": [
+              "direction"
+            ]
+          },
+          "continuation": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8,
+                "default": 5
+              },
+              "broaden": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ]
+                },
+                "content": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "role",
+                "content"
+              ]
+            },
+            "maxItems": 12,
+            "default": []
+          },
+          "discoveryContext": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[\\w-]{11}$"
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "channel": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 200
+                }
+              },
+              "required": [
+                "id",
+                "title"
+              ]
+            },
+            "maxItems": 8,
+            "default": []
+          },
+          "rejectedIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[\\w-]{11}$"
+            },
+            "maxItems": 100,
+            "default": []
+          },
+          "excludeIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[\\w-]{11}$"
+            },
+            "maxItems": 100,
+            "default": []
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "SpeechResult": {
+        "type": "object",
+        "properties": {
+          "audio": {
+            "type": "string",
+            "description": "Fichier WAV encodé en base64."
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "audio/wav"
+            ]
+          }
+        },
+        "required": [
+          "audio",
+          "mimeType"
+        ]
+      },
+      "SpeechRequest": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 600
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "description": "Le texte est nettoyé des espaces aux extrémités."
       },
       "HistoryUpload": {
         "type": "object",

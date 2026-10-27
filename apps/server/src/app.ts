@@ -6,28 +6,24 @@ import {
   sessionGuard,
   type IdentityProvider,
 } from "./modules/auth/index.ts";
-import {
-  accountRoutes,
-  LEGACY_USER,
-  ownsPlaylist,
-} from "./modules/accounts/index.ts";
+import { accountRoutes } from "./modules/accounts/index.ts";
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { macosReleases } from "./macos-releases.ts";
+import { releaseRoutes } from "./modules/releases/index.ts";
+import { playerRoutes } from "./modules/player/index.ts";
+import { systemRoutes } from "./modules/system/index.ts";
 import type { ApiEnvironment } from "./shared/api-environment.ts";
-import { createDjRoutes } from "./modules/dj/routes.ts";
+import { createDjRoutes } from "./modules/dj/index.ts";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
-import { parsePlaylistId } from "./content.ts";
-import { transaction, type Database } from "./db/index.ts";
+import type { Database } from "./db/index.ts";
 import { jobRoutes } from "./modules/jobs/index.ts";
 import { libraryRoutes } from "./modules/library/index.ts";
 import { searchRoutes } from "./modules/search/index.ts";
 import { lyricsRoutes } from "./modules/lyrics/index.ts";
 import { Lrclib, type LyricsSource } from "./integrations/lrclib/index.ts";
 import { mcpRoutes } from "./modules/mcp/index.ts";
-import { djPlayerHtml, djPlayerCss, djPlayerJs } from "./dj-player.ts";
 export function createApp(
   db: Database,
   identityProvider?: IdentityProvider,
@@ -57,36 +53,9 @@ export function createApp(
     }),
   );
   app.route("/auth", authRoutes(db, identityProvider));
-  app.route("/macos", macosReleases());
-  app.get("/dj/player", (c) => {
-    c.header(
-      "Content-Security-Policy",
-      "default-src 'none'; script-src 'self' https://www.youtube.com https://s.ytimg.com; style-src 'self'; frame-src https://www.youtube.com; connect-src https://www.youtube.com; frame-ancestors http://localhost:* http://127.0.0.1:*",
-    );
-    c.header("Referrer-Policy", "strict-origin-when-cross-origin");
-    return c.html(djPlayerHtml);
-  });
-  app.get("/dj/player.js", (c) =>
-    c.body(djPlayerJs, 200, {
-      "Content-Type": "text/javascript; charset=utf-8",
-      "Cache-Control": "no-cache",
-    }),
-  );
-  app.get("/dj/player.css", (c) =>
-    c.body(djPlayerCss, 200, { "Content-Type": "text/css; charset=utf-8" }),
-  );
-  app.get("/health", async (c) => {
-    try {
-      await db.query("SELECT 1");
-      return c.json({
-        ok: true,
-        version: "2.2.0",
-        release: process.env["RELEASE_SHA"] ?? "local",
-      });
-    } catch {
-      return c.json({ ok: false }, 503);
-    }
-  });
+  app.route("/", systemRoutes(db));
+  app.route("/", playerRoutes());
+  app.route("/macos", releaseRoutes());
   app.use("/v1/*", sessionGuard(db));
   app.route("/v1", accountRoutes(db));
   app.route("/v1/discover", discoveryRoutes(db));

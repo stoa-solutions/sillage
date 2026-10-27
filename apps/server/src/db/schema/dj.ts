@@ -2,11 +2,11 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
-  check,
   foreignKey,
   index,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -15,9 +15,26 @@ import {
 import { timestamptz } from "./columns.ts";
 import { users } from "./accounts.ts";
 
-const scopes = sql.raw(
-  "ARRAY['library'::text, 'youtube'::text, 'all'::text]",
-);
+export const discoveryScope = pgEnum("discovery_scope", [
+  "library",
+  "youtube",
+  "all",
+]);
+export const turnTrigger = pgEnum("turn_trigger", ["user", "continuation"]);
+/**
+ * `superseded`: the listener forced a newer message. `busy`: a refill gave way to a typed
+ * request. `interrupted`: the server stopped before the turn ended.
+ */
+export const turnStatus = pgEnum("turn_status", [
+  "running",
+  "completed",
+  "error",
+  "canceled",
+  "busy",
+  "superseded",
+  "interrupted",
+]);
+export const journalOrigin = pgEnum("journal_origin", ["client", "server"]);
 
 /** Private DJ diagnostics: conversations, turns and their journal. */
 export const djConversations = pgTable(
@@ -51,10 +68,10 @@ export const djTurns = pgTable(
     conversationId: uuid("conversation_id").notNull(),
     installationId: uuid("installation_id"),
     requestId: uuid("request_id"),
-    scope: text("scope").notNull(),
-    requestedScope: text("requested_scope"),
-    trigger: text("trigger").notNull(),
-    status: text("status").notNull().default("running"),
+    scope: discoveryScope("scope").notNull(),
+    requestedScope: discoveryScope("requested_scope"),
+    trigger: turnTrigger("trigger").notNull(),
+    status: turnStatus("status").notNull().default("running"),
     input: jsonb("input").notNull(),
     plan: jsonb("plan").notNull(),
     response: jsonb("response"),
@@ -72,19 +89,6 @@ export const djTurns = pgTable(
       columns: [t.userId, t.conversationId],
       foreignColumns: [djConversations.userId, djConversations.id],
     }).onDelete("cascade"),
-    check("dj_turns_scope_check", sql`${t.scope} = ANY (${scopes})`),
-    check(
-      "dj_turns_requested_scope_check",
-      sql`${t.requestedScope} = ANY (${scopes})`,
-    ),
-    check(
-      "dj_turns_trigger_check",
-      sql`${t.trigger} = ANY (ARRAY['user'::text, 'continuation'::text])`,
-    ),
-    check(
-      "dj_turns_status_check",
-      sql`${t.status} = ANY (ARRAY['running'::text, 'completed'::text, 'error'::text, 'canceled'::text, 'busy'::text, 'superseded'::text, 'interrupted'::text])`,
-    ),
     index("dj_turns_conversation").on(
       t.userId,
       t.conversationId,
@@ -107,8 +111,8 @@ export const djJournalEvents = pgTable(
     id: uuid("id").notNull(),
     conversationId: uuid("conversation_id").notNull(),
     turnId: uuid("turn_id"),
-    scope: text("scope").notNull(),
-    origin: text("origin").notNull(),
+    scope: discoveryScope("scope").notNull(),
+    origin: journalOrigin("origin").notNull(),
     kind: text("kind").notNull(),
     payload: jsonb("payload").notNull(),
     clientSequence: integer("client_sequence"),
@@ -127,11 +131,6 @@ export const djJournalEvents = pgTable(
       columns: [t.userId, t.turnId],
       foreignColumns: [djTurns.userId, djTurns.id],
     }).onDelete("cascade"),
-    check("dj_journal_events_scope_check", sql`${t.scope} = ANY (${scopes})`),
-    check(
-      "dj_journal_events_origin_check",
-      sql`${t.origin} = ANY (ARRAY['client'::text, 'server'::text])`,
-    ),
     index("dj_journal_conversation").on(t.userId, t.conversationId, t.sequence),
     index("dj_journal_turn")
       .on(t.userId, t.turnId, t.sequence)

@@ -1,20 +1,19 @@
-import { LEGACY_USER } from "../accounts/index.ts";
-import { djConfig, type DjConfig } from "../../dj-config.ts";
-import type { Database } from "../../db/index.ts";
+import { djConfig, type DjConfig } from "./dj.config.ts";
+import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
 import { connectMusicMcp, musicTracks } from "../mcp/index.ts";
 import type { DjTrack } from "@playlist-recall/core/dj";
 import { catalogSelection } from "./catalog.ts";
 import { Composition, type ComposedSelection } from "./composition.ts";
-import { selection, type DjInput, type Selection } from "./contracts.ts";
+import { selection, type DjInput, type Selection } from "./dj.contracts.ts";
 import { decide, type Decision, type Retry } from "./decision.ts";
 import { DjUnavailable } from "./errors.ts";
 import { compactVideo } from "./evidence.ts";
-import type { TraceObserver } from "./journal/contracts.ts";
+import type { TraceObserver } from "./journal/journal.contracts.ts";
 import { EMPTY_MEMORY, type ConversationMemory } from "./memory.ts";
 import { initialMessages } from "./messages.ts";
 import { planTurn, type TurnPlan } from "./plan.ts";
 import { completeTurn, MAX_ROUNDS } from "./provider.ts";
-import { reserveDj } from "./quota.ts";
+import { reserveDj } from "./dj-quota.service.ts";
 import {
   emptyReply,
   INFORMATION_UNAVAILABLE,
@@ -62,7 +61,7 @@ export async function djTurn(
   input: DjInput,
   signal: AbortSignal = AbortSignal.timeout(TURN_DEADLINE_MS),
   config: DjConfig = djConfig(),
-  userId = LEGACY_USER,
+  userId = LEGACY_USER_ID,
   observe?: TraceObserver,
   memory: ConversationMemory = EMPTY_MEMORY,
 ): Promise<TurnResult> {

@@ -7,7 +7,7 @@ import type { Database } from "../src/db/index.ts";
 import { required } from "./support/required.ts";
 
 const database = {
-  query: vi.fn(async () => ({ rows: [], rowCount: 0 })),
+  orm: { execute: vi.fn(async () => ({ rows: [] })) },
 } as unknown as Database;
 const server = createApp(database);
 const local = "http://127.0.0.1:3030";
@@ -42,7 +42,10 @@ it("keeps request defaults optional and preserves source and pagination constrai
     "all",
   ]);
   expect((required(schemas["LibrarySearch"])["properties"] as any).limit.maximum).toBe(100);
-  expect((required(schemas["HistoryPage"])["properties"] as any).limit.maximum).toBe(200);
+  const historyLimit = openapi.paths["/v1/history"]?.get?.parameters?.find(
+    (parameter) => parameter["name"] === "limit",
+  );
+  expect((required(historyLimit)["schema"] as any).maximum).toBe(200);
   expect((required(schemas["DjSettings"])["properties"] as any).apiKey.minLength).toBe(20);
   const serialized = JSON.stringify(openapi);
   for (const [, schema] of serialized.matchAll(

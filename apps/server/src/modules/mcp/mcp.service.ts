@@ -2,7 +2,7 @@ import {
   musicQueries,
   isMusicCandidate,
   interleaveClues,
-} from "../dj/retrieval.ts";
+} from "./mcp.retrieval.ts";
 import { informationSearch } from "../../integrations/searxng/index.ts";
 import type { SearchFailureReason } from "../discovery/index.ts";
 import { DiscoveryError, discoveryFor } from "../discovery/index.ts";

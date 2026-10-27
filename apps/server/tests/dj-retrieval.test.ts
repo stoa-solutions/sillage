@@ -6,6 +6,10 @@ const mocks = vi.hoisted(() => ({
   requested: vi.fn(),
   toolNames: ["music_search"],
 }));
+// The daily DJ budget is counted in PostgreSQL; these cases never reach it.
+vi.mock("../src/modules/dj/dj-quota.repository.ts", () => ({
+  takeDailyUnit: async () => true,
+}));
 vi.mock("../src/modules/mcp/index.ts", () => ({
   requestedTracks: mocks.requested,
   musicTracks: mocks.tracks,
@@ -19,7 +23,7 @@ vi.mock("../src/modules/mcp/index.ts", () => ({
     },
   }),
 }));
-import { djInput, djTurn } from "../src/dj.ts";
+import { djInput, djTurn } from "../src/modules/dj/index.ts";
 import type { Database } from "../src/db/index.ts";
 import { required } from "./support/required.ts";
 const db = { query: async () => ({ rowCount: 1 }) } as unknown as Database;

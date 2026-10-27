@@ -15,6 +15,10 @@ const boundaries = vi.hoisted(() => ({
   information: vi.fn(),
   ownedTracks: vi.fn(),
 }));
+// The daily DJ budget is counted in PostgreSQL; these cases never reach it.
+vi.mock("../src/modules/dj/dj-quota.repository.ts", () => ({
+  takeDailyUnit: async () => true,
+}));
 vi.mock("../src/modules/mcp/mcp.repository.ts", () => ({
   ownedTracks: boundaries.ownedTracks,
   // Exact catalog resolution is a separate fast path. These cases exercise tools.
@@ -30,7 +34,7 @@ vi.mock("../src/modules/discovery/index.ts", async (importOriginal) => ({
   ...await importOriginal<typeof import("../src/modules/discovery/index.ts")>(),
   discoveryFor: () => ({ search: boundaries.youtube }),
 }));
-import { djInput, djTurn } from "../src/dj.ts";
+import { djInput, djTurn } from "../src/modules/dj/index.ts";
 import type { Database } from "../src/db/index.ts";
 import { required } from "./support/required.ts";
 import { ownedAmong } from "./support/catalog.ts";
@@ -45,8 +49,6 @@ const config = {
 let owned = [...library, collaboration];
 const db = {
   query: vi.fn(async (sql: string, params?: unknown[]) => {
-    if (sql.includes("INSERT INTO account_dj_usage"))
-      return { rows: [], rowCount: 1 };
     throw new Error("Unexpected SQL in agent fixture");
   }),
 };
@@ -573,7 +575,7 @@ it("does not fabricate an anecdote after an information search outage", async ()
 
 
 it("observes actual catalog, provider and MCP rounds without changing selection or source", async () => {
-  const events: import("../src/modules/dj/journal/contracts.ts").TraceEvent[] = [];
+  const events: import("../src/modules/dj/journal/journal.contracts.ts").TraceEvent[] = [];
   responses.push(searchCall("cumbia"), selection([required(external[0]).id], "append"));
   const result = await djTurn(db as unknown as Database, djInput.parse({message:"Ajoute 1 morceau de cumbia à la suite",scope:"all"}), undefined, config, "alice", event=>events.push(event));
   expect(result.action).toBe("append");

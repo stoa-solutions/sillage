@@ -6,7 +6,11 @@ export {
   type DiscoverySource,
 } from "./discovery.service.ts";
 export { discoveryHome, discoverySeeds } from "./discovery-home.service.ts";
-export { discoveryAddInput, discoveryInput } from "./discovery.schemas.ts";
+export {
+  discoveryAddInput,
+  discoveryInput,
+  discoveryItemBody,
+} from "./discovery.schemas.ts";
 export {
   searchFailureMessage,
   searchFailureSummary,

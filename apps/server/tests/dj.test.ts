@@ -1,8 +1,8 @@
 import { it, expect, vi, afterEach } from "vitest";
 import { Script } from "node:vm";
-import { pcmToWav } from "../src/dj-voice.ts";
-import { djInput, djDailyBudget } from "../src/dj.ts";
-import { djPlayerJs } from "../src/dj-player.ts";
+import { pcmToWav } from "../src/modules/dj/dj-voice.service.ts";
+import { djInput, djDailyBudget } from "../src/modules/dj/index.ts";
+import { djPlayerJs } from "../src/modules/player/player.assets.ts";
 afterEach(() => vi.unstubAllEnvs());
 it("keeps explicit unlimited access permanent and isolated to its account", () => {
   vi.stubEnv("DJ_DAILY_REQUEST_LIMIT", "100");

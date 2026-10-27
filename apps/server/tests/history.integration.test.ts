@@ -5,7 +5,7 @@ import { migrate, openDatabase } from "../src/db/index.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import type { IdentityProvider } from "../src/modules/auth/index.ts";
-import { LEGACY_USER } from "../src/modules/accounts/index.ts";
+import { LEGACY_USER_ID } from "../src/db/index.ts";
 import { scheduleSync } from "../src/modules/library/index.ts";
 vi.mock("../src/integrations/inference/client.ts", () => ({
   infer: vi.fn().mockResolvedValue({ vector: Array(384).fill(0.01) }),
@@ -229,11 +229,11 @@ it("moves the legacy account's history with its library when claimed", async () 
   const legacyToken = "legacy-history-session-token-123";
   await db.query(
     "INSERT INTO users(id,google_sub,email) VALUES($1,NULL,NULL)",
-    [LEGACY_USER],
+    [LEGACY_USER_ID],
   );
   await db.query(
     "INSERT INTO tokens(id,name,hash,user_id) VALUES($1,'L',$2,$3)",
-    [randomUUID(), hash(legacyToken), LEGACY_USER],
+    [randomUUID(), hash(legacyToken), LEGACY_USER_ID],
   );
   await req("POST", "/v1/history", legacyToken, { events: [event()] });
   expect(

@@ -48,11 +48,11 @@ test("pure policy allows type-only adapter references, but rejects runtime impor
   assert.equal(violations(file, 'fetch("url"); process.env.KEY;').length, 2);
   assert.equal(violations(file, "import(adapterPath)").length, 1);
 });
-test("DJ internals cannot introduce facade cycles or untyped boundaries", () => {
+test("DJ internals cannot import their own index or use untyped boundaries", () => {
   assert.equal(
     violations(
-      "apps/server/src/modules/dj/turn.ts",
-      'import { reserveDj } from "../../dj.ts"',
+      "apps/server/src/modules/dj/dj-turn.service.ts",
+      'import { reserveDj } from "./index.ts"',
     ).length,
     1,
   );

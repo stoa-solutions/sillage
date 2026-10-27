@@ -4,7 +4,7 @@ import {
   MAX_ROUNDS,
   type ChatMessage,
 } from "../src/modules/dj/provider.ts";
-import { DjUnavailable } from "../src/dj.ts";
+import { DjUnavailable } from "../src/modules/dj/index.ts";
 import { required } from "./support/required.ts";
 
 const config = {

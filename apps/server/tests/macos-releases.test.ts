@@ -2,7 +2,7 @@ import { it, expect, vi } from "vitest";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { macosReleases } from "../src/macos-releases.ts";
+import { releaseRoutes as macosReleases } from "../src/modules/releases/index.ts";
 it("serves an empty feed until a release is published and excludes other files", async () => {
   const directory = await mkdtemp(join(tmpdir(), "recall-mac-"));
   vi.stubEnv("MAC_RELEASES_DIR", directory);

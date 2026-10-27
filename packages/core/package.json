@@ -8,6 +8,7 @@
     "./import": "./src/import.ts",
     "./search": "./src/search.ts",
     "./model": "./src/model.ts",
-    "./dj": "./src/dj.ts"
+    "./dj": "./src/dj.ts",
+    "./intent": "./src/intent.ts"
   }
 }

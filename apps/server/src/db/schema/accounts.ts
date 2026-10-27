@@ -1,16 +1,24 @@
 import { sql } from "drizzle-orm";
 import {
-  check,
   date,
   foreignKey,
   index,
   integer,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
   uuid,
 } from "drizzle-orm/pg-core";
 import { LEGACY_USER_ID, timestamptz } from "./columns.ts";
+
+export const aiProvider = pgEnum("ai_provider", ["google", "anthropic"]);
+/** "legacy": the untouched historical account still uses the server's own key. */
+export const userDjProvider = pgEnum("user_dj_provider", [
+  "google",
+  "anthropic",
+  "legacy",
+]);
 
 /** A Google account, or the historical library (LEGACY_USER_ID). */
 export const users = pgTable(
@@ -23,8 +31,7 @@ export const users = pgTable(
     createdAt: timestamptz("created_at").notNull().defaultNow(),
     /** On the historical user only: the Google account that took its library over. */
     legacyClaimedBy: uuid("legacy_claimed_by"),
-    /** "google", "anthropic", or "legacy" for the untouched historical account. */
-    djProvider: text("dj_provider").notNull().default("google"),
+    djProvider: userDjProvider("dj_provider").notNull().default("google"),
   },
   (t) => [
     foreignKey({
@@ -94,7 +101,7 @@ export const accountAiCredentials = pgTable(
   "account_ai_credentials",
   {
     userId: uuid("user_id").notNull(),
-    provider: text("provider").notNull(),
+    provider: aiProvider("provider").notNull(),
     encryptedKey: text("encrypted_key").notNull(),
     model: text("model").notNull(),
     updatedAt: timestamptz("updated_at").notNull().defaultNow(),
@@ -109,10 +116,6 @@ export const accountAiCredentials = pgTable(
       columns: [t.userId],
       foreignColumns: [users.id],
     }).onDelete("cascade"),
-    check(
-      "account_ai_credentials_provider_check",
-      sql`${t.provider} = ANY (ARRAY['google'::text, 'anthropic'::text])`,
-    ),
   ],
 );
 

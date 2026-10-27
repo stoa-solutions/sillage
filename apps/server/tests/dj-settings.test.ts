@@ -1,6 +1,6 @@
 import { it, expect } from "vitest";
 import { randomBytes } from "node:crypto";
-import { sealSecret, openSecret } from "../src/dj-settings.ts";
+import { sealSecret, openSecret } from "../src/modules/dj/dj-settings.service.ts";
 it("encrypts credentials with random nonces and authenticates the installation and ciphertext", () => {
   const key = randomBytes(32);
   const secret = "fixture-key-never-use-in-production";

@@ -1,8 +1,25 @@
-import { LEGACY_USER } from "./modules/accounts/index.ts";
-import { djConfig, type DjConfig } from "./dj-config.ts";
-import { DjUnavailable } from "./modules/dj/errors.ts";
-import { reserveDj } from "./modules/dj/quota.ts";
-import type { Database } from "./db/index.ts";
+import { z } from "zod";
+import { djConfig, type DjConfig } from "./dj.config.ts";
+import { DjUnavailable } from "./errors.ts";
+import { reserveDj } from "./dj-quota.service.ts";
+
+/** The part of a Gemini speech answer we read: the first inline audio of the first candidate. */
+const speechResponse = z.object({
+  candidates: z.array(
+    z.object({
+      content: z.object({
+        parts: z.array(
+          z.object({
+            inlineData: z
+              .object({ data: z.string(), mimeType: z.string().optional() })
+              .optional(),
+          }),
+        ),
+      }),
+    }),
+  ),
+});
+import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
 export function djVoiceConfigured(config: DjConfig = djConfig()) {
   return (
     config.configured &&
@@ -30,7 +47,7 @@ export async function djSpeech(
   text: string,
   signal?: AbortSignal,
   config: DjConfig = djConfig(),
-  userId = LEGACY_USER,
+  userId = LEGACY_USER_ID,
 ) {
   if (!djVoiceConfigured(config))
     throw new DjUnavailable("La voix du DJ n’est pas configurée.");
@@ -71,15 +88,12 @@ export async function djSpeech(
       },
     );
     if (!response.ok) throw new Error("Voice provider unavailable");
-    const data = (await response.json()) as any;
-    const audio = data.candidates?.[0]?.content?.parts?.find(
-      (part: any) => part.inlineData?.data,
-    )?.inlineData;
-    if (
-      !audio ||
-      typeof audio.data !== "string" ||
-      audio.data.length > 8 * 1024 * 1024
-    )
+    const parsed = speechResponse.safeParse(await response.json());
+    const audio = parsed.success
+      ? parsed.data.candidates[0]?.content.parts.find((part) => part.inlineData?.data)
+          ?.inlineData
+      : undefined;
+    if (!audio || audio.data.length > 8 * 1024 * 1024)
       throw new Error("Missing audio");
     let bytes: Buffer = Buffer.from(audio.data, "base64");
     if (bytes.subarray(0, 4).toString() !== "RIFF") {
@@ -87,7 +101,7 @@ export async function djSpeech(
         throw new Error("Unsupported voice format");
       bytes = pcmToWav(bytes);
     }
-    return { audio: bytes.toString("base64"), mimeType: "audio/wav" };
+    return { audio: bytes.toString("base64"), mimeType: "audio/wav" as const };
   } catch {
     throw new DjUnavailable(
       "La voix du DJ est momentanément indisponible. Sa réponse reste dans le chat.",

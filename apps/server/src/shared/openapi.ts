@@ -42,19 +42,24 @@ export const textResponse = (mime: string, description: string) => ({
   content: { [mime]: { schema: z.string() } },
 });
 
+const baseErrors = () => ({
+  400: errorResponse("Données invalides"),
+  413: errorResponse("Corps supérieur à 30 Mio"),
+  500: errorResponse("Erreur interne sans diagnostic privé"),
+});
+const sessionErrors = () => ({
+  401: errorResponse("Session absente, expirée ou révoquée"),
+  429: errorResponse("Limite de débit ou opération déjà en cours"),
+});
 /** Errors any route may answer; session ones only behind the /v1 bearer guard. */
+function commonErrors(
+  isPublic: true,
+): ReturnType<typeof baseErrors>;
+function commonErrors(
+  isPublic?: false,
+): ReturnType<typeof baseErrors> & ReturnType<typeof sessionErrors>;
 function commonErrors(isPublic = false) {
-  return {
-    400: errorResponse("Données invalides"),
-    413: errorResponse("Corps supérieur à 30 Mio"),
-    500: errorResponse("Erreur interne sans diagnostic privé"),
-    ...(isPublic
-      ? {}
-      : {
-          401: errorResponse("Session absente, expirée ou révoquée"),
-          429: errorResponse("Limite de débit ou opération déjà en cours"),
-        }),
-  };
+  return isPublic ? baseErrors() : { ...baseErrors(), ...sessionErrors() };
 }
 
 export interface Operation {

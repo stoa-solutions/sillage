@@ -1,4 +1,3 @@
-import { LEGACY_USER } from "./modules/accounts/index.ts";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { z } from "zod";
 import {
@@ -6,8 +5,14 @@ import {
   AI_PROVIDER_IDS,
   type AiProvider,
 } from "@playlist-recall/core/dj";
-import { transaction, type Database } from "./db/index.ts";
-import { djConfig, providerBaseUrl, type DjConfig } from "./dj-config.ts";
+import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
+import {
+  deleteCredentials,
+  preferredProvider,
+  saveCredential,
+  storedCredentials,
+} from "./dj-settings.repository.ts";
+import { djConfig, providerBaseUrl, type DjConfig } from "./dj.config.ts";
 
 export const djSettingsInput = z
   .object({
@@ -64,22 +69,8 @@ export function openSecret(value: string, owner: string, key: Buffer): string {
     cipher.final(),
   ]).toString("utf8");
 }
-type Credential = {
-  provider: AiProvider;
-  model: string;
-  encrypted_key: string;
-};
-async function credentials(db: Database, owner: string): Promise<Credential[]> {
-  const result = await db.query<Credential>(
-    `SELECT provider,model,encrypted_key FROM account_ai_credentials WHERE user_id=$1
-     UNION ALL SELECT 'google',model,encrypted_key FROM account_dj_settings WHERE user_id=$1
-       AND NOT EXISTS(SELECT 1 FROM account_ai_credentials WHERE user_id=$1 AND provider='google')`,
-    [owner],
-  );
-  return result.rows;
-}
 export async function aiProviderStatus(db: Database, owner: string) {
-  const rows = await credentials(db, owner);
+  const rows = await storedCredentials(db.orm, owner);
   return AI_PROVIDERS.map((provider) => {
     const saved = rows.find((row) => row.provider === provider.id);
     return {
@@ -94,18 +85,15 @@ export async function personalDjConfig(
   owner: string,
   requested?: AiProvider,
 ): Promise<DjConfig & { personal: boolean }> {
-  const preference = await db.query(
-    "SELECT dj_provider FROM users WHERE id=$1",
-    [owner],
-  );
+  const preference = await preferredProvider(db.orm, owner);
   const provider: AiProvider =
-    requested ??
-    (preference.rows[0]?.dj_provider === "anthropic" ? "anthropic" : "google");
-  const saved = (await credentials(db, owner)).find(
+    requested ?? (preference === "anthropic" ? "anthropic" : "google");
+  const saved = (await storedCredentials(db.orm, owner)).find(
     (row) => row.provider === provider,
   );
   if (!saved) {
-    if (owner === LEGACY_USER && preference.rows[0]?.dj_provider === "legacy") {
+    // The untouched historical account keeps the server's own key.
+    if (owner === LEGACY_USER_ID && preference === "legacy") {
       const legacy = djConfig();
       const legacyProvider =
         legacy.provider === "anthropic" ? "anthropic" : "google";
@@ -127,11 +115,12 @@ export async function personalDjConfig(
     provider,
     baseUrl: providerBaseUrl(provider),
     model: saved.model,
-    key: openSecret(saved.encrypted_key, owner, encryption),
+    key: openSecret(saved.encryptedKey, owner, encryption),
     configured: true,
     personal: true,
   };
 }
+/** Saves a key and model; the first configuration of a provider needs its key. */
 export async function saveDjSettings(
   db: Database,
   owner: string,
@@ -139,56 +128,21 @@ export async function saveDjSettings(
 ) {
   const key = settingsKey();
   if (!key) return "unavailable" as const;
-  return transaction(db, async (client) => {
-    await client.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [owner]);
-    const existing = (
-      await client.query<Credential>(
-        `SELECT provider,model,encrypted_key FROM account_ai_credentials WHERE user_id=$1 AND provider=$2
-       UNION ALL SELECT 'google',model,encrypted_key FROM account_dj_settings WHERE user_id=$1 AND $2='google'
-         AND NOT EXISTS(SELECT 1 FROM account_ai_credentials WHERE user_id=$1 AND provider=$2)`,
-        [owner, input.provider],
-      )
-    ).rows[0];
-    const encrypted = input.apiKey
-      ? sealSecret(input.apiKey, owner, key)
-      : existing?.encrypted_key;
-    if (!encrypted) return "missing-key" as const;
-    await client.query(
-      `INSERT INTO account_ai_credentials(user_id,provider,encrypted_key,model) VALUES($1,$2,$3,$4)
-      ON CONFLICT(user_id,provider) DO UPDATE SET encrypted_key=EXCLUDED.encrypted_key,model=EXCLUDED.model,updated_at=now()`,
-      [owner, input.provider, encrypted, input.model],
-    );
-    if (input.provider === "google")
-      await client.query(
-        `INSERT INTO account_dj_settings(user_id,encrypted_key,model) VALUES($1,$2,$3)
-       ON CONFLICT(user_id) DO UPDATE SET encrypted_key=EXCLUDED.encrypted_key,model=EXCLUDED.model,updated_at=now()`,
-        [owner, encrypted, input.model],
-      );
-    await client.query("UPDATE users SET dj_provider=$2 WHERE id=$1", [
-      owner,
-      input.provider,
-    ]);
-    return "saved" as const;
-  });
+  const saved = await saveCredential(
+    db.orm,
+    owner,
+    input.provider,
+    input.model,
+    (existing) =>
+      input.apiKey ? sealSecret(input.apiKey, owner, key) : existing,
+  );
+  return saved ? ("saved" as const) : ("missing-key" as const);
 }
+/** Deletes one provider's key, or every key of the account. */
 export async function resetDjSettings(
   db: Database,
   owner: string,
   provider?: AiProvider,
 ) {
-  await transaction(db, async (client) => {
-    await client.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [owner]);
-    await client.query(
-      "DELETE FROM account_ai_credentials WHERE user_id=$1 AND ($2::text IS NULL OR provider=$2)",
-      [owner, provider ?? null],
-    );
-    if (!provider || provider === "google")
-      await client.query("DELETE FROM account_dj_settings WHERE user_id=$1", [
-        owner,
-      ]);
-    if (!provider)
-      await client.query("UPDATE users SET dj_provider='google' WHERE id=$1", [
-        owner,
-      ]);
-  });
+  await deleteCredentials(db.orm, owner, provider);
 }

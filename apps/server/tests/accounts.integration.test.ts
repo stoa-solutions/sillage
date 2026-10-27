@@ -7,11 +7,11 @@ import { required } from "./support/required.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import { pkceChallenge, type IdentityProvider } from "../src/modules/auth/index.ts";
-import { LEGACY_USER } from "../src/modules/accounts/index.ts";
-import { personalDjConfig, openSecret } from "../src/dj-settings.ts";
+import { LEGACY_USER_ID } from "../src/db/index.ts";
+import { personalDjConfig, openSecret } from "../src/modules/dj/dj-settings.service.ts";
 import { musicTracks, connectMusicMcp } from "../src/modules/mcp/index.ts";
 import { TEXT_KEY, VISION_KEY } from "../src/modules/indexing/index.ts";
-import { reserveDj } from "../src/dj.ts";
+import { reserveDj } from "../src/modules/dj/index.ts";
 vi.mock("../src/integrations/inference/client.ts", () => ({
   infer: vi.fn().mockImplementation(async (kind: string) => ({
     vector: Array(kind === "visual-query" ? 768 : 384).fill(0.01),
@@ -61,7 +61,7 @@ beforeEach(async () => {
   );
   await db.query(
     `INSERT INTO users(id,google_sub,email) VALUES($1,'google-alice','alice@example.test'),($2,'google-bob','bob@example.test'),($3,NULL,NULL)`,
-    [alice, bob, LEGACY_USER],
+    [alice, bob, LEGACY_USER_ID],
   );
   await db.query(
     `INSERT INTO tokens(id,name,hash,user_id) VALUES($1,'A',$2,$3),($4,'B',$5,$6)`,
@@ -451,11 +451,11 @@ it("requires proof to claim the historical library and permits only one claim", 
   const legacyToken = "legacy-private-connection-token";
   await db.query(
     `INSERT INTO tokens(id,name,hash,user_id) VALUES($1,'legacy',$2,$3)`,
-    [randomUUID(), hash(legacyToken), LEGACY_USER],
+    [randomUUID(), hash(legacyToken), LEGACY_USER_ID],
   );
   await db.query(
     `INSERT INTO user_playlists(user_id,playlist_id) VALUES($1,'PLbob1234567')`,
-    [LEGACY_USER],
+    [LEGACY_USER_ID],
   );
   expect(
     (await req("/v1/account/claim-library", tokenA, { legacyToken: tokenB }))
@@ -485,7 +485,7 @@ it("new imports belong only to the importing account, even on migration reruns",
     (
       await db.query(
         "SELECT 1 FROM user_playlists WHERE user_id=$1 AND playlist_id=$2",
-        [LEGACY_USER, "PLnew123456789"],
+        [LEGACY_USER_ID, "PLnew123456789"],
       )
     ).rowCount,
   ).toBe(0);

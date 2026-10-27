@@ -1,5 +1,5 @@
-import { parseDJIntent, type DJIntent } from "./intent.ts";
-import type { DjInput } from "./contracts.ts";
+import { parseDJIntent, type DJIntent } from "@playlist-recall/core/intent";
+import type { DjInput } from "./dj.contracts.ts";
 
 export interface TurnPlan {
   intent: DJIntent;

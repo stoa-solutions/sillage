@@ -1,4 +1,4 @@
-import { LEGACY_USER } from "../src/modules/accounts/index.ts";
+import { LEGACY_USER_ID } from "../src/db/index.ts";
 import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
@@ -61,7 +61,7 @@ beforeEach(async () => {
   await db.query(
     "TRUNCATE tokens,playlists,videos,channels,jobs,quota_usage,dj_usage,account_dj_usage,account_dj_settings,account_ai_credentials CASCADE",
   );
-  await db.query("UPDATE users SET dj_provider='legacy' WHERE id=$1", [LEGACY_USER]);
+  await db.query("UPDATE users SET dj_provider='legacy' WHERE id=$1", [LEGACY_USER_ID]);
   await db.query("INSERT INTO tokens(id,name,hash) VALUES($1,$2,$3)", [
     randomUUID(),
     "test",
@@ -649,7 +649,7 @@ it("stores a personal DJ key encrypted, scopes it to its account and never retur
     model: "gemini-4-argon",
   });
   expect(JSON.stringify(body)).not.toContain(secret);
-  const { personalDjConfig } = await import("../src/dj-settings.ts");
+  const { personalDjConfig } = await import("../src/modules/dj/dj-settings.service.ts");
   const owner = (
     await db.query("SELECT user_id AS id FROM tokens WHERE hash=$1", [
       hash(token),
