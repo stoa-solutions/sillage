@@ -169,6 +169,8 @@ struct DeskMenu: View {
       TextField("Demande au DJ…", text: $request)
         .textFieldStyle(.plain).font(.system(size: 13)).focused($requestFocused)
         .onSubmit(send)
+      // Shared with the main window, so typed and spoken requests search the same place.
+      ScopeMenu(scope: $dj.searchScope)
       if !request.isEmpty {
         Button(action: send) {
           Image(systemName: "arrow.up").font(.system(size: 11, weight: .bold))
