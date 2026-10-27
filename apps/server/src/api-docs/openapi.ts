@@ -172,25 +172,6 @@ add(
 Object.assign(paths, generated.paths);
 
 add(
-  "post",
-  "/v1/search",
-  "searchLibrary",
-  "Recherche",
-  "Chercher dans les playlists",
-  "Recherche hybride lexicale/vectorielle et métadonnées MusicBrainz dans les appartenances actives du compte. mode=image rapproche les miniatures indexées. offset/limit paginent la bibliothèque ; un index indisponible peut fournir des résultats avec degraded. Aucun appel de recherche YouTube via cette route.",
-  "SearchPage",
-  {
-    input: "LibrarySearch",
-    example: {
-      query: "Mac Miller",
-      mode: "text",
-      sort: "relevance",
-      offset: 0,
-      limit: 25,
-    },
-  },
-);
-add(
   "get",
   "/v1/dj/rules",
   "getDjRules",
@@ -284,46 +265,6 @@ add(
     responses: unavailable,
   },
 );
-
-add(
-  "post",
-  "/v1/mcp",
-  "callMusicMcp",
-  "Outils MCP",
-  "Appeler un outil musical MCP",
-  "Transport Streamable HTTP stateless, authentifié avec le même Bearer que l’API. JSON-RPC 2.0 : initialisation, tools/list puis tools/call selon le client MCP. Catalogue limité au compte ; outils de recherche en lecture seule. Le DJ utilise en interne une connexion MCP en mémoire. MCP n’est pas un endpoint REST pour chaque outil.",
-  "RpcResponse",
-  {
-    effect: "provider",
-    input: "RpcRequest",
-    example: {
-      jsonrpc: "2.0",
-      id: 1,
-      method: "initialize",
-      params: {
-        protocolVersion: "2025-11-25",
-        capabilities: {},
-        clientInfo: { name: "Sillage Postman", version: "1.0.0" },
-      },
-    },
-    "x-sillage-accept": "application/json, text/event-stream",
-    responses: { "202": { description: "Notification acceptée sans corps" } },
-  },
-);
-for (const method of ["get", "delete"] as const)
-  add(
-    method,
-    "/v1/mcp",
-    `${method}MusicMcp`,
-    "Outils MCP",
-    "Méthode MCP non disponible en mode stateless",
-    "Le transport monté reçoit cette méthode mais ne maintient aucune session ni flux SSE à reprendre. Utiliser POST avec un client MCP.",
-    {},
-    {
-      status: "",
-      responses: { "405": json("RpcResponse", "Méthode non prise en charge") },
-    },
-  );
 
 for (const [path, operationId, mime, summary] of [
   ["/dj/player", "getYouTubePlayer", "text/html", "Lecteur public YouTube"],

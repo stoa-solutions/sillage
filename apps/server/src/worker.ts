@@ -5,7 +5,7 @@ import {
   scheduleSync,
   YOUTUBE_JOB_KINDS,
 } from "./modules/library/index.ts";
-import { indexImage, indexText } from "./indexing.ts";
+import { indexingJobHandlers } from "./modules/indexing/index.ts";
 import { YouTube } from "./integrations/youtube/index.ts";
 import {
   enrichMusic,
@@ -18,17 +18,11 @@ const youtube = new YouTube(key, pool);
 const stop = new AbortController();
 process.on("SIGTERM", () => stop.abort());
 process.on("SIGINT", () => stop.abort());
-const videoId = (payload: Record<string, string>) => {
-  const id = payload["videoId"];
-  if (!id) throw new Error("Tâche sans vidéo.");
-  return id;
-};
 await runWorker({
   db: pool,
   handlers: {
     ...libraryJobHandlers(pool, youtube),
-    text: (job) => indexText(pool, videoId(job.payload)),
-    image: (job) => indexImage(pool, videoId(job.payload)),
+    ...indexingJobHandlers(pool),
     musicbrainz: (job) => enrichMusic(pool, job),
   },
   schedulers: [() => scheduleSync(pool.orm), () => scheduleMusicEnrichment(pool)],

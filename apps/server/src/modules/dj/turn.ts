@@ -1,7 +1,7 @@
 import { LEGACY_USER } from "../accounts/index.ts";
 import { djConfig, type DjConfig } from "../../dj-config.ts";
 import type { Database } from "../../db/index.ts";
-import { connectMusicMcp, musicTracks } from "../../music-mcp.ts";
+import { connectMusicMcp, musicTracks } from "../mcp/index.ts";
 import type { DjTrack } from "@playlist-recall/core/dj";
 import { catalogSelection } from "./catalog.ts";
 import { Composition, type ComposedSelection } from "./composition.ts";

@@ -5,7 +5,7 @@ import {
 import type { LibraryImport } from "@playlist-recall/core/types";
 import { parsePlaylistId } from "../../content.ts";
 import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
-import { enqueueMissing } from "../../indexing.ts";
+import { enqueueMissing } from "../indexing/index.ts";
 import { enqueue } from "../jobs/index.ts";
 import {
   followPlaylist,

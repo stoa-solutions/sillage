@@ -9,9 +9,23 @@ import {
 
 // The agent loop, MCP SDK, tool schemas and evidence validation are real.
 // Only search backends, SQL and the provider's HTTP responses are controlled.
-const boundaries = vi.hoisted(() => ({ search: vi.fn(), youtube: vi.fn(), information: vi.fn() }));
+const boundaries = vi.hoisted(() => ({
+  search: vi.fn(),
+  youtube: vi.fn(),
+  information: vi.fn(),
+  ownedTracks: vi.fn(),
+}));
+vi.mock("../src/modules/mcp/mcp.repository.ts", () => ({
+  ownedTracks: boundaries.ownedTracks,
+  // Exact catalog resolution is a separate fast path. These cases exercise tools.
+  playableTitles: async () => [],
+  ownedPlaylists: async () => [
+    { id: "PLsoul", title: "Soul du dimanche", tracks: 3 },
+  ],
+  browseOwnedTracks: async () => [],
+}));
 vi.mock("../src/integrations/searxng/information.ts", () => ({ informationSearch: () => ({ search: boundaries.information }) }));
-vi.mock("../src/search.ts", () => ({ search: boundaries.search }));
+vi.mock("../src/modules/search/search.service.ts", () => ({ search: boundaries.search }));
 vi.mock("../src/modules/discovery/index.ts", async (importOriginal) => ({
   ...await importOriginal<typeof import("../src/modules/discovery/index.ts")>(),
   discoveryFor: () => ({ search: boundaries.youtube }),
@@ -19,6 +33,7 @@ vi.mock("../src/modules/discovery/index.ts", async (importOriginal) => ({
 import { djInput, djTurn } from "../src/dj.ts";
 import type { Database } from "../src/db/index.ts";
 import { required } from "./support/required.ts";
+import { ownedAmong } from "./support/catalog.ts";
 
 const config = {
   configured: true,
@@ -32,20 +47,6 @@ const db = {
   query: vi.fn(async (sql: string, params?: unknown[]) => {
     if (sql.includes("INSERT INTO account_dj_usage"))
       return { rows: [], rowCount: 1 };
-    if (sql.includes("ANY($1::text[])")) {
-      const ids = params?.[0] as string[];
-      return {
-        rows:
-          params?.[1] === "alice"
-            ? owned.filter((track) => ids.includes(track.id))
-            : [],
-        rowCount: 1,
-      };
-    }
-    // Exact catalog resolution is a separate fast path. These cases exercise tools.
-    if (sql.includes("LIMIT 10001")) return { rows: [], rowCount: 0 };
-    if (sql.includes("FROM playlists p"))
-      return { rows: [{ id: "PLsoul", title: "Soul du dimanche", tracks: 3 }], rowCount: 1 };
     throw new Error("Unexpected SQL in agent fixture");
   }),
 };
@@ -102,6 +103,11 @@ beforeEach(() => {
   requests = [];
   responses = [];
   db.query.mockClear();
+  boundaries.ownedTracks
+    .mockReset()
+    .mockImplementation(async (_db, ids: string[], user: string) =>
+      user === "alice" ? ownedAmong(owned, ids) : [],
+    );
   boundaries.search
     .mockReset()
     .mockResolvedValue({
@@ -361,10 +367,10 @@ it("cannot expose another account's library even if its search backend returns t
     run({ message: "Propose de la cumbia", scope: "library" }, "bob"),
   ).rejects.toThrow("non vérifié");
   expect(boundaries.search).toHaveBeenCalledWith(db, expect.anything(), "bob");
-  expect(db.query).toHaveBeenCalledWith(
-    expect.stringContaining("ANY($1::text[])"),
-    [library.map((track) => track.id), "bob"],
-  );
+  expect(boundaries.ownedTracks.mock.calls.at(-1)?.slice(1)).toEqual([
+    library.map((track) => track.id),
+    "bob",
+  ]);
 });
 
 it("bounds an agent that keeps searching after both sources fail", async () => {

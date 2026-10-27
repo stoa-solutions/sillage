@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { hash } from "../../content.ts";
 import type { Database } from "../../db/index.ts";
-import { enqueueMissing } from "../../indexing.ts";
+import { enqueueMissing } from "../indexing/index.ts";
 import type { YouTube } from "../../integrations/youtube/index.ts";
 import { enqueue, type ClaimedJob } from "../jobs/index.ts";
 import {

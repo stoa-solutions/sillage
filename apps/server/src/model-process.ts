@@ -12,7 +12,7 @@ import {
   MODEL_REVISION,
   validateEmbeddingMatrix,
 } from "@playlist-recall/core/model";
-import { VISION_ID, VISION_REVISION } from "./indexing.ts";
+import { VISION_ID, VISION_REVISION } from "./modules/indexing/index.ts";
 
 env.allowRemoteModels = false;
 env.allowLocalModels = true;

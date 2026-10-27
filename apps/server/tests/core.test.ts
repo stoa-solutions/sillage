@@ -6,7 +6,7 @@ import {
   vectorSql,
 } from "../src/content.ts";
 import { YouTube } from "../src/integrations/youtube/index.ts";
-import { fetchThumbnail } from "../src/indexing.ts";
+import { fetchThumbnail } from "../src/integrations/youtube/index.ts";
 import { required } from "./support/required.ts";
 describe("YouTube input and complete snapshots", () => {
   it("accepts a playlist link but rejects arbitrary fetch targets", () => {

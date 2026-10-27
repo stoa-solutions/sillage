@@ -9,10 +9,10 @@ import { createApp } from "../src/app.ts";
 import { pkceChallenge, type IdentityProvider } from "../src/modules/auth/index.ts";
 import { LEGACY_USER } from "../src/modules/accounts/index.ts";
 import { personalDjConfig, openSecret } from "../src/dj-settings.ts";
-import { musicTracks, connectMusicMcp } from "../src/music-mcp.ts";
-import { TEXT_KEY, VISION_KEY } from "../src/indexing.ts";
+import { musicTracks, connectMusicMcp } from "../src/modules/mcp/index.ts";
+import { TEXT_KEY, VISION_KEY } from "../src/modules/indexing/index.ts";
 import { reserveDj } from "../src/dj.ts";
-vi.mock("../src/inference-client.ts", () => ({
+vi.mock("../src/integrations/inference/client.ts", () => ({
   infer: vi.fn().mockImplementation(async (kind: string) => ({
     vector: Array(kind === "visual-query" ? 768 : 384).fill(0.01),
   })),

@@ -6,8 +6,8 @@ import { migrate, openDatabase } from "../src/db/index.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import { enqueue, claim, finish } from "../src/modules/jobs/index.ts";
-import { infer } from "../src/inference-client.ts";
-import { enqueueMissing, indexText, indexImage } from "../src/indexing.ts";
+import { infer } from "../src/integrations/inference/index.ts";
+import { enqueueMissing, indexText, indexImage } from "../src/modules/indexing/index.ts";
 import {
   enrichVideos,
   importLibrary,
@@ -16,7 +16,7 @@ import {
 } from "../src/modules/library/index.ts";
 import { YouTube } from "../src/integrations/youtube/index.ts";
 import type { LibraryImport } from "@playlist-recall/core/types";
-vi.mock("../src/inference-client.ts", () => ({ infer: vi.fn() }));
+vi.mock("../src/integrations/inference/client.ts", () => ({ infer: vi.fn() }));
 const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("TEST_DATABASE_URL must name a disposable _test database.");
@@ -509,7 +509,7 @@ it("exposes authenticated MCP tools with a real protocol handshake", async () =>
   );
 });
 it("searches available music through an MCP client and respects exclusions", async () => {
-  const { connectMusicMcp } = await import("../src/music-mcp.ts");
+  const { connectMusicMcp } = await import("../src/modules/mcp/index.ts");
   await importLibrary(db, fixture);
   await db.query("UPDATE videos SET title='Jazz du soir',duration_seconds=180");
   const mcp = await connectMusicMcp(db);
@@ -549,7 +549,7 @@ it("searches available music through an MCP client and respects exclusions", asy
 });
 it("finds long music without an implicit duration cap", async () => {
   await importLibrary(db, fixture);
-  const { connectMusicMcp } = await import("../src/music-mcp.ts");
+  const { connectMusicMcp } = await import("../src/modules/mcp/index.ts");
   const mcp = await connectMusicMcp(db);
   try {
     const result = await mcp.client.callTool({

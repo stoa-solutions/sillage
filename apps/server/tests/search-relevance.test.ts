@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { approximateLookupPatterns, lookupTokens, matchesLookup, isDescriptiveQuery, genreNameCollision } from "../src/search-relevance.ts";
+import { approximateLookupPatterns, lookupTokens, matchesLookup, isDescriptiveQuery, genreNameCollision } from "../src/modules/search/index.ts";
 it("accepts complete artist/title matches and bounded typos, rejects partial or invented requests", () => {
  const song={title:"Self Care",channel:"Mac Miller - Topic"};
  expect(matchesLookup("Mac Miller Self Care",song)).toBe(true);

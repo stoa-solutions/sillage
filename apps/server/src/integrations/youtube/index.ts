@@ -4,3 +4,4 @@ export {
   nextYouTubeQuotaReset,
   youtubeError,
 } from "./errors.ts";
+export { fetchThumbnail, ThumbnailUnavailable } from "./thumbnails.ts";

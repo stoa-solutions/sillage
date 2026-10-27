@@ -1,4 +1,4 @@
-import { normalizeMusic } from "../../music-matching.ts";
+import { normalizeMusic } from "../search/index.ts";
 import type { Discovery } from "./discovery.service.ts";
 import type { HistoryRow } from "./discovery.repository.ts";
 export interface DiscoverySeed {

@@ -9,7 +9,6 @@ import {
 } from "../modules/dj/journal/contracts.ts";
 import { djInput } from "../modules/dj/contracts.ts";
 import { historyEvent, historyPage, historyUpload } from "../modules/history/index.ts";
-import { librarySearchInput } from "../library-contracts.ts";
 
 export type Schema = Record<string, unknown>;
 export const ref = (name: string): Schema => ({
@@ -100,7 +99,6 @@ export const schemas: Record<string, Schema> = {
     journal_complete: boolean,
   }),
   AuthStart: jsonSchema(authStartInput),
-  LibrarySearch: jsonSchema(librarySearchInput),
   DjRequest: jsonSchema(djInput),
   DjSettings: jsonSchema(djSettingsInput),
   DjReset: jsonSchema(z.object({provider:z.enum(["google","anthropic"]).optional()})),
@@ -140,25 +138,6 @@ export const schemas: Record<string, Schema> = {
     },
     mimeType: { const: "audio/wav" },
   }),
-  Membership: object({
-    key: string(),
-    playlistId: string(),
-    videoId,
-    position: integer,
-  }),
-  SearchResult: object({
-    video: ref("Video"),
-    score: { type: "number" },
-    semantic: boolean,
-    memberships: array(ref("Membership")),
-    reason: string(),
-  }),
-  SearchPage: object({
-    results: array(ref("SearchResult")),
-    total: integer,
-    degraded: nullable(string()),
-    mode: { enum: ["text", "image"] },
-  }),
   InformationSource: object(
     { id: integer, title: string(), url: string(), snippet: string() },
     ["id", "title", "url"],
@@ -174,28 +153,4 @@ export const schemas: Record<string, Schema> = {
     },
     ["reply", "action", "tracks"],
   ),
-  RpcRequest: object(
-    {
-      jsonrpc: { const: "2.0" },
-      id: { anyOf: [string(), integer] },
-      method: string(),
-      params: { type: "object", additionalProperties: true },
-    },
-    ["jsonrpc", "method"],
-  ),
-  RpcResponse: {
-    type: "object",
-    description:
-      "Enveloppe JSON-RPC 2.0 : result ou error, selon la méthode MCP.",
-    properties: {
-      jsonrpc: { const: "2.0" },
-      id: { anyOf: [string(), integer, { type: "null" }] },
-      result: {},
-      error: object({ code: integer, message: string(), data: {} }, [
-        "code",
-        "message",
-      ]),
-    },
-    required: ["jsonrpc", "id"],
-  },
 };

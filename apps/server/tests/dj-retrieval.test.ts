@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   requested: vi.fn(),
   toolNames: ["music_search"],
 }));
-vi.mock("../src/music-mcp.ts", () => ({
+vi.mock("../src/modules/mcp/index.ts", () => ({
   requestedTracks: mocks.requested,
   musicTracks: mocks.tracks,
   connectMusicMcp: async () => ({

@@ -14,12 +14,12 @@ import {
 } from "../src/modules/enrichment/index.ts";
 import { MusicBrainzClient } from "../src/integrations/musicbrainz/index.ts";
 import { claim, finish } from "../src/modules/jobs/index.ts";
-import { musicTracks } from "../src/music-mcp.ts";
-import { search } from "../src/search.ts";
-import { indexText } from "../src/indexing.ts";
-import { infer } from "../src/inference-client.ts";
+import { musicTracks } from "../src/modules/mcp/index.ts";
+import { search } from "../src/modules/search/index.ts";
+import { indexText } from "../src/modules/indexing/index.ts";
+import { infer } from "../src/integrations/inference/index.ts";
 import { required } from "./support/required.ts";
-vi.mock("../src/inference-client.ts", () => ({
+vi.mock("../src/integrations/inference/client.ts", () => ({
   infer: vi.fn(async () => ({
     texts: ["credits"],
     vectors: [Array(384).fill(0.01)],

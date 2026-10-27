@@ -1,14 +1,26 @@
 import { DiscoveryError } from "../src/modules/discovery/index.ts";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ search: vi.fn(), youtube: vi.fn() }));
-vi.mock("../src/search.ts", () => ({ search: mocks.search }));
+const mocks = vi.hoisted(() => ({
+  search: vi.fn(),
+  youtube: vi.fn(),
+  ownedTracks: vi.fn(),
+  ownedPlaylists: vi.fn(),
+}));
+vi.mock("../src/modules/mcp/mcp.repository.ts", () => ({
+  ownedTracks: mocks.ownedTracks,
+  ownedPlaylists: mocks.ownedPlaylists,
+  playableTitles: async () => [],
+  browseOwnedTracks: async () => [],
+}));
+vi.mock("../src/modules/search/search.service.ts", () => ({ search: mocks.search }));
 vi.mock("../src/modules/discovery/index.ts", async (importOriginal) => ({
   ...await importOriginal<typeof import("../src/modules/discovery/index.ts")>(),
   discoveryFor: () => ({ search: mocks.youtube }),
 }));
-import { connectMusicMcp } from "../src/music-mcp.ts";
+import { connectMusicMcp } from "../src/modules/mcp/index.ts";
 import type { Database } from "../src/db/index.ts";
 import { required } from "./support/required.ts";
+import { ownedAmong, type CatalogRow } from "./support/catalog.ts";
 
 const libraryTrack = {
   id: "library0001",
@@ -25,14 +37,20 @@ const externalTrack = {
   durationSeconds: 210,
   url: "https://youtube.com/watch?v=youtube0001",
 };
-const db = {
-  query: vi.fn(async (_sql: string, _params?: unknown[]) => ({
-    rows: [libraryTrack],
-  })),
-};
+const db = {};
+/** What the account owns in the next call; every other call sees the library track. */
+const ownTracks = (rows: CatalogRow[]) =>
+  mocks.ownedTracks.mockImplementationOnce(async (_db, ids: string[]) =>
+    ownedAmong(rows, ids),
+  );
 const clients: Awaited<ReturnType<typeof connectMusicMcp>>[] = [];
 beforeEach(() => {
-  db.query.mockClear();
+  mocks.ownedTracks
+    .mockReset()
+    .mockImplementation(async (_db, ids: string[]) =>
+      ownedAmong([libraryTrack], ids),
+    );
+  mocks.ownedPlaylists.mockReset().mockResolvedValue([]);
   mocks.search
     .mockReset()
     .mockResolvedValue({
@@ -115,7 +133,11 @@ it("searches freely across both sources and preserves the account boundary", asy
     "alice",
   );
   expect(mocks.youtube).toHaveBeenCalledWith("alice", "cumbia psychédélique");
-  expect(required(db.query.mock.calls[0])[1]).toEqual([[libraryTrack.id], "alice"]);
+  // Library candidates are re-read for this account only.
+  expect(mocks.ownedTracks.mock.calls[0]?.slice(1)).toEqual([
+    [libraryTrack.id],
+    "alice",
+  ]);
 });
 it.each(["library", "youtube"])(
   "keeps the other source when %s fails",
@@ -203,7 +225,7 @@ it("classifies YouTube throttling without leaking its private response", async (
 });
 
 it("rejects invented playlist filters without searching or treating them as an empty catalog", async () => {
-  db.query.mockResolvedValueOnce({ rows: [{ id: "owned-playlist", title: "My playlist", tracks: 3 }] } as never);
+  mocks.ownedPlaylists.mockResolvedValueOnce([{ id: "owned-playlist", title: "My playlist", tracks: 3 }]);
   const result = await query("all", { query: "afro", playlist: "_library_all" });
   expect(result.sources).toContainEqual({ source: "library", status: "invalid_request", reason: "invalid_playlist" });
   expect(result.note).toContain("omit playlist");
@@ -213,7 +235,7 @@ it("rejects invented playlist filters without searching or treating them as an e
 it("resolves a playlist the listener names, without a prior listing call", async () => {
   const mcp = await connectMusicMcp(db as unknown as Database, [], "alice", true, "all");
   try {
-    db.query.mockResolvedValueOnce({ rows: [{ id: "owned-playlist", title: "Soirée d’été", tracks: 12 }] } as never);
+    mocks.ownedPlaylists.mockResolvedValueOnce([{ id: "owned-playlist", title: "Soirée d’été", tracks: 12 }]);
     await mcp.client.callTool({ name: "music_search", arguments: { query: "afro", playlist: "soiree d'ete" } });
     expect(mocks.search).toHaveBeenCalledWith(db, expect.objectContaining({ playlistId: "owned-playlist" }), "alice");
     expect(mocks.youtube).not.toHaveBeenCalled();
@@ -242,7 +264,7 @@ it("keeps successful alternative searches while exposing the failed YouTube clue
 });
 it("removes obvious tutorials from mood results without excluding unknown recordings", async()=>{
   const tutorial={...libraryTrack,id:"tutorial001",title:"Learn Three.js by Building 5 Projects",channel:"freeCodeCamp.org"};
-  db.query.mockResolvedValueOnce({rows:[tutorial,libraryTrack]});
+  ownTracks([tutorial,libraryTrack]);
   mocks.search.mockResolvedValueOnce({results:[{video:tutorial},{video:libraryTrack}],degraded:null});
   const result=await query("library",{query:"énergie"});
   expect(result.results.map((item:any)=>item.video.id)).toEqual([libraryTrack.id]);
@@ -252,7 +274,7 @@ it("does not let a prolific primary artist hide the alternative artists in the f
  const primary=Array.from({length:24},(_,index)=>({...libraryTrack,id:`primary${String(index).padStart(4,"0")}`,title:`Sean song ${index}`,channel:"Sean"}));
  const alternative={...libraryTrack,id:"other000001",title:"Neighboring artist",channel:"Other"};
  mocks.search.mockImplementation(async (_db,input)=>({results:(input.query==="sean"?primary:[alternative]).map(video=>({video})),degraded:null}));
- db.query.mockResolvedValueOnce({rows:[...primary,alternative]});
+ ownTracks([...primary,alternative]);
  const result=await query("library",{query:"sean rap français",artist:"sean",alternatives:["melodic rap"]});
  expect(result.results).toHaveLength(20);
  expect(result.results.some((item:any)=>item.video.id===alternative.id)).toBe(true);

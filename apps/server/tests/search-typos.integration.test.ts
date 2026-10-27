@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { migrate, openDatabase } from "../src/db/index.ts";
-import { search } from "../src/search.ts";
-import { infer } from "../src/inference-client.ts";
+import { search } from "../src/modules/search/index.ts";
+import { infer } from "../src/integrations/inference/index.ts";
 
-vi.mock("../src/inference-client.ts", () => ({ infer: vi.fn().mockRejectedValue(new Error("No inference in lexical regression")) }));
+vi.mock("../src/integrations/inference/client.ts", () => ({ infer: vi.fn().mockRejectedValue(new Error("No inference in lexical regression")) }));
 const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test")) throw new Error("Disposable _test database required");
 const schema = "search_typos_test";

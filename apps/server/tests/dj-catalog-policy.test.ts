@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ requested: vi.fn(), tracks: vi.fn() }));
-vi.mock("../src/music-mcp.ts", () => ({
+vi.mock("../src/modules/mcp/index.ts", () => ({
   requestedTracks: mocks.requested,
   musicTracks: mocks.tracks,
 }));

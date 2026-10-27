@@ -12,9 +12,9 @@ import { randomUUID } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
-import { connectMusicMcp } from "../src/music-mcp.ts";
+import { connectMusicMcp } from "../src/modules/mcp/index.ts";
 import { required } from "./support/required.ts";
-vi.mock("../src/inference-client.ts", () => ({
+vi.mock("../src/integrations/inference/client.ts", () => ({
   infer: vi.fn().mockRejectedValue(new Error("No model in test")),
 }));
 const googleResponse = (parts: unknown[]) => Response.json({candidates:[{index:0,finishReason:"STOP",content:{role:"model",parts}}]});

@@ -1363,6 +1363,261 @@
         }
       }
     },
+    "/v1/mcp": {
+      "post": {
+        "operationId": "callMusicMcp",
+        "summary": "Appeler un outil musical MCP",
+        "description": "Transport Streamable HTTP stateless, authentifié avec le même Bearer que l’API. JSON-RPC 2.0 : initialisation, tools/list puis tools/call selon le client MCP. Catalogue limité au compte ; outils de recherche en lecture seule. Le DJ utilise en interne une connexion MCP en mémoire. MCP n’est pas un endpoint REST pour chaque outil.",
+        "tags": [
+          "Outils MCP"
+        ],
+        "x-sillage-effect": "provider",
+        "x-sillage-example": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "initialize",
+          "params": {
+            "protocolVersion": "2025-11-25",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "Sillage Postman",
+              "version": "1.0.0"
+            }
+          }
+        },
+        "x-sillage-accept": "application/json, text/event-stream",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                  "protocolVersion": "2025-11-25",
+                  "capabilities": {},
+                  "clientInfo": {
+                    "name": "Sillage Postman",
+                    "version": "1.0.0"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/RpcRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Notification acceptée sans corps"
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getMusicMcp",
+        "summary": "Méthode MCP non disponible en mode stateless",
+        "description": "Le transport monté reçoit cette méthode mais ne maintient aucune session ni flux SSE à reprendre. Utiliser POST avec un client MCP.",
+        "tags": [
+          "Outils MCP"
+        ],
+        "x-sillage-effect": "read",
+        "responses": {
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Méthode non prise en charge",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteMusicMcp",
+        "summary": "Méthode MCP non disponible en mode stateless",
+        "description": "Le transport monté reçoit cette méthode mais ne maintient aucune session ni flux SSE à reprendre. Utiliser POST avec un client MCP.",
+        "tags": [
+          "Outils MCP"
+        ],
+        "x-sillage-effect": "read",
+        "responses": {
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Méthode non prise en charge",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/library/enrichment": {
       "get": {
         "operationId": "getEnrichmentProgress",
@@ -2185,6 +2440,103 @@
         }
       }
     },
+    "/v1/search": {
+      "post": {
+        "operationId": "searchLibrary",
+        "summary": "Chercher dans les playlists",
+        "description": "Recherche hybride lexicale/vectorielle et métadonnées MusicBrainz dans les appartenances actives du compte. mode=image rapproche les miniatures indexées. offset/limit paginent la bibliothèque ; un index indisponible peut fournir des résultats avec degraded. Aucun appel de recherche YouTube via cette route.",
+        "tags": [
+          "Recherche"
+        ],
+        "x-sillage-effect": "read",
+        "x-sillage-example": {
+          "query": "Mac Miller",
+          "mode": "text",
+          "sort": "relevance",
+          "offset": 0,
+          "limit": 25
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "query": "Mac Miller",
+                "mode": "text",
+                "sort": "relevance",
+                "offset": 0,
+                "limit": 25
+              },
+              "schema": {
+                "$ref": "#/components/schemas/LibrarySearch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/lyrics/{videoId}": {
       "get": {
         "operationId": "getLyrics",
@@ -2372,103 +2724,6 @@
           },
           "404": {
             "description": "Vidéo absente de la bibliothèque",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/search": {
-      "post": {
-        "operationId": "searchLibrary",
-        "tags": [
-          "Recherche"
-        ],
-        "summary": "Chercher dans les playlists",
-        "description": "Recherche hybride lexicale/vectorielle et métadonnées MusicBrainz dans les appartenances actives du compte. mode=image rapproche les miniatures indexées. offset/limit paginent la bibliothèque ; un index indisponible peut fournir des résultats avec degraded. Aucun appel de recherche YouTube via cette route.",
-        "x-sillage-effect": "read",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LibrarySearch"
-              },
-              "example": {
-                "query": "Mac Miller",
-                "mode": "text",
-                "sort": "relevance",
-                "offset": 0,
-                "limit": 25
-              }
-            }
-          }
-        },
-        "x-sillage-example": {
-          "query": "Mac Miller",
-          "mode": "text",
-          "sort": "relevance",
-          "offset": 0,
-          "limit": 25
-        },
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SearchPage"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
             "content": {
               "application/json": {
                 "schema": {
@@ -3162,261 +3417,6 @@
           },
           "503": {
             "description": "Configuration ou service indisponible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/mcp": {
-      "post": {
-        "operationId": "callMusicMcp",
-        "tags": [
-          "Outils MCP"
-        ],
-        "summary": "Appeler un outil musical MCP",
-        "description": "Transport Streamable HTTP stateless, authentifié avec le même Bearer que l’API. JSON-RPC 2.0 : initialisation, tools/list puis tools/call selon le client MCP. Catalogue limité au compte ; outils de recherche en lecture seule. Le DJ utilise en interne une connexion MCP en mémoire. MCP n’est pas un endpoint REST pour chaque outil.",
-        "x-sillage-effect": "provider",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RpcRequest"
-              },
-              "example": {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "initialize",
-                "params": {
-                  "protocolVersion": "2025-11-25",
-                  "capabilities": {},
-                  "clientInfo": {
-                    "name": "Sillage Postman",
-                    "version": "1.0.0"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "x-sillage-example": {
-          "jsonrpc": "2.0",
-          "id": 1,
-          "method": "initialize",
-          "params": {
-            "protocolVersion": "2025-11-25",
-            "capabilities": {},
-            "clientInfo": {
-              "name": "Sillage Postman",
-              "version": "1.0.0"
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcResponse"
-                }
-              }
-            }
-          },
-          "202": {
-            "description": "Notification acceptée sans corps"
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "x-sillage-accept": "application/json, text/event-stream"
-      },
-      "get": {
-        "operationId": "getMusicMcp",
-        "tags": [
-          "Outils MCP"
-        ],
-        "summary": "Méthode MCP non disponible en mode stateless",
-        "description": "Le transport monté reçoit cette méthode mais ne maintient aucune session ni flux SSE à reprendre. Utiliser POST avec un client MCP.",
-        "x-sillage-effect": "read",
-        "responses": {
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "405": {
-            "description": "Méthode non prise en charge",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcResponse"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "operationId": "deleteMusicMcp",
-        "tags": [
-          "Outils MCP"
-        ],
-        "summary": "Méthode MCP non disponible en mode stateless",
-        "description": "Le transport monté reçoit cette méthode mais ne maintient aucune session ni flux SSE à reprendre. Utiliser POST avec un client MCP.",
-        "x-sillage-effect": "read",
-        "responses": {
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "405": {
-            "description": "Méthode non prise en charge",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcResponse"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
             "content": {
               "application/json": {
                 "schema": {
@@ -5104,76 +5104,6 @@
           "app_state"
         ]
       },
-      "LibrarySearch": {
-        "type": "object",
-        "properties": {
-          "query": {
-            "default": "",
-            "type": "string",
-            "maxLength": 1000
-          },
-          "playlistId": {
-            "type": "string",
-            "maxLength": 160
-          },
-          "excludeIds": {
-            "maxItems": 100,
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{11}$"
-            }
-          },
-          "availableOnly": {
-            "type": "boolean"
-          },
-          "minDuration": {
-            "type": "number",
-            "minimum": 0
-          },
-          "maxDuration": {
-            "type": "number",
-            "minimum": 0
-          },
-          "channel": {
-            "type": "string",
-            "maxLength": 300
-          },
-          "publishedAfter": {
-            "type": "string",
-            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
-          },
-          "mode": {
-            "default": "text",
-            "type": "string",
-            "enum": [
-              "text",
-              "image"
-            ]
-          },
-          "sort": {
-            "default": "relevance",
-            "type": "string",
-            "enum": [
-              "relevance",
-              "position",
-              "duration"
-            ]
-          },
-          "offset": {
-            "default": 0,
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 50000
-          },
-          "limit": {
-            "default": 48,
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 100
-          }
-        }
-      },
       "DjRequest": {
         "type": "object",
         "properties": {
@@ -5622,96 +5552,6 @@
           "mimeType"
         ]
       },
-      "Membership": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string"
-          },
-          "playlistId": {
-            "type": "string"
-          },
-          "videoId": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{11}$"
-          },
-          "position": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "key",
-          "playlistId",
-          "videoId",
-          "position"
-        ]
-      },
-      "SearchResult": {
-        "type": "object",
-        "properties": {
-          "video": {
-            "$ref": "#/components/schemas/Video"
-          },
-          "score": {
-            "type": "number"
-          },
-          "semantic": {
-            "type": "boolean"
-          },
-          "memberships": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Membership"
-            }
-          },
-          "reason": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "video",
-          "score",
-          "semantic",
-          "memberships",
-          "reason"
-        ]
-      },
-      "SearchPage": {
-        "type": "object",
-        "properties": {
-          "results": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SearchResult"
-            }
-          },
-          "total": {
-            "type": "integer"
-          },
-          "degraded": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "mode": {
-            "enum": [
-              "text",
-              "image"
-            ]
-          }
-        },
-        "required": [
-          "results",
-          "total",
-          "degraded",
-          "mode"
-        ]
-      },
       "InformationSource": {
         "type": "object",
         "properties": {
@@ -5773,78 +5613,6 @@
           "reply",
           "action",
           "tracks"
-        ]
-      },
-      "RpcRequest": {
-        "type": "object",
-        "properties": {
-          "jsonrpc": {
-            "const": "2.0"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "integer"
-              }
-            ]
-          },
-          "method": {
-            "type": "string"
-          },
-          "params": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "required": [
-          "jsonrpc",
-          "method"
-        ]
-      },
-      "RpcResponse": {
-        "type": "object",
-        "description": "Enveloppe JSON-RPC 2.0 : result ou error, selon la méthode MCP.",
-        "properties": {
-          "jsonrpc": {
-            "const": "2.0"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "result": {},
-          "error": {
-            "type": "object",
-            "properties": {
-              "code": {
-                "type": "integer"
-              },
-              "message": {
-                "type": "string"
-              },
-              "data": {}
-            },
-            "required": [
-              "code",
-              "message"
-            ]
-          }
-        },
-        "required": [
-          "jsonrpc",
-          "id"
         ]
       },
       "Error": {
@@ -6349,6 +6117,80 @@
           "playedAt"
         ]
       },
+      "RpcResponse": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {},
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "integer"
+              },
+              "message": {
+                "type": "string"
+              },
+              "data": {}
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "description": "Enveloppe JSON-RPC 2.0 : result ou error, selon la méthode MCP."
+      },
+      "RpcRequest": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "method": {
+            "type": "string"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "jsonrpc",
+          "method"
+        ]
+      },
       "Enrichment": {
         "type": "object",
         "properties": {
@@ -6765,6 +6607,163 @@
             ]
           }
         ]
+      },
+      "SearchPage": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "degraded": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "text",
+              "image"
+            ]
+          }
+        },
+        "required": [
+          "results",
+          "total",
+          "degraded",
+          "mode"
+        ]
+      },
+      "SearchResult": {
+        "type": "object",
+        "properties": {
+          "video": {
+            "$ref": "#/components/schemas/Video"
+          },
+          "score": {
+            "type": "number"
+          },
+          "semantic": {
+            "type": "boolean"
+          },
+          "memberships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Membership"
+            }
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "video",
+          "score",
+          "semantic",
+          "memberships",
+          "reason"
+        ]
+      },
+      "Membership": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "playlistId": {
+            "type": "string"
+          },
+          "videoId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{11}$"
+          },
+          "position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "playlistId",
+          "videoId",
+          "position"
+        ]
+      },
+      "LibrarySearch": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 1000,
+            "default": ""
+          },
+          "playlistId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "excludeIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{11}$"
+            },
+            "maxItems": 100
+          },
+          "availableOnly": {
+            "type": "boolean"
+          },
+          "minDuration": {
+            "type": "number",
+            "minimum": 0
+          },
+          "maxDuration": {
+            "type": "number",
+            "minimum": 0
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "publishedAfter": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "text",
+              "image"
+            ],
+            "default": "text"
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "relevance",
+              "position",
+              "duration"
+            ],
+            "default": "relevance"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 50000,
+            "default": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 48
+          }
+        }
       },
       "Lyrics": {
         "type": "object",

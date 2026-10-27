@@ -23,11 +23,10 @@ import { parsePlaylistId } from "./content.ts";
 import { transaction, type Database } from "./db/index.ts";
 import { jobRoutes } from "./modules/jobs/index.ts";
 import { libraryRoutes } from "./modules/library/index.ts";
-import { search } from "./search.ts";
-import { librarySearchInput } from "./library-contracts.ts";
+import { searchRoutes } from "./modules/search/index.ts";
 import { lyricsRoutes } from "./modules/lyrics/index.ts";
 import { Lrclib, type LyricsSource } from "./integrations/lrclib/index.ts";
-import { handleMusicMcp } from "./music-mcp.ts";
+import { mcpRoutes } from "./modules/mcp/index.ts";
 import { djPlayerHtml, djPlayerCss, djPlayerJs } from "./dj-player.ts";
 export function createApp(
   db: Database,
@@ -93,14 +92,11 @@ export function createApp(
   app.route("/v1/discover", discoveryRoutes(db));
   app.route("/v1/dj", createDjRoutes(db));
   app.route("/v1/history", historyRoutes(db));
-  app.all("/v1/mcp", (c) => handleMusicMcp(db, c.req.raw, c.get("userId")));
+  app.route("/v1", mcpRoutes(db));
   app.route("/v1", enrichmentRoutes(db));
   app.route("/v1", libraryRoutes(db));
   app.route("/v1", jobRoutes(db));
-  app.post("/v1/search", async (c) => {
-    const input = librarySearchInput.parse(await c.req.json());
-    return c.json(await search(db, input, c.get("userId")));
-  });
+  app.route("/v1", searchRoutes(db));
   app.route("/v1/lyrics", lyricsRoutes(db, lyricsSource));
   app.onError((error, c) => {
     // Malformed JSON or a body without its JSON content type, rejected by the route validator.

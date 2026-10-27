@@ -7,7 +7,7 @@ import { createApp } from "../src/app.ts";
 import type { IdentityProvider } from "../src/modules/auth/index.ts";
 import { LEGACY_USER } from "../src/modules/accounts/index.ts";
 import { scheduleSync } from "../src/modules/library/index.ts";
-vi.mock("../src/inference-client.ts", () => ({
+vi.mock("../src/integrations/inference/client.ts", () => ({
   infer: vi.fn().mockResolvedValue({ vector: Array(384).fill(0.01) }),
 }));
 const url = process.env["TEST_DATABASE_URL"];

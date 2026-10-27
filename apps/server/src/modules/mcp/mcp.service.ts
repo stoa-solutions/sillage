@@ -2,66 +2,43 @@ import {
   musicQueries,
   isMusicCandidate,
   interleaveClues,
-} from "./modules/dj/retrieval.ts";
-import { musicMatchRank } from "./music-matching.ts";
-import { informationSearch } from "./integrations/searxng/index.ts";
-import type { SearchFailureReason } from "./modules/discovery/index.ts";
-import { DiscoveryError, discoveryFor } from "./modules/discovery/index.ts";
-import { LEGACY_USER, ownsPlaylist } from "./modules/accounts/index.ts";
+} from "../dj/retrieval.ts";
+import { informationSearch } from "../../integrations/searxng/index.ts";
+import type { SearchFailureReason } from "../discovery/index.ts";
+import { DiscoveryError, discoveryFor } from "../discovery/index.ts";
+import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
+import { musicMatchRank, resolveExactRequest, search } from "../search/index.ts";
+import {
+  browseOwnedTracks,
+  ownedPlaylists,
+  ownedTracks,
+  playableTitles,
+} from "./mcp.repository.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
-import type { Database } from "./db/index.ts";
-import { search } from "./search.ts";
-import { resolveExactRequest } from "./music-matching.ts";
 
 import type { DjTrack } from "@playlist-recall/core/dj";
 export type { DjTrack } from "@playlist-recall/core/dj";
+/** Titles the listener named exactly, resolved without the model; null for large libraries. */
 export async function requestedTracks(
   db: Database,
   message: string,
   userId: string,
 ) {
-  const { rows } = await db.query(
-    `SELECT v.id,v.title,v.channel FROM videos v WHERE v.available AND v.title IS NOT NULL
-     AND EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active AND ${ownsPlaylist("m.playlist_id", "$1")})
-     ORDER BY v.id LIMIT 10001`,
-    [userId],
-  );
+  const titles = await playableTitles(db.orm, userId);
   // Bound the deterministic resolver; larger catalogs use the paginated MCP search.
-  return rows.length > 10000 ? null : resolveExactRequest(message, rows);
+  return titles ? resolveExactRequest(message, titles) : null;
 }
-export async function musicTracks(
+/** The account's playable tracks among these ids, in the order asked. */
+export function musicTracks(
   db: Database,
   ids: string[],
-  userId = LEGACY_USER,
+  userId = LEGACY_USER_ID,
 ): Promise<DjTrack[]> {
-  if (!ids.length) return [];
-  const { rows } = await db.query(
-    `SELECT v.id,v.title,v.channel,v.duration_seconds,v.thumbnail_url,v.music_metadata FROM videos v
-     WHERE v.id=ANY($1::text[]) AND v.available AND v.title IS NOT NULL
-     AND EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active AND ${ownsPlaylist("m.playlist_id", "$2")})`,
-    [ids, userId],
-  );
-  const tracks = new Map(
-    rows.map((v) => [
-      v.id,
-      {
-        id: v.id,
-        musicMetadata: v.music_metadata ?? null,
-        title: v.title,
-        channel: v.channel,
-        durationSeconds: v.duration_seconds,
-        thumbnailUrl: v.thumbnail_url,
-        url: `https://www.youtube.com/watch?v=${v.id}`,
-      },
-    ]),
-  );
-  return [...new Set(ids)].flatMap((id) =>
-    tracks.has(id) ? [tracks.get(id)!] : [],
-  );
+  return ownedTracks(db.orm, ids, userId);
 }
 /** Text of a local tool result; every search tool answers with one text block. */
 function firstText(result: { content: { text: string }[] }): string {
@@ -72,7 +49,7 @@ function firstText(result: { content: { text: string }[] }): string {
 export function musicMcp(
   db: Database,
   excludeIds: string[] = [],
-  userId = LEGACY_USER,
+  userId = LEGACY_USER_ID,
   discover = false,
   scope?: "library" | "youtube" | "all",
   rejectedIds: string[] = [],
@@ -258,7 +235,7 @@ export function musicMcp(
       libraryDefinition,
       async ({ playlist, ...args }) => {
         const chosen = playlist
-          ? matchPlaylist(await ownedPlaylists(db, userId), playlist)
+          ? matchPlaylist(await ownedPlaylists(db.orm, userId), playlist)
           : undefined;
         if (playlist && !chosen)
           return {
@@ -304,7 +281,7 @@ export function musicMcp(
         },
       },
       async ({ playlist, artist, genre, order = "recent", limit = 15 }) => {
-        const playlists = await ownedPlaylists(db, userId);
+        const playlists = await ownedPlaylists(db.orm, userId);
         const chosen = playlist ? matchPlaylist(playlists, playlist) : undefined;
         const body = (tracks: unknown[], note?: string) => ({
           content: [
@@ -325,7 +302,7 @@ export function musicMcp(
             [],
             "No playlist matches this name. Pick a title from playlists, or omit playlist to browse the whole library.",
           );
-        const tracks = await browseLibrary(db, userId, {
+        const tracks = await browseOwnedTracks(db.orm, userId, {
           playlistId: chosen?.id,
           artist,
           genre,
@@ -398,7 +375,7 @@ export function musicMcp(
       },
       async ({ playlist, ...args }) => {
         const chosen = playlist
-          ? matchPlaylist(await ownedPlaylists(db, userId), playlist)
+          ? matchPlaylist(await ownedPlaylists(db.orm, userId), playlist)
           : undefined;
         if (playlist && !chosen)
           return {
@@ -552,24 +529,6 @@ export function musicMcp(
 const UNKNOWN_PLAYLIST =
   "No playlist matches this name: omit playlist to search the whole library, or use a title from library_browse. This filter says nothing about available music; earlier candidates remain valid.";
 
-interface OwnedPlaylist {
-  id: string;
-  title: string;
-  tracks: number;
-}
-
-async function ownedPlaylists(
-  db: Database,
-  userId: string,
-): Promise<OwnedPlaylist[]> {
-  const { rows } = await db.query(
-    `SELECT p.id,p.title,(SELECT count(*)::int FROM memberships m WHERE m.playlist_id=p.id AND m.active) AS tracks
-    FROM playlists p WHERE ${ownsPlaylist("p.id", "$1")} ORDER BY p.created_at LIMIT 30`,
-    [userId],
-  );
-  return rows;
-}
-
 const folded = (value: string) =>
   value
     .normalize("NFD")
@@ -592,61 +551,10 @@ export function matchPlaylist<T extends { id: string; title: string }>(
   );
 }
 
-/** Owned, available tracks ordered by when they were first added to a playlist. */
-async function browseLibrary(
-  db: Database,
-  userId: string,
-  filter: {
-    playlistId?: string | undefined;
-    artist?: string | undefined;
-    genre?: string | undefined;
-    order: "recent" | "oldest";
-    limit: number;
-    excludeIds: string[];
-  },
-) {
-  const like = (value?: string) =>
-    value ? `%${value.replace(/[\\%_]/g, (c) => "\\" + c)}%` : null;
-  const jsonArray = (path: string) =>
-    `(CASE WHEN jsonb_typeof(${path})='array' THEN ${path} ELSE '[]'::jsonb END)`;
-  const { rows } = await db.query(
-    `SELECT v.id,v.title,v.channel,v.duration_seconds,v.thumbnail_url,v.music_metadata,min(m.added_at) AS added_at
-    FROM memberships m JOIN videos v ON v.id=m.video_id
-    WHERE m.active AND v.available AND v.title IS NOT NULL AND ${ownsPlaylist("m.playlist_id", "$1")}
-      AND ($2::text IS NULL OR m.playlist_id=$2)
-      AND ($3::text IS NULL OR v.channel ILIKE $3 OR v.title ILIKE $3
-        OR EXISTS(SELECT 1 FROM jsonb_array_elements(${jsonArray("v.music_metadata->'artists'")}) a WHERE a->>'name' ILIKE $3))
-      AND ($4::text IS NULL OR EXISTS(SELECT 1 FROM jsonb_array_elements_text(
-        ${jsonArray("v.music_metadata->'genres'")} || ${jsonArray("v.music_metadata->'artistGenres'")}) g WHERE g ILIKE $4))
-      AND NOT v.id=ANY($5::text[])
-    GROUP BY v.id
-    ORDER BY min(m.added_at) ${filter.order === "oldest" ? "ASC" : "DESC"} NULLS LAST,v.id
-    LIMIT $6`,
-    [
-      userId,
-      filter.playlistId ?? null,
-      like(filter.artist),
-      like(filter.genre),
-      filter.excludeIds,
-      filter.limit,
-    ],
-  );
-  return rows.map((v) => ({
-    id: v.id,
-    title: v.title,
-    channel: v.channel,
-    durationSeconds: v.duration_seconds,
-    thumbnailUrl: v.thumbnail_url,
-    url: `https://www.youtube.com/watch?v=${v.id}`,
-    musicMetadata: v.music_metadata ?? null,
-    addedAt: v.added_at ? new Date(v.added_at).toISOString().slice(0, 10) : null,
-  }));
-}
-
 export async function connectMusicMcp(
   db: Database,
   excludeIds: string[] = [],
-  userId = LEGACY_USER,
+  userId = LEGACY_USER_ID,
   discover = false,
   scope?: "library" | "youtube" | "all",
   rejectedIds: string[] = [],
@@ -670,7 +578,7 @@ export async function connectMusicMcp(
 export async function handleMusicMcp(
   db: Database,
   request: Request,
-  userId = LEGACY_USER,
+  userId = LEGACY_USER_ID,
 ) {
   const server = musicMcp(db, [], userId);
   const transport = new WebStandardStreamableHTTPServerTransport({

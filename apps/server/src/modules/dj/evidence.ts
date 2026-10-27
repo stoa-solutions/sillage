@@ -1,5 +1,5 @@
 import type { SearchFailure } from "../discovery/index.ts";
-import type { DjTrack } from "../../music-mcp.ts";
+import type { DjTrack } from "../mcp/index.ts";
 
 export interface DiscoveryEvidence {
   video: DjTrack;

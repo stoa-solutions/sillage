@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { musicMatchRank, resolveExactRequest } from "../src/music-matching.ts";
+import { musicMatchRank, resolveExactRequest } from "../src/modules/search/index.ts";
 import { required } from "./support/required.ts";
 
 const catalog = [

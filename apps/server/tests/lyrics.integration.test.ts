@@ -12,7 +12,7 @@ import {
   type LyricsRecord,
   type LyricsSource,
 } from "../src/integrations/lrclib/index.ts";
-vi.mock("../src/inference-client.ts", () => ({ infer: vi.fn() }));
+vi.mock("../src/integrations/inference/client.ts", () => ({ infer: vi.fn() }));
 const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
