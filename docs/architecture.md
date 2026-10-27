@@ -85,6 +85,8 @@ Le code serveur se range par feature dans `src/features/<feature>/` :
 
 En production, l’image exécute un bundle JavaScript produit par esbuild (`apps/server/build.mjs`), sans compilation TypeScript au démarrage.
 
+Le serveur est un monolithe modulaire en trois processus (API, worker, inférence), dans une même image. **Une seule instance API** : les baux des tours DJ (`features/dj/lease.ts`) et la limite de débit par jeton (`features/auth/session.ts`) vivent dans la mémoire du processus, et le démarrage clôt tous les tours restés en cours. Avant toute duplication de l’API : baux DJ en PostgreSQL (propriétaire d’instance, échéance, renouvellement, refus d’une écriture tardive), nettoyage limité aux baux expirés et limite de débit partagée. Le worker peut déjà tourner en plusieurs exemplaires : la file utilise `FOR UPDATE SKIP LOCKED` et des baux par tâche.
+
 ## Organisation interne du DJ serveur
 
 ```text

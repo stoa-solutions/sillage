@@ -28,7 +28,7 @@
     "build:macos": "python3 scripts/build-macos.py --universal",
     "test:macos": "swift build --package-path apps/macos && swift run --skip-build --package-path apps/macos RecallCoreTests && swift run --skip-build --package-path apps/macos RecallAudioTests && swift run --skip-build --package-path apps/macos RecallServerTests",
     "verify": "npm run verify:node && npm run verify:macos",
-    "verify:node": "npm run check && npm test && npm run build",
+    "verify:node": "npm run check && npm test && npm run build && npm run build -w @playlist-recall/server",
     "verify:macos": "npm run test:packaging && npm run test:macos",
     "board": "sh scripts/board.sh",
     "check:architecture": "node --test scripts/check-architecture.test.mjs && node scripts/check-architecture.mjs",
