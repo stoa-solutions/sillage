@@ -16,6 +16,7 @@ import SwiftUI
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }
 @main struct RecallApp: App {
+  static let mainWindowID = "main"
   @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
   @StateObject private var session: Session
   @StateObject private var library: LibraryModel
@@ -23,6 +24,9 @@ import SwiftUI
   @StateObject private var discovery: DiscoveryModel
   @StateObject private var history: HistorySync
   @StateObject private var listened: ListeningHistoryModel
+  @StateObject private var desk: DeskIntegration
+  @AppStorage("showsMenuBarExtra") private var showsMenuBar = true
+  private let nowPlaying: DeskNowPlaying
   @State private var didBootstrap = false
   init() {
     let session = Session()
@@ -48,6 +52,8 @@ import SwiftUI
     _discovery = StateObject(wrappedValue: discovery)
     _history = StateObject(wrappedValue: history)
     _listened = StateObject(wrappedValue: listened)
+    _desk = StateObject(wrappedValue: DeskIntegration(dj: dj, session: session))
+    nowPlaying = DeskNowPlaying(dj: dj)
   }
   private func bootstrap() async {
     if CommandLine.arguments.contains("--import-configuration-stdin") {
@@ -115,7 +121,7 @@ import SwiftUI
     if session.hasServer { library.sync() }
   }
   var body: some Scene {
-    WindowGroup("Sillage") {
+    WindowGroup("Sillage", id: Self.mainWindowID) {
       MainView().environmentObject(session).environmentObject(library).environmentObject(dj)
         .environmentObject(discovery).environmentObject(listened)
         .task {
@@ -129,9 +135,11 @@ import SwiftUI
           }
         }
         .onOpenURL { session.receiveGoogleCallback($0) }
+        .onAppear { desk.mainWindowAppeared() }
         .onDisappear {
           dj.cancel()
           dj.pause()
+          desk.mainWindowClosed()
         }
     }
     .defaultSize(width: 600, height: 840)
@@ -146,8 +154,16 @@ import SwiftUI
         Button("Actualiser la bibliothèque") { library.sync() }.keyboardShortcut("r")
       }
     }
+    MenuBarExtra(isInserted: $showsMenuBar) {
+      DeskMenu(desk: desk, dj: dj, player: dj.player, microphone: dj.microphone)
+        .tint(.recall)
+    } label: {
+      DeskMenuBarLabel(desk: desk, microphone: dj.microphone)
+    }
+    .menuBarExtraStyle(.window)
     Settings {
       SettingsView().environmentObject(session).environmentObject(library).environmentObject(dj)
+        .environmentObject(desk)
         .onOpenURL { session.receiveGoogleCallback($0) }
         .tint(.recall)
     }

@@ -40,6 +40,14 @@ public enum RecallWindowLayout {
   public static func minimumHeight(studio: Bool, reading: Bool) -> Double {
     studio || reading ? 520 : 120
   }
+  /// Below this, the open panel's tabs, a few messages and the composer no longer fit.
+  public static let compactPanelMinimum = 260.0
+  /// Compact never cuts its pocket (banners included, as measured) nor squeezes an open panel
+  /// under its controls; `restHeight` is 0 until the pocket has been measured.
+  public static func compactMinimumHeight(restHeight: Double, panelOpen: Bool) -> Double {
+    max(minimumHeight(studio: false, reading: false), restHeight)
+      + (panelOpen ? compactPanelMinimum : 0)
+  }
 
   /// Compact keeps its top edge: the window grows or shrinks downwards with the panel.
   /// `anchorTop` is where the pocket's top edge was before the panel had to push the window

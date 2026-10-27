@@ -78,6 +78,15 @@ func sillageLayoutChecks() throws {
       && RecallWindowLayout.minimumHeight(studio: false, reading: false) <= 224
       && RecallWindowLayout.minimumWidth(studio: false, reading: true) <= 1080,
     "A global minimum still exceeds the pocket or reading targets")
+  // Compact: resizing never cuts the pocket, nor an open panel below its controls, and the
+  // open minimum stays within the panel's default height.
+  let folded = RecallWindowLayout.compactMinimumHeight(restHeight: 224, panelOpen: false)
+  let opened = RecallWindowLayout.compactMinimumHeight(restHeight: 224, panelOpen: true)
+  try expect(
+    folded == 224 && opened == 224 + RecallWindowLayout.compactPanelMinimum
+      && opened <= max(RecallWindowLayout.compactPanelCeiling, 224 + 260)
+      && RecallWindowLayout.compactMinimumHeight(restHeight: 0, panelOpen: false) == 120,
+    "Compact can be resized below its pocket or open panel: \(folded), \(opened)")
 
   // Palette: one source for colour roles; small text stays readable in both appearances.
   for appearance in [SillageAppearance.light, .dark] {

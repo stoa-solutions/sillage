@@ -122,7 +122,12 @@ struct MainView: View {
     CGFloat(RecallWindowLayout.minimumWidth(studio: dj.player.studio, reading: section != .dj))
   }
   private var minimumHeight: CGFloat {
-    CGFloat(RecallWindowLayout.minimumHeight(studio: dj.player.studio, reading: section != .dj))
+    if case .compact(let rest, let open) = presentation {
+      return CGFloat(
+        RecallWindowLayout.compactMinimumHeight(restHeight: Double(rest), panelOpen: open))
+    }
+    return CGFloat(
+      RecallWindowLayout.minimumHeight(studio: dj.player.studio, reading: section != .dj))
   }
 
   /// Banners on top, then the page; pages fade into each other.

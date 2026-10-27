@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage hors de sa fenêtre : arche Sillage dans la barre des menus (lecture, réponse du DJ, micro, demande écrite), raccourci global `⌥ ⇧ Espace` modifiable pour parler au DJ depuis n’importe quelle app (maintenir ou appui bref), pastille d’écoute animée sortant de l’encoche, musique baissée pendant la dictée, Centre de contrôle et touches média. Nouvelle page Réglages → Bureau avec aperçu. Compact ne se redimensionne plus sous la hauteur de son contenu.
+
 - Sillage 1.8.2 (73) : connexion Google et lecteur sur `sillage.stoa.solutions`, reprise des sessions hébergées existantes sans changer leur jeton ni la bibliothèque, configurations de serveurs personnels conservées.
 
 - Sillage 1.8.1 (72) : préparation d’un DMG universel au nom Sillage, notice Gemini/Claude, quota personnel explicite dans l’accueil, signatures imbriquées de Sparkle et contrôles Apple obligatoires pour une publication publique. Les aperçus restent identifiés et les mises à jour automatiques sont désactivées sans configuration explicite.

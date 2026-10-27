@@ -5,6 +5,7 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
   case appearance = "Apparence"
   case dj = "DJ et voix"
   case playback = "Lecture"
+  case desk = "Bureau"
   case account = "Compte"
   var id: String { rawValue }
   var symbol: String {
@@ -12,6 +13,7 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
     case .appearance: return "paintpalette"
     case .dj: return "waveform"
     case .playback: return "play.rectangle"
+    case .desk: return "menubar.rectangle"
     case .account: return "person.crop.circle"
     }
   }
@@ -21,6 +23,7 @@ struct SettingsView: View {
   @EnvironmentObject var session: Session
   @EnvironmentObject var library: LibraryModel
   @EnvironmentObject var dj: DJModel
+  @EnvironmentObject var desk: DeskIntegration
   @State private var page = SettingsPage.appearance
   @State private var key = ""
   @State private var busy = false
@@ -63,6 +66,7 @@ struct SettingsView: View {
                 )
                 .font(.callout).foregroundStyle(.secondary)
               }
+            case .desk: DeskSettings(desk: desk)
             case .appearance: EmptyView()
             }
             if !session.error.isEmpty {

@@ -179,6 +179,7 @@ do {
   try await lyricsAccountChecks()
   try await lyricsLifecycleChecks()
   try trackTitleChecks()
+  try deskChecks()
   try await djCompositionChecks()
   try await studioCacheChecks()
   try await preparedSpeechChecks()

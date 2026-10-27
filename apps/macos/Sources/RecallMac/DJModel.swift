@@ -69,6 +69,10 @@ final class DJModel: ObservableObject {
       self.send(text, source: self.microphoneSource)
     }
     microphone.onError = { [weak self] text in self?.session.error = text }
+    microphone.objectWillChange.sink { [weak self] _ in
+      // Published fires before the value is stored.
+      Task { @MainActor in self?.restoreAfterDictation() }
+    }.store(in: &subscriptions)
     player.engine.onSignal = { [weak self] in self?.dispatch(.playback($0)) }
     session.$loadingCredentials.sink { [weak self] loading in
       // Published fires before the value is stored: read the new value, not the session.
@@ -169,9 +173,25 @@ final class DJModel: ObservableObject {
   func toggleMicrophone(source: DiscoveryScope? = nil) {
     if !microphone.active { microphoneSource = source ?? searchScope }
     voice.stop()
-    // The music pauses so dictation hears the person, not the song.
-    if !microphone.active { dispatch(.pause) }
+    // The music steps back so dictation hears the person, not the song.
+    if !microphone.active { stepBackForDictation() }
     Task { await microphone.toggle() }
+  }
+  private var duckedForDictation = false
+  private func stepBackForDictation() {
+    let choice = UserDefaults.standard.string(forKey: "dictationMusic")
+    if DictationMusic(rawValue: choice ?? "") == .pause {
+      dispatch(.pause)
+    } else {
+      duckedForDictation = true
+      player.engine.duck(true)
+    }
+  }
+  /// Restores the music once the dictation is over, whatever ended it.
+  private func restoreAfterDictation() {
+    guard duckedForDictation, !microphone.active else { return }
+    duckedForDictation = false
+    player.engine.duck(false)
   }
   func stopVoice() { voice.stop() }
 

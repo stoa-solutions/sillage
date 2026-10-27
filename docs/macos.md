@@ -292,3 +292,19 @@ L’installation locale remplace l’ancien bundle par `~/Applications/Sillage.a
 L’accueil et **Réglages → DJ et voix** partagent le choix Gemini/Claude et le modèle. Le serveur renvoie le catalogue et les réglages enregistrés de chaque fournisseur. Le changement devient actif après **Vérifier et enregistrer**. Une clé saisie est effacée du champ si le fournisseur change ; elle n’est jamais préremplie depuis le serveur.
 
 La voix est indépendante du choix de raisonnement : Claude utilise directement la voix macOS. Gemini propose la voix expressive existante et son repli macOS. Les deux chemins gardent les mêmes commandes de lecture et outils musicaux. Pour tester sans la session ni la bibliothèque de Samuel, lancer une build QA avec `RECALL_DATA_DIR` dans un dossier temporaire.
+
+## Sillage hors de sa fenêtre (barre des menus, raccourci, pastille)
+
+**Réglages → Bureau** regroupe l’intégration au Mac :
+
+- **Raccourci global** `⌥ ⇧ Espace` par défaut, modifiable comme dans Raycast : clic sur le champ, nouvelle combinaison, Échap annule, ⌫ supprime, ↺ revient au défaut. Maintenir pour parler et relâcher pour envoyer ; un appui bref garde le micro ouvert jusqu’au prochain appui ou trois secondes de silence. Il passe par les hot keys Carbon : aucune permission Accessibilité ni Surveillance de l’entrée. Les combinaisons réservées par macOS (Réglages Système → Clavier) ou déjà prises par une autre app sont refusées avec un message.
+- **Pastille d’écoute** : panneau non activant au-dessus des apps et du plein écran. Sur un écran à encoche, elle sort de l’encoche ; ailleurs elle apparaît en bas, se déplace à la souris et garde sa place. Elle suit la dictée (forme d’onde du micro), la recherche du DJ, puis affiche sa réponse quelques secondes. « Essayer » joue la séquence avec une voix simulée, sans micro ni serveur. « Réduire les animations » remplace les mouvements par des fondus.
+- **Musique pendant la dictée** : baissée (défaut) ou en pause, réglage partagé avec le micro de la fenêtre.
+- **Barre des menus** : arche Sillage en glyphe modèle (orange pendant l’écoute), morceau en cours, réponse du DJ, micro, demande écrite, ouverture et réglages. Si la fenêtre est fermée, Sillage peut quitter le Dock ; sans glyphe dans la barre des menus, le Dock reste toujours visible.
+- **Lecture système** : Centre de contrôle, touches lecture/suivant, AirPods et position via `MPNowPlayingInfoCenter`. Pas de morceau précédent : la file appartient au DJ.
+
+Fermer la fenêtre met toujours la musique en pause : le lecteur vit dans la fenêtre. Le raccourci et la demande écrite la rouvrent avant que le DJ réponde.
+
+Compact : la hauteur minimale suit le contenu mesuré, poche et bandeaux compris, plus 260 points quand le panneau est ouvert. Le redimensionnement ne coupe plus le lecteur ni le champ du DJ.
+
+Recette visuelle sans micro ni serveur : `SILLAGE_QA_PILL=demo|listening|thinking|reply|problem` (avec `SILLAGE_QA_PILL_SCREEN=<index>` pour choisir l’écran) et `SILLAGE_QA_MENU=1` (contenu du menu dans une fenêtre), toujours avec `RECALL_DATA_DIR` temporaire.
