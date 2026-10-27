@@ -21,7 +21,7 @@ def require_public_signing(identity, profile, tools_available):
     if not profile:
         raise ValueError('Public release requires MAC_NOTARY_PROFILE, stored privately in Keychain.')
     if not tools_available:
-        raise ValueError('Public release requires Xcode notarytool and stapler. Command Line Tools alone are insufficient.')
+        raise ValueError('Public release requires working notarytool and stapler, discoverable through xcrun.')
 
 
 def signing_targets(bundle):

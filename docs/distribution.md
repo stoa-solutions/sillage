@@ -15,7 +15,7 @@ Cette commande produit un **aperçu local**, marqué `distribution: preview` et 
 
 ## Version publique
 
-Un compte Apple Developer, un certificat **Developer ID Application** et Xcode complet (`notarytool`, `stapler`) sont nécessaires. La clé privée et les identifiants de notarisation restent dans le Trousseau, hors Git et hors du paquet.
+Une adhésion Apple Developer active, un certificat **Developer ID Application** et les outils `notarytool` et `stapler` accessibles via `xcrun` sont nécessaires. Leur présence doit être vérifiée directement ; les Command Line Tools installés sur le Mac de préparation les fournissent déjà. La clé privée et les identifiants de notarisation restent dans le Trousseau, hors Git et hors du paquet.
 
 Configurer localement `MAC_SIGNING_IDENTITY` avec l’identité Developer ID et `MAC_NOTARY_PROFILE` avec le nom du profil de notarisation. Puis, depuis `main`, avec le numéro de build incrémenté :
 
@@ -35,7 +35,7 @@ Sans certificat, profil ou outils Apple, `--public-release` refuse la publicatio
 4. Dans le repo Stoa, lancer `pnpm sillage:prepare-download /chemin/vers/release.json`. Le script refuse les aperçus, vérifie taille/empreinte et réexécute les contrôles Apple sur le DMG avant de préparer les métadonnées du bouton. Vérifier que l’asset GitHub répond avant de publier le site.
 5. Vérifier le véritable téléchargement HTTPS et l’empreinte reçue après publication du site.
 
-Au 26 octobre 2026 : aucun abonnement Apple Developer ni certificat de distribution disponible sur ce Mac. La connexion serveur annonce Google configuré ; cela ne prouve pas le parcours complet d’un compte extérieur. Aucun binaire public ni téléchargement sans avertissement ne doit être annoncé tant que les étapes Apple et ce parcours ne sont pas validés.
+Au 27 octobre 2026 : inscription de Stoa en cours de traitement, mais aucune adhésion active ni certificat de distribution disponible sur ce Mac. `notarytool` et `stapler` sont présents et exécutables. La connexion serveur annonce Google configuré ; cela ne prouve pas le parcours complet d’un compte extérieur. Aucun binaire public ni téléchargement sans avertissement ne doit être annoncé tant que les étapes Apple et ce parcours ne sont pas validés.
 
 ## Mises à jour
 
