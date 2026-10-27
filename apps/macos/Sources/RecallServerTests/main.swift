@@ -9,6 +9,48 @@ func rejects(_ body: () throws -> Void) throws {
   throw RecallError.message("Expected failure")
 }
 
+func sillageServiceChecks() throws {
+  let token = "test-session-not-a-real-token"
+  for origin in [
+    "https://recall.stoa.solutions", "https://recall.stoa.solutions/",
+    "https://RECALL.stoa.solutions:443",
+  ] {
+    let connection = try SillageService.connection(url: origin, token: token)
+    try check(
+      connection.url == SillageService.origin && connection.token == token,
+      "Hosted session did not retain its token on the Sillage origin")
+  }
+  for origin in [
+    SillageService.origin, "https://music.example.com", "http://localhost:8080",
+    "https://recall.stoa.solutions:8443", "https://recall.stoa.solutions.example.com",
+  ] {
+    let connection = try SillageService.connection(url: origin, token: token)
+    try check(
+      connection.url == origin && connection.token == token,
+      "Domain migration changed an unrelated server or current session")
+  }
+  for origin in [
+    "https://recall.stoa.solutions/private", "https://user@recall.stoa.solutions",
+    "http://recall.stoa.solutions", "https://recall.stoa.solutions?token=private",
+  ] {
+    try rejects { _ = try SillageService.connection(url: origin, token: token) }
+  }
+  try rejects { _ = try SillageService.connection(url: SillageService.origin, token: "short") }
+  for origin in [SillageService.origin, SillageService.origin + ":443/dj/player?native=1"] {
+    try check(SillageService.isPlayerOrigin(URL(string: origin)), "Trusted player frame rejected")
+  }
+  for origin in [
+    "https://recall.stoa.solutions/dj/player", "http://sillage.stoa.solutions/dj/player",
+    "https://sillage.stoa.solutions:8443/dj/player",
+    "https://sillage.stoa.solutions.example.com/dj/player",
+    "https://user@sillage.stoa.solutions/dj/player",
+  ] {
+    try check(!SillageService.isPlayerOrigin(URL(string: origin)), "Foreign player frame accepted")
+  }
+  try check(!SillageService.isPlayerOrigin(nil), "Missing player frame origin accepted")
+  print("Sillage domain checks passed: session continuity, self-hosted isolation, player origin.")
+}
+
 /// A private server that confirms a fresh sync on the third poll.
 actor ServerFixture {
   var polls = 0
@@ -40,6 +82,7 @@ actor ServerFixture {
 @main struct ServerTests {
   static func main() async {
     do {
+      try sillageServiceChecks()
       for link in [
         "http://youtube.com/playlist?list=PL1234567890",
         "https://evil.com/playlist?list=PL1234567890",

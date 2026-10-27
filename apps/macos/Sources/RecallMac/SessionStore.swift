@@ -17,6 +17,6 @@ enum SessionStore {
   static func connection() throws -> Connection? {
     guard let data = try read("server") else { return nil }
     let raw = try JSONDecoder().decode(Connection.self, from: data)
-    return try Connection(url: raw.url, token: raw.token)
+    return try SillageService.connection(url: raw.url, token: raw.token)
   }
 }

@@ -41,6 +41,12 @@ Les noms Docker générés, le volume PostgreSQL, le réseau `playlist-recall-da
 
 Même règle côté Mac : conserver le bundle ID, le schéma `playlist-recall://auth`, les entrées Trousseau et les données Application Support tant qu’une migration dédiée n’est pas testée. La prochaine livraison peut utiliser directement le nouveau domaine de connexion ; les versions déjà installées suivent la redirection compatible.
 
+### App Mac 1.8.2 (73)
+
+La connexion Google et le lecteur utilisent directement `sillage.stoa.solutions`. À la lecture d’une session enregistrée ou à l’import d’une connexion, seule l’origine HTTPS historique `recall.stoa.solutions` (port par défaut) est remplacée en mémoire. Le jeton reste identique ; la session originale sur disque n’est pas réécrite au démarrage. Une reconnexion Google réussie enregistre normalement la nouvelle origine. Les serveurs personnels, les ports non standard et les identifiants de l’app restent inchangés.
+
+Le contrôle des messages du lecteur vérifie l’origine HTTPS Sillage et la frame principale. La suite native couvre la continuité du jeton, l’isolation des serveurs personnels, le rejet des adresses invalides et des frames étrangères. La présence de ces tests ne remplace pas la vérification de connexion dans l’app installée.
+
 `.env.example` décrit une **nouvelle installation**. Sur le serveur existant, conserver le rôle et l’hôte PostgreSQL historiques ; seule la base de la chaîne de connexion a été renommée en `sillage`. Ne pas remplacer l’environnement de production par l’exemple.
 
 ## Vérification réalisée

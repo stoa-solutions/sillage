@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage 1.8.2 (73) : connexion Google et lecteur sur `sillage.stoa.solutions`, reprise des sessions hébergées existantes sans changer leur jeton ni la bibliothèque, configurations de serveurs personnels conservées.
+
 - Sillage 1.8.1 (72) : préparation d’un DMG universel au nom Sillage, notice Gemini/Claude, quota personnel explicite dans l’accueil, signatures imbriquées de Sparkle et contrôles Apple obligatoires pour une publication publique. Les aperçus restent identifiés et les mises à jour automatiques sont désactivées sans configuration explicite.
 
 - Sillage 1.8.0 (71) : choix Gemini ou Claude dans l’accueil et les réglages, clés conservées séparément, reprise d’une clé enregistrée sans nouvelle saisie et voix macOS avec Claude. Livraison du transport AI SDK natif côté serveur.

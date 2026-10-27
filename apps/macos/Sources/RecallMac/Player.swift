@@ -118,7 +118,7 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
   private var resumeAt: Double?
   private var seeking: (target: Double, started: Date)?
   private var level = 1.0
-  private static let origin = "https://recall.stoa.solutions"
+  private static let origin = SillageService.origin
 
   override init() {
     let configuration = WKWebViewConfiguration()
@@ -207,7 +207,7 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
     _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
   ) {
     guard message.frameInfo.isMainFrame,
-      message.frameInfo.request.url?.host == "recall.stoa.solutions",
+      SillageService.isPlayerOrigin(message.frameInfo.request.url),
       let value = message.body as? [String: Any], value["source"] as? String == "recall-dj-player"
     else { return }
     switch value["event"] as? String {

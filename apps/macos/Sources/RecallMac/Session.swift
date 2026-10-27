@@ -150,7 +150,7 @@ final class Session: ObservableObject {
       let data = try Data(contentsOf: url)
       guard data.count < 16384 else { throw RecallError.message("Fichier de connexion invalide.") }
       let raw = try JSONDecoder().decode(Connection.self, from: data)
-      let value = try Connection(url: raw.url, token: raw.token)
+      let value = try SillageService.connection(url: raw.url, token: raw.token)
       try SessionStore.save(JSONEncoder().encode(value), account: "server")
       return value
     }.value
@@ -166,7 +166,7 @@ final class Session: ObservableObject {
     do {
       let previous = connection
       let wasLegacy = !googleAccount
-      let value = try await signIn.connect(server: "https://recall.stoa.solutions")
+      let value = try await signIn.connect(server: SillageService.origin)
       try await Task.detached {
         if wasLegacy, let previous {
           try SessionStore.save(JSONEncoder().encode(previous), account: "legacy-server")
