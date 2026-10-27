@@ -27,6 +27,8 @@ erDiagram
 
 Les conversations et réponses sont du JSON/texte lisible en PostgreSQL, protégés par les accès à la base et au compte. **Ce n’est pas le chiffrement spécifique des clés Gemini** : celles-ci restent dans `account_dj_settings`, avec leur chiffrement existant. Les sauvegardes de la base contiennent aussi le journal et doivent rester privées. Il n’existe pas de jeton développeur global donnant accès aux échanges de tous les comptes ; l’opérateur DB conserve ses accès habituels.
 
+Code : `apps/server/src/modules/dj/journal/` (contrôleur, service, dépôt, schémas), tables `dj_conversations`, `dj_turns` et `dj_journal_events` dans `apps/server/src/db/schema/dj.ts`. Statut du tour, déclencheur, origine des événements et source sont des enums PostgreSQL (migration `0003_dj_enums`). Au démarrage, l’API marque `interrupted` les tours restés `running` (`closeInterruptedTurns`, appelé par `src/boot.ts`).
+
 ## Parcours développeur
 
 Dans Swagger local ou Postman, ouvrir **Journal DJ** :
@@ -41,7 +43,7 @@ L’ordre serveur est celui de réception. Après une reconnexion, `occurredAt` 
 
 ## Fiabilité et limites explicites
 
-- Migration additive et idempotente, dans la transaction habituelle. Aucun original musical n’est remplacé. Une ancienne version serveur reste compatible avec la base migrée.
+- Tables créées par les migrations Drizzle, dans la transaction habituelle. Aucun original musical n’est remplacé. Une ancienne version serveur reste compatible avec la base migrée.
 - Le tour est créé avant le traitement. Chaque étape serveur est écrite sans bloquer l’exécution des outils ; la réponse attend la fin des écritures. Une panne de stockage ne transforme pas une réponse musicale en erreur. `journal_complete=false` ou `X-Sillage-Journal: unavailable` signalent une trace partielle. Un arrêt brutal peut laisser un tour `running` ; `stale=true` après cinq minutes le rend visible.
 - Le Mac regroupe au plus 50 événements par envoi, avec UUID stables et insertion idempotente. Les échecs sont réessayés avec délai jusqu’à 30 secondes ; le journal n’entraîne aucune nouvelle requête au modèle. Après trois échecs, un message signale la synchronisation en attente.
 - Le tampon reste **en mémoire** (1 000 événements maximum), sans nouvelle copie locale persistante. Quitter l’app hors ligne peut perdre les actions locales non envoyées ; les tours déjà reçus par le serveur restent en base. Le dépassement du tampon est signalé. La requête serveur contient aussi le petit historique récent, mais ne permet pas de reconstituer tous les clics hors ligne.

@@ -12,7 +12,7 @@ Plafonds : API 192 Mio/0,5 CPU, worker 192 Mio/0,5 CPU, inférence 1 408 Mio/1,5
 
 `DATABASE_URL`, `YOUTUBE_API_KEY`, `SYNC_ENABLED`, `VISION_ENABLED`, `RELEASE_SHA` sont définis dans Dokploy. Ne pas les ajouter au dépôt ni aux paquets clients. Restreindre la clé Google à YouTube Data API v3 et à l’IP sortante du VPS. Budget local : 8 000 unités/jour, comptées selon la journée YouTube America/Los_Angeles.
 
-Créer un jeton avec `node dist/features/auth/token-cli.js create /tmp/connexion.json` depuis le conteneur API. Transférer son contenu vers un fichier privé via la sortie redirigée de `docker exec` puis le retirer du conteneur (`docker cp` ne lit pas ce montage tmpfs sur ce serveur). Ne jamais afficher son contenu dans les journaux. `token-cli.js revoke UUID` révoque un jeton. Ces jetons servent aux scripts et au point d’entrée MCP. Seul un hash du jeton est enregistré en base.
+Créer un jeton avec `node dist/modules/auth/token.cli.js create /tmp/connexion.json` depuis le conteneur API. Transférer son contenu vers un fichier privé via la sortie redirigée de `docker exec` puis le retirer du conteneur (`docker cp` ne lit pas ce montage tmpfs sur ce serveur). Ne jamais afficher son contenu dans les journaux. `node dist/modules/auth/token.cli.js revoke UUID` révoque un jeton. Ces jetons servent aux scripts et au point d’entrée MCP. Seul un hash du jeton est enregistré en base.
 
 ## Comptes utilisateurs
 
@@ -20,9 +20,9 @@ Voir [accounts.md](accounts.md) pour la configuration Google, les clés Gemini p
 
 ## Déploiement et reprise
 
-1. Exécuter `npm run check`, `npm test`, puis les tests PostgreSQL.
+1. Exécuter `npm run verify:node`, puis les tests PostgreSQL. La CI construit aussi l’image et la démarre sur une base vide (`scripts/smoke-server-image.sh`) : migrations au démarrage, `/health` avec le SHA, `/v1/me` en 401, worker et inférence. Ne pas déployer un commit dont le job `image` échoue.
 2. Vérifier l’état de Stoa, les ressources disponibles et la dernière sauvegarde. Pousser le commit du monorepo privé.
-3. Mettre `RELEASE_SHA` au SHA du commit testé. Déclencher le Compose via Dokploy ; l’API applique les migrations Drizzle en attente (`apps/server/drizzle`) avant de démarrer : un verrou consultatif de session (740071), pris sur une connexion dédiée avant toute lecture du journal, couvre tout le lancement, et les migrations en attente s’appliquent dans une seule transaction. Deux démarrages simultanés s’attendent au lieu d’appliquer deux fois la même migration. **Une seule API à la fois** : les tours DJ en cours sont tenus en mémoire par le processus API, et le démarrage marque comme interrompus tous les tours restés « running ». Arrêter l’ancienne API avant de démarrer la nouvelle (pas de déploiement en parallèle), et ne pas lancer deux instances API. Au premier déploiement Drizzle, la base existante applique le socle idempotent `0000_baseline` sans changement de données et l’enregistre dans `drizzle.__drizzle_migrations`. Ne jamais supprimer les volumes de la base.
+3. Mettre `RELEASE_SHA` au SHA du commit testé. Déclencher le Compose via Dokploy. L’image exécute le bundle JavaScript : l’API démarre avec `node dist/boot.js`, le worker avec `dist/worker.js`, l’inférence avec `dist/inference.js`. Chaque processus vérifie d’abord sa configuration et s’arrête en nommant les variables invalides (jamais leurs valeurs) : lire le journal du conteneur si un service redémarre en boucle. L’API applique les migrations Drizzle en attente (`apps/server/drizzle`) avant de démarrer : un verrou consultatif de session (740071), pris sur une connexion dédiée avant toute lecture du journal, couvre tout le lancement, et les migrations en attente s’appliquent dans une seule transaction. Deux démarrages simultanés s’attendent au lieu d’appliquer deux fois la même migration. **Une seule API à la fois** : les tours DJ en cours sont tenus en mémoire par le processus API, et le démarrage marque comme interrompus tous les tours restés « running ». Arrêter l’ancienne API avant de démarrer la nouvelle (pas de déploiement en parallèle), et ne pas lancer deux instances API. Le worker, lui, peut avoir plusieurs exemplaires. Au premier déploiement Drizzle, la base existante applique le socle idempotent `0000_baseline` sans changement de données et l’enregistre dans `drizzle.__drizzle_migrations`. Ne jamais supprimer les volumes de la base.
 4. Attendre `composeStatus=done`, puis contrôler indépendamment `/health`, la version retournée, les conteneurs et leurs limites. Un statut Dokploy ne suffit pas.
 5. Importer la sauvegarde existante, lancer une synchronisation manuelle et vérifier les comptes et résultats. Activer `SYNC_ENABLED=true` après réussite, puis constater une exécution créée par le planificateur.
 6. Surveiller erreurs, file, CPU, mémoire et services Stoa pendant le remplissage initial.
@@ -30,6 +30,14 @@ Voir [accounts.md](accounts.md) pour la configuration Google, les clés Gemini p
 Les tâches sont persistantes, dédupliquées, réessayées cinq fois avec temporisation. Un bail expiré reprend automatiquement. Le bouton **Réessayer** remet les derniers échecs en attente. Une collecte échouée conserve le dernier instantané ; les suppressions demandent deux collectes complètes. Les passages textuels sont remplacés dans une transaction et rejetés si la source a changé entre-temps.
 
 Pour un retour arrière, arrêter le worker via Dokploy, redéployer le commit précédent et conserver la base. Utiliser une sauvegarde dans une ressource isolée si une migration incompatible devait être introduite.
+
+## Première installation
+
+1. Copier `.env.example` dans l’environnement privé de Dokploy et compléter au minimum `DATABASE_URL` et `PUBLIC_URL`, ajouter `SEARXNG_SECRET` (exigé par le Compose, absent de `.env.example` ; voir « Recherche SearXNG privée ») et, selon les fonctions voulues, `YOUTUBE_API_KEY`, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (les deux ou aucun) et `DJ_SETTINGS_ENCRYPTION_KEY`. Garder `SYNC_ENABLED=false` au départ.
+2. Créer une base PostgreSQL 17 vide sur une image qui fournit pgvector (`pgvector/pgvector:0.8.7-pg17`), joignable par le réseau `playlist-recall-data`. La première migration crée les extensions `vector` et `unaccent` : l’utilisateur de `DATABASE_URL` doit en avoir le droit. Ne pas publier son port.
+3. Préparer les modèles d’inférence dans `/srv/playlist-recall/models` (voir « Production »).
+4. Démarrer le Compose (`api`, `worker`, `inference`, `searxng`). L’API crée tout le schéma au premier démarrage, par les migrations ; aucune commande SQL manuelle.
+5. Contrôler `/health` (`ok`, `release` égal à `RELEASE_SHA`) et `/v1/me` sans jeton, qui doit répondre 401. Vérifier ensuite que le conteneur worker tourne.
 
 ## Sauvegardes et restauration
 

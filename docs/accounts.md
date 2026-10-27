@@ -28,6 +28,13 @@ Connaître un ID vidéo ne donne pas accès à une autre bibliothèque. Importer
 explicitement le même lien public ou non répertorié ajoute cette playlist au
 compte demandeur ; aucun abonnement d’un autre compte n’est exposé.
 
+Code : `apps/server/src/modules/auth/` (connexion Google, échange PKCE,
+`session.guard.ts` monté sur `/v1/*`, `token.cli.ts`) et
+`apps/server/src/modules/accounts/` (profil, déconnexion, reprise de la
+bibliothèque historique). Filtres de bibliothèque : `followedBy` et
+`inLibraryOf` dans `modules/library/library.repository.ts`. Tables dans
+`apps/server/src/db/schema/accounts.ts`.
+
 Les clés Gemini sont chiffrées AES-256-GCM avec l’ID du compte comme AAD.
 Deux sessions du même compte retrouvent ses réglages. Aucun compte Google
 sans clé ne bénéficie de la clé globale historique. Chat et voix utilisent la

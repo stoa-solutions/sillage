@@ -62,6 +62,17 @@ const api = shared.extend({
 
 const worker = shared.extend({
   SYNC_ENABLED: flag.optional(),
+  // At most ten YouTube video ids, comma separated.
+  MUSICBRAINZ_PILOT_IDS: z
+    .string()
+    .refine((value) =>
+      value
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean)
+        .every((id) => /^[\w-]{11}$/.test(id)),
+    )
+    .optional(),
   YOUTUBE_DAILY_BUDGET: positive.optional(),
   MUSICBRAINZ_ACCOUNT_IDS: uuids.optional(),
 });

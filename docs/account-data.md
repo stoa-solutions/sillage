@@ -64,11 +64,13 @@ L’extension progressive est activable par compte après validation du pilote. 
 
 ## Frontières de code à conserver
 
-- `accounts.ts` + middleware `app.ts` : identité et autorisation ; jamais déléguées au modèle.
-- `dj-settings.ts` : chiffrement et accès par compte ; aucun déchiffrement dans une vue ou un export.
-- `library.ts`, `queue.ts`, `worker.ts` : import et travail différé ; reprise des erreurs sans bloquer l'app.
-- `musicbrainz/` : adaptateur fournisseur, correspondances pures et orchestration séparés.
-- `search.ts` et outils musique : lecture des index existants, toujours bornée au compte.
+Chemins relatifs à `apps/server/src/`.
+
+- `modules/auth` (dont `session.guard.ts`, monté sur `/v1/*` dans `app.ts`) et `modules/accounts` : identité et autorisation ; jamais déléguées au modèle.
+- `modules/dj/dj-settings.service.ts` + `.repository.ts` : chiffrement et accès par compte ; aucun déchiffrement dans une vue ou un export.
+- `modules/library`, `modules/jobs`, `worker.ts` : import et travail différé ; reprise des erreurs sans bloquer l'app.
+- `integrations/musicbrainz` et `modules/enrichment` : adaptateur fournisseur, correspondances pures (`enrichment.matching.ts`) et orchestration séparés.
+- `modules/search` et `modules/mcp` : lecture des index existants, toujours bornée au compte.
 
 Pour grandir : conserver les preuves de propriété à chaque nouvelle route, séparer cache public et état privé, instrumenter les jobs/latences et traiter toute nouvelle persistance de chat comme une donnée privée. RLS, rotation automatique de clé et historique multiappareils sont des pistes distinctes, pas des fonctions déjà livrées.
 

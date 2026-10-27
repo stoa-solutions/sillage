@@ -12,7 +12,7 @@ Cette première version est destinée aux essais locaux. Sparkle est intégré p
 
 L’app Mac se connecte avec un compte Google. Vous pouvez ajouter une playlist publique ou non répertoriée, actualiser et suivre la collecte et l’indexation. La synchronisation automatique passe toutes les six heures lorsqu’elle est activée côté serveur.
 
-Pour les scripts et le point d’entrée MCP, un jeton personnel révocable se crée sur le serveur avec `node dist/features/auth/token-cli.js`. Ce jeton est privé : ne le partagez pas.
+Pour les scripts et le point d’entrée MCP, un jeton personnel révocable se crée dans le conteneur API avec `node dist/modules/auth/token.cli.js create <fichier privé>` (voir [l’exploitation](docs/operations.md)). Ce jeton est privé : ne le partagez pas.
 
 Le mode **Textes et souvenirs** combine mots-clés et sens du texte. Le mode **Miniatures** utilise les encodeurs texte et image SigLIP 2 correspondants. Les filtres de durée, chaîne, publication et playlist s’appliquent avant le classement. Les descriptions longues sont découpées en passages E5 avec contexte.
 

@@ -140,7 +140,7 @@ L’API `/v1/*` limite le débit à 180 requêtes/minute/jeton. Les demandes de 
 
 ## Maintenir le contrat
 
-Les routes refaites en features (`auth`, `accounts` pour l’instant) se documentent elles-mêmes : chaque `createRoute` (`@hono/zod-openapi`) porte ses schémas Zod d’entrée et de réponse, ses erreurs et sa description, et `api-docs/openapi.ts` reprend le document généré par l’application. Les autres opérations sont encore décrites à la main dans `apps/server/src/api-docs/`, avec les validateurs Zod réellement employés par leurs routes. La génération suit une seule direction : **validateurs + catalogue des opérations → OpenAPI → exports Postman JSON et fichiers Git natifs**.
+Toutes les routes se documentent elles-mêmes : chaque `createRoute` (`@hono/zod-openapi`) dans un `<module>.controller.ts` porte ses schémas Zod d’entrée et de réponse (`<module>.schemas.ts`), ses erreurs (`commonErrors`), sa description et son effet (`operation()`, dans `apps/server/src/shared/openapi.ts`). `apps/server/src/api-docs/openapi.ts` construit l’application sans base, lit `getOpenAPI31Document()` et n’ajoute que la description générale, les serveurs, les tags et la sécurité ; aucune opération n’est écrite à la main. Les routes servies telles quelles (MCP, lecteur, versions Mac) sont déclarées de la même façon. La génération suit une seule direction : **routes et validateurs → OpenAPI → exports Postman JSON et fichiers Git natifs**. Ajouter ou modifier une route, puis relancer `npm run docs:generate`.
 
 ```sh
 npm run docs:generate

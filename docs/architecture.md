@@ -13,15 +13,15 @@ Le serveur peut accueillir plusieurs comptes ; cela ne prouve pas une capacité 
 | Module | Responsabilité |
 | --- | --- |
 | `packages/core` | Formats de bibliothèque, recherche pure et contrats du DJ. Aucun accès réseau ni secret. |
-| `apps/server/src/features/dj/routes.ts` | Frontière HTTP du DJ, validation et bail par compte. |
-| `apps/server/src/dj-config.ts` | Configuration par défaut du déploiement. |
-| `apps/server/src/dj-settings.ts` | Configuration personnelle, chiffrement et persistance. |
-| `apps/server/src/features/dj/prompt.ts` | Règles de sélection et de dialogue, indépendantes du transport fournisseur. |
-| `apps/server/src/dj.ts` | Façade publique stable du DJ ; détails dans `features/dj/`. |
-| `apps/server/src/music-mcp.ts` | Recherche dans la bibliothèque, lecture seule. |
-| `apps/server/src/dj-voice.ts` | Adaptateur de synthèse vocale Gemini. |
-| `apps/server/src/search.ts` | Classement lexical/vectoriel et pagination SQL. |
-| API / worker / inference | Services indépendants : requêtes, tâches durables, calcul des vecteurs. |
+| `apps/server/src/modules/dj/dj.controller.ts` | Frontière HTTP du DJ, validation et bail par compte. |
+| `apps/server/src/modules/dj/dj.config.ts` | Configuration par défaut du déploiement. |
+| `apps/server/src/modules/dj/dj-settings.service.ts` (+ `.repository.ts`) | Configuration personnelle, chiffrement et persistance. |
+| `apps/server/src/modules/dj/prompt.ts` | Règles de sélection et de dialogue, indépendantes du transport fournisseur. |
+| `apps/server/src/modules/dj/index.ts` | Entrée publique du DJ ; détails dans `modules/dj/`. |
+| `apps/server/src/modules/mcp/` | Outils MCP de recherche dans la bibliothèque, lecture seule. |
+| `apps/server/src/modules/dj/dj-voice.service.ts` | Adaptateur de synthèse vocale Gemini. |
+| `apps/server/src/modules/search/` | Classement lexical/vectoriel et pagination SQL. |
+| API / worker / inference | Processus indépendants : requêtes, tâches durables, calcul des vecteurs. |
 
 Les routes injectent la configuration personnelle dans le chat et la voix. Elles ne modifient jamais `process.env` pour répondre à un utilisateur. L’ajout d’une clé ne touche pas celle du serveur ni un autre compte. Changer de modèle conserve la clé déjà enregistrée.
 
@@ -53,7 +53,7 @@ Sources : https://sparkle-project.org/documentation/ et https://developer.apple.
 
 ## Ajouter une fonctionnalité sans mêler les couches
 
-- **Règle pure** : `RecallKit` sur Mac, `packages/core` pour les contrats partagés, ou un module serveur pur (`features/dj/decision`, `search-relevance`). Tests sans réseau.
+- **Règle pure** : `RecallKit` sur Mac, `packages/core` pour les contrats partagés, ou un module serveur pur (`modules/dj/decision.ts`, `modules/search/search.relevance.ts`). Tests sans réseau.
 - **Effet externe** : un adaptateur ciblé (HTTPClient, outils MCP, voix, lecteur). Les secrets et autorisations restent aux frontières.
 - **État de session** : `PlaybackQueue` gère ordre/historique, `DJComposition` les suites bornées et exclusions, `LyricsModel` le cache/calage par compte. L’UI affiche ces états ; elle ne refait pas leurs règles.
 - **Temps de lecture** : `Player` possède l’horloge `PlaybackClock`. Les panneaux lisent la même position, même après fermeture/réouverture. Les déplacements natifs sont précis ; YouTube reste soumis aux limites de son lecteur et de son tampon.
@@ -64,69 +64,72 @@ Ne pas ajouter un framework d’agents ou un fournisseur pour une règle déterm
 Démarrage et parcours de contribution : [developing.md](developing.md).
 
 
-## Serveur : données et features
+## Serveur : données et modules
 
-Le schéma PostgreSQL est décrit avec Drizzle dans `apps/server/src/db/schema/`, un fichier par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`). Il décrit tout : colonnes `vector` de pgvector, colonnes `tsvector` générées, contraintes CHECK, index partiels et d’expression, avec les noms réels des contraintes. Seuls le déclencheur `recall_music_revision` et la configuration de recherche `recall_simple` restent en SQL dans les migrations. Les requêtes utilisent le constructeur proche du SQL de Drizzle (`orm.select().from(...)`), typé de bout en bout.
+Le schéma PostgreSQL est décrit avec Drizzle dans `apps/server/src/db/schema/`, un fichier par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`). Il décrit tout : colonnes `vector` de pgvector, colonnes `tsvector` générées, contraintes CHECK, index partiels et d’expression, avec les noms réels des contraintes. Les valeurs fixes sont des enums PostgreSQL (`job_kind`, `job_status`, `playlist_status`, `sync_run_status`, `listening_outcome`, `lyrics_status`, `ai_provider`, `user_dj_provider`, `discovery_scope`, `turn_trigger`, `turn_status`, `journal_origin`). Seuls le déclencheur `recall_music_revision` et la configuration de recherche `recall_simple` restent en SQL écrit à la main dans les migrations. Les requêtes utilisent le constructeur proche du SQL de Drizzle (`orm.select().from(...)`), typé de bout en bout ; aucun module n’écrit de SQL brut sur le pool.
 
-Les migrations sont dans `apps/server/drizzle/`. `0000_baseline` reprend à l’identique l’ancien `schema.sql`, idempotent : une base existante l’applique sans changement, une base neuve est créée. L’API applique les migrations en attente au démarrage, dans une transaction, sous verrou (`src/db/migrate.ts`). L’historique est dans le schéma PostgreSQL `drizzle`.
+Les migrations sont dans `apps/server/drizzle/` : `0000_baseline` (ancien schéma idempotent : une base existante l’applique sans changement, une base neuve est créée), puis `0001` à `0003` (passage des valeurs fixes en enums). L’API applique les migrations en attente au démarrage (`src/boot.ts`), dans une transaction, sous un verrou consultatif de session pris sur une connexion dédiée avant la lecture du journal (`src/db/migrate.ts`). L’historique est dans le schéma PostgreSQL `drizzle`.
 
-Le code serveur se range par feature dans `src/features/<feature>/` :
+Le code serveur se range par module dans `src/modules/<module>/` : `auth`, `accounts`, `jobs`, `library`, `history`, `lyrics`, `enrichment`, `discovery`, `search`, `indexing`, `mcp`, `dj` (avec le sous-module `dj/journal/`), `player`, `releases`, `system`. Chaque module suit la même anatomie :
 
-- `routes.ts` : frontière HTTP, déclarée avec `createRoute` (`@hono/zod-openapi`) ; la requête est validée et la documentation OpenAPI générée depuis la même déclaration ;
-- `contracts.ts` : schémas Zod des entrées et des réponses, écrits indépendamment des tables ;
-- `store.ts` : accès à la base avec Drizzle ;
-- modules métier nommés par responsabilité ;
-- `index.ts` : seule entrée publique. Une feature n’importe une autre feature que par son `index.ts` ; `check:architecture` le vérifie.
+- `<module>.controller.ts` : HTTP uniquement, routes déclarées avec `createRoute` (`@hono/zod-openapi`) ; la requête est validée et la documentation OpenAPI générée depuis la même déclaration ;
+- `<module>.service.ts` : règles et orchestration ;
+- `<module>.repository.ts` : accès à la base avec Drizzle, filtré par compte ;
+- `<module>.schemas.ts` : contrats Zod de l’API, écrits indépendamment des tables ;
+- fichiers nommés par responsabilité si besoin (`session.guard.ts`, `google.provider.ts`, `library.jobs.ts`, `lyrics.matching.ts`…) ;
+- `index.ts` : seule entrée publique. Un module n’importe un autre module que par son `index.ts` ; `check:architecture` le vérifie.
 
-`src/db/` contient le schéma, le client et les migrations ; les valeurs fixes (`job_kind`, `job_status`, `playlist_status`, `sync_run_status`, `listening_outcome`, `lyrics_status`) sont des enums PostgreSQL ; `src/shared/` ce qui n’appartient à aucune feature (contexte de requête, conventions OpenAPI). La migration est progressive : `auth` (connexion Google, session, jetons), `accounts` (profil, déconnexion, reprise de la bibliothèque historique), `jobs` (file PostgreSQL et worker), `library` (playlists, synchronisation YouTube, import et export), `history`, `lyrics`, `enrichment` (MusicBrainz) et `discovery` sont faits ; `src/integrations/` contient les clients de services externes (YouTube, LRCLIB, MusicBrainz, SearXNG) ; les autres modules utilisent encore `db.query` sur le même pool jusqu’à leur lot. Le parcours de lecture du code est dans [server-tour.md](server-tour.md).
+`src/integrations/` contient les clients de services externes, sans règle métier : YouTube, LRCLIB, MusicBrainz, SearXNG (Découvrir et informations du DJ) et le client du processus d’inférence. `src/shared/` contient ce qui n’appartient à aucun module (contexte de requête, conventions OpenAPI). `src/config.ts` valide l’environnement au démarrage de chaque processus (API, worker, inférence, migrations) et nomme les variables invalides. `src/app.ts` est seulement la racine de composition ; `src/boot.ts`, `src/worker.ts` et `src/inference.ts` sont les points d’entrée des processus. Le parcours de lecture du code est dans [server-tour.md](server-tour.md).
 
-En production, l’image exécute un bundle JavaScript produit par esbuild (`apps/server/build.mjs`), sans compilation TypeScript au démarrage.
+En production, l’image exécute un bundle JavaScript produit par esbuild (`apps/server/build.mjs`), sans compilation TypeScript au démarrage. La CI démarre cette image sur une base vide (`scripts/smoke-server-image.sh`).
 
-Le serveur est un monolithe modulaire en trois processus (API, worker, inférence), dans une même image. **Une seule instance API** : les baux des tours DJ (`features/dj/lease.ts`) et la limite de débit par jeton (`features/auth/session.ts`) vivent dans la mémoire du processus, et le démarrage clôt tous les tours restés en cours. Avant toute duplication de l’API : baux DJ en PostgreSQL (propriétaire d’instance, échéance, renouvellement, refus d’une écriture tardive), nettoyage limité aux baux expirés et limite de débit partagée. Le worker peut déjà tourner en plusieurs exemplaires : la file utilise `FOR UPDATE SKIP LOCKED` et des baux par tâche.
+Le serveur est un monolithe modulaire en trois processus (API, worker, inférence), dans une même image. **Une seule instance API** : les baux des tours DJ (`modules/dj/dj-lease.ts`) et la limite de débit par jeton (`modules/auth/session.guard.ts`) vivent dans la mémoire du processus, et le démarrage clôt tous les tours restés en cours. Avant toute duplication de l’API : baux DJ en PostgreSQL (propriétaire d’instance, échéance, renouvellement, refus d’une écriture tardive), nettoyage limité aux baux expirés et limite de débit partagée. Le worker peut déjà tourner en plusieurs exemplaires : la file utilise `FOR UPDATE SKIP LOCKED` et des baux par tâche.
 
 ## Organisation interne du DJ serveur
 
 ```text
-apps/server/src/
-├── dj.ts                    # API publique conservée pour tests et consommateurs
-├── dj-settings.ts           # secrets personnels et persistance
-├── dj-voice.ts              # synthèse vocale ; ne charge pas la composition
-├── music-mcp.ts             # outils MCP en lecture seule (recherche, parcours)
-└── features/dj/
-    ├── routes.ts            # HTTP : bail, journal, mémoire, codes d'erreur
-    ├── lease.ts             # un Tour par compte, plafond global, échéance
-    ├── turn.ts              # orchestration : plan → catalogue → recherche → décision
-    │
-    │   # règles pures (vérifiées par check:architecture)
-    ├── contracts.ts         # schémas Zod d'entrée et de sortie du modèle
-    ├── intent.ts            # intention d'une phrase tapée
-    ├── plan.ts              # politique du Tour, suite structurée comprise
-    ├── messages.ts          # messages envoyés au modèle, mémoire comprise
-    ├── memory.ts            # résumé borné du journal de la conversation
-    ├── decision.ts          # sortie du modèle → une seule décision motivée
-    ├── reply.ts             # texte visible, annoncé depuis l'action exécutée
-    ├── composition.ts       # candidats du Tour, choix validé, reprise
-    ├── evidence.ts          # lecture bornée des résultats d'outils
-    ├── retrieval.ts         # indices de recherche indépendants
-    ├── prompt.ts            # règles de dialogue
-    │
-    │   # adaptateurs
-    ├── research.ts          # exécution des outils, preuves accumulées
-    ├── provider.ts          # AI SDK : Gemini et Claude
-    ├── catalog.ts           # titres précis, ordre et propriété
-    ├── quota.ts             # budget quotidien par compte
-    └── journal/             # traces, mémoire, nettoyage au redémarrage
+apps/server/src/modules/dj/
+├── index.ts                 # entrée publique (routes, tour, réglages, clôture au démarrage)
+├── dj.controller.ts         # HTTP : bail, journal, mémoire, codes d'erreur
+├── dj.schemas.ts            # contrats OpenAPI des routes
+├── dj-lease.ts              # un Tour par compte, plafond sur l'instance, échéance
+├── dj-turn.service.ts       # orchestration : plan → catalogue → recherche → décision
+│
+│   # règles pures (vérifiées par check:architecture)
+├── dj.contracts.ts          # schémas Zod d'entrée et de sortie du modèle
+├── plan.ts                  # politique du Tour, suite structurée comprise
+├── messages.ts              # messages envoyés au modèle, mémoire comprise
+├── memory.ts                # résumé borné du journal de la conversation
+├── decision.ts              # sortie du modèle → une seule décision motivée
+├── reply.ts                 # texte visible, annoncé depuis l'action exécutée
+├── composition.ts           # candidats du Tour, choix validé, reprise
+├── evidence.ts              # lecture bornée des résultats d'outils
+├── prompt.ts                # règles de dialogue
+├── errors.ts                # erreurs publiques sans détail fournisseur
+│
+│   # adaptateurs
+├── research.ts              # exécution des outils, preuves accumulées
+├── provider.ts, ai-model.ts # AI SDK : Gemini, Claude, transport compatible
+├── catalog.ts               # titres précis, ordre et propriété
+├── dj-quota.service.ts      # budget quotidien par compte (+ .repository.ts)
+├── dj-settings.service.ts   # clés personnelles chiffrées (+ .repository.ts)
+├── dj-voice.service.ts      # synthèse vocale ; ne charge pas la composition
+├── dj-check.service.ts      # test d'une clé et d'un modèle
+├── dj.config.ts             # configuration du déploiement
+└── journal/                 # traces, mémoire, clôture des tours au redémarrage
 ```
 
-`turn` compose ces modules. `provider` connaît le format fournisseur, mais ne décide pas de la file ; `decision` est le seul endroit où une réponse du modèle devient une issue, et chaque issue porte une raison enregistrée au journal ; `catalog` relit les titres pour le compte authentifié. Le bail vit en mémoire du processus API, unique pour l’instant (voir « Volume et évolution »). Les modules internes n'importent jamais `dj.ts`, afin d'éviter une dépendance circulaire. Les points d'entrée existants restent stables : un rangement de fichiers ne doit pas imposer une migration aux clients.
+L’intention d’une phrase tapée est lue par `@playlist-recall/core/intent` (pur, partagé). Les outils MCP sont dans `modules/mcp/` (`mcp.service.ts`, indices de recherche indépendants dans `mcp.retrieval.ts`) et la correspondance des titres dans `modules/search/music-matching.ts`.
 
-La séparation est progressive. Les domaines recherche, comptes, playlists et paroles gardent leurs modules actuels tant qu'un changement concret ne justifie pas leur déplacement. Ne pas multiplier les dossiers `utils`, services génériques ou interfaces à une seule implémentation sans besoin de test ou d'évolution.
+`dj-turn.service` compose ces modules. `provider` connaît le format fournisseur, mais ne décide pas de la file ; `decision` est le seul endroit où une réponse du modèle devient une issue, et chaque issue porte une raison enregistrée au journal ; `catalog` relit les titres pour le compte authentifié. Le bail vit en mémoire du processus API, unique pour l’instant (voir « Volume et évolution »). Les fichiers internes du DJ n'importent jamais son `index.ts`, afin d'éviter une dépendance circulaire ; `check:architecture` le vérifie. Les routes HTTP restent stables : un rangement de fichiers ne doit pas imposer une migration aux clients.
+
+Ne pas multiplier les dossiers `utils`, services génériques ou interfaces à une seule implémentation sans besoin de test ou d'évolution.
 
 ## Garde-fous automatisés
 
-`npm run check:architecture` lit la syntaxe TypeScript : contrats partagés autonomes, aucun import client dans le serveur, pas d'effet réseau/configuration globale dans les règles pures du DJ, pas de retour des modules internes vers leur façade et pas de `any` dans cette feature. Le contrôle est intégré à `check`, donc à `verify:node` et à la CI. Ses propres tests vérifient notamment les imports dynamiques et les réexports.
+`npm run check:architecture` lit la syntaxe TypeScript : contrats partagés autonomes, aucun import client dans le serveur, pas d'effet réseau/configuration globale dans les règles pures du DJ, modules utilisés par leur `index.ts`, pas de retour des fichiers internes du DJ vers leur `index.ts` et pas de `any` dans le module DJ. Le contrôle est intégré à `check`, donc à `verify:node` et à la CI. Ses propres tests vérifient notamment les imports dynamiques et les réexports.
 
-La CI exécute trois validations distinctes : Node (frontières, types, comportement, build), Mac (compilation et scénarios natifs), PostgreSQL jetable (migrations, isolation des comptes et opérations persistantes). Les réponses tardives, les exclusions, les sélections partielles et les erreurs fournisseur restent des scénarios de comportement ; ne pas les remplacer par des tests qui recopient l'implémentation.
+La CI exécute quatre validations distinctes : Node (frontières, types, comportement, build), Mac (compilation et scénarios natifs), PostgreSQL jetable (migrations, isolation des comptes et opérations persistantes) et image serveur (construction de l’image Docker, démarrage sur une base vide). Les réponses tardives, les exclusions, les sélections partielles et les erreurs fournisseur restent des scénarios de comportement ; ne pas les remplacer par des tests qui recopient l'implémentation.
 
 Ces contrôles ciblent des régressions connues ; ils ne prouvent ni l'absence de tout défaut, ni la qualité musicale d'une réponse réelle. Les changements de lecteur, de voix ou de parcours demandent toujours un essai dans l'app. Le déploiement reste une étape séparée.
 

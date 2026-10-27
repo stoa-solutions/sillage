@@ -1,34 +1,124 @@
 # Visite du serveur
 
-Un parcours de lecture du serveur (`apps/server`), dans l’ordre où une requête le traverse. Il est complété à chaque lot de la refonte : les parties marquées « à venir » utilisent encore l’ancien rangement.
+Guide de lecture du serveur (`apps/server`). Chaque section dit quel fichier ouvrir, dans quel ordre et pourquoi. Les chemins sont relatifs à `apps/server/` sauf mention contraire.
 
 ## Lancer le serveur en local
 
 ```sh
 docker run -d --name sillage-dev-db -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=sillage_dev -p 55432:5432 pgvector/pgvector:0.8.7-pg17
 export DATABASE_URL=postgres://postgres:dev@localhost:55432/sillage_dev
-npm run migrate -w @playlist-recall/server   # crée les tables
-npm run dev:server                           # API sur http://127.0.0.1:3001
+npm run dev:server        # tsx watch src/boot.ts : migre la base, puis API sur http://127.0.0.1:3001
 curl http://127.0.0.1:3001/health
 ```
 
-La connexion Google demande `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` et `PUBLIC_URL` ; sans eux, `/auth/status` répond `{"google":false}`. Pour appeler `/v1/*` sans Google, créer un jeton personnel : `npx tsx apps/server/src/features/auth/token-cli.ts create /tmp/connexion.json` (le fichier contient le jeton, ne pas le committer).
+`npm run dev:server` applique les migrations en attente au démarrage : pas d’étape séparée. `npm run migrate -w @playlist-recall/server` fait la même chose sans démarrer l’API. Le worker et l’inférence se lancent avec `npm run dev:worker -w @playlist-recall/server` et `npm run dev:inference -w @playlist-recall/server`.
 
-`npm run docs:serve` ouvre la documentation OpenAPI locale.
+La connexion Google demande `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` et `PUBLIC_URL` ; sans eux, `/auth/status` répond `{"google":false}`. Pour appeler `/v1/*` sans Google, créer un jeton personnel : `npx tsx apps/server/src/modules/auth/token.cli.ts create /tmp/connexion.json` (le fichier contient le jeton, ne pas le committer). `npm run docs:serve` ouvre la documentation OpenAPI locale.
 
-## 1. Démarrage
+Une variable invalide arrête le processus au démarrage, avec le nom de la variable (`src/config.ts`).
 
-1. `src/boot.ts` : applique les migrations (`db/migrate.ts`), clôt les tours DJ coupés par un redémarrage, puis charge `main.ts`.
-2. `src/main.ts` : crée le serveur HTTP Node avec `createApp(pool)`.
-3. `src/app.ts` : assemble l’application. Lire dans l’ordre : CORS et limite de taille, routes publiques (`/auth`, `/macos`, lecteur, `/health`), puis `app.use("/v1/*", sessionGuard(db))` : tout ce qui suit exige une session. Les features sont montées avec `app.route(...)`.
+## 1. Le trajet d’une requête
 
-## 2. La base de données : `src/db/`
+Ouvrir dans cet ordre :
 
-- `schema/` : une table = un `pgTable(...)`. Commencer par `accounts.ts` (`users`, `tokens`, `oauth_flows`, `oauth_grants`), puis `library.ts`. Les noms en base sont snake_case, les propriétés TypeScript camelCase. Les contraintes portent leur nom réel (`tokens_user_id_fkey`…) pour que les migrations futures les retrouvent.
-- `client.ts` : `openDatabase()` crée un pool PostgreSQL et l’objet Drizzle `orm`. Le type `Database` expose les deux tant que tout n’est pas migré ; le code neuf n’utilise que `db.orm`.
-- `migrate.ts` + `apps/server/drizzle/` : migrations SQL versionnées. `0000_baseline.sql` est l’ancien schéma, idempotent.
+1. `src/boot.ts` : `checkEnvironment("api")`, `migrate(pool)`, `closeInterruptedTurns(pool)` (les tours DJ restés « en cours » ont été coupés par un redémarrage), puis import de `main.ts`.
+2. `src/main.ts` : serveur HTTP Node sur `createApp(pool)` ; `SIGTERM` ferme le serveur puis le pool.
+3. `src/app.ts` : la racine de composition, sans règle métier. CORS, limite de corps (30 Mio), routes publiques (`/auth`, `/health`, lecteur `/dj/player`, `/macos`), puis `app.use("/v1/*", sessionGuard(db))` : tout ce qui est monté ensuite exige une session. Le `onError` final traduit JSON invalide et erreurs de validation en 400, le reste en 500 sans détail.
+4. `src/modules/auth/session.guard.ts` : jeton Bearer → session active → `c.set("userId")` et `installationId` ; 180 requêtes/minute par jeton, en mémoire du processus ; réponses `no-store`.
+5. Le contrôleur du module (`<module>.controller.ts`) : déclare les routes, valide, appelle le service, met en forme la réponse HTTP.
+6. Le service (`<module>.service.ts`) : règles et orchestration.
+7. Le dépôt (`<module>.repository.ts`) : requêtes Drizzle, toujours filtrées par le compte.
 
-Une requête Drizzle se lit comme son SQL :
+Les autres processus partagent `src/db/` et les modules : `src/worker.ts` (file de tâches), `src/inference.ts` + `src/model-process.ts` (vecteurs E5 et SigLIP dans un processus enfant), `src/migrate.ts` (migrations seules).
+
+## 2. Anatomie d’un module : `src/modules/<module>/`
+
+| Fichier | Rôle |
+| --- | --- |
+| `<module>.controller.ts` | HTTP uniquement. Chaque `createRoute(...)` (`@hono/zod-openapi`) déclare méthode, chemin, schémas d’entrée et de réponse, erreurs. Hono valide avant le handler ; la doc OpenAPI vient de la même déclaration. |
+| `<module>.service.ts` | Règles et orchestration, sans HTTP. |
+| `<module>.repository.ts` | Toutes les lectures/écritures en base du module, avec Drizzle. Aucune règle HTTP. |
+| `<module>.schemas.ts` | Contrats de l’API en Zod. Ils ne dérivent pas des tables : renommer une colonne ne change pas le contrat public. |
+| `index.ts` | Seule entrée publique. Un autre module n’importe que ce fichier (`check:architecture`). |
+| autres | Une responsabilité par fichier, nommée par suffixe : `*.guard.ts`, `*.provider.ts`, `*.jobs.ts` (traitements du worker), `*.matching.ts` (correspondances pures), `*.config.ts`, `*.cli.ts`. |
+
+Un module n’a que les fichiers dont il a besoin : `system`, `releases` et `player` n’ont qu’un contrôleur.
+
+Les clients de services externes sont dans `src/integrations/` (sans règle métier) : `youtube/` (client, erreurs, miniatures ; chaque appel compté dans `quota_usage`), `lrclib/`, `musicbrainz/` (cache partagé, une requête par seconde pour tous les workers sous verrou PostgreSQL), `searxng/` (`discovery.ts` pour Découvrir, `information.ts` pour les sources du DJ), `inference/` (client HTTP du processus d’inférence).
+
+`src/shared/` contient ce qui n’appartient à aucun module : `api-environment.ts` (variables de requête posées par l’authentification) et `openapi.ts` (`featureRouter`, `operation()`, `commonErrors`, `jsonBody`…).
+
+## 3. Connexion et compte : `auth`, `accounts`
+
+Ouvrir `modules/auth/auth.controller.ts`, puis `auth.service.ts` et `auth.repository.ts`. Parcours de la connexion Google :
+
+1. Le Mac ouvre `GET /auth/google/start?challenge=…&app_state=…`. La query est validée par `authStartInput` (`auth.schemas.ts`). Le service enregistre l’empreinte du `state` et du cookie ; le navigateur part chez Google.
+2. Google revient sur `/auth/google/callback`. Le flux est supprimé **et** renvoyé en une requête (`DELETE … RETURNING`) : deux retours simultanés ne peuvent pas l’utiliser deux fois. Le compte est créé ou mis à jour (`INSERT … ON CONFLICT (google_sub) DO UPDATE`) avec un code de 90 secondes.
+3. L’app appelle `POST /auth/exchange` avec ce code et son verifier PKCE. Le code n’est consommé que si le challenge correspond ; la session (`tokens`, 90 jours) est créée. Le serveur ne garde que l’empreinte du jeton.
+
+Autres fichiers : `google.provider.ts` (fournisseur d’identité, remplacé par un faux en test), `session.guard.ts` (section 1), `return-page.ts` (page de retour), `token.cli.ts` (jetons personnels en ligne de commande).
+
+`modules/accounts/` : `/v1/me`, `/v1/logout`, `/v1/account/claim-library`. À lire : la reprise de la bibliothèque historique dans `accounts.repository.ts`. La transaction verrouille la ligne du compte historique (`SELECT … FOR UPDATE`) : si deux comptes tentent la reprise en même temps, le second voit la bibliothèque déjà prise. La preuve (un jeton historique valide) vient de `auth` par son `index.ts`.
+
+## 4. File de tâches : `jobs` et le worker
+
+La file vit dans PostgreSQL (table `jobs`) et ne connaît aucune tâche en particulier. Ouvrir `modules/jobs/jobs.repository.ts` :
+
+- `enqueue` : une tâche par clé (`dedupe_key`). Tant qu’une tâche de même clé attend ou tourne, `INSERT … ON CONFLICT` la renvoie. L’index unique partiel `jobs_active_key` porte cette règle.
+- `claim` : prend la prochaine tâche due avec `FOR UPDATE SKIP LOCKED` et lui donne un nouveau `leaseId`. Une tâche dont le bail a expiré est reprise ; le résultat tardif de l’ancien worker est refusé.
+- `finish` : terminée, réessayée plus tard (30 s, 60 s… jusqu’à 6 h) ou en échec après 5 essais.
+
+Puis `jobs.worker.ts` (boucle, registre `{ type → traitement }`, battement qui prolonge le bail) et `src/worker.ts`, qui assemble ce registre : chaque module fournit les traitements des types qu’il possède (`libraryJobHandlers`, `indexingJobHandlers`, `enrichMusic`). Sans clé YouTube, les types YouTube sont exclus. Plusieurs workers peuvent tourner en parallèle.
+
+## 5. Bibliothèque : `library`
+
+- `library.controller.ts` : `/v1/status`, `/v1/playlists` (liste, ajout, retrait, actualisation), `/v1/export`, `/v1/import`.
+- `library.repository.ts` : `followedBy` et `inLibraryOf`, les deux filtres qui isolent les comptes. Une vidéo appartient à la bibliothèque d’un compte seulement si elle est active dans une playlist que ce compte suit. Toute lecture de la bibliothèque passe par eux.
+- `playlist-sync.service.ts` + `playlist-sync.repository.ts` : lit toute la playlist YouTube, puis dans une seule transaction (et seulement si le bail est toujours détenu) crée la génération suivante. Une entrée absente de deux synchronisations consécutives devient inactive.
+- `video-metadata.service.ts` : métadonnées complètes par lots de 50 vidéos, photos de chaînes, puis index.
+- `library.jobs.ts` : traitements enregistrés auprès du worker et synchronisation périodique (`SYNC_ENABLED`).
+
+## 6. Écoute et métadonnées : `history`, `lyrics`, `enrichment`, `discovery`
+
+- `history` : écoutes par lots ; l’identifiant d’événement fourni par le Mac rend un renvoi sans effet (`ON CONFLICT DO NOTHING`). Pagination par curseur `(playedAt, id)`.
+- `lyrics` : `lyrics.service.ts` décide (cache encore frais ? sinon LRCLIB ; en cas d’échec, l’ancien résultat reste) ; `lyrics.matching.ts` choisit l’enregistrement LRCLIB sans réseau. Seules les vidéos de la bibliothèque du compte ont des paroles.
+- `enrichment` : MusicBrainz par lots bornés, seulement pour les comptes inscrits (`MUSICBRAINZ_ACCOUNT_IDS`) ou le pilote. Le résultat n’est publié que si la tâche tient toujours son bail et que la vidéo n’a pas changé. Correspondances pures dans `enrichment.matching.ts`.
+- `discovery` : recherche YouTube (ou SearXNG), « Mes découvertes » et l’accueil Découvrir. `discovery-home.service.ts` reçoit une fonction qui charge l’historique, ce qui le rend testable sans base.
+
+## 7. Recherche, index et MCP : `search`, `indexing`, `mcp`
+
+- `search` : `search.service.ts` classe d’abord les identités exactes (album, noms complets, titres), puis combine lexical et vectoriel ; `search.repository.ts` porte les filtres, dont le compte, toujours appliqués avant le classement ; `search.relevance.ts` (tolérance aux fautes, motifs passés en paramètres SQL) et `music-matching.ts` (correspondance artiste + titre) sont purs.
+- `indexing` : passages E5 et vecteurs SigLIP 2 des miniatures, calculés par le processus d’inférence (`integrations/inference`). Un résultat tardif est ignoré si le texte ou la miniature a changé entre-temps. Pas de routes : seulement `indexing.jobs.ts` pour le worker.
+- `mcp` : `/v1/mcp`, transport MCP stateless authentifié par le même jeton. `mcp.service.ts` déclare les outils en lecture seule (`music_search`, `library_search`, `library_browse`, `seekInformation`…) ; `mcp.retrieval.ts` sépare l’identité cherchée des alternatives ; `mcp.repository.ts` relit les titres du compte. Le DJ utilise ces mêmes outils par une connexion MCP en mémoire.
+
+## 8. Le DJ : `dj` et `dj/journal`
+
+Ouvrir dans cet ordre :
+
+1. `dj.controller.ts` : `/v1/dj/chat`, `/speech`, `/check`, `/settings`, `/settings/reset`, `/status`, `/rules` ; prend le bail du Tour (`dj-lease.ts`, un Tour par compte et un plafond sur l’instance, en mémoire) et monte `journal/`.
+2. `dj-turn.service.ts` : un Tour = plan → catalogue exact → recherche MCP → décision → réponse.
+3. Les règles pures, sans réseau ni base (vérifiées par `check:architecture`) : `dj.contracts.ts`, `plan.ts` (l’intention vient de `@playlist-recall/core/intent`), `prompt.ts`, `messages.ts`, `memory.ts`, `decision.ts`, `reply.ts`, `errors.ts`, `evidence.ts`, `composition.ts`.
+4. Les adaptateurs : `research.ts` (exécution des outils), `provider.ts` et `ai-model.ts` (AI SDK : Gemini, Claude, transport compatible), `catalog.ts` (titres exacts, ordre et propriété), `dj-quota.service.ts` + `dj-quota.repository.ts` (budget quotidien), `dj-settings.service.ts` + `dj-settings.repository.ts` (clés chiffrées par compte), `dj-voice.service.ts`, `dj-check.service.ts`, `dj.config.ts`.
+5. `journal/` : sous-module avec la même anatomie (`journal.controller.ts`, `.service.ts`, `.repository.ts`, `.schemas.ts`), plus `journal.contracts.ts` et `journal.payload.ts`. Voir [dj-journal.md](dj-journal.md).
+
+Les règles de décision sont décrites dans [dj-behavior.md](dj-behavior.md).
+
+## 9. Lecteur, versions Mac, santé : `player`, `releases`, `system`
+
+- `player` : page publique du lecteur YouTube (`/dj/player`, `.js`, `.css`) intégrée par le Mac, servie en HTTPS pour un référent valide. Aucun jeton dans cette page.
+- `releases` : flux Sparkle et archives signées sous `/macos`, depuis `MAC_RELEASES_DIR`.
+- `system` : `/health`, avec l’état de la base et le SHA déployé (`RELEASE_SHA`).
+
+Ces trois modules servent des fichiers tels quels : leurs routes sont documentées par `createRoute` et servies par des handlers simples.
+
+## 10. La base de données : `src/db/` et `drizzle/`
+
+- `src/db/schema/` : un fichier par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`, plus `columns.ts` et `legacy.ts`). Une table = un `pgTable(...)`, noms snake_case en base, camelCase en TypeScript, contraintes avec leur nom réel. Les valeurs fixes sont des enums PostgreSQL (`pgEnum`) : `job_kind`, `job_status`, `playlist_status`, `sync_run_status`, `listening_outcome`, `lyrics_status`, `ai_provider`, `user_dj_provider`, `discovery_scope`, `turn_trigger`, `turn_status`, `journal_origin`.
+- `src/db/client.ts` : `openDatabase()` crée le pool et l’objet Drizzle `orm` ; `pool` est l’instance du processus. Les dépôts reçoivent `db.orm` ou une transaction (`Executor`).
+- `src/db/migrate.ts` : prend un verrou consultatif de session (740071) sur une connexion dédiée **avant** que Drizzle lise son journal, puis applique les migrations en attente dans une transaction. Deux processus qui démarrent ensemble s’attendent.
+- `drizzle/` : `0000_baseline` (ancien schéma idempotent : une base existante l’applique sans changement), `0001` enums des tâches et playlists, `0002` enums d’écoute et de paroles, `0003` enums du DJ. Seuls le déclencheur `recall_music_revision` et la configuration de recherche `recall_simple` restent en SQL écrit à la main.
+
+Une requête Drizzle se lit comme son SQL, et son résultat est typé depuis le schéma :
 
 ```ts
 const [session] = await orm
@@ -38,73 +128,28 @@ const [session] = await orm
 // SELECT id, user_id FROM tokens WHERE hash = $1 AND revoked_at IS NULL
 ```
 
-Le résultat est typé depuis le schéma : `session` vaut `{ id: string; userId: string } | undefined`.
+Ajouter une migration :
 
-## 3. Anatomie d’une feature : `src/features/auth/`
+1. Modifier `src/db/schema/<domaine>.ts`.
+2. `npm run db:generate -w @playlist-recall/server -- --name <sujet>` (aucune base nécessaire : drizzle-kit compare au dernier instantané de `drizzle/meta/`).
+3. Relire le SQL : retirer la qualification `"public"` des types enum (chaque suite de test a son schéma), recréer valeurs par défaut et index partiels autour d’un changement de type, garder `IF EXISTS` sur les suppressions.
+4. Vérifier l’équivalence : le `pg_dump --schema-only` d’une base créée par toutes les migrations et celui d’une base créée par drizzle-kit depuis le schéma seul ne diffèrent que par le déclencheur `recall_music_revision`.
+5. `npm run test:integration` sur une base jetable `*_test`.
 
-Toutes les features suivent ce modèle :
+## 11. La documentation OpenAPI
 
-| Fichier | Rôle |
-| --- | --- |
-| `index.ts` | Ce que les autres parties du serveur ont le droit d’utiliser. |
-| `routes.ts` | Les routes HTTP : chaque `createRoute(...)` déclare méthode, chemin, schémas d’entrée et de réponse, erreurs. Hono valide la requête avant le handler ; la doc OpenAPI vient de la même déclaration. |
-| `contracts.ts` | Schémas Zod de l’API. Ils ne dérivent pas des tables : renommer une colonne ne change pas le contrat public. |
-| `store.ts` | Toutes les lectures/écritures en base de la feature. Aucune règle HTTP ici. |
-| autres | Une responsabilité par fichier : `google.ts` (fournisseur d’identité, remplaçable en test), `session.ts` (middleware Bearer), `return-page.ts` (HTML de retour), `token-cli.ts` (outil en ligne de commande). |
+Elle est générée entièrement depuis les routes. `src/api-docs/openapi.ts` construit l’application sans base et appelle `app.getOpenAPI31Document()`, puis ajoute seulement description, serveurs, tags et sécurité. `npm run docs:generate` écrit la spécification et les artefacts Postman ; `npm run docs:check` (dans `npm run check`) échoue s’ils ne sont plus à jour. `tests/api-docs.test.ts` vérifie que chaque route montée est documentée. Voir [api.md](api.md).
 
-### Parcours : la connexion Google
+## 12. Les règles qui tiennent l’ensemble
 
-1. Le Mac ouvre `GET /auth/google/start?challenge=…&app_state=…` (`routes.ts`, `startRoute`). La query est validée par `authStartInput`. `startFlow` (`store.ts`) enregistre l’empreinte du `state` et du cookie ; le navigateur part chez Google.
-2. Google revient sur `/auth/google/callback`. `consumeFlow` supprime le flux **et** le renvoie en une requête (`DELETE … RETURNING`) : deux retours simultanés ne peuvent pas l’utiliser deux fois. `grantSignIn` crée ou met à jour le compte (`INSERT … ON CONFLICT (google_sub) DO UPDATE`) et un code de 90 secondes.
-3. L’app appelle `POST /auth/exchange` avec ce code et son verifier PKCE. `exchangeGrant` consomme le code seulement si le challenge correspond, puis crée la session (`tokens`, 90 jours). Le serveur ne garde que l’empreinte du jeton.
-4. Ensuite, chaque appel `/v1/*` passe par `sessionGuard` (`session.ts`) : jeton → session active → `c.set("userId")`, limite de 180 requêtes/minute, prolongation glissante.
+- `npm run check:architecture` (`scripts/check-architecture.mjs`, à la racine) : un module n’importe un autre module que par son `index.ts` ; `packages/core` n’importe rien du serveur ; le serveur n’importe rien de `apps/macos` ; les règles pures du DJ n’ont pas d’effet, et le module DJ n’utilise pas `any`.
+- TypeScript très strict (`tsconfig.json`) : `noUncheckedIndexedAccess` (`rows[0]` peut être `undefined`), `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature` (`process.env["X"]`), `noImplicitReturns`… Traiter le cas absent plutôt que forcer le type.
+- Tests : `tests/*.test.ts` sans base (`npm test`) ; `tests/*.integration.test.ts` sur un PostgreSQL jetable dont le nom finit par `_test`, chaque suite dans son propre schéma PostgreSQL migré (`npm run test:integration`). `accounts.integration.test.ts` rejoue le parcours Google avec un faux fournisseur ; `migrations.integration.test.ts` lance deux migrations simultanées.
 
-### `src/features/accounts/`
+## 13. En production
 
-`/v1/me`, `/v1/logout` et `/v1/account/claim-library`. À lire : `claimLegacyLibrary` dans `store.ts`. La transaction verrouille la ligne du compte historique (`SELECT … FOR UPDATE`) : si deux comptes tentent la reprise en même temps, le second attend puis voit la bibliothèque déjà prise. La preuve (un jeton historique valide) est vérifiée par la feature `auth`, passée en paramètre plutôt qu’importée de ses fichiers internes.
+- `build.mjs` produit avec esbuild un bundle JavaScript dans `dist/` (`boot`, `main`, `worker`, `inference`, `model-process`, `migrate`, `modules/auth/token.cli`). Le Dockerfile multi-étapes ne garde que ce bundle, les dépendances de production et `drizzle/`. L’API démarre avec `node dist/boot.js` ; worker et inférence avec `dist/worker.js` et `dist/inference.js`.
+- La CI (job `image`) construit cette image et lance `scripts/smoke-server-image.sh` sur une base vide : migrations au démarrage (deux fois), `/health` avec le SHA, `/v1/me` en 401, worker, inférence et fichiers du bundle.
+- **Une seule API** : baux des Tours DJ et limite de débit sont en mémoire, et le démarrage marque les Tours en cours comme interrompus. Arrêter l’ancienne API avant de démarrer la nouvelle. Le worker peut avoir plusieurs exemplaires.
 
-## 4. La bibliothèque et la file de tâches
-
-### `src/features/jobs/` : une file générique
-
-La file vit dans PostgreSQL (table `jobs`). Elle ne connaît aucune tâche en particulier :
-
-- `store.ts`, `enqueue` : une tâche par clé (`dedupe_key`). Tant qu’une tâche de même clé attend ou tourne, `INSERT … ON CONFLICT` la renvoie au lieu d’en créer une seconde. L’index unique partiel `jobs_active_key` porte cette règle.
-- `store.ts`, `claim` : prend la prochaine tâche due avec `SELECT … FOR UPDATE SKIP LOCKED` (deux workers ne prennent jamais la même) et lui donne un nouveau `leaseId`. Une tâche dont le bail a expiré (worker tué) est reprise ; le résultat tardif de l’ancien worker est refusé, car son `leaseId` ne correspond plus.
-- `store.ts`, `finish` : terminée, réessayée plus tard (30 s, 60 s… jusqu’à 6 h) ou en échec après 5 essais.
-- `runner.ts` : la boucle du worker, avec un registre `{ type de tâche → traitement }` et un battement qui prolonge le bail toutes les 30 s.
-
-`src/worker.ts` assemble ce registre : chaque feature fournit les traitements des types qu’elle possède (`libraryJobHandlers` pour `sync` et `enrich`).
-
-### `src/features/library/`
-
-- `routes.ts` : `/v1/status`, `/v1/playlists` (liste, ajout, retrait, actualisation), `/v1/export`, `/v1/import`.
-- `store.ts` : `followedBy` et `inLibraryOf`, les deux filtres qui isolent les comptes : une vidéo appartient à la bibliothèque d’un compte seulement si elle est active dans une playlist que ce compte suit. Toute lecture de la bibliothèque passe par eux.
-- `sync.ts`, `syncPlaylist` : lit toute la playlist YouTube, puis dans une seule transaction (et seulement si le bail est toujours détenu) crée la génération suivante. Une entrée absente de deux synchronisations consécutives devient inactive.
-- `enrich.ts` : métadonnées complètes par lots de 50 vidéos, photos de chaînes.
-- `jobs.ts` : les traitements enregistrés auprès du worker et la synchronisation périodique.
-
-### `src/integrations/`
-
-Les clients de services externes, sans règle métier. `youtube/` compte chaque appel dans `quota_usage` et s’arrête avant le quota journalier de Google.
-
-### `src/features/history/`, `lyrics/`, `enrichment/`, `discovery/`
-
-- `history` : enregistre les écoutes par lots ; l’identifiant d’événement fourni par le Mac rend un renvoi sans effet (`ON CONFLICT DO NOTHING`). Pagination par curseur `(playedAt, id)`.
-- `lyrics` : `lyrics.ts` décide (cache encore frais ? sinon LRCLIB, et en cas d’échec on garde l’ancien résultat) ; `matching.ts` choisit l’enregistrement LRCLIB sans réseau ; `store.ts` lit et écrit. Seules les vidéos de la bibliothèque du compte ont des paroles.
-- `enrichment` : l’enrichissement MusicBrainz, par lots bornés et seulement pour les comptes inscrits (`MUSICBRAINZ_ACCOUNT_IDS`). Le résultat n’est publié que si la tâche tient toujours son bail et que la vidéo n’a pas changé entre-temps.
-- `discovery` : recherche YouTube (ou SearXNG), « Mes découvertes » et l’accueil Découvrir. `home.ts` reçoit une fonction qui charge l’historique, ce qui le rend testable sans base.
-
-### `src/integrations/`
-
-`youtube/`, `lrclib/`, `musicbrainz/` (cache partagé et une requête par seconde pour tous les workers, sous verrou PostgreSQL), `searxng/` (recherche privée et sources d’information du DJ).
-
-## 5. Les règles qui tiennent l’ensemble
-
-- `npm run check:architecture` (`scripts/check-architecture.mjs`) : une feature n’importe une autre feature que par son `index.ts` ; le cœur partagé n’importe rien du serveur ; les règles pures du DJ n’ont pas d’effet.
-- TypeScript très strict (`apps/server/tsconfig.json`) : `rows[0]` peut être `undefined`, une propriété optionnelle ne reçoit pas `undefined` explicitement, `process.env["X"]`.
-- Tests : `apps/server/tests/*.test.ts` (sans base) et `*.integration.test.ts` (PostgreSQL jetable, un schéma par suite). `accounts.integration.test.ts` rejoue tout le parcours Google avec un faux fournisseur.
-
-## 6. À venir
-
-Recherche et indexation, outils MCP, DJ : encore dans `src/*.ts` et `src/features/dj/`, en SQL via `db.query`. Chaque lot les déplace dans ce modèle et complète cette page.
+Déploiement et première installation : [operations.md](operations.md).
