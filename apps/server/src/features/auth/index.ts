@@ -1,6 +1,6 @@
 export { authRoutes, pkceChallenge } from "./routes.ts";
 export { sessionGuard } from "./session.ts";
-export { revokeSession } from "./store.ts";
+export { holdsLiveToken, revokeSession } from "./store.ts";
 export { authExchangeInput, authStartInput } from "./contracts.ts";
 export {
   googleProvider,

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import type { Video, LibraryImport } from "@playlist-recall/core/types";
 import { documentText, hash } from "./content.ts";
-import { transaction, type Database } from "./db.ts";
+import { transaction, type Database } from "./db/index.ts";
 import { enqueue, type Job } from "./queue.ts";
 import { TEXT_KEY, VISION_KEY } from "./indexing.ts";
 import { YouTube } from "./youtube.ts";

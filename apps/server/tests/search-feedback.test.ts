@@ -8,7 +8,7 @@ import { SearxngError } from "../src/searxng.ts";
 import { YouTubeError, youtubeError } from "../src/youtube-errors.ts";
 import { readToolEvidence } from "../src/features/dj/evidence.ts";
 import { noSelectionReply } from "../src/features/dj/reply.ts";
-import type { Database } from "../src/db.ts";
+import type { Database } from "../src/db/index.ts";
 
 const now = Date.parse("2026-10-25T20:00:00Z");
 it("explains the server quota, planned reset and distinction from the personal Gemini key", () => {

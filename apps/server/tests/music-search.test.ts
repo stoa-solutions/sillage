@@ -7,7 +7,7 @@ vi.mock("../src/discovery.ts", async (importOriginal) => ({
   discoveryFor: () => ({ search: mocks.youtube }),
 }));
 import { connectMusicMcp } from "../src/music-mcp.ts";
-import type { Database } from "../src/db.ts";
+import type { Database } from "../src/db/index.ts";
 
 const libraryTrack = {
   id: "library0001",

@@ -2,8 +2,7 @@ import { beforeAll, beforeEach, afterAll, it, expect } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
-import { migrate } from "../src/migrate.ts";
-import { openDatabase } from "../src/db.ts";
+import { migrate, openDatabase } from "../src/db/index.ts";
 import { createApp } from "../src/app.ts";
 import { hash } from "../src/content.ts";
 import { provisionDeveloperToken } from "../src/api-docs/developer-provision.ts";
@@ -48,7 +47,7 @@ function authorize(email = "alice@example.test", tokenHash = hash(credential)) {
 }
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
-  await migrate({ url, schema });
+  await migrate(db);
 });
 beforeEach(async () => {
   await db.query("TRUNCATE users,tokens,playlists CASCADE");

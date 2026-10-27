@@ -8,7 +8,7 @@ vi.mock("../src/music-mcp.ts", () => ({
 import { catalogSelection } from "../src/features/dj/catalog.ts";
 import { planTurn } from "../src/features/dj/plan.ts";
 import { djInput } from "../src/features/dj/contracts.ts";
-import type { Database } from "../src/db.ts";
+import type { Database } from "../src/db/index.ts";
 
 const db = {} as Database;
 const track = { id: "navajo00001", title: "Masego - Navajo", channel: "Masego" };

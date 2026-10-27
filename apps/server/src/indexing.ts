@@ -1,6 +1,6 @@
 import { MODEL_KEY } from "@playlist-recall/core/model";
 import { hash, documentText, vectorSql } from "./content.ts";
-import { transaction, type Database } from "./db.ts";
+import { transaction, type Database } from "./db/index.ts";
 import { videoFromRow } from "./library.ts";
 import { infer } from "./inference-client.ts";
 export const TEXT_KEY = `${MODEL_KEY}:chunks-v2`;

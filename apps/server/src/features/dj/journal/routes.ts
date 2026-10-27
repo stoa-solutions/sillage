@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import type { Database } from "../../../db.ts";
+import type { Database } from "../../../db/index.ts";
 import type { ApiEnvironment } from "../../../shared/api-environment.ts";
 import { journalPage, journalEventPage, journalUpload } from "./contracts.ts";
 import { uploadJournalEvents } from "./store.ts";

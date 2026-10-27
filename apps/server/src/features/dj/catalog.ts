@@ -1,4 +1,4 @@
-import type { Database } from "../../db.ts";
+import type { Database } from "../../db/index.ts";
 import { musicTracks, requestedTracks } from "../../music-mcp.ts";
 import type { DjInput } from "./contracts.ts";
 import type { TurnPlan } from "./plan.ts";

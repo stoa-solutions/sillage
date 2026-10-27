@@ -1,5 +1,5 @@
 import { serve } from "@hono/node-server";
-import { pool } from "./db.ts";
+import { pool } from "./db/index.ts";
 import { createApp } from "./app.ts";
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required");
 const server = serve({

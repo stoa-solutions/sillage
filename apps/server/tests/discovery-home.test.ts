@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { discoveryHome, discoverySeeds } from "../src/discovery-home.ts";
-import type { Database } from "../src/db.ts";
+import type { Database } from "../src/db/index.ts";
 const history = [
   {
     video_id: "played00001",

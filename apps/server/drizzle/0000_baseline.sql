@@ -1,11 +1,9 @@
--- Baseline: the schema built by the pre-Prisma migration script (src/schema.sql), unchanged.
--- Every statement is idempotent, so a database created before Prisma records this migration
--- without any change; a new database is created from scratch. Later migrations come from
--- `prisma migrate dev`.
-BEGIN;
+-- Baseline: the schema built by the pre-Drizzle migration script (src/schema.sql), unchanged.
+-- Every statement is idempotent: a database created before Drizzle runs it without change and
+-- records it; a new database is created from scratch. src/db/schema describes the same tables
+-- (checked with pg_dump), except the music revision trigger below, which Drizzle cannot model.
+-- Later migrations come from `npm run db:generate`.
 SELECT pg_advisory_xact_lock(740071);
--- Prisma sets the search path to the target schema alone; pgvector and unaccent live in public.
-SELECT set_config('search_path', current_schema() || ',public', true);
 CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
 DO $$ BEGIN
@@ -226,5 +224,3 @@ DO $$ BEGIN
       CHECK(status IN ('running','completed','error','canceled','busy','superseded','interrupted'));
   END IF;
 END $$;
-
-COMMIT;

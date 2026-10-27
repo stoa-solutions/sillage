@@ -1,5 +1,5 @@
 import { scheduleMusicEnrichment, enrichMusic } from "./musicbrainz/enrichment.ts";
-import { pool } from "./db.ts";
+import { pool } from "./db/index.ts";
 import { claim, finish, schedule } from "./queue.ts";
 import { syncPlaylist, enrichVideos } from "./library.ts";
 import { indexText, indexImage } from "./indexing.ts";

@@ -2,7 +2,7 @@ import { discoveryHome } from "./discovery-home.ts";
 import { Hono } from "hono";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
-import { transaction, type Database } from "./db.ts";
+import { transaction, type Database } from "./db/index.ts";
 import { ownsPlaylist } from "./features/accounts/index.ts";
 import { upsertVideo } from "./library.ts";
 import { documentText, hash } from "./content.ts";

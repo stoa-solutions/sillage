@@ -2,8 +2,7 @@ import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { migrate } from "../src/migrate.ts";
-import { openDatabase } from "../src/db.ts";
+import { migrate, openDatabase } from "../src/db/index.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import {
@@ -65,7 +64,7 @@ const lyrics = async (id: string, token = tokenA) => {
 };
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
-  await migrate({ url, schema });
+  await migrate(db);
 });
 beforeEach(async () => {
   queries.length = 0;

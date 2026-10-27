@@ -1,4 +1,4 @@
-import type { Database } from "../db.ts";
+import type { Database } from "../db/index.ts";
 import { ownsPlaylist } from "../features/accounts/index.ts";
 
 /** Explicit account opt-in; never enables the public catalog globally. */

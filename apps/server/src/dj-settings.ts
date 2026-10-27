@@ -6,7 +6,7 @@ import {
   AI_PROVIDER_IDS,
   type AiProvider,
 } from "@playlist-recall/core/dj";
-import { transaction, type Database } from "./db.ts";
+import { transaction, type Database } from "./db/index.ts";
 import { djConfig, providerBaseUrl, type DjConfig } from "./dj-config.ts";
 
 export const djSettingsInput = z

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Database } from "./db.ts";
+import type { Database } from "./db/index.ts";
 import type { PoolClient } from "pg";
 export interface Job {
   id: string;

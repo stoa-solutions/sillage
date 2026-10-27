@@ -2,8 +2,7 @@ import { LEGACY_USER } from "../src/features/accounts/index.ts";
 import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
-import { migrate } from "../src/migrate.ts";
-import { openDatabase } from "../src/db.ts";
+import { migrate, openDatabase } from "../src/db/index.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import { enqueue, claim, finish, schedule } from "../src/queue.ts";
@@ -55,7 +54,7 @@ const fixture: LibraryImport = {
     },
   ],
 };
-beforeAll(() => migrate({ url }));
+beforeAll(() => migrate(db));
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();

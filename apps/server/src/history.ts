@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import type { Database } from "./db.ts";
+import type { Database } from "./db/index.ts";
 import type { ApiEnvironment } from "./shared/api-environment.ts";
 
 // Listening history: what each account played and how it ended. The Mac sends events in

@@ -1,4 +1,4 @@
-import type { Database } from "./db.ts";
+import type { Database } from "./db/index.ts";
 import type { Discovery } from "./discovery.ts";
 import { normalizeMusic } from "./music-matching.ts";
 import type { MusicMetadata } from "@playlist-recall/core/types";

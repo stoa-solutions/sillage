@@ -1,5 +1,12 @@
-import type { Prisma } from "../../db.ts";
-import { LEGACY_USER } from "./legacy.ts";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
+import {
+  LEGACY_USER_ID,
+  listeningHistory,
+  tokens,
+  userPlaylists,
+  users,
+  type Orm,
+} from "../../db/index.ts";
 
 export interface AccountProfile {
   id: string;
@@ -10,74 +17,67 @@ export interface AccountProfile {
 }
 
 export async function accountProfile(
-  prisma: Prisma,
+  orm: Orm,
   userId: string,
 ): Promise<AccountProfile | null> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, email: true, name: true, googleSub: true },
-  });
-  return user && {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    google: user.googleSub !== null,
-  };
+  const [profile] = await orm
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      google: sql<boolean>`${users.googleSub} IS NOT NULL`,
+    })
+    .from(users)
+    .where(eq(users.id, userId));
+  return profile ?? null;
 }
-
-class ClaimRefused extends Error {}
 
 /**
  * Moves the historical library to a Google account, once: playlists, listening history and the
- * old tokens. Requires a live historical token as proof of ownership. All or nothing.
+ * old tokens. `proven` tells whether the caller holds a live historical token. All or nothing.
  */
 export async function claimLegacyLibrary(
-  prisma: Prisma,
+  orm: Orm,
   userId: string,
-  legacyTokenHash: string,
+  proven: (orm: Orm) => Promise<boolean>,
 ): Promise<boolean> {
-  try {
-    return await prisma.$transaction(async (tx) => {
-      const google = await tx.user.count({
-        where: { id: userId, googleSub: { not: null } },
-      });
-      if (!google) return false;
-      // Taking the claim locks the historical row: a concurrent claim waits, then finds it taken.
-      const claim = await tx.user.updateMany({
-        where: { id: LEGACY_USER, legacyClaimedBy: null },
-        data: { legacyClaimedBy: userId },
-      });
-      if (!claim.count) return false;
-      const proof = await tx.sessionToken.count({
-        where: {
-          hash: legacyTokenHash,
-          userId: LEGACY_USER,
-          revokedAt: null,
-          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-        },
-      });
-      if (!proof) throw new ClaimRefused();
-      const playlists = await tx.userPlaylist.findMany({
-        where: { userId: LEGACY_USER },
-        select: { playlistId: true },
-      });
-      await tx.userPlaylist.createMany({
-        data: playlists.map(({ playlistId }) => ({ userId, playlistId })),
-        skipDuplicates: true,
-      });
-      await tx.userPlaylist.deleteMany({ where: { userId: LEGACY_USER } });
-      await tx.listeningEvent.updateMany({
-        where: { userId: LEGACY_USER },
-        data: { userId },
-      });
-      await tx.sessionToken.updateMany({
-        where: { userId: LEGACY_USER },
-        data: { userId },
-      });
-      return true;
-    });
-  } catch (error) {
-    if (error instanceof ClaimRefused) return false;
-    throw error;
-  }
+  return orm.transaction(async (tx) => {
+    const [target] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.id, userId), isNotNull(users.googleSub)));
+    if (!target) return false;
+    // The row lock makes a second, concurrent claim wait, then see the library taken.
+    const [legacy] = await tx
+      .select({ claimedBy: users.legacyClaimedBy })
+      .from(users)
+      .where(eq(users.id, LEGACY_USER_ID))
+      .for("update");
+    if (!legacy || legacy.claimedBy || !(await proven(tx))) return false;
+    const owned = await tx
+      .select({ playlistId: userPlaylists.playlistId })
+      .from(userPlaylists)
+      .where(eq(userPlaylists.userId, LEGACY_USER_ID));
+    if (owned.length)
+      await tx
+        .insert(userPlaylists)
+        .values(owned.map(({ playlistId }) => ({ userId, playlistId })))
+        .onConflictDoNothing();
+    await tx
+      .delete(userPlaylists)
+      .where(eq(userPlaylists.userId, LEGACY_USER_ID));
+    await tx
+      .update(listeningHistory)
+      .set({ userId })
+      .where(eq(listeningHistory.userId, LEGACY_USER_ID));
+    await tx
+      .update(tokens)
+      .set({ userId })
+      .where(eq(tokens.userId, LEGACY_USER_ID));
+    await tx
+      .update(users)
+      .set({ legacyClaimedBy: userId })
+      .where(eq(users.id, LEGACY_USER_ID));
+    return true;
+  });
 }

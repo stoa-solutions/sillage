@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
-import { pool } from "../../db.ts";
+import { eq } from "drizzle-orm";
+import { pool, tokens } from "../../db/index.ts";
 import { hash } from "../../content.ts";
 
 /**
@@ -12,12 +13,10 @@ try {
   if (action === "create" && argument) {
     const token = randomBytes(32).toString("base64url");
     const id = randomUUID();
-    await pool.prisma.sessionToken.create({
-      data: {
-        id,
-        name: process.env.TOKEN_NAME ?? "Extension personnelle",
-        hash: hash(token),
-      },
+    await pool.orm.insert(tokens).values({
+      id,
+      name: process.env.TOKEN_NAME ?? "Extension personnelle",
+      hash: hash(token),
     });
     await writeFile(
       argument,
@@ -33,16 +32,16 @@ try {
     );
     console.log(`Jeton créé : ${id}. Connexion écrite dans le fichier privé.`);
   } else if (action === "revoke" && argument) {
-    const { count } = await pool.prisma.sessionToken.updateMany({
-      where: { id: argument },
-      data: { revokedAt: new Date() },
-    });
-    console.log(`${count} jeton révoqué.`);
+    const revoked = await pool.orm
+      .update(tokens)
+      .set({ revokedAt: new Date() })
+      .where(eq(tokens.id, argument))
+      .returning({ id: tokens.id });
+    console.log(`${revoked.length} jeton révoqué.`);
   } else
     throw new Error(
       "Usage: token-cli.ts create /chemin/prive.json | revoke UUID",
     );
 } finally {
-  await pool.prisma.$disconnect();
   await pool.end();
 }

@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from "hono";
 import { hash } from "../../content.ts";
-import type { Database } from "../../db.ts";
+import type { Database } from "../../db/index.ts";
 import type { ApiEnvironment } from "../../shared/api-environment.ts";
 import { activeSession, extendSession } from "./store.ts";
 
@@ -17,7 +17,7 @@ export function sessionGuard(db: Database): MiddlewareHandler<ApiEnvironment> {
     if (!authorization?.startsWith("Bearer ") || authorization.length > 512)
       return c.json({ error: "Connexion requise." }, 401);
     const tokenHash = hash(authorization.slice(7));
-    const session = await activeSession(db.prisma, tokenHash);
+    const session = await activeSession(db.orm, tokenHash);
     if (!session)
       return c.json({ error: "Connexion expirée ou jeton invalide." }, 401);
     const minute = Math.floor(Date.now() / 60000);
@@ -37,7 +37,7 @@ export function sessionGuard(db: Database): MiddlewareHandler<ApiEnvironment> {
     c.header("Cache-Control", "no-store");
     c.set("installationId", session.id);
     c.set("userId", session.userId);
-    await extendSession(db.prisma, session.id);
+    await extendSession(db.orm, session.id);
     await next();
   };
 }

@@ -13,7 +13,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
-import type { Database } from "./db.ts";
+import type { Database } from "./db/index.ts";
 import { search } from "./search.ts";
 import { resolveExactRequest } from "./music-matching.ts";
 

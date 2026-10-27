@@ -1,5 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
-import { transaction, type Database } from "../db.ts";
+import { transaction, type Database } from "../db/index.ts";
 
 /** Shared response cache and rate gate: all workers together stay below one request/second. */
 export class MusicBrainzClient {

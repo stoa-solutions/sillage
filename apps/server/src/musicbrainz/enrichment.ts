@@ -1,6 +1,6 @@
 import type { MusicMetadata } from "@playlist-recall/core/types";
 import { hash } from "../content.ts";
-import { transaction, type Database } from "../db.ts";
+import { transaction, type Database } from "../db/index.ts";
 import { enrichmentAccounts, enrichmentBatchSize } from "./rollout.ts";
 import { enqueue, type Job } from "../queue.ts";
 import { MusicBrainzClient } from "./client.ts";

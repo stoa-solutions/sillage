@@ -3,7 +3,7 @@ import { createApp } from "../src/app.ts";
 import { createDocsApp } from "../src/api-docs/app.ts";
 import { openapi } from "../src/api-docs/openapi.ts";
 import { artifacts, postmanCollection } from "../src/api-docs/artifacts.ts";
-import type { Database } from "../src/db.ts";
+import type { Database } from "../src/db/index.ts";
 
 const database = {
   query: vi.fn(async () => ({ rows: [], rowCount: 0 })),

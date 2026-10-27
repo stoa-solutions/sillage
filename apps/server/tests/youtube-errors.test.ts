@@ -6,7 +6,7 @@ import {
   YouTubeError,
 } from "../src/youtube-errors.ts";
 import { Discovery } from "../src/discovery.ts";
-import type { Database } from "../src/db.ts";
+import type { Database } from "../src/db/index.ts";
 
 const daily = {
   error: {

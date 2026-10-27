@@ -2,7 +2,7 @@ import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { AI_PROVIDER_IDS } from "@playlist-recall/core/dj";
 import type { ApiEnvironment } from "../../shared/api-environment.ts";
-import type { Database } from "../../db.ts";
+import type { Database } from "../../db/index.ts";
 import { checkDj } from "../../dj-check.ts";
 import { providerBaseUrl } from "../../dj-config.ts";
 import {

@@ -1,6 +1,6 @@
 import type { DjConfig } from "./dj-config.ts";
 import { djSpeech } from "./dj-voice.ts";
-import type { Database } from "./db.ts";
+import type { Database } from "./db/index.ts";
 import { checkModel, providerHttpStatus } from "./features/dj/ai-model.ts";
 export async function checkDj(
   db: Database,

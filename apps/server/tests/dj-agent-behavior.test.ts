@@ -17,7 +17,7 @@ vi.mock("../src/discovery.ts", async (importOriginal) => ({
   discoveryFor: () => ({ search: boundaries.youtube }),
 }));
 import { djInput, djTurn } from "../src/dj.ts";
-import type { Database } from "../src/db.ts";
+import type { Database } from "../src/db/index.ts";
 
 const config = {
   configured: true,

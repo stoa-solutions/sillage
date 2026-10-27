@@ -2,7 +2,7 @@ import { LEGACY_USER } from "./features/accounts/index.ts";
 import { djConfig, type DjConfig } from "./dj-config.ts";
 import { DjUnavailable } from "./features/dj/errors.ts";
 import { reserveDj } from "./features/dj/quota.ts";
-import type { Database } from "./db.ts";
+import type { Database } from "./db/index.ts";
 export function djVoiceConfigured(config: DjConfig = djConfig()) {
   return (
     config.configured &&

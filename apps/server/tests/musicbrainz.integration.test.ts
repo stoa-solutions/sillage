@@ -1,8 +1,7 @@
 import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
-import { migrate } from "../src/migrate.ts";
-import { openDatabase } from "../src/db.ts";
+import { migrate, openDatabase } from "../src/db/index.ts";
 import { upsertVideo, videoFromRow } from "../src/library.ts";
 import { enrichmentProgress } from "../src/musicbrainz/rollout.ts";
 import { createApp } from "../src/app.ts";
@@ -72,7 +71,7 @@ const get = vi.fn(async (path: string) =>
 const provider = { get } as unknown as MusicBrainzClient;
 beforeAll(async () => {
   await admin.query("CREATE SCHEMA musicbrainz_test");
-  await migrate({ url, schema: "musicbrainz_test" });
+  await migrate(db);
 });
 beforeEach(async () => {
   vi.clearAllMocks();

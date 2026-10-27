@@ -1,7 +1,7 @@
 import { LEGACY_USER, ownsPlaylist } from "./features/accounts/index.ts";
 import { parseQuery, tokenize } from "@playlist-recall/core/search";
 import type { SearchResult } from "@playlist-recall/core/types";
-import type { Database } from "./db.ts";
+import type { Database } from "./db/index.ts";
 import { infer } from "./inference-client.ts";
 import { TEXT_KEY, VISION_KEY } from "./indexing.ts";
 import { videoFromRow } from "./library.ts";

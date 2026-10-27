@@ -20,7 +20,7 @@ vi.mock("../src/music-mcp.ts", () => ({
   }),
 }));
 import { djInput, djTurn } from "../src/dj.ts";
-import type { Database } from "../src/db.ts";
+import type { Database } from "../src/db/index.ts";
 const db = { query: async () => ({ rowCount: 1 }) } as unknown as Database;
 const config = {
   configured: true,

@@ -1,5 +1,5 @@
 import { LEGACY_USER } from "../accounts/index.ts";
-import type { Database } from "../../db.ts";
+import type { Database } from "../../db/index.ts";
 import { DjUnavailable } from "./errors.ts";
 
 export function djDailyBudget(userId: string, now = Date.now()): number | null {

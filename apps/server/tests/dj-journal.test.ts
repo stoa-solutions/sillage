@@ -11,7 +11,7 @@ import {
 import { completeTurn } from "../src/features/dj/provider.ts";
 import { djInput } from "../src/features/dj/contracts.ts";
 import type { TraceEvent } from "../src/features/dj/journal/contracts.ts";
-import type { Database } from "../src/db.ts";
+import type { Database } from "../src/db/index.ts";
 
 afterEach(() => vi.restoreAllMocks());
 it("preserves every message, name and tool argument verbatim without anonymization", () => {

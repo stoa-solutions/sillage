@@ -1,5 +1,5 @@
 import { ownsPlaylist } from "./features/accounts/index.ts";
-import type { Database } from "./db.ts";
+import type { Database } from "./db/index.ts";
 
 /** One LRCLIB record, as returned by /api/search. */
 export interface LyricsRecord {

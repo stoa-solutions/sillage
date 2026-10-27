@@ -19,7 +19,7 @@ import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import { parsePlaylistId } from "./content.ts";
-import { transaction, type Database } from "./db.ts";
+import { transaction, type Database } from "./db/index.ts";
 import { enqueue } from "./queue.ts";
 import { search } from "./search.ts";
 import { librarySearchInput } from "./library-contracts.ts";

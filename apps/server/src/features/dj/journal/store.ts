@@ -1,5 +1,5 @@
 import { randomUUID, createHash } from "node:crypto";
-import { transaction, type Database } from "../../../db.ts";
+import { transaction, type Database } from "../../../db/index.ts";
 import { djSystemPrompt } from "../prompt.ts";
 import { planTurn } from "../plan.ts";
 import type { DjInput } from "../contracts.ts";

@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
-import { migrate } from "../src/migrate.ts";
-import { openDatabase } from "../src/db.ts";
+import { migrate, openDatabase } from "../src/db/index.ts";
 import { search } from "../src/search.ts";
 import { infer } from "../src/inference-client.ts";
 
@@ -17,7 +16,7 @@ const id = "TRwTWnarBtE";
 const input = (query: string, extra = {}) => ({ query, mode: "text" as const, sort: "relevance" as const, offset: 0, limit: 20, availableOnly: true, ...extra });
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
-  await migrate({ url, schema });
+  await migrate(db);
   await db.query("INSERT INTO users(id) VALUES($1),($2)", [alice, bob]);
   await db.query("INSERT INTO playlists(id,title,source_url) VALUES('PLtypoAlice','Test','https://youtube.com/playlist?list=PLtypoAlice')");
   await db.query("INSERT INTO user_playlists(user_id,playlist_id) VALUES($1,'PLtypoAlice')", [alice]);

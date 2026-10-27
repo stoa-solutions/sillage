@@ -1,8 +1,7 @@
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
-import { migrate } from "../src/migrate.ts";
-import { openDatabase } from "../src/db.ts";
+import { migrate, openDatabase } from "../src/db/index.ts";
 import { replayBaseline } from "./support/database.ts";
 import { createApp } from "../src/app.ts";
 import { hash } from "../src/content.ts";
@@ -31,7 +30,7 @@ const request = (path: string, body?: unknown, token = tokenA) =>
 
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
-  await migrate({ url, schema });
+  await migrate(db);
 });
 beforeEach(async () => {
   vi.stubEnv("DJ_SETTINGS_ENCRYPTION_KEY", "42".repeat(32));

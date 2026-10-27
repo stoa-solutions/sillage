@@ -1,4 +1,4 @@
-import type { Database } from "./db.ts";
+import type { Database } from "./db/index.ts";
 import { isoDuration } from "./content.ts";
 import type { Video } from "@playlist-recall/core/types";
 export interface PlaylistEntry {

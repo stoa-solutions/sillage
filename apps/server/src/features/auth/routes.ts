@@ -3,7 +3,7 @@ import { bodyLimit } from "hono/body-limit";
 import { Hono } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { hash } from "../../content.ts";
-import type { Database } from "../../db.ts";
+import type { Database } from "../../db/index.ts";
 import { authExchangeInput, authStartInput } from "./contracts.ts";
 import { googleProvider, type IdentityProvider } from "./google.ts";
 import { googleReturnPage } from "./return-page.ts";
@@ -53,7 +53,7 @@ export function authRoutes(db: Database, provider = googleProvider()) {
     const state = opaque(),
       cookie = opaque(),
       nonce = opaque();
-    await startFlow(db.prisma, {
+    await startFlow(db.orm, {
       stateHash: hash(state),
       cookieHash: hash(cookie),
       challenge: input.challenge,
@@ -86,13 +86,13 @@ export function authRoutes(db: Database, provider = googleProvider()) {
         "Connexion annulée. Retourne dans Sillage pour réessayer.",
         400,
       );
-    const flow = await consumeFlow(db.prisma, hash(state), hash(cookie));
+    const flow = await consumeFlow(db.orm, hash(state), hash(cookie));
     if (!flow)
       return c.text("Cette connexion a expiré. Recommence depuis Sillage.", 400);
     try {
       const identity = await provider.verify(code, flow.nonce);
       const grant = opaque();
-      await grantSignIn(db.prisma, identity, {
+      await grantSignIn(db.orm, identity, {
         codeHash: hash(grant),
         challenge: flow.challenge,
       });
@@ -119,7 +119,7 @@ export function authRoutes(db: Database, provider = googleProvider()) {
     const { code, verifier } = authExchangeInput.parse(await c.req.json());
     const token = opaque();
     const user = await exchangeGrant(
-      db.prisma,
+      db.orm,
       { codeHash: hash(code), challenge: pkceChallenge(verifier) },
       hash(token),
     );
