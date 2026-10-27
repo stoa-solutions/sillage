@@ -9,8 +9,8 @@ import {
   beginJournal,
   closeInterruptedTurns,
   loadConversationMemory,
-} from "../src/features/dj/journal/store.ts";
-import { djInput } from "../src/features/dj/contracts.ts";
+} from "../src/modules/dj/journal/store.ts";
+import { djInput } from "../src/modules/dj/contracts.ts";
 const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");

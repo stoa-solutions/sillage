@@ -1,16 +1,16 @@
 import { it, expect, vi, afterEach } from "vitest";
-import { journalPayload } from "../src/features/dj/journal/payload.ts";
+import { journalPayload } from "../src/modules/dj/journal/payload.ts";
 import {
   journalUpload,
   journalEventPage,
-} from "../src/features/dj/journal/contracts.ts";
+} from "../src/modules/dj/journal/contracts.ts";
 import {
   beginJournal,
   publicJournalError,
-} from "../src/features/dj/journal/store.ts";
-import { completeTurn } from "../src/features/dj/provider.ts";
-import { djInput } from "../src/features/dj/contracts.ts";
-import type { TraceEvent } from "../src/features/dj/journal/contracts.ts";
+} from "../src/modules/dj/journal/store.ts";
+import { completeTurn } from "../src/modules/dj/provider.ts";
+import { djInput } from "../src/modules/dj/contracts.ts";
+import type { TraceEvent } from "../src/modules/dj/journal/contracts.ts";
 import type { Database } from "../src/db/index.ts";
 
 afterEach(() => vi.restoreAllMocks());

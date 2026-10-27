@@ -3,7 +3,7 @@ import {
   completeTurn,
   MAX_ROUNDS,
   type ChatMessage,
-} from "../src/features/dj/provider.ts";
+} from "../src/modules/dj/provider.ts";
 import { DjUnavailable } from "../src/dj.ts";
 import { required } from "./support/required.ts";
 

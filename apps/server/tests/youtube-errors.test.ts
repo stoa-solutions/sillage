@@ -5,7 +5,7 @@ import {
   youtubeError,
   YouTubeError,
 } from "../src/integrations/youtube/index.ts";
-import { Discovery } from "../src/features/discovery/index.ts";
+import { Discovery } from "../src/modules/discovery/index.ts";
 import type { Database } from "../src/db/index.ts";
 import { required } from "./support/required.ts";
 

@@ -1,4 +1,4 @@
-import { DiscoveryError } from "../src/features/discovery/index.ts";
+import { DiscoveryError } from "../src/modules/discovery/index.ts";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   current,
@@ -12,8 +12,8 @@ import {
 const boundaries = vi.hoisted(() => ({ search: vi.fn(), youtube: vi.fn(), information: vi.fn() }));
 vi.mock("../src/integrations/searxng/information.ts", () => ({ informationSearch: () => ({ search: boundaries.information }) }));
 vi.mock("../src/search.ts", () => ({ search: boundaries.search }));
-vi.mock("../src/features/discovery/index.ts", async (importOriginal) => ({
-  ...await importOriginal<typeof import("../src/features/discovery/index.ts")>(),
+vi.mock("../src/modules/discovery/index.ts", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../src/modules/discovery/index.ts")>(),
   discoveryFor: () => ({ search: boundaries.youtube }),
 }));
 import { djInput, djTurn } from "../src/dj.ts";
@@ -567,7 +567,7 @@ it("does not fabricate an anecdote after an information search outage", async ()
 
 
 it("observes actual catalog, provider and MCP rounds without changing selection or source", async () => {
-  const events: import("../src/features/dj/journal/contracts.ts").TraceEvent[] = [];
+  const events: import("../src/modules/dj/journal/contracts.ts").TraceEvent[] = [];
   responses.push(searchCall("cumbia"), selection([required(external[0]).id], "append"));
   const result = await djTurn(db as unknown as Database, djInput.parse({message:"Ajoute 1 morceau de cumbia à la suite",scope:"all"}), undefined, config, "alice", event=>events.push(event));
   expect(result.action).toBe("append");

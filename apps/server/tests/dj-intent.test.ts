@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { djIntent, playbackAction, parseDJIntent, followsCurrent } from "../src/features/dj/intent.ts";
+import { djIntent, playbackAction, parseDJIntent, followsCurrent } from "../src/modules/dj/intent.ts";
 it.each([
   ["Non je t'ai dit ajoute du Omer Adam et mets-la directement et fais passe les musiques", "replace"],
   ["ajoute Omer Adam et joue-le maintenant", "replace"],

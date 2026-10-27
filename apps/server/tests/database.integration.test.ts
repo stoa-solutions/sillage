@@ -1,11 +1,11 @@
-import { LEGACY_USER } from "../src/features/accounts/index.ts";
+import { LEGACY_USER } from "../src/modules/accounts/index.ts";
 import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
-import { enqueue, claim, finish } from "../src/features/jobs/index.ts";
+import { enqueue, claim, finish } from "../src/modules/jobs/index.ts";
 import { infer } from "../src/inference-client.ts";
 import { enqueueMissing, indexText, indexImage } from "../src/indexing.ts";
 import {
@@ -13,7 +13,7 @@ import {
   importLibrary,
   scheduleSync,
   syncPlaylist,
-} from "../src/features/library/index.ts";
+} from "../src/modules/library/index.ts";
 import { YouTube } from "../src/integrations/youtube/index.ts";
 import type { LibraryImport } from "@playlist-recall/core/types";
 vi.mock("../src/inference-client.ts", () => ({ infer: vi.fn() }));

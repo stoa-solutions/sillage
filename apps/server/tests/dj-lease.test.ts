@@ -4,7 +4,7 @@ import {
   TurnLeases,
   TurnRefused,
   TurnSuperseded,
-} from "../src/features/dj/lease.ts";
+} from "../src/modules/dj/lease.ts";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());

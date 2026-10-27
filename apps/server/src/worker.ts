@@ -1,16 +1,16 @@
 import { pool } from "./db/index.ts";
-import { runWorker } from "./features/jobs/index.ts";
+import { runWorker } from "./modules/jobs/index.ts";
 import {
   libraryJobHandlers,
   scheduleSync,
   YOUTUBE_JOB_KINDS,
-} from "./features/library/index.ts";
+} from "./modules/library/index.ts";
 import { indexImage, indexText } from "./indexing.ts";
 import { YouTube } from "./integrations/youtube/index.ts";
 import {
   enrichMusic,
   scheduleMusicEnrichment,
-} from "./features/enrichment/index.ts";
+} from "./modules/enrichment/index.ts";
 
 // The worker process: each feature registers the job kinds it owns.
 const key = process.env["YOUTUBE_API_KEY"] ?? "";

@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { discoveryHome, discoverySeeds } from "../src/features/discovery/index.ts";
+import { discoveryHome, discoverySeeds } from "../src/modules/discovery/index.ts";
 import { required } from "./support/required.ts";
 const played = {
   video_id: "played00001",

@@ -19,7 +19,7 @@ const pureDj = new Set([
   "composition.ts",
   "retrieval.ts",
 ]);
-// Features still reached through a facade outside their folder until their own refactor lot.
+// Modules still reached through a facade outside their folder until their own refactor lot.
 const featuresWithoutIndex = new Set(["dj"]);
 const pureDjImports = new Set([
   "zod",
@@ -32,7 +32,7 @@ export function violations(file, source) {
   const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
   const core = file.startsWith("packages/core/src/");
   const server = file.startsWith("apps/server/src/");
-  const dj = file.startsWith("apps/server/src/features/dj/");
+  const dj = file.startsWith("apps/server/src/modules/dj/");
   const pure = core || (dj && pureDj.has(path.basename(file)));
   const report = (node, reason) => {
     const line =
@@ -50,7 +50,7 @@ export function violations(file, source) {
     if (server && target.startsWith("apps/macos/"))
       report(node, "the server must not depend on a client application");
     const feature = (name) =>
-      name.match(/^apps\/server\/src\/features\/([^/]+)\//)?.[1];
+      name.match(/^apps\/server\/src\/modules\/([^/]+)\//)?.[1];
     const from = feature(file),
       to = feature(target);
     if (
@@ -58,11 +58,11 @@ export function violations(file, source) {
       to &&
       from !== to &&
       !featuresWithoutIndex.has(to) &&
-      !target.endsWith(`features/${to}/index.ts`)
+      !target.endsWith(`modules/${to}/index.ts`)
     )
       report(
         node,
-        `a feature is used through its index.ts, not features/${to} internals`,
+        `a module is used through its index.ts, not modules/${to} internals`,
       );
     if (dj && target === "apps/server/src/dj.ts")
       report(

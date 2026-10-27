@@ -5,9 +5,9 @@ vi.mock("../src/music-mcp.ts", () => ({
   requestedTracks: mocks.requested,
   musicTracks: mocks.tracks,
 }));
-import { catalogSelection } from "../src/features/dj/catalog.ts";
-import { planTurn } from "../src/features/dj/plan.ts";
-import { djInput } from "../src/features/dj/contracts.ts";
+import { catalogSelection } from "../src/modules/dj/catalog.ts";
+import { planTurn } from "../src/modules/dj/plan.ts";
+import { djInput } from "../src/modules/dj/contracts.ts";
 import type { Database } from "../src/db/index.ts";
 
 const db = {} as Database;

@@ -1,8 +1,8 @@
 import { expect, it } from "vitest";
-import { summarizeMemory, type JournalTurn } from "../src/features/dj/memory.ts";
-import { initialMessages } from "../src/features/dj/messages.ts";
-import { planTurn } from "../src/features/dj/plan.ts";
-import { djInput } from "../src/features/dj/contracts.ts";
+import { summarizeMemory, type JournalTurn } from "../src/modules/dj/memory.ts";
+import { initialMessages } from "../src/modules/dj/messages.ts";
+import { planTurn } from "../src/modules/dj/plan.ts";
+import { djInput } from "../src/modules/dj/contracts.ts";
 import { required } from "./support/required.ts";
 
 const completed = (message: string, titles: string[]): JournalTurn => ({

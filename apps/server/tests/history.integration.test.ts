@@ -4,9 +4,9 @@ import { randomUUID } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
-import type { IdentityProvider } from "../src/features/auth/index.ts";
-import { LEGACY_USER } from "../src/features/accounts/index.ts";
-import { scheduleSync } from "../src/features/library/index.ts";
+import type { IdentityProvider } from "../src/modules/auth/index.ts";
+import { LEGACY_USER } from "../src/modules/accounts/index.ts";
+import { scheduleSync } from "../src/modules/library/index.ts";
 vi.mock("../src/inference-client.ts", () => ({
   infer: vi.fn().mockResolvedValue({ vector: Array(384).fill(0.01) }),
 }));

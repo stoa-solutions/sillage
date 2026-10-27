@@ -32,7 +32,7 @@ test("shared core cannot reach server code or Node through dynamic imports", () 
   );
 });
 test("pure policy allows type-only adapter references, but rejects runtime imports and effects", () => {
-  const file = "apps/server/src/features/dj/decision.ts";
+  const file = "apps/server/src/modules/dj/decision.ts";
   assert.equal(
     violations(file, 'import type { ChatMessage } from "./provider.ts"').length,
     0,
@@ -51,19 +51,19 @@ test("pure policy allows type-only adapter references, but rejects runtime impor
 test("DJ internals cannot introduce facade cycles or untyped boundaries", () => {
   assert.equal(
     violations(
-      "apps/server/src/features/dj/turn.ts",
+      "apps/server/src/modules/dj/turn.ts",
       'import { reserveDj } from "../../dj.ts"',
     ).length,
     1,
   );
   assert.equal(
-    violations("apps/server/src/features/dj/turn.ts", "const data: any = {};")
+    violations("apps/server/src/modules/dj/turn.ts", "const data: any = {};")
       .length,
     1,
   );
   assert.equal(
     violations(
-      "apps/server/src/features/dj/turn.ts",
+      "apps/server/src/modules/dj/turn.ts",
       "// any fetch process.env\nconst data: unknown = {};",
     ).length,
     0,
@@ -79,16 +79,16 @@ test("checks bare Node/workspace imports and permits type-only re-exports", () =
   );
   assert.equal(
     violations(
-      "apps/server/src/features/dj/decision.ts",
+      "apps/server/src/modules/dj/decision.ts",
       'export { type ChatMessage } from "./provider.ts"',
     ).length,
     0,
   );
 });
-test("a feature reaches another feature only through its index", () => {
-  const file = "apps/server/src/features/accounts/routes.ts";
+test("a module reaches another module only through its index", () => {
+  const file = "apps/server/src/modules/accounts/routes.ts";
   assert.equal(
-    violations(file, 'import { revokeSession } from "../auth/store.ts"').length,
+    violations(file, 'import { revokeSession } from "../auth/auth.repository.ts"').length,
     1,
   );
   assert.equal(
@@ -98,12 +98,12 @@ test("a feature reaches another feature only through its index", () => {
   assert.equal(
     violations(
       "apps/server/src/app.ts",
-      'import { sessionGuard } from "./features/auth/session.ts"',
+      'import { sessionGuard } from "./modules/auth/session.guard.ts"',
     ).length,
     1,
   );
   assert.equal(
-    violations(file, 'import { claimLibraryInput } from "./contracts.ts"').length,
+    violations(file, 'import { claimLibraryInput } from "./accounts.schemas.ts"').length,
     0,
   );
 });

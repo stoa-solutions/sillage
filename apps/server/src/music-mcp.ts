@@ -2,12 +2,12 @@ import {
   musicQueries,
   isMusicCandidate,
   interleaveClues,
-} from "./features/dj/retrieval.ts";
+} from "./modules/dj/retrieval.ts";
 import { musicMatchRank } from "./music-matching.ts";
 import { informationSearch } from "./integrations/searxng/index.ts";
-import type { SearchFailureReason } from "./features/discovery/index.ts";
-import { DiscoveryError, discoveryFor } from "./features/discovery/index.ts";
-import { LEGACY_USER, ownsPlaylist } from "./features/accounts/index.ts";
+import type { SearchFailureReason } from "./modules/discovery/index.ts";
+import { DiscoveryError, discoveryFor } from "./modules/discovery/index.ts";
+import { LEGACY_USER, ownsPlaylist } from "./modules/accounts/index.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";

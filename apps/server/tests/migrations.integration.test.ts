@@ -2,7 +2,7 @@ import { afterAll, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import pg from "pg";
 import { migrate, openDatabase, type Database } from "../src/db/index.ts";
-import { enqueue } from "../src/features/jobs/index.ts";
+import { enqueue } from "../src/modules/jobs/index.ts";
 import { replayBaseline } from "./support/database.ts";
 
 const url = process.env["TEST_DATABASE_URL"];

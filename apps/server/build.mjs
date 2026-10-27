@@ -17,7 +17,7 @@ await build({
     "src/inference.ts",
     "src/model-process.ts",
     "src/migrate.ts",
-    "src/features/auth/token-cli.ts",
+    "src/modules/auth/token.cli.ts",
   ],
   outdir: "dist",
   outbase: "src",

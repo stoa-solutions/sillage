@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { readToolEvidence } from "../src/features/dj/evidence.ts";
+import { readToolEvidence } from "../src/modules/dj/evidence.ts";
 import { required } from "./support/required.ts";
 
 function candidate(index: number, inLibrary: boolean) {

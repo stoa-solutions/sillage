@@ -1,4 +1,4 @@
-import { parseDJIntent } from "./features/dj/intent.ts";
+import { parseDJIntent } from "./modules/dj/intent.ts";
 
 /** Matching uses catalog metadata, never inferred audio characteristics. */
 export function normalizeMusic(value: string): string {

@@ -1,11 +1,11 @@
 import { it, expect } from "vitest";
-import { Composition } from "../src/features/dj/composition.ts";
+import { Composition } from "../src/modules/dj/composition.ts";
 import {
   musicQueries,
   isMusicCandidate,
-} from "../src/features/dj/retrieval.ts";
-import { planTurn } from "../src/features/dj/plan.ts";
-import { djInput, selection } from "../src/features/dj/contracts.ts";
+} from "../src/modules/dj/retrieval.ts";
+import { planTurn } from "../src/modules/dj/plan.ts";
+import { djInput, selection } from "../src/modules/dj/contracts.ts";
 import { required } from "./support/required.ts";
 const items = Array.from({ length: 6 }, (_, i) => ({
   inLibrary: true,

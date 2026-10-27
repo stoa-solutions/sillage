@@ -1,31 +1,31 @@
-import { enrichmentRoutes } from "./features/enrichment/index.ts";
-import { discoveryRoutes } from "./features/discovery/index.ts";
-import { historyRoutes } from "./features/history/index.ts";
+import { enrichmentRoutes } from "./modules/enrichment/index.ts";
+import { discoveryRoutes } from "./modules/discovery/index.ts";
+import { historyRoutes } from "./modules/history/index.ts";
 import {
   authRoutes,
   sessionGuard,
   type IdentityProvider,
-} from "./features/auth/index.ts";
+} from "./modules/auth/index.ts";
 import {
   accountRoutes,
   LEGACY_USER,
   ownsPlaylist,
-} from "./features/accounts/index.ts";
+} from "./modules/accounts/index.ts";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { macosReleases } from "./macos-releases.ts";
 import type { ApiEnvironment } from "./shared/api-environment.ts";
-import { createDjRoutes } from "./features/dj/routes.ts";
+import { createDjRoutes } from "./modules/dj/routes.ts";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { parsePlaylistId } from "./content.ts";
 import { transaction, type Database } from "./db/index.ts";
-import { jobRoutes } from "./features/jobs/index.ts";
-import { libraryRoutes } from "./features/library/index.ts";
+import { jobRoutes } from "./modules/jobs/index.ts";
+import { libraryRoutes } from "./modules/library/index.ts";
 import { search } from "./search.ts";
 import { librarySearchInput } from "./library-contracts.ts";
-import { lyricsRoutes } from "./features/lyrics/index.ts";
+import { lyricsRoutes } from "./modules/lyrics/index.ts";
 import { Lrclib, type LyricsSource } from "./integrations/lrclib/index.ts";
 import { handleMusicMcp } from "./music-mcp.ts";
 import { djPlayerHtml, djPlayerCss, djPlayerJs } from "./dj-player.ts";

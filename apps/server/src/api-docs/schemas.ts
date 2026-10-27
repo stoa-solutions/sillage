@@ -1,14 +1,14 @@
 import { z } from "zod";
-import { authStartInput } from "../features/auth/index.ts";
-import { discoveryAddInput, discoveryInput } from "../features/discovery/index.ts";
+import { authStartInput } from "../modules/auth/index.ts";
+import { discoveryAddInput, discoveryInput } from "../modules/discovery/index.ts";
 import { djSettingsInput } from "../dj-settings.ts";
 import {
   journalPage,
   journalEventPage,
   journalUpload,
-} from "../features/dj/journal/contracts.ts";
-import { djInput } from "../features/dj/contracts.ts";
-import { historyEvent, historyPage, historyUpload } from "../features/history/index.ts";
+} from "../modules/dj/journal/contracts.ts";
+import { djInput } from "../modules/dj/contracts.ts";
+import { historyEvent, historyPage, historyUpload } from "../modules/history/index.ts";
 import { librarySearchInput } from "../library-contracts.ts";
 
 export type Schema = Record<string, unknown>;

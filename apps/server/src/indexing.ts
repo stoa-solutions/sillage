@@ -1,8 +1,8 @@
 import { MODEL_KEY } from "@playlist-recall/core/model";
 import { hash, documentText, vectorSql } from "./content.ts";
 import { transaction, type Database } from "./db/index.ts";
-import { videoFromRow } from "./features/library/index.ts";
-import { enqueue } from "./features/jobs/index.ts";
+import { videoFromRow } from "./modules/library/index.ts";
+import { enqueue } from "./modules/jobs/index.ts";
 import { infer } from "./inference-client.ts";
 export const TEXT_KEY = `${MODEL_KEY}:chunks-v2`;
 export const VISION_ID = "onnx-community/siglip2-base-patch16-224-ONNX";
