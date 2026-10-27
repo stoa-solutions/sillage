@@ -17,8 +17,8 @@ export type Executor = PgDatabase<
 >;
 
 /**
- * One PostgreSQL pool per process. Features query it through `orm` (Drizzle); `query` remains
- * for the modules still written in SQL until their refactor.
+ * One PostgreSQL pool per process. Modules query it through `orm` (Drizzle); the pool itself
+ * serves the migration lock and the test fixtures.
  */
 export type Database = pg.Pool & {
   readonly orm: Orm;
@@ -51,26 +51,3 @@ export function openDatabase({
 }
 
 export const pool = openDatabase({ url: process.env["DATABASE_URL"] ?? "" });
-
-/** Drizzle on a client inside a raw pg transaction, for SQL modules calling Drizzle stores. */
-export const ormOn = (client: pg.PoolClient): Executor =>
-  drizzle(client, { schema: tables });
-
-/** Raw pg transaction for the modules still written in SQL; Drizzle code uses orm.transaction. */
-export async function transaction<T>(
-  db: pg.Pool,
-  fn: (client: pg.PoolClient) => Promise<T>,
-): Promise<T> {
-  const client = await db.connect();
-  try {
-    await client.query("BEGIN");
-    const result = await fn(client);
-    await client.query("COMMIT");
-    return result;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
-}

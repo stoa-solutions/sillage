@@ -1,6 +1,10 @@
 import { setTimeout as delay } from "node:timers/promises";
 import type { Database } from "../../db/index.ts";
-import type { ClaimedJob, JobKind } from "./jobs.schemas.ts";
+import {
+  jobPayloads,
+  type ClaimedJob,
+  type JobKind,
+} from "./jobs.schemas.ts";
 import { claim, extendLease, finish } from "./jobs.repository.ts";
 
 export type JobHandler = (job: ClaimedJob) => Promise<void>;
@@ -41,6 +45,9 @@ export async function runWorker({
         30000,
       );
       try {
+        // A malformed payload fails like any error; the queue stops retrying it after 5 tries.
+        if (!jobPayloads[job.kind].safeParse(job.payload).success)
+          throw new Error("Contenu de tâche invalide.");
         await handlers[job.kind](job);
         await finish(db.orm, job);
       } catch (error) {

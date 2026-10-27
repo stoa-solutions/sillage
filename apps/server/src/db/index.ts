@@ -1,8 +1,6 @@
 export {
   openDatabase,
-  ormOn,
   pool,
-  transaction,
   type Database,
   type DatabaseOptions,
   type Executor,

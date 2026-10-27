@@ -1,5 +1,7 @@
 import { afterAll, expect, it } from "vitest";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import pg from "pg";
 import { migrate, openDatabase, type Database } from "../src/db/index.ts";
 import { enqueue } from "../src/modules/jobs/index.ts";
@@ -31,7 +33,11 @@ const applied = async (db: Database) =>
 
 afterAll(async () => {
   for (const db of opened) await db.end();
-  for (const schema of ["migrate_fresh_test", "migrate_legacy_test"])
+  for (const schema of [
+    "migrate_fresh_test",
+    "migrate_legacy_test",
+    "migrate_failure_test",
+  ])
     await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
   await admin.end();
 });
@@ -93,4 +99,35 @@ it("adopts a pre-Drizzle database with its data, even with concurrent migrators"
     Number((await first.query("SELECT count(*) FROM jobs WHERE kind='sync'")).rows[0].count),
   ).toBe(1);
   expect(again.status).toBe("pending");
+});
+
+it("rolls a failing migration back entirely and releases the lock", async () => {
+  const [db] = await twoProcesses("migrate_failure_test");
+  const folder = await mkdtemp(join(tmpdir(), "sillage-migrations-"));
+  await mkdir(join(folder, "meta"));
+  await writeFile(
+    join(folder, "meta/_journal.json"),
+    JSON.stringify({
+      version: "7",
+      dialect: "postgresql",
+      entries: [
+        { idx: 0, version: "7", when: 1, tag: "0000_broken", breakpoints: true },
+      ],
+    }),
+  );
+  await writeFile(
+    join(folder, "0000_broken.sql"),
+    "CREATE TABLE half_done(id int);--> statement-breakpoint\nSELECT 1/0;",
+  );
+  await expect(migrate(db, folder)).rejects.toThrow();
+  const leftovers = await db.query(
+    "SELECT to_regclass($1) AS half, to_regclass($2) AS journal",
+    [`${db.schema}.half_done`, `${db.schema}.__drizzle_migrations`],
+  );
+  expect(leftovers.rows[0].half).toBeNull();
+  // The journal table may exist (created before the transaction) but records nothing.
+  if (leftovers.rows[0].journal) expect(await applied(db)).toBe(0);
+  // The session lock was released: the real migrations still run.
+  await migrate(db);
+  expect(await applied(db)).toBe(journal.entries.length);
 });

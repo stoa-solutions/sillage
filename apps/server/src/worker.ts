@@ -1,3 +1,4 @@
+import { checkEnvironment } from "./config.ts";
 import { pool } from "./db/index.ts";
 import { runWorker } from "./modules/jobs/index.ts";
 import {
@@ -12,7 +13,8 @@ import {
   scheduleMusicEnrichment,
 } from "./modules/enrichment/index.ts";
 
-// The worker process: each feature registers the job kinds it owns.
+// The worker process: each module registers the job kinds it owns.
+checkEnvironment("worker");
 const key = process.env["YOUTUBE_API_KEY"] ?? "";
 const youtube = new YouTube(key, pool);
 const stop = new AbortController();

@@ -10,3 +10,17 @@ export const jobBody = z
   .object({ id: z.uuid(), status: z.enum(jobStatus.enumValues) })
   .openapi("Job");
 export const retriedBody = z.object({ retried: z.number().int() });
+
+const videoId = z.string().regex(/^[\w-]{11}$/);
+/** What each kind of job carries, checked before its handler runs. */
+export const jobPayloads = {
+  sync: z.object({ playlistId: z.string().regex(/^[\w:-]{1,200}$/) }),
+  enrich: z.object({
+    ids: z
+      .string()
+      .refine((ids) => ids.split(",").every((id) => videoId.safeParse(id).success)),
+  }),
+  text: z.object({ videoId }),
+  image: z.object({ videoId }),
+  musicbrainz: z.object({ videoId }),
+} satisfies Record<JobKind, z.ZodType>;

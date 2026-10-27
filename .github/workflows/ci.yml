@@ -48,6 +48,31 @@ jobs:
           cache: npm
       - run: npm ci --legacy-peer-deps
       - run: npm run verify:node
+  image:
+    # The image Dokploy builds, started on an empty database exactly as in production.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: smoke_test
+          POSTGRES_DB: smoke_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d smoke_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f apps/server/Dockerfile -t sillage-server:${{ github.sha }} .
+      - run: >-
+          scripts/smoke-server-image.sh sillage-server:${{ github.sha }}
+          postgres://postgres:smoke_test@host.docker.internal:5432/smoke_test
+          ${{ github.sha }}
   macos:
     runs-on: macos-15
     steps:

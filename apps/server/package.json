@@ -4,17 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/main.ts",
-    "start": "tsx src/main.ts",
-    "worker": "tsx src/worker.ts",
-    "inference": "tsx src/inference.ts",
+    "dev": "tsx watch src/boot.ts",
+    "dev:worker": "tsx src/worker.ts",
+    "dev:inference": "tsx src/inference.ts",
+    "build": "node build.mjs",
+    "start": "node --enable-source-maps dist/boot.js",
+    "start:worker": "node --enable-source-maps dist/worker.js",
+    "start:inference": "node --enable-source-maps dist/inference.js",
     "migrate": "tsx src/migrate.ts",
+    "db:generate": "drizzle-kit generate",
     "check": "tsc --noEmit",
     "test": "vitest run --exclude '**/*.integration.test.ts'",
     "test:integration": "vitest run tests/*.integration.test.ts",
-    "test:dj": "vitest run tests/dj-*.test.ts tests/music-search.test.ts tests/music-matching.test.ts",
-    "db:generate": "drizzle-kit generate",
-    "build": "node build.mjs"
+    "test:dj": "vitest run tests/dj-*.test.ts tests/music-search.test.ts tests/music-matching.test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.88",

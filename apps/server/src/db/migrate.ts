@@ -24,14 +24,14 @@ function migrationsFolder() {
  * migration would come too late for two processes starting together. The whole run therefore
  * holds a session advisory lock on one dedicated connection, which the migrator also uses.
  */
-export async function migrate(db: Database) {
+export async function migrate(db: Database, folder = migrationsFolder()) {
   const client = await db.connect();
   let healthy = false;
   try {
     await client.query("SELECT pg_advisory_lock($1)", [MIGRATION_LOCK]);
     try {
       await applyMigrations(drizzle(client), {
-        migrationsFolder: migrationsFolder(),
+        migrationsFolder: folder,
         migrationsSchema: db.schema === "public" ? "drizzle" : db.schema,
       });
     } finally {
