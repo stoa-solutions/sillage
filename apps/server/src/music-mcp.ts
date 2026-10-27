@@ -63,6 +63,12 @@ export async function musicTracks(
     tracks.has(id) ? [tracks.get(id)!] : [],
   );
 }
+/** Text of a local tool result; every search tool answers with one text block. */
+function firstText(result: { content: { text: string }[] }): string {
+  const block = result.content[0];
+  if (!block) throw new Error("Tool result without content.");
+  return block.text;
+}
 export function musicMcp(
   db: Database,
   excludeIds: string[] = [],
@@ -163,13 +169,13 @@ export function musicMcp(
     playlistId,
   }: {
     query: string;
-    artist?: string;
-    alternatives?: string[];
-    mode?: "text" | "image";
-    fuzzy?: boolean;
-    maxDurationSeconds?: number;
-    includeQueued?: boolean;
-    playlistId?: string;
+    artist?: string | undefined;
+    alternatives?: string[] | undefined;
+    mode?: "text" | "image" | undefined;
+    fuzzy?: boolean | undefined;
+    maxDurationSeconds?: number | undefined;
+    includeQueued?: boolean | undefined;
+    playlistId?: string | undefined;
   }) => {
     const queries = musicQueries({ query, artist, alternatives, mode });
     const attempts = await Promise.allSettled(
@@ -336,8 +342,8 @@ export function musicMcp(
     maxDurationSeconds,
   }: {
     query: string;
-    includeQueued?: boolean;
-    maxDurationSeconds?: number;
+    includeQueued?: boolean | undefined;
+    maxDurationSeconds?: number | undefined;
   }) => {
     const page = await discoveryFor(db).search(userId, query);
     const excluded = new Set(
@@ -431,7 +437,7 @@ export function musicMcp(
             (async () => {
               try {
                 const result = await librarySearch(filtered);
-                const data = JSON.parse(result.content[0].text);
+                const data = JSON.parse(firstText(result));
                 for (const video of data.tracks)
                   results.set(video.id, { video, inLibrary: true });
                 sources.push({
@@ -488,7 +494,7 @@ export function musicMcp(
                   }>(
                     successful.map(
                       (attempt) =>
-                        JSON.parse(attempt.value.content[0].text).results,
+                        JSON.parse(firstText(attempt.value)).results,
                     ),
                   ),
                 };
@@ -591,9 +597,9 @@ async function browseLibrary(
   db: Database,
   userId: string,
   filter: {
-    playlistId?: string;
-    artist?: string;
-    genre?: string;
+    playlistId?: string | undefined;
+    artist?: string | undefined;
+    genre?: string | undefined;
     order: "recent" | "oldest";
     limit: number;
     excludeIds: string[];
@@ -668,7 +674,7 @@ export async function handleMusicMcp(
 ) {
   const server = musicMcp(db, [], userId);
   const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
+    // Stateless: no sessionIdGenerator, so session management stays disabled.
     enableJsonResponse: true,
   });
   try {

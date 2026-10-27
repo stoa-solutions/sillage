@@ -3,6 +3,7 @@
 | Document | Contenu |
 | --- | --- |
 | [developing.md](developing.md) | Démarrer, comprendre les couches et valider une fonctionnalité. |
+| [server-tour.md](server-tour.md) | Visite guidée du serveur : démarrage, base de données, anatomie d’une feature. |
 | [dj-journal.md](dj-journal.md) | Journal privé du DJ : messages, outils, sources, décisions et actions réelles. |
 | [api.md](api.md) | Swagger privé local, OpenAPI, Postman et parcours de connexion. |
 | [discovery.md](discovery.md) | Fonctionnement actuel de Découvrir, sources et pistes d’amélioration. |

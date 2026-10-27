@@ -38,7 +38,7 @@ export function openDatabase({
   return Object.assign(pool, { orm: drizzle(pool, { schema: tables }), schema });
 }
 
-export const pool = openDatabase({ url: process.env.DATABASE_URL ?? "" });
+export const pool = openDatabase({ url: process.env["DATABASE_URL"] ?? "" });
 
 /** Raw pg transaction for the modules still written in SQL; Drizzle code uses orm.transaction. */
 export async function transaction<T>(

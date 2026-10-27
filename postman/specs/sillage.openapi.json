@@ -150,11 +150,11 @@
     "/auth/status": {
       "get": {
         "operationId": "getAuthStatus",
+        "summary": "Disponibilité de Google",
+        "description": "Indique si la connexion Google est configurée, sans exposer d’identifiant privé.",
         "tags": [
           "Connexion Google"
         ],
-        "summary": "Disponibilité de Google",
-        "description": "Indique si la connexion Google est configurée, sans exposer d’identifiant privé.",
         "x-sillage-effect": "read",
         "security": [],
         "responses": {
@@ -212,13 +212,33 @@
     "/auth/google/start": {
       "get": {
         "operationId": "startGoogleSignIn",
+        "summary": "Commencer la connexion",
+        "description": "À ouvrir dans le navigateur système. Le Mac crée un verifier PKCE et app_state, puis envoie SHA-256(verifier) en base64url comme challenge. Le serveur pose un cookie Secure HttpOnly SameSite=Lax et redirige vers Google. Flux valable 10 minutes. Scopes : openid, email, profile ; aucun accès aux playlists YouTube.",
         "tags": [
           "Connexion Google"
         ],
-        "summary": "Commencer la connexion",
-        "description": "À ouvrir dans le navigateur système. Le Mac crée un verifier PKCE et app_state, puis envoie SHA-256(verifier) en base64url comme challenge. Le serveur pose un cookie Secure HttpOnly SameSite=Lax et redirige vers Google. Flux valable 10 minutes. Scopes : openid, email, profile ; aucun accès aux playlists YouTube.",
         "x-sillage-effect": "browser",
         "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43,128}$"
+            },
+            "required": true,
+            "name": "challenge",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43,128}$"
+            },
+            "required": true,
+            "name": "app_state",
+            "in": "query"
+          }
+        ],
         "responses": {
           "302": {
             "description": "Redirection Google",
@@ -286,41 +306,41 @@
               }
             }
           }
-        },
-        "parameters": [
-          {
-            "name": "challenge",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{43,128}$"
-            }
-          },
-          {
-            "name": "app_state",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{43,128}$"
-            }
-          }
-        ]
+        }
       }
     },
     "/auth/google/callback": {
       "get": {
         "operationId": "completeGoogleSignIn",
+        "summary": "Retour du navigateur Google",
+        "description": "Google fournit code et state ; le cookie du démarrage est obligatoire. Vérification de l’identité et du nonce, puis retour HTML vers playlist-recall://auth?code=…&state=…. Le code de retour Sillage est à usage unique, valable 90 secondes et lié au challenge PKCE. Il ne s’agit ni d’une clé Google ni du jeton API. Ne pas rejouer manuellement le callback hors du flux navigateur.",
         "tags": [
           "Connexion Google"
         ],
-        "summary": "Retour du navigateur Google",
-        "description": "Google fournit code et state ; le cookie du démarrage est obligatoire. Vérification de l’identité et du nonce, puis retour HTML vers playlist-recall://auth?code=…&state=…. Le code de retour Sillage est à usage unique, valable 90 secondes et lié au challenge PKCE. Il ne s’agit ni d’une clé Google ni du jeton API. Ne pas rejouer manuellement le callback hors du flux navigateur.",
         "x-sillage-effect": "browser",
         "security": [
           {
             "googleFlowCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 4096
+            }
           }
         ],
         "responses": {
@@ -364,56 +384,36 @@
               }
             }
           }
-        },
-        "parameters": [
-          {
-            "name": "state",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "maxLength": 128
-            }
-          },
-          {
-            "name": "code",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "maxLength": 4096
-            }
-          }
-        ]
+        }
       }
     },
     "/auth/exchange": {
       "post": {
         "operationId": "exchangeSignInGrant",
+        "summary": "Échanger le code contre une session",
+        "description": "L’app échange le code Sillage reçu par son lien de retour et son verifier PKCE. Usage unique. Le jeton retourné est conservé dans le fichier privé de session du Mac ; le serveur conserve son empreinte. Validité 90 jours, prolongée à l’usage lorsque moins de 60 jours restent.",
         "tags": [
           "Connexion Google"
         ],
-        "summary": "Échanger le code contre une session",
-        "description": "L’app échange le code Sillage reçu par son lien de retour et son verifier PKCE. Usage unique. Le jeton retourné est conservé dans le fichier privé de session du Mac ; le serveur conserve son empreinte. Validité 90 jours, prolongée à l’usage lorsque moins de 60 jours restent.",
         "x-sillage-effect": "write",
         "security": [],
+        "x-sillage-example": {
+          "code": "{{auth_code}}",
+          "verifier": "{{pkce_verifier}}"
+        },
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AuthExchange"
-              },
               "example": {
                 "code": "{{auth_code}}",
                 "verifier": "{{pkce_verifier}}"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/AuthExchange"
               }
             }
           }
-        },
-        "x-sillage-example": {
-          "code": "{{auth_code}}",
-          "verifier": "{{pkce_verifier}}"
         },
         "responses": {
           "200": {
@@ -481,11 +481,11 @@
     "/v1/me": {
       "get": {
         "operationId": "getAccount",
+        "summary": "Compte courant",
+        "description": "Compte associé au jeton Bearer. Chaque session détermine son userId côté serveur ; un client ne peut pas choisir le compte d’un autre utilisateur.",
         "tags": [
           "Compte"
         ],
-        "summary": "Compte courant",
-        "description": "Compte associé au jeton Bearer. Chaque session détermine son userId côté serveur ; un client ne peut pas choisir le compte d’un autre utilisateur.",
         "x-sillage-effect": "read",
         "responses": {
           "200": {
@@ -554,11 +554,11 @@
     "/v1/logout": {
       "post": {
         "operationId": "revokeSession",
+        "summary": "Déconnecter cette session",
+        "description": "Révoque le jeton utilisé pour cet appel. Les autres sessions du compte restent actives.",
         "tags": [
           "Compte"
         ],
-        "summary": "Déconnecter cette session",
-        "description": "Révoque le jeton utilisé pour cet appel. Les autres sessions du compte restent actives.",
         "x-sillage-effect": "write",
         "responses": {
           "200": {
@@ -627,16 +627,22 @@
     "/v1/account/claim-library": {
       "post": {
         "operationId": "claimLegacyLibrary",
+        "summary": "Récupérer la bibliothèque historique",
+        "description": "Transfert à usage unique vers un compte Google, avec preuve du jeton historique. Transfère aussi l’historique et les jetons concernés. Ne sert pas à partager des bibliothèques entre comptes ordinaires.",
         "tags": [
           "Compte"
         ],
-        "summary": "Récupérer la bibliothèque historique",
-        "description": "Transfert à usage unique vers un compte Google, avec preuve du jeton historique. Transfère aussi l’historique et les jetons concernés. Ne sert pas à partager des bibliothèques entre comptes ordinaires.",
         "x-sillage-effect": "write",
+        "x-sillage-example": {
+          "legacyToken": "{{legacy_token}}"
+        },
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
+              "example": {
+                "legacyToken": "{{legacy_token}}"
+              },
               "schema": {
                 "type": "object",
                 "properties": {
@@ -649,15 +655,9 @@
                 "required": [
                   "legacyToken"
                 ]
-              },
-              "example": {
-                "legacyToken": "{{legacy_token}}"
               }
             }
           }
-        },
-        "x-sillage-example": {
-          "legacyToken": "{{legacy_token}}"
         },
         "responses": {
           "200": {
@@ -5647,7 +5647,10 @@
         "type": "object",
         "properties": {
           "saved": {
-            "const": true
+            "type": "boolean",
+            "enum": [
+              true
+            ]
           }
         },
         "required": [
@@ -5681,23 +5684,15 @@
             "format": "uuid"
           },
           "email": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+            "type": [
+              "string",
+              "null"
             ]
           },
           "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+            "type": [
+              "string",
+              "null"
             ]
           },
           "google": {

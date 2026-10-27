@@ -47,8 +47,8 @@ Sur le Mac, seul le **jeton révocable Recall** est conservé dans `session.json
 | `oauth_flows`, `oauth_grants` | États de connexion temporaires, empreintes et challenges PKCE. |
 | `quota_usage` | Consommation YouTube commune par jour. |
 | `dj_usage`, `dj_settings` | Tables héritées du mode historique ; ne pas confondre avec les tables par compte. |
-| `schema_migrations` | Versions appliquées par l’ancien script, avant Prisma. |
-| `_prisma_migrations` | Migrations Prisma appliquées (`prisma/migrations`). |
+| `schema_migrations` | Versions appliquées par l’ancien script, avant Drizzle. |
+| `drizzle.__drizzle_migrations` | Migrations Drizzle appliquées (`apps/server/drizzle`). |
 
 La file de lecture, le chat et l'historique d'écoute de la session Mac ne constituent pas aujourd'hui une collection persistante synchronisée entre appareils en base. Ne pas promettre cette synchronisation sans un chantier dédié.
 

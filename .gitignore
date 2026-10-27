@@ -33,3 +33,6 @@ apps/macos/.build/
 apps/macos/.swiftpm/
 
 __pycache__/
+
+# Server bundle built by `npm run build -w @playlist-recall/server`.
+apps/server/dist/

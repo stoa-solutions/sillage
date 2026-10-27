@@ -140,7 +140,7 @@ L’API `/v1/*` limite le débit à 180 requêtes/minute/jeton. Les demandes de 
 
 ## Maintenir le contrat
 
-Les contraintes d’entrée réutilisent les validateurs Zod réellement employés par les routes. Les réponses et descriptions sont déclarées dans `apps/server/src/api-docs/`. La génération suit une seule direction : **validateurs + catalogue des opérations → OpenAPI → exports Postman JSON et fichiers Git natifs**.
+Les routes refaites en features (`auth`, `accounts` pour l’instant) se documentent elles-mêmes : chaque `createRoute` (`@hono/zod-openapi`) porte ses schémas Zod d’entrée et de réponse, ses erreurs et sa description, et `api-docs/openapi.ts` reprend le document généré par l’application. Les autres opérations sont encore décrites à la main dans `apps/server/src/api-docs/`, avec les validateurs Zod réellement employés par leurs routes. La génération suit une seule direction : **validateurs + catalogue des opérations → OpenAPI → exports Postman JSON et fichiers Git natifs**.
 
 ```sh
 npm run docs:generate

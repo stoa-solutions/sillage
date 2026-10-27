@@ -6,6 +6,7 @@ import {
 } from "../src/features/dj/retrieval.ts";
 import { planTurn } from "../src/features/dj/plan.ts";
 import { djInput, selection } from "../src/features/dj/contracts.ts";
+import { required } from "./support/required.ts";
 const items = Array.from({ length: 6 }, (_, i) => ({
   inLibrary: true,
   video: {
@@ -50,8 +51,8 @@ it("does not autoplay retrieved candidates before the model has chosen them", ()
 it("preserves order, requested size and exclusions at the composition interface", () => {
   const input = djInput.parse({
     message: "Ajoute trois morceaux",
-    excludeIds: [items[0].video.id],
-    rejectedIds: [items[1].video.id],
+    excludeIds: [required(items[0]).video.id],
+    rejectedIds: [required(items[1]).video.id],
   });
   const composition = new Composition(input, planTurn(input));
   composition.add(items);

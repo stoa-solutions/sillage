@@ -73,9 +73,9 @@ export function emptyReply({
   currentTitle,
   visualUnsupported = false,
 }: {
-  failureSummary?: string;
-  currentTitle?: string;
-  visualUnsupported?: boolean;
+  failureSummary?: string | undefined;
+  currentTitle?: string | undefined;
+  visualUnsupported?: boolean | undefined;
 } = {}) {
   if (visualUnsupported && !failureSummary)
     return "YouTube ne permet pas de chercher par couleur ou détail de pochette. Choisis Mes playlists ou Partout pour explorer les miniatures de ta bibliothèque. Ta lecture reste inchangée.";

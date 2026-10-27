@@ -7,6 +7,7 @@ import {
 } from "../src/content.ts";
 import { YouTube } from "../src/youtube.ts";
 import { fetchThumbnail } from "../src/indexing.ts";
+import { required } from "./support/required.ts";
 describe("YouTube input and complete snapshots", () => {
   it("accepts a playlist link but rejects arbitrary fetch targets", () => {
     expect(
@@ -116,7 +117,7 @@ describe("YouTube input and complete snapshots", () => {
     );
     const youtube = new YouTube("secret", undefined, request);
     const [video] = await youtube.videos(["abcdefghijk"]);
-    expect(video.channelId).toBe("UCa");
+    expect(required(video).channelId).toBe("UCa");
     const avatars = await youtube.channelAvatars(["UCa", "UCb", "UCc"]);
     expect([...avatars]).toEqual([["UCa", "https://yt3.ggpht.com/a"]]);
   });

@@ -1,15 +1,15 @@
 import { expect, it, vi } from "vitest";
 import { discoveryHome, discoverySeeds } from "../src/discovery-home.ts";
 import type { Database } from "../src/db/index.ts";
-const history = [
-  {
-    video_id: "played00001",
-    title: "Known Song",
-    channel: "Artist - Topic",
-    outcome: "finished",
-    music_metadata: null,
-  },
-];
+import { required } from "./support/required.ts";
+const played = {
+  video_id: "played00001",
+  title: "Known Song",
+  channel: "Artist - Topic",
+  outcome: "finished",
+  music_metadata: null,
+};
+const history = [played];
 const video = (id: string, title: string) => ({
   id,
   title,
@@ -22,7 +22,7 @@ it("uses recent positive history and ignores skips", () => {
   expect(
     discoverySeeds([
       ...history,
-      { ...history[0], channel: "Skipped", outcome: "skipped" },
+      { ...played, channel: "Skipped", outcome: "skipped" },
     ]),
   ).toEqual([
     {
@@ -50,10 +50,10 @@ it("queries only this account, excludes heard titles and owned tracks and labels
     "alice",
     { search },
   );
-  expect(query.mock.calls[0][1]).toEqual(["alice"]);
+  expect(required(query.mock.calls[0])[1]).toEqual(["alice"]);
   expect(search).toHaveBeenCalledWith("alice", "Artist official music");
   expect(result.suggestions.map((r) => r.video.id)).toEqual(["newtrack001"]);
-  expect(result.suggestions[0].reason).toContain("Artist");
+  expect(required(result.suggestions[0]).reason).toContain("Artist");
 });
 it("does not invent personal recommendations for an empty account, and does not cache deleted history", async () => {
   const query = vi.fn().mockResolvedValue({ rows: [] });

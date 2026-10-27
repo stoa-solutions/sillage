@@ -1,3 +1,5 @@
+import { createApp } from "../app.ts";
+import type { Database } from "../db/index.ts";
 import {
   schemas,
   ref,
@@ -61,13 +63,14 @@ const id = (name: string, description: string, pattern?: string) =>
   );
 const query = (name: string) => {
   const schema = schemas[name];
-  return Object.entries(schema.properties as Record<string, Schema>).map(
+  if (!schema) throw new Error(`Unknown query schema ${name}.`);
+  return Object.entries(schema["properties"] as Record<string, Schema>).map(
     ([key, value]) =>
       parameter(
         key,
         "query",
         value,
-        (schema.required as string[] | undefined)?.includes(key) ?? false,
+        (schema["required"] as string[] | undefined)?.includes(key) ?? false,
       ),
   );
 };
@@ -76,6 +79,15 @@ const unavailable = {
   "503": error("Configuration ou service indisponible"),
 };
 const paths: Record<string, Partial<Record<Method, Operation>>> = {};
+const generated = createApp({
+  query: async () => ({ rows: [], rowCount: 0 }),
+} as unknown as Database).getOpenAPI31Document({
+  openapi: "3.1.0",
+  info: { title: "Sillage", version: "2.2.0" },
+}) as unknown as {
+  paths: Record<string, Partial<Record<Method, Operation>>>;
+  components: { schemas: Record<string, Schema> };
+};
 
 function add(
   method: Method,
@@ -156,131 +168,8 @@ add(
     },
   },
 );
-add(
-  "get",
-  "/auth/status",
-  "getAuthStatus",
-  "Connexion Google",
-  "Disponibilité de Google",
-  "Indique si la connexion Google est configurée, sans exposer d’identifiant privé.",
-  object({ google: boolean }),
-  { public: true },
-);
-add(
-  "get",
-  "/auth/google/start",
-  "startGoogleSignIn",
-  "Connexion Google",
-  "Commencer la connexion",
-  "À ouvrir dans le navigateur système. Le Mac crée un verifier PKCE et app_state, puis envoie SHA-256(verifier) en base64url comme challenge. Le serveur pose un cookie Secure HttpOnly SameSite=Lax et redirige vers Google. Flux valable 10 minutes. Scopes : openid, email, profile ; aucun accès aux playlists YouTube.",
-  {},
-  {
-    public: true,
-    status: "",
-    effect: "browser",
-    parameters: query("AuthStart"),
-    responses: {
-      "302": {
-        description: "Redirection Google",
-        headers: {
-          Location: { schema: string() },
-          "Set-Cookie": {
-            schema: string(),
-            description:
-              "__Host-recall-auth ; Secure ; HttpOnly ; SameSite=Lax ; Path=/",
-          },
-        },
-      },
-      "429": error("Plus de 60 démarrages par minute"),
-      "503": error("Google non configuré"),
-    },
-  },
-);
-add(
-  "get",
-  "/auth/google/callback",
-  "completeGoogleSignIn",
-  "Connexion Google",
-  "Retour du navigateur Google",
-  "Google fournit code et state ; le cookie du démarrage est obligatoire. Vérification de l’identité et du nonce, puis retour HTML vers playlist-recall://auth?code=…&state=…. Le code de retour Sillage est à usage unique, valable 90 secondes et lié au challenge PKCE. Il ne s’agit ni d’une clé Google ni du jeton API. Ne pas rejouer manuellement le callback hors du flux navigateur.",
-  {},
-  {
-    public: true,
-    effect: "browser",
-    security: [{ googleFlowCookie: [] }],
-    parameters: [
-      parameter("state", "query", { type: "string", maxLength: 128 }, true),
-      parameter("code", "query", { type: "string", maxLength: 4096 }, true),
-    ],
-    responses: {
-      "200": text("text/html", "Page de retour vers l’app Mac"),
-      "400": text(
-        "text/plain",
-        "Connexion annulée, expirée ou identité non confirmée",
-      ),
-    },
-  },
-);
-add(
-  "post",
-  "/auth/exchange",
-  "exchangeSignInGrant",
-  "Connexion Google",
-  "Échanger le code contre une session",
-  "L’app échange le code Sillage reçu par son lien de retour et son verifier PKCE. Usage unique. Le jeton retourné est conservé dans le fichier privé de session du Mac ; le serveur conserve son empreinte. Validité 90 jours, prolongée à l’usage lorsque moins de 60 jours restent.",
-  object({
-    token: string(
-      "Secret de session : ne jamais journaliser, exporter ou committer.",
-    ),
-  }),
-  {
-    public: true,
-    effect: "write",
-    input: "AuthExchange",
-    example: { code: "{{auth_code}}", verifier: "{{pkce_verifier}}" },
-    responses: {
-      "401": error("Code expiré, réutilisé ou verifier incorrect"),
-      "413": text("text/plain", "Corps supérieur à 8 Kio"),
-    },
-  },
-);
-
-add(
-  "get",
-  "/v1/me",
-  "getAccount",
-  "Compte",
-  "Compte courant",
-  "Compte associé au jeton Bearer. Chaque session détermine son userId côté serveur ; un client ne peut pas choisir le compte d’un autre utilisateur.",
-  "Account",
-);
-add(
-  "post",
-  "/v1/logout",
-  "revokeSession",
-  "Compte",
-  "Déconnecter cette session",
-  "Révoque le jeton utilisé pour cet appel. Les autres sessions du compte restent actives.",
-  "Saved",
-  { effect: "write" },
-);
-add(
-  "post",
-  "/v1/account/claim-library",
-  "claimLegacyLibrary",
-  "Compte",
-  "Récupérer la bibliothèque historique",
-  "Transfert à usage unique vers un compte Google, avec preuve du jeton historique. Transfère aussi l’historique et les jetons concernés. Ne sert pas à partager des bibliothèques entre comptes ordinaires.",
-  "Saved",
-  {
-    effect: "write",
-    input: object({
-      legacyToken: { type: "string", minLength: 20, maxLength: 256 },
-    }),
-    example: { legacyToken: "{{legacy_token}}" },
-    responses: { "403": error("Transfert déjà effectué ou preuve invalide") },
-  },
-);
+// Routes declared with createRoute document themselves: their operations come from the app.
+Object.assign(paths, generated.paths);
 
 add(
   "get",
@@ -938,6 +827,6 @@ export const openapi = {
           "Cookie du flux navigateur, valable 10 minutes, à usage unique avec state.",
       },
     },
-    schemas,
+    schemas: { ...schemas, ...generated.components.schemas },
   },
 };

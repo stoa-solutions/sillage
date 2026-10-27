@@ -30,7 +30,7 @@ export interface ChatTool {
   type: "function";
   function: {
     name: string;
-    description?: string;
+    description?: string | undefined;
     parameters: Record<string, unknown>;
   };
 }
@@ -88,6 +88,7 @@ export async function completeTurn(
   observe?: TraceObserver,
 ) {
   const started = Date.now();
+  const providerOptions = thinkingOptions(config);
   try {
     const result = await generateText({
       model: aiModel(config),
@@ -104,7 +105,9 @@ export async function completeTurn(
               tools.map(({ function: definition }) => [
                 definition.name,
                 tool({
-                  description: definition.description,
+                  ...(definition.description === undefined
+                    ? {}
+                    : { description: definition.description }),
                   inputSchema: jsonSchema(definition.parameters),
                   // No execute: MCP and evidence validation remain in the DJ orchestration.
                 }),
@@ -115,7 +118,7 @@ export async function completeTurn(
         : {}),
       ...(config.provider !== "anthropic" ? { output: Output.json() } : {}),
       maxOutputTokens: config.model === "gemini-4-argon" ? 32768 : 4096,
-      providerOptions: thinkingOptions(config),
+      ...(providerOptions ? { providerOptions } : {}),
       maxRetries: 0,
       abortSignal: signal,
     });

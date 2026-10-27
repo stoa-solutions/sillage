@@ -6,7 +6,7 @@ import { replayBaseline } from "./support/database.ts";
 import { createApp } from "../src/app.ts";
 import { hash } from "../src/content.ts";
 
-const url = process.env.TEST_DATABASE_URL;
+const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test")) {
   throw new Error("Disposable _test database required");
 }
@@ -25,7 +25,7 @@ const request = (path: string, body?: unknown, token = tokenA) =>
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 
 beforeAll(async () => {
@@ -38,7 +38,7 @@ beforeEach(async () => {
   for (const [id, token] of [
     [alice, tokenA],
     [bob, tokenB],
-  ]) {
+  ] as const) {
     await db.query("INSERT INTO users(id,email) VALUES($1,$2)", [
       id,
       `${id}@example.test`,
@@ -77,16 +77,16 @@ it("lets an account select Claude with its own key without exposing the key or c
   ).toMatchObject({ configured: false });
 });
 
-it.runIf(Boolean(process.env.AI_SIMULATION_URL))(
+it.runIf(Boolean(process.env["AI_SIMULATION_URL"]))(
   "checks saved keys through both native APIs and preserves each key when switching or removing a provider",
   async () => {
     vi.stubEnv(
       "AI_GOOGLE_BASE_URL",
-      `${process.env.AI_SIMULATION_URL}/google/v1beta`,
+      `${process.env["AI_SIMULATION_URL"]}/google/v1beta`,
     );
     vi.stubEnv(
       "AI_ANTHROPIC_BASE_URL",
-      `${process.env.AI_SIMULATION_URL}/anthropic/v1`,
+      `${process.env["AI_SIMULATION_URL"]}/anthropic/v1`,
     );
     for (const [provider, model, apiKey] of [
       ["google", "gemini-3.8-flash", "fixture-google-key-never-real"],
@@ -127,16 +127,16 @@ it.runIf(Boolean(process.env.AI_SIMULATION_URL))(
   },
 );
 
-it.runIf(Boolean(process.env.AI_SIMULATION_URL))(
+it.runIf(Boolean(process.env["AI_SIMULATION_URL"]))(
   "executes the same music tools over native Gemini and Claude HTTP APIs, then returns a verified selection",
   async () => {
     vi.stubEnv(
       "AI_GOOGLE_BASE_URL",
-      `${process.env.AI_SIMULATION_URL}/google/v1beta`,
+      `${process.env["AI_SIMULATION_URL"]}/google/v1beta`,
     );
     vi.stubEnv(
       "AI_ANTHROPIC_BASE_URL",
-      `${process.env.AI_SIMULATION_URL}/anthropic/v1`,
+      `${process.env["AI_SIMULATION_URL"]}/anthropic/v1`,
     );
     await db.query(
       "INSERT INTO playlists(id,title,source_url) VALUES('PLai1234567','Jazz','https://www.youtube.com/playlist?list=PLai1234567')",
@@ -176,12 +176,12 @@ it.runIf(Boolean(process.env.AI_SIMULATION_URL))(
   },
 );
 
-it.runIf(Boolean(process.env.AI_SIMULATION_URL))(
+it.runIf(Boolean(process.env["AI_SIMULATION_URL"]))(
   "migrates an existing Google key and selected model without re-entry or reset on a second migration",
   async () => {
     vi.stubEnv(
       "AI_GOOGLE_BASE_URL",
-      `${process.env.AI_SIMULATION_URL}/google/v1beta`,
+      `${process.env["AI_SIMULATION_URL"]}/google/v1beta`,
     );
     await request("settings", {
       model: "gemini-3.8-flash",
@@ -224,21 +224,21 @@ it.runIf(Boolean(process.env.AI_SIMULATION_URL))(
   },
 );
 
-it.runIf(Boolean(process.env.AI_SIMULATION_URL)).each(["google", "compatible"])(
+it.runIf(Boolean(process.env["AI_SIMULATION_URL"])).each(["google", "compatible"])(
   "keeps the initial %s legacy server check working but never reactivates its global key after personal configuration",
   async (transport) => {
     const legacy = "00000000-0000-4000-8000-000000000001";
     vi.stubEnv("DJ_PROVIDER", transport === "compatible" ? "" : "google");
-    vi.stubEnv("DJ_BASE_URL", `${process.env.AI_SIMULATION_URL}/google/v1`);
+    vi.stubEnv("DJ_BASE_URL", `${process.env["AI_SIMULATION_URL"]}/google/v1`);
     vi.stubEnv("DJ_MODEL", "gemini-3.8-flash");
     vi.stubEnv("DJ_API_KEY", "fixture-google-key-never-real");
     vi.stubEnv(
       "AI_GOOGLE_BASE_URL",
-      `${process.env.AI_SIMULATION_URL}/google/v1beta`,
+      `${process.env["AI_SIMULATION_URL"]}/google/v1beta`,
     );
     vi.stubEnv(
       "AI_ANTHROPIC_BASE_URL",
-      `${process.env.AI_SIMULATION_URL}/anthropic/v1`,
+      `${process.env["AI_SIMULATION_URL"]}/anthropic/v1`,
     );
     await db.query("INSERT INTO users(id) VALUES($1)", [legacy]);
     await db.query(

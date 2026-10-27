@@ -119,7 +119,7 @@ export const schemas: Record<string, Schema> = {
   HistoryPage: {
     ...jsonSchema(historyPage),
     properties: {
-      ...(jsonSchema(historyPage).properties as Schema),
+      ...(jsonSchema(historyPage)["properties"] as Schema),
       limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
     },
   },

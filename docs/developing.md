@@ -37,13 +37,14 @@ Les noms Swift correspondent aux fichiers de `apps/macos/Sources/RecallKit` (rè
 5. Lancer les validations de la zone, puis contrôler le parcours dans l’app avec son vrai lecteur. Distinguer les tests simulés du test réel.
 6. Rebaser, vérifier le commit final, intégrer selon AGENTS.md. Le guide operations.md couvre la production ; une compilation ne vaut pas déploiement.
 
-## Base de données (Prisma)
+## Base de données (Drizzle)
 
-- Le client Prisma est généré dans `apps/server/src/generated/` (ignoré par Git) par `npm run generate -w @playlist-recall/server`. `check`, `test` et `dev` le régénèrent.
-- Modifier un modèle dans `apps/server/prisma/schema/<domaine>.prisma`, puis créer la migration sur une base jetable : `DATABASE_URL=… SHADOW_DATABASE_URL=… npx prisma migrate dev --create-only --name <sujet>` depuis `apps/server`. Relire le SQL produit : retirer les `DROP DEFAULT` proposés sur `search_document` et `music_search_document` (colonnes générées que Prisma ne sait pas décrire), et écrire à la main ce que Prisma ne modélise pas (CHECK, index d’expression, pgvector).
-- `npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema --script` doit seulement proposer ces deux lignes : sinon le schéma et les migrations divergent.
-- Le serveur applique les migrations au démarrage (`src/boot.ts`) ; `npm run migrate -w @playlist-recall/server` le fait à la main. Les suites d’intégration migrent leur propre schéma PostgreSQL de la même façon.
-- Le nouveau code passe par `db.prisma` dans le `store.ts` de sa feature, jamais par du SQL concaténé.
+- Modifier une table dans `apps/server/src/db/schema/<domaine>.ts`, puis générer la migration : `npm run db:generate -w @playlist-recall/server -- --name <sujet>`. Pas besoin de base : drizzle-kit compare le schéma au dernier instantané de `apps/server/drizzle/meta/`. Relire le SQL produit et le committer avec l’instantané.
+- Ce que Drizzle ne décrit pas (déclencheur `recall_music_revision`, configuration `recall_simple`) s’écrit à la main dans une migration créée par `npx drizzle-kit generate --custom --name <sujet>`.
+- Le serveur applique les migrations au démarrage ; `npm run migrate -w @playlist-recall/server` le fait à la main. Les suites d’intégration migrent leur propre schéma PostgreSQL de la même façon.
+- Une feature passe par `db.orm` dans son `store.ts`, avec le constructeur SQL de Drizzle ; jamais de SQL concaténé.
+- `npm run build -w @playlist-recall/server` produit le bundle de production dans `apps/server/dist/` ; le développement reste en TypeScript direct (`tsx`).
+- Le serveur compile en TypeScript très strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, accès `process.env["X"]`, etc.) : traiter le cas absent plutôt que forcer le type.
 
 ## Avant de vouloir scaler
 

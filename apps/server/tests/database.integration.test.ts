@@ -17,7 +17,7 @@ import {
 import { YouTube } from "../src/youtube.ts";
 import type { LibraryImport } from "@playlist-recall/core/types";
 vi.mock("../src/inference-client.ts", () => ({ infer: vi.fn() }));
-const url = process.env.TEST_DATABASE_URL;
+const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("TEST_DATABASE_URL must name a disposable _test database.");
 const db = openDatabase({ url });
@@ -194,7 +194,7 @@ it("ignores a stale text result and commits all current passages atomically", as
 });
 it("reindexes a changed thumbnail even when its URL stays the same", async () => {
   await importLibrary(db, fixture);
-  process.env.VISION_ENABLED = "true";
+  process.env["VISION_ENABLED"] = "true";
   const vector = Array.from({ length: 768 }, (_, i) => (i === 0 ? 1 : 0));
   vi.mocked(infer).mockResolvedValue({ vector });
   vi.stubGlobal(
@@ -406,12 +406,12 @@ it("migrates moved duplicate entries by occurrence without duplicating the first
 it("queues a due playlist once and advances its six-hour schedule", async () => {
   await importLibrary(db, fixture);
   await db.query("DELETE FROM jobs");
-  process.env.SYNC_ENABLED = "true";
+  process.env["SYNC_ENABLED"] = "true";
   try {
     await schedule(db);
     await schedule(db);
   } finally {
-    process.env.SYNC_ENABLED = "false";
+    process.env["SYNC_ENABLED"] = "false";
   }
   expect(
     (await db.query("SELECT count(*)::int n FROM jobs WHERE kind='sync'"))
@@ -442,7 +442,7 @@ it("keeps YouTube work pending without consuming retries when the key is absent"
   expect((await claim(db, true))?.kind).toBe("sync");
 });
 it("records unavailable thumbnails without failing and checks them again after a day", async () => {
-  process.env.VISION_ENABLED = "true";
+  process.env["VISION_ENABLED"] = "true";
   await importLibrary(db, fixture);
   await db.query("DELETE FROM jobs");
   vi.stubGlobal(
@@ -472,7 +472,7 @@ it("records unavailable thumbnails without failing and checks them again after a
   ).toBe(1);
 });
 it("still retries temporary thumbnail service failures", async () => {
-  process.env.VISION_ENABLED = "true";
+  process.env["VISION_ENABLED"] = "true";
   await importLibrary(db, fixture);
   vi.stubGlobal(
     "fetch",
@@ -568,7 +568,7 @@ it("finds long music without an implicit duration cap", async () => {
     await mcp.close();
   }
 });
-it.skipIf(!process.env.DJ_SIMULATION_URL)(
+it.skipIf(!process.env["DJ_SIMULATION_URL"])(
   "runs the DJ over HTTP against a simulated model and rejects fabricated selections",
   async () => {
     await importLibrary(db, fixture);
@@ -576,14 +576,14 @@ it.skipIf(!process.env.DJ_SIMULATION_URL)(
       "UPDATE videos SET title='Jazz du soir',duration_seconds=180",
     );
     const saved = {
-      DJ_API_KEY: process.env.DJ_API_KEY,
-      DJ_MODEL: process.env.DJ_MODEL,
-      DJ_BASE_URL: process.env.DJ_BASE_URL,
+      DJ_API_KEY: process.env["DJ_API_KEY"],
+      DJ_MODEL: process.env["DJ_MODEL"],
+      DJ_BASE_URL: process.env["DJ_BASE_URL"],
     };
     Object.assign(process.env, {
       DJ_API_KEY: "simulation-only",
       DJ_MODEL: "fixture",
-      DJ_BASE_URL: process.env.DJ_SIMULATION_URL,
+      DJ_BASE_URL: process.env["DJ_SIMULATION_URL"],
     });
     try {
       const send = (message: string) =>

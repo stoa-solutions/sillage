@@ -6,6 +6,7 @@ import {
   unsupported,
   type Recording,
 } from "../src/musicbrainz/matching.ts";
+import { required } from "./support/required.ts";
 const track = {
   title: "Incapable (feat. HEDGES)",
   channel: "Jewel Usain - Topic",
@@ -29,6 +30,7 @@ export const recording: Recording = {
     },
   ],
 };
+const withoutLength = ({ length: _length, ...rest }: Recording): Recording => rest;
 describe("MusicBrainz conservative matching", () => {
   it("recognizes Topic metadata without mistaking features for the title", () => {
     expect(sourceIdentity(track)).toEqual({
@@ -42,7 +44,7 @@ describe("MusicBrainz conservative matching", () => {
     expect(
       metadata.artists.filter((a) => a.role === "featured").map((a) => a.name),
     ).toEqual(["Béesau", "Hedges"]);
-    expect(metadata.albums[0].title).toBe("Où les garçons grandissent");
+    expect(required(metadata.albums[0]).title).toBe("Où les garçons grandissent");
     expect(metadata.genres).toEqual([]);
     expect(metadata.searchText).not.toContain("hip hop");
   });
@@ -54,7 +56,7 @@ describe("MusicBrainz conservative matching", () => {
       ...recording,
       "artist-credit": [{ artist: { id: "other", name: "Other Artist" } }],
     },
-    { ...recording, length: undefined },
+    withoutLength(recording),
   ])(
     "refuses conflicting artist, duration, version or missing duration",
     (candidate) => {

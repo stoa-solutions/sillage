@@ -7,6 +7,7 @@ import {
 } from "../src/youtube-errors.ts";
 import { Discovery } from "../src/discovery.ts";
 import type { Database } from "../src/db/index.ts";
+import { required } from "./support/required.ts";
 
 const daily = {
   error: {
@@ -110,7 +111,7 @@ describe("YouTube quota diagnosis", () => {
       reason: "daily_quota",
     });
     const cached = await service.search("bob", "afro");
-    expect(cached.results[0].inLibrary).toBe(false);
+    expect(required(cached.results[0]).inLibrary).toBe(false);
     expect(db.query.mock.calls.at(-1)?.[1]).toEqual(["bob", [video.id]]);
     expect(search).toHaveBeenCalledTimes(2);
   });

@@ -14,14 +14,14 @@ const lookupDocument = "coalesce(v.title,'') || ' ' || coalesce(v.channel,'') ||
 const nameLookupDocument = `regexp_replace(${lookupDocument}, '[''’]', '', 'g') || ' ' || regexp_replace(${lookupDocument}, '[''’]', ' ', 'g')`;
 export interface SearchInput {
   query: string;
-  fuzzy?: boolean;
-  playlistId?: string;
-  excludeIds?: string[];
-  availableOnly?: boolean;
-  minDuration?: number;
-  maxDuration?: number;
-  channel?: string;
-  publishedAfter?: string;
+  fuzzy?: boolean | undefined;
+  playlistId?: string | undefined;
+  excludeIds?: string[] | undefined;
+  availableOnly?: boolean | undefined;
+  minDuration?: number | undefined;
+  maxDuration?: number | undefined;
+  channel?: string | undefined;
+  publishedAfter?: string | undefined;
   mode: "text" | "image";
   sort: "relevance" | "position" | "duration";
   offset: number;

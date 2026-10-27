@@ -26,8 +26,8 @@ export const discoveryInput = z.object({
 export type DiscoverySource = Pick<YouTube, "search" | "videos">;
 export const discoveryAddInput = z.object({ videoId: z.string().regex(/^[\w-]{11}$/) });
 function discoverySource(db: Database): DiscoverySource {
-  const youtube = new YouTube(process.env.YOUTUBE_API_KEY ?? "", db);
-  const url = process.env.SEARXNG_URL?.trim();
+  const youtube = new YouTube(process.env["YOUTUBE_API_KEY"] ?? "", db);
+  const url = process.env["SEARXNG_URL"]?.trim();
   return url ? new SearxngDiscovery(url, youtube) : youtube;
 }
 export class DiscoveryError extends Error {
@@ -136,7 +136,7 @@ export class Discovery {
       );
       for (const [kind, key, payload] of [
         ["text", `${id}:${hash(documentText(video))}`, { videoId: id }],
-        ...(process.env.VISION_ENABLED === "true"
+        ...(process.env["VISION_ENABLED"] === "true"
           ? [["image", id, { videoId: id }]]
           : []),
       ] as [string, string, Record<string, string>][]) {

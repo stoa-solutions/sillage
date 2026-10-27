@@ -87,7 +87,7 @@ services:
       start_period: 30s
   worker:
     <<: *service
-    command: [node, --import, tsx, src/worker.ts]
+    command: [node, --enable-source-maps, dist/worker.js]
     environment:
       <<: *config
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
@@ -102,7 +102,7 @@ services:
         condition: service_healthy
   inference:
     <<: *service
-    command: [node, --import, tsx, src/inference.ts]
+    command: [node, --enable-source-maps, dist/inference.js]
     environment:
       VISION_ENABLED: ${VISION_ENABLED:-true}
       MODEL_THREADS: 2

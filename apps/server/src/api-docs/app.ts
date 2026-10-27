@@ -58,6 +58,7 @@ export function createDocsApp(
       "Content-Security-Policy",
       "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'",
     );
+    return undefined;
   });
   app.use(
     "/proxy/*",
@@ -200,9 +201,9 @@ export function createDocsApp(
       const response = await request(new URL(path + url.search, upstream), {
         method: c.req.method,
         headers,
-        body: ["GET", "HEAD"].includes(c.req.method)
-          ? undefined
-          : await c.req.arrayBuffer(),
+        ...(["GET", "HEAD"].includes(c.req.method)
+          ? {}
+          : { body: await c.req.arrayBuffer() }),
         redirect: "manual",
         signal: AbortSignal.any([
           c.req.raw.signal,

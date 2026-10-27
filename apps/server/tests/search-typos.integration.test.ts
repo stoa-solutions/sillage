@@ -6,7 +6,7 @@ import { search } from "../src/search.ts";
 import { infer } from "../src/inference-client.ts";
 
 vi.mock("../src/inference-client.ts", () => ({ infer: vi.fn().mockRejectedValue(new Error("No inference in lexical regression")) }));
-const url = process.env.TEST_DATABASE_URL;
+const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test")) throw new Error("Disposable _test database required");
 const schema = "search_typos_test";
 const admin = new pg.Pool({ connectionString: url });

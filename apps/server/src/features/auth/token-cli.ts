@@ -15,14 +15,14 @@ try {
     const id = randomUUID();
     await pool.orm.insert(tokens).values({
       id,
-      name: process.env.TOKEN_NAME ?? "Extension personnelle",
+      name: process.env["TOKEN_NAME"] ?? "Extension personnelle",
       hash: hash(token),
     });
     await writeFile(
       argument,
       JSON.stringify(
         {
-          url: process.env.PUBLIC_URL ?? "https://recall.stoa.solutions",
+          url: process.env["PUBLIC_URL"] ?? "https://recall.stoa.solutions",
           token,
         },
         null,

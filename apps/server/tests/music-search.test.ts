@@ -8,6 +8,7 @@ vi.mock("../src/discovery.ts", async (importOriginal) => ({
 }));
 import { connectMusicMcp } from "../src/music-mcp.ts";
 import type { Database } from "../src/db/index.ts";
+import { required } from "./support/required.ts";
 
 const libraryTrack = {
   id: "library0001",
@@ -73,7 +74,7 @@ async function query(
     arguments: args,
   });
   expect(response.isError).not.toBe(true);
-  return JSON.parse((response.content as { text: string }[])[0].text);
+  return JSON.parse(required((response.content as { text: string }[])[0]).text);
 }
 it.each(["library", "youtube", "all"] as const)(
   "exposes one music search routed to %s",
@@ -114,7 +115,7 @@ it("searches freely across both sources and preserves the account boundary", asy
     "alice",
   );
   expect(mocks.youtube).toHaveBeenCalledWith("alice", "cumbia psychédélique");
-  expect(db.query.mock.calls[0][1]).toEqual([[libraryTrack.id], "alice"]);
+  expect(required(db.query.mock.calls[0])[1]).toEqual([[libraryTrack.id], "alice"]);
 });
 it.each(["library", "youtube"])(
   "keeps the other source when %s fails",

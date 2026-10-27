@@ -45,7 +45,7 @@ function unavailable(c: Context<ApiEnvironment>, error: unknown) {
 export function createDjRoutes(
   db: Database,
   leases = new TurnLeases({
-    capacity: Number(process.env.DJ_CONCURRENT_TURNS) || 2,
+    capacity: Number(process.env["DJ_CONCURRENT_TURNS"]) || 2,
   }),
 ) {
   const app = new Hono<ApiEnvironment>();

@@ -17,7 +17,7 @@ import {
 export function pilotIds(): string[] {
   return [
     ...new Set(
-      (process.env.MUSICBRAINZ_PILOT_IDS ?? "")
+      (process.env["MUSICBRAINZ_PILOT_IDS"] ?? "")
         .split(",")
         .map((s) => s.trim())
         .filter((s) => /^[\w-]{11}$/.test(s)),
@@ -69,7 +69,7 @@ export async function enrichMusic(
   job: Job,
   provider = new MusicBrainzClient(db),
 ) {
-  const id = job.payload.videoId!;
+  const id = job.payload["videoId"]!;
   const row = (
     await db.query(
       `SELECT v.* FROM videos v WHERE ${eligible} AND v.id=$3 AND v.available AND v.enriched_at IS NOT NULL
@@ -100,7 +100,7 @@ export async function enrichMusic(
     const result = await provider.get<{ recordings: Recording[] }>(
       "recording/",
       {
-        query: `recording:${quote(query.title)} AND artist:${quote(query.artist.split(/\s+(?:x|&|and)\s+/i)[0])}`,
+        query: `recording:${quote(query.title)} AND artist:${quote(query.artist.split(/\s+(?:x|&|and)\s+/i)[0] ?? query.artist)}`,
         limit: "25",
       },
     );

@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 import { planTurn } from "../src/features/dj/plan.ts";
 import { initialMessages } from "../src/features/dj/messages.ts";
 import type { DjInput } from "../src/features/dj/contracts.ts";
+import { required } from "./support/required.ts";
 
 function request(message: string): DjInput {
   return {
@@ -19,7 +20,7 @@ it("keeps an explicitly named artist separate from the currently playing style",
   expect(plan).toMatchObject({ intent: "append", relative: false, grounded: false, targetCount: 3 });
   const messages = initialMessages(input, plan);
   expect(messages).toContainEqual(input.history[0]);
-  expect(messages[0].content).not.toContain("RÉFÉRENCE DE CETTE DEMANDE : le morceau current");
+  expect(required(messages[0]).content).not.toContain("RÉFÉRENCE DE CETTE DEMANDE : le morceau current");
 });
 it("anchors a relative follow-up to actual playback without old announcements", () => {
   const input = request("Prépare huit morceaux comme celui-ci");
@@ -28,7 +29,7 @@ it("anchors a relative follow-up to actual playback without old announcements", 
   expect(plan.targetCount).toBe(8);
   const messages = initialMessages(input, plan);
   expect(messages).not.toContainEqual(input.history[0]);
-  expect(messages[0].content).toContain("RÉFÉRENCE DE CETTE DEMANDE : le morceau current");
+  expect(required(messages[0]).content).toContain("RÉFÉRENCE DE CETTE DEMANDE : le morceau current");
 });
 it("keeps the bounded default only when no size was specified", () => {
   expect(planTurn(request("Prépare la suite")).targetCount).toBe(5);
@@ -70,7 +71,7 @@ it("treats carte blanche as a new direction rather than recycling old failed mus
   const messages=initialMessages(input,plan);
   expect(messages).not.toContainEqual(input.history[0]);
   expect(JSON.stringify(messages)).not.toContain('"direction":"Du jazz"');
-  expect(messages[0].content).toContain("CARTE BLANCHE");
+  expect(required(messages[0]).content).toContain("CARTE BLANCHE");
 });
 
 

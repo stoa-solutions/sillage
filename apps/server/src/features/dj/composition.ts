@@ -10,7 +10,7 @@ export interface ComposedSelection {
   action: "replace" | "append" | "keep";
   ids: string[];
   cards: DiscoveryEvidence[];
-  explanation?: string;
+  explanation?: string | undefined;
 }
 
 /** Owns accumulated evidence, validated choices and recovery independently of the provider loop. */

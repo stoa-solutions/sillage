@@ -5,7 +5,7 @@ import { syncPlaylist, enrichVideos } from "./library.ts";
 import { indexText, indexImage } from "./indexing.ts";
 import { YouTube } from "./youtube.ts";
 import { setTimeout as delay } from "node:timers/promises";
-const youtube = new YouTube(process.env.YOUTUBE_API_KEY ?? "", pool);
+const youtube = new YouTube(process.env["YOUTUBE_API_KEY"] ?? "", pool);
 let stopping = false;
 let scheduled = 0;
 process.on("SIGTERM", () => {
@@ -21,7 +21,7 @@ while (!stopping) {
       await scheduleMusicEnrichment(pool);
       scheduled = Date.now();
     }
-    const job = await claim(pool, Boolean(process.env.YOUTUBE_API_KEY));
+    const job = await claim(pool, Boolean(process.env["YOUTUBE_API_KEY"]));
     if (!job) {
       await delay(1000);
       continue;
@@ -39,11 +39,11 @@ while (!stopping) {
     try {
       if (job.kind === "sync") await syncPlaylist(pool, youtube, job);
       else if (job.kind === "enrich")
-        await enrichVideos(pool, youtube, job.payload.ids!.split(","));
+        await enrichVideos(pool, youtube, job.payload["ids"]!.split(","));
       else if (job.kind === "musicbrainz") await enrichMusic(pool, job);
-      else if (job.kind === "text") await indexText(pool, job.payload.videoId!);
+      else if (job.kind === "text") await indexText(pool, job.payload["videoId"]!);
       else if (job.kind === "image")
-        await indexImage(pool, job.payload.videoId!);
+        await indexImage(pool, job.payload["videoId"]!);
       await finish(pool, job);
     } catch (error) {
       const safeError = new Error(

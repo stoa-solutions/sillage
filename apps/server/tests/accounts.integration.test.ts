@@ -3,6 +3,7 @@ import pg from "pg";
 import { randomUUID, randomBytes } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
 import { replayBaseline } from "./support/database.ts";
+import { required } from "./support/required.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import { pkceChallenge, type IdentityProvider } from "../src/features/auth/index.ts";
@@ -16,7 +17,7 @@ vi.mock("../src/inference-client.ts", () => ({
     vector: Array(kind === "visual-query" ? 768 : 384).fill(0.01),
   })),
 }));
-const url = process.env.TEST_DATABASE_URL;
+const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 // Separate schema avoids interference with the existing worker integration suite.
@@ -46,7 +47,7 @@ const req = (path: string, token = tokenA, body?: unknown) =>
       Authorization: "Bearer " + token,
       "Content-Type": "application/json",
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
@@ -160,7 +161,7 @@ it("browses one account's library by date added, by playlist name, artist or gen
   await db.query(`UPDATE videos SET music_metadata='{"status":"matched","artists":[{"name":"Erykah Badu"}],"genres":["Neo Soul"]}'::jsonb WHERE id='shared12345'`);
   const mcp = await connectMusicMcp(db, [], alice, false, "library");
   const browse = async (args: Record<string, unknown>) =>
-    JSON.parse(((await mcp.client.callTool({ name: "library_browse", arguments: args })).content as { text: string }[])[0].text);
+    JSON.parse(required(((await mcp.client.callTool({ name: "library_browse", arguments: args })).content as { text: string }[])[0], "MCP content").text);
   try {
     const oldest = await browse({ order: "oldest" });
     expect(oldest.tracks.map((t: { id: string }) => t.id)).toEqual(["alicevideo1", "shared12345"]);
@@ -368,7 +369,7 @@ async function loginStart() {
     verifier,
     appState,
     state: location.searchParams.get("state")!,
-    cookie: start.headers.get("set-cookie")!.split(";")[0],
+    cookie: required(start.headers.get("set-cookie")?.split(";")[0], "session cookie"),
   };
 }
 it("binds Google callback to browser state and app PKCE; grants are single-use and Google subject stable", async () => {
@@ -386,7 +387,7 @@ it("binds Google callback to browser state and app PKCE; grants are single-use a
   expect(callback.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
   const html = await callback.text();
   expect(html).toContain("Ouvrir Sillage");
-  const location = new URL(html.match(/id="return" href="([^"]+)"/)![1].replaceAll("&amp;", "&"));
+  const location = new URL(required(html.match(/id="return" href="([^"]+)"/)?.[1], "return link").replaceAll("&amp;", "&"));
   expect(location.searchParams.get("state")).toBe(flow.appState);
   expect(location.searchParams.has("token")).toBe(false);
   const code = location.searchParams.get("code")!;
@@ -516,7 +517,7 @@ it("scopes semantic text and image hits before ranking, including explanations",
         const result = await mcp.client.callTool({ name: "library_search", arguments: {
           query: "blue album cover", mode: "image", includeQueued: true,
         } });
-        const data = JSON.parse((result.content as { text: string }[])[0].text);
+        const data = JSON.parse(required((result.content as { text: string }[])[0], "MCP content").text);
         expect(data.mode).toBe("image");
         expect(data.tracks.map((t: any) => t.id).sort()).toEqual(["alicevideo1", "shared12345"]);
         expect(JSON.stringify(data)).not.toContain("bobvideo123");
@@ -532,7 +533,7 @@ it("creates a genuinely empty account for a new Google subject, with no inherite
     { headers: { Cookie: flow.cookie } },
   );
   const html = await callback.text();
-  const code = new URL(html.match(/id="return" href="([^"]+)"/)![1].replaceAll("&amp;", "&")).searchParams.get("code");
+  const code = new URL(required(html.match(/id="return" href="([^"]+)"/)?.[1], "return link").replaceAll("&amp;", "&")).searchParams.get("code");
   const token = (
     await (
       await req("/auth/exchange", "", { code, verifier: flow.verifier })
@@ -638,11 +639,11 @@ it("returns a nearby heard featuring name only when requested, within the owning
   try {
     for (const [fuzzy, expected] of [[false, []], [true, ['hedges00001']]] as const) {
       const result = await mcp.client.callTool({ name: 'library_search', arguments: { query: 'Edge', fuzzy } });
-      const data = JSON.parse((result.content as { text: string }[])[0].text);
+      const data = JSON.parse(required((result.content as { text: string }[])[0], "MCP content").text);
       expect(data.tracks.map((t: any) => t.id)).toEqual(expected);
     }
     const result = await mcp.client.callTool({ name: 'library_search', arguments: { query: 'Incapable' } });
-    const data = JSON.parse((result.content as { text: string }[])[0].text);
+    const data = JSON.parse(required((result.content as { text: string }[])[0], "MCP content").text);
     expect(data.tracks.map((t: any) => t.id)).toEqual(['hedges00001']);
   } finally { await mcp.close(); }
 });

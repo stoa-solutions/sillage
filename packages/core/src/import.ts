@@ -24,13 +24,13 @@ export function parseImport(
   fallbackTitle = "Import JSON",
 ): LibraryImport {
   const source = object(input);
-  if (Array.isArray(source.collections)) {
-    const playlists = source.collections.filter(
+  if (Array.isArray(source["collections"])) {
+    const playlists = source["collections"].filter(
       (c) => !isUnassigned(c),
     ).length;
-    if (!source.collections.length || playlists > MAX_PLAYLISTS)
+    if (!source["collections"].length || playlists > MAX_PLAYLISTS)
       throw new Error("La sauvegarde doit contenir entre 1 et 100 playlists.");
-    const parts = source.collections.map((c, i) =>
+    const parts = source["collections"].map((c, i) =>
       parseSingle(c, i, fallbackTitle),
     );
     if (parts.reduce((n, p) => n + p.memberships.length, 0) > MAX_ENTRIES)
@@ -69,17 +69,17 @@ function parseSingle(
   const source = object(input);
   const normalized = "videos" in source;
   const playlist = normalized
-    ? source.playlist == null
+    ? source["playlist"] == null
       ? {}
-      : object(source.playlist)
+      : object(source["playlist"])
     : source;
   // A file without playlist ID gets the same stable ID on every import, so it replaces itself.
   const id =
-    text(playlist.id, 160) ??
+    text(playlist["id"], 160) ??
     "file_" + sha256Hex(fallbackTitle + String(index)).slice(0, 24);
   if (!/^[a-zA-Z0-9_-]+$/.test(id))
     throw new Error("Identifiant de playlist absent ou invalide.");
-  const entries = normalized ? source.videos : source.entries;
+  const entries = normalized ? source["videos"] : source["entries"];
   if (!Array.isArray(entries) || entries.length > MAX_ENTRIES)
     throw new Error(
       "La liste de vidéos est invalide (maximum 50 000 entrées).",
@@ -87,10 +87,10 @@ function parseSingle(
   const videos = new Map<string, Video>();
   const memberships = entries.map((item, index) => {
     const row = object(item);
-    const videoId = text(row.id);
+    const videoId = text(row["id"]);
     if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId))
       throw new Error(`Identifiant vidéo invalide à l'entrée ${index + 1}.`);
-    const duration = normalized ? row.duration_seconds : row.duration;
+    const duration = normalized ? row["duration_seconds"] : row["duration"];
     if (
       duration != null &&
       (typeof duration !== "number" ||
@@ -98,30 +98,30 @@ function parseSingle(
         duration < 0)
     )
       throw new Error(`Durée invalide à l'entrée ${index + 1}.`);
-    const tags = Array.isArray(row.tags)
-      ? row.tags
+    const tags = Array.isArray(row["tags"])
+      ? row["tags"]
           .filter((t): t is string => typeof t === "string")
           .slice(0, 100)
           .map((t) => t.slice(0, 100))
       : [];
     const video: Video = {
       id: videoId,
-      title: text(row.title, 1000),
-      channel: text(row.channel ?? row.uploader, 300),
+      title: text(row["title"], 1000),
+      channel: text(row["channel"] ?? row["uploader"], 300),
       durationSeconds: typeof duration === "number" ? duration : null,
-      description: text(row.description, 10000) ?? "",
+      description: text(row["description"], 10000) ?? "",
       tags,
       thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
       url: `https://www.youtube.com/watch?v=${videoId}`,
       publishedAt:
-        typeof row.upload_date === "string" &&
-        /^\d{4}-?\d{2}-?\d{2}$/.test(row.upload_date)
-          ? row.upload_date
+        typeof row["upload_date"] === "string" &&
+        /^\d{4}-?\d{2}-?\d{2}$/.test(row["upload_date"])
+          ? row["upload_date"]
           : null,
     };
     const old = videos.get(videoId);
     if (!old || (!old.title && video.title)) videos.set(videoId, video);
-    const suppliedPosition = normalized ? row.position : row.playlist_index;
+    const suppliedPosition = normalized ? row["position"] : row["playlist_index"];
     if (
       suppliedPosition != null &&
       (typeof suppliedPosition !== "number" ||
@@ -143,7 +143,7 @@ function parseSingle(
     playlists: [
       {
         id,
-        title: text(playlist.title, 500) ?? fallbackTitle,
+        title: text(playlist["title"], 500) ?? fallbackTitle,
         sourceUrl: `https://www.youtube.com/playlist?list=${encodeURIComponent(id)}`,
         importedAt: new Date().toISOString(),
       },

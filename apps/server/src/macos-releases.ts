@@ -11,7 +11,7 @@ export function macosReleases() {
     try {
       return c.body(
         await readFile(
-          join(process.env.MAC_RELEASES_DIR ?? "/releases", "appcast.xml"),
+          join(process.env["MAC_RELEASES_DIR"] ?? "/releases", "appcast.xml"),
           "utf8",
         ),
       );
@@ -33,7 +33,7 @@ export function macosReleases() {
     )
       return c.notFound();
     try {
-      const path = join(process.env.MAC_RELEASES_DIR ?? "/releases", name);
+      const path = join(process.env["MAC_RELEASES_DIR"] ?? "/releases", name);
       const file = await stat(path);
       if (!file.isFile()) return c.notFound();
       c.header("Content-Length", String(file.size));

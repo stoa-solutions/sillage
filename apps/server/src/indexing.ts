@@ -99,7 +99,7 @@ export async function fetchThumbnail(
   return Buffer.concat(parts);
 }
 export async function indexImage(db: Database, id: string) {
-  if (process.env.VISION_ENABLED !== "true") return;
+  if (process.env["VISION_ENABLED"] !== "true") return;
   const row = (await db.query("SELECT * FROM videos WHERE id=$1", [id]))
     .rows[0];
   if (!row?.available) return;

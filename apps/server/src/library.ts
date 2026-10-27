@@ -87,7 +87,7 @@ export async function enqueueMissing(db: Database) {
     if (v.title && (v.content_hash !== v.index_hash || !v.text_current))
       await enqueue(db, "text", `${v.id}:${v.content_hash}`, { videoId: v.id });
     if (
-      process.env.VISION_ENABLED === "true" &&
+      process.env["VISION_ENABLED"] === "true" &&
       (!v.image_checked_at ||
         (!v.image_error && v.image_model !== VISION_KEY) ||
         Date.now() - new Date(v.image_checked_at).getTime() > 86400000)
@@ -96,7 +96,7 @@ export async function enqueueMissing(db: Database) {
   }
 }
 export async function syncPlaylist(db: Database, youtube: YouTube, job: Job) {
-  const id = job.payload.playlistId!;
+  const id = job.payload["playlistId"]!;
   const runId = randomUUID();
   await db.query(`INSERT INTO sync_runs(id,playlist_id) VALUES($1,$2)`, [
     runId,

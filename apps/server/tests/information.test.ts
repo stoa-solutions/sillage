@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { InformationSearch, publicSourceUrl } from "../src/information.ts";
+import { required } from "./support/required.ts";
 
 it("returns numbered public sources, removes markup, deduplicates and caches only the query", async () => {
   const fetcher = vi.fn(async (_input: string | URL | Request) =>
@@ -36,7 +37,7 @@ it("returns numbered public sources, removes markup, deduplicates and caches onl
     first,
   );
   expect(fetcher).toHaveBeenCalledTimes(1);
-  const url = new URL(String(fetcher.mock.calls[0][0]));
+  const url = new URL(String(required(fetcher.mock.calls[0])[0]));
   expect(url.searchParams.get("q")).toBe(
     "!go !ddg Jewel Usain Incapable inspiration",
   );

@@ -13,11 +13,12 @@ import { migrate, openDatabase } from "../src/db/index.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import { connectMusicMcp } from "../src/music-mcp.ts";
+import { required } from "./support/required.ts";
 vi.mock("../src/inference-client.ts", () => ({
   infer: vi.fn().mockRejectedValue(new Error("No model in test")),
 }));
 const googleResponse = (parts: unknown[]) => Response.json({candidates:[{index:0,finishReason:"STOP",content:{role:"model",parts}}]});
-const url = process.env.TEST_DATABASE_URL;
+const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 const schema = "discovery_test";
@@ -51,7 +52,7 @@ const req = (path: string, token = tokenA, body?: unknown) =>
       Authorization: "Bearer " + token,
       "Content-Type": "application/json",
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
@@ -75,7 +76,7 @@ beforeEach(async () => {
   for (const [user, token] of [
     [alice, tokenA],
     [bob, tokenB],
-  ])
+  ] as const)
     await db.query(
       "INSERT INTO tokens(id,name,hash,user_id) VALUES($1,'test',$2,$3)",
       [randomUUID(), hash(token), user],
@@ -397,7 +398,7 @@ it("excludes queued public tracks from automatic discovery but permits explicit 
   try {
     for (const includeQueued of [false, true]) {
       const result = await mcp.client.callTool({ name: "youtube_search", arguments: { query: "Real artist", includeQueued } });
-      const text = (result.content as {text: string}[])[0].text;
+      const text = required((result.content as {text: string}[])[0], "MCP content").text;
       expect(JSON.parse(text).results.map((r: any) => r.video.id)).toEqual(includeQueued ? ["newtrack001", "newtrack002"] : ["newtrack002"]);
     }
   } finally { await mcp.close(); }

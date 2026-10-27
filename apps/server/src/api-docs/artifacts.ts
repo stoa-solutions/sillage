@@ -35,20 +35,22 @@ export function postmanCollection() {
   for (const [path, methods] of Object.entries(openapi.paths))
     for (const [method, operation] of Object.entries(methods)) {
       const op = operation as Operation;
-      const variables = [...path.matchAll(/\{([^}]+)\}/g)].map((match) => ({
-        key: match[1],
-        value: `{{${match[1] === "id" ? "playlist_id" : match[1] === "videoId" ? "video_id" : match[1]}}}`,
-      }));
+      const variables = [...path.matchAll(/\{([^}]+)\}/g)].map(
+        ([, key = ""]) => ({
+          key,
+          value: `{{${key === "id" ? "playlist_id" : key === "videoId" ? "video_id" : key}}}`,
+        }),
+      );
       const requestPath = path.replace(/\{([^}]+)\}/g, ":$1");
       const parameters = (op.parameters ?? [])
-        .filter((p) => p.in === "query")
+        .filter((p) => p["in"] === "query")
         .map((p) => {
-          const schema = p.schema as Record<string, unknown>;
+          const schema = p["schema"] as Record<string, unknown>;
           return {
-            key: p.name,
-            value: String(schema.default ?? `{{${p.name}}}`),
-            disabled: !p.required,
-            description: p.description ?? "",
+            key: p["name"],
+            value: String(schema["default"] ?? `{{${p["name"]}}}`),
+            disabled: !p["required"],
+            description: p["description"] ?? "",
           };
         });
       const suffix = parameters
@@ -111,6 +113,8 @@ export function postmanCollection() {
         ],
       };
       const tag = op.tags[0];
+      if (tag === undefined)
+        throw new Error(`Operation ${op.operationId} has no tag.`);
       if (!groups.has(tag)) groups.set(tag, []);
       groups.get(tag)!.push(item);
     }
@@ -227,7 +231,7 @@ export function postmanNativeFiles(): Record<string, unknown> {
   for (const [name, baseUrl] of [
     ["Local", "http://127.0.0.1:3001"],
     ["Serveur privé", "https://recall.stoa.solutions"],
-  ]) {
+  ] as const) {
     files[`postman/environments/${name}.environment.yaml`] = {
       name: `Sillage — ${name}`,
       values: postmanEnvironment(name, baseUrl).values,

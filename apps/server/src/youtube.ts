@@ -36,7 +36,7 @@ export class YouTube {
       const { rows } = await this.db.query(
         `INSERT INTO quota_usage(day,units) VALUES((now() AT TIME ZONE 'America/Los_Angeles')::date,1)
         ON CONFLICT(day) DO UPDATE SET units=quota_usage.units+1 WHERE quota_usage.units<$1 RETURNING units`,
-        [Number(process.env.YOUTUBE_DAILY_BUDGET ?? 8000)],
+        [Number(process.env["YOUTUBE_DAILY_BUDGET"] ?? 8000)],
       );
       if (!rows.length) throw new YouTubeError("daily_quota", 429);
     }

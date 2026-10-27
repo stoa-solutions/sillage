@@ -86,7 +86,7 @@ function songTitle(title: string): string {
 }
 function artistIdentity(track: MusicMetadata): string {
   const parts = track.title.split(/\s+[-–—]\s+/);
-  return normalizeMusic(parts.length > 1 ? parts[0] : (track.channel ?? ""))
+  return normalizeMusic(parts.length > 1 ? (parts[0] ?? "") : (track.channel ?? ""))
     .replace(/\b(topic|vevo)\b/g, "")
     .trim();
 }
@@ -178,12 +178,14 @@ export function resolveExactRequest(
     const rawMatches = exactCandidates(rawPart, catalog);
     const part = rawMatches.length ? rawPart : withoutPlaybackModifiers(rawPart);
     const matches = rawMatches.length ? rawMatches : exactCandidates(part, catalog);
+    const [first, second] = matches;
     const ambiguous =
-      matches.length > 1 &&
-      musicMatchRank(part, matches[0]) === musicMatchRank(part, matches[1]) &&
-      artistIdentity(matches[0]) !== artistIdentity(matches[1]);
+      first !== undefined &&
+      second !== undefined &&
+      musicMatchRank(part, first) === musicMatchRank(part, second) &&
+      artistIdentity(first) !== artistIdentity(second);
     hadAmbiguity ||= ambiguous;
-    if (matches.length && !ambiguous) tracks.push(matches[0]);
+    if (first && !ambiguous) tracks.push(first);
     else missing.push(part);
   }
   if (!ordered && !tracks.length && !hadAmbiguity) return null;

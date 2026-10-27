@@ -25,10 +25,16 @@ async function execute(task: string, data: unknown): Promise<unknown> {
     });
   }
   if (!child) {
-    child = fork(new URL("./model-process.ts", import.meta.url), [], {
-      execArgv: ["--import", "tsx"],
+    // Built next to this file: model-process.js in dist, model-process.ts in development.
+    const source = import.meta.url.endsWith(".ts");
+    child = fork(
+      new URL(source ? "./model-process.ts" : "./model-process.js", import.meta.url),
+      [],
+      {
+      execArgv: source ? ["--import", "tsx"] : [],
       stdio: ["ignore", "inherit", "inherit", "ipc"],
-    });
+      },
+    );
     childKind = kind;
   }
   const process = child;
@@ -108,7 +114,7 @@ app.use("*", bodyLimit({ maxSize: 3 * 1024 * 1024 }));
 app.get("/health", (c) =>
   c.json({
     ok: true,
-    vision: process.env.VISION_ENABLED === "true",
+    vision: process.env["VISION_ENABLED"] === "true",
     loaded: childKind || null,
     rss: process.memoryUsage().rss + childRss,
     queue: queue.length,
@@ -153,5 +159,5 @@ app.post("/:task", async (c) => {
 serve({
   fetch: app.fetch,
   hostname: "0.0.0.0",
-  port: Number(process.env.PORT ?? 3002),
+  port: Number(process.env["PORT"] ?? 3002),
 });

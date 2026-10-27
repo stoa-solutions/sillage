@@ -36,13 +36,14 @@ export function providerHttpStatus(error: unknown): number | undefined {
 }
 
 export async function checkModel(config: DjConfig) {
+  const providerOptions = thinkingOptions(config);
   const result = await generateText({
     model: aiModel(config),
     prompt: "Réponds uniquement OK.",
     maxOutputTokens: 256,
     maxRetries: 0,
     abortSignal: AbortSignal.timeout(30000),
-    providerOptions: thinkingOptions(config),
+    ...(providerOptions ? { providerOptions } : {}),
   });
   return Boolean(result.text.trim());
 }

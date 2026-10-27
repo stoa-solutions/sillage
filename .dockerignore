@@ -9,3 +9,4 @@ output
 **/public/models
 **/public/ort
 .env*
+**/dist

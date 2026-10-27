@@ -31,7 +31,7 @@ export const djSettingsInput = z
     },
   );
 export function settingsKey(): Buffer | null {
-  const value = process.env.DJ_SETTINGS_ENCRYPTION_KEY;
+  const value = process.env["DJ_SETTINGS_ENCRYPTION_KEY"];
   return value && /^[a-f0-9]{64}$/i.test(value)
     ? Buffer.from(value, "hex")
     : null;

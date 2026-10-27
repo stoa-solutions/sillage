@@ -54,7 +54,7 @@ export class Lrclib implements LyricsSource {
   private blockedUntil = 0;
   constructor(
     private request: typeof fetch = fetch,
-    private apiKey = process.env.LRCLIB_API_KEY,
+    private apiKey = process.env["LRCLIB_API_KEY"],
     private spacingMs = 300,
   ) {}
   search(query: LyricsQuery): Promise<LyricsRecord[]> {
@@ -143,7 +143,7 @@ export function lyricsQueries(
   const split = cleaned.split(/\s[-–—|]\s/);
   if (split.length >= 2)
     queries.push({
-      artist: split[0].trim(),
+      artist: (split[0] ?? "").trim(),
       track: split.slice(1).join(" ").trim(),
     });
   else if (channel && !channel.endsWith(" - Topic"))
@@ -166,7 +166,7 @@ export function parseLrc(lrc: string): LyricsLine[] {
     for (const [, minutes, seconds] of times)
       stamps.push({
         at: Math.round(
-          (Number(minutes) * 60 + Number(seconds.replace(":", "."))) * 1000,
+          (Number(minutes) * 60 + Number((seconds ?? "").replace(":", "."))) * 1000,
         ),
         text,
       });

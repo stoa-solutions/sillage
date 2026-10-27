@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { musicMatchRank, resolveExactRequest } from "../src/music-matching.ts";
+import { required } from "./support/required.ts";
 
 const catalog = [
   {
@@ -33,11 +34,11 @@ describe("music retrieval", () => {
       title: "Mac Miller but he's relaxed | Lofi Hip Hop Mix",
       channel: "Relaxed Radio",
     };
-    expect(musicMatchRank("Mac Miller", catalog[4])).toBeGreaterThan(
+    expect(musicMatchRank("Mac Miller", required(catalog[4]))).toBeGreaterThan(
       musicMatchRank("Mac Miller", mix),
     );
     expect(musicMatchRank("Mac Miller mix", mix)).toBeGreaterThan(
-      musicMatchRank("Mac Miller mix", catalog[4]),
+      musicMatchRank("Mac Miller mix", required(catalog[4])),
     );
   });
   it("ranks the requested artist and title above another song by that artist", () => {
@@ -46,22 +47,22 @@ describe("music retrieval", () => {
         musicMatchRank("Mac Miller Self Care", b) -
         musicMatchRank("Mac Miller Self Care", a),
     );
-    expect(sorted[0].id).toBe("self-care");
+    expect(required(sorted[0]).id).toBe("self-care");
   });
   it("ranks actual artist recordings above type beats even without artist in title", () => {
-    expect(musicMatchRank("Mac Miller", catalog[4])).toBeGreaterThan(
-      musicMatchRank("Mac Miller", catalog[6]),
+    expect(musicMatchRank("Mac Miller", required(catalog[4]))).toBeGreaterThan(
+      musicMatchRank("Mac Miller", required(catalog[6])),
     );
-    expect(musicMatchRank("Mac Miller", catalog[5])).toBeGreaterThan(
-      musicMatchRank("Mac Miller", catalog[7]),
+    expect(musicMatchRank("Mac Miller", required(catalog[5]))).toBeGreaterThan(
+      musicMatchRank("Mac Miller", required(catalog[7])),
     );
   });
   it("keeps requested type beats and live versions eligible", () => {
-    expect(musicMatchRank("Mac Miller type beat", catalog[6])).toBeGreaterThan(
-      musicMatchRank("Mac Miller type beat", catalog[5]),
+    expect(musicMatchRank("Mac Miller type beat", required(catalog[6]))).toBeGreaterThan(
+      musicMatchRank("Mac Miller type beat", required(catalog[5])),
     );
-    expect(musicMatchRank("Navajo COLORS SHOW", catalog[0])).toBeGreaterThan(
-      musicMatchRank("Navajo COLORS SHOW", catalog[1]),
+    expect(musicMatchRank("Navajo COLORS SHOW", required(catalog[0]))).toBeGreaterThan(
+      musicMatchRank("Navajo COLORS SHOW", required(catalog[1])),
     );
   });
 });
@@ -118,7 +119,7 @@ describe("explicit DJ requests", () => {
       { id: "etoile", title: "Étoile triste", channel: "Artiste" },
     ]);
     expect(result?.append).toBe(true);
-    expect(result?.tracks[0].id).toBe("etoile");
+    expect(required(result?.tracks[0]).id).toBe("etoile");
   });
   it("asks for the artist when two distinct artists have the requested title", () => {
     const result = resolveExactRequest("Joue Hello", [

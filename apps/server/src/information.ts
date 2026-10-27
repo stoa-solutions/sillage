@@ -123,5 +123,5 @@ export class InformationSearch {
 }
 let service: InformationSearch | undefined;
 export function informationSearch() {
-  return (service ??= new InformationSearch(process.env.SEARXNG_URL ?? ""));
+  return (service ??= new InformationSearch(process.env["SEARXNG_URL"] ?? ""));
 }

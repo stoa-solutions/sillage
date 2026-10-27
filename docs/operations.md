@@ -12,7 +12,7 @@ Plafonds : API 192 Mio/0,5 CPU, worker 192 Mio/0,5 CPU, inférence 1 408 Mio/1,5
 
 `DATABASE_URL`, `YOUTUBE_API_KEY`, `SYNC_ENABLED`, `VISION_ENABLED`, `RELEASE_SHA` sont définis dans Dokploy. Ne pas les ajouter au dépôt ou au paquet d’extension. Restreindre la clé Google à YouTube Data API v3 et à l’IP sortante du VPS. Budget local : 8 000 unités/jour, comptées selon la journée YouTube America/Los_Angeles. Une absence de clé est affichée dans l’extension.
 
-Créer un jeton avec `node --import tsx src/features/auth/token-cli.ts create /tmp/connexion.json` depuis le conteneur API. Transférer son contenu vers un fichier privé via la sortie redirigée de `docker exec` puis le retirer du conteneur (`docker cp` ne lit pas ce montage tmpfs sur ce serveur). Ne jamais afficher son contenu dans les journaux. `token-cli.ts revoke UUID` révoque une installation. Seul un hash du jeton est enregistré en base.
+Créer un jeton avec `node dist/features/auth/token-cli.js create /tmp/connexion.json` depuis le conteneur API. Transférer son contenu vers un fichier privé via la sortie redirigée de `docker exec` puis le retirer du conteneur (`docker cp` ne lit pas ce montage tmpfs sur ce serveur). Ne jamais afficher son contenu dans les journaux. `token-cli.js revoke UUID` révoque une installation. Seul un hash du jeton est enregistré en base.
 
 ## Comptes utilisateurs
 
@@ -22,7 +22,7 @@ Voir [accounts.md](accounts.md) pour la configuration Google, les clés Gemini p
 
 1. Exécuter `npm run check`, `npm test`, les tests PostgreSQL, puis `npm run package:local` pour l’extension.
 2. Vérifier l’état de Stoa, les ressources disponibles et la dernière sauvegarde. Pousser le commit du monorepo privé.
-3. Mettre `RELEASE_SHA` au SHA du commit testé. Déclencher le Compose via Dokploy ; l’API applique les migrations Prisma (`prisma migrate deploy`, sous verrou) avant de démarrer. Au premier déploiement Prisma, la base existante rejoue le socle idempotent `0_init` et l’enregistre dans `_prisma_migrations`, sans autre changement. Ne jamais supprimer les volumes de la base.
+3. Mettre `RELEASE_SHA` au SHA du commit testé. Déclencher le Compose via Dokploy ; l’API applique les migrations Drizzle en attente (`apps/server/drizzle`, une transaction sous verrou) avant de démarrer. Au premier déploiement Drizzle, la base existante applique le socle idempotent `0000_baseline` sans changement de données et l’enregistre dans `drizzle.__drizzle_migrations`. Ne jamais supprimer les volumes de la base.
 4. Attendre `composeStatus=done`, puis contrôler indépendamment `/health`, la version retournée, les conteneurs et leurs limites. Un statut Dokploy ne suffit pas.
 5. Importer la sauvegarde existante, lancer une synchronisation manuelle et vérifier les comptes et résultats. Activer `SYNC_ENABLED=true` après réussite, puis constater une exécution créée par le planificateur.
 6. Surveiller erreurs, file, CPU, mémoire et services Stoa pendant le remplissage initial.

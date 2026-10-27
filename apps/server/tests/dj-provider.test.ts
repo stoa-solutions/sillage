@@ -5,6 +5,7 @@ import {
   type ChatMessage,
 } from "../src/features/dj/provider.ts";
 import { DjUnavailable } from "../src/dj.ts";
+import { required } from "./support/required.ts";
 
 const config = {
   configured: true,
@@ -43,13 +44,13 @@ it("allows natural replies and tool calls in JSON mode, then concludes without t
     tool_choice: "auto",
     reasoning_effort: "low",
   });
-  expect(bodies[0].response_format).toEqual({ type: "json_object" });
+  expect(required(bodies[0])["response_format"]).toEqual({ type: "json_object" });
   expect(bodies[1]).toMatchObject({
     tool_choice: "auto",
     response_format: { type: "json_object" },
   });
-  expect(bodies[2].tools).toBeUndefined();
-  expect(bodies[2].tool_choice).toBeUndefined();
+  expect(required(bodies[2])["tools"]).toBeUndefined();
+  expect(required(bodies[2])["tool_choice"]).toBeUndefined();
 });
 
 it.each([

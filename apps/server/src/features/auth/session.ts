@@ -38,6 +38,6 @@ export function sessionGuard(db: Database): MiddlewareHandler<ApiEnvironment> {
     c.set("installationId", session.id);
     c.set("userId", session.userId);
     await extendSession(db.orm, session.id);
-    await next();
+    return next();
   };
 }

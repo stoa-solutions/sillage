@@ -69,11 +69,21 @@ Démarrage et parcours de contribution : [developing.md](developing.md).
 
 ## Serveur : données et features
 
-Le schéma PostgreSQL est décrit avec Prisma dans `apps/server/prisma/schema/`, un fichier par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`). Les noms SQL restent en snake_case ; le client généré expose des modèles et champs camelCase typés. Les migrations versionnées sont dans `prisma/migrations/` : `0_init` reprend à l’identique l’ancien `schema.sql`, idempotent. Une base créée avant Prisma rejoue ce socle puis l’enregistre comme appliqué, sans étape manuelle (`src/migrate.ts`).
+Le schéma PostgreSQL est décrit avec Drizzle dans `apps/server/src/db/schema/`, un fichier par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`). Il décrit tout : colonnes `vector` de pgvector, colonnes `tsvector` générées, contraintes CHECK, index partiels et d’expression, avec les noms réels des contraintes. Seuls le déclencheur `recall_music_revision` et la configuration de recherche `recall_simple` restent en SQL dans les migrations. Les requêtes utilisent le constructeur proche du SQL de Drizzle (`orm.select().from(...)`), typé de bout en bout.
 
-Prisma ne modélise pas tout : colonnes `tsvector` générées, `vector` de pgvector, contraintes CHECK, index d’expression, configuration de recherche `recall_simple` et déclencheur de révision musicale vivent dans les migrations SQL. Le schéma Prisma les signale en commentaire.
+Les migrations sont dans `apps/server/drizzle/`. `0000_baseline` reprend à l’identique l’ancien `schema.sql`, idempotent : une base existante l’applique sans changement, une base neuve est créée. L’API applique les migrations en attente au démarrage, dans une transaction, sous verrou (`src/db/migrate.ts`). L’historique est dans le schéma PostgreSQL `drizzle`.
 
-Le code serveur se range par feature dans `src/features/<feature>/` : `routes.ts` (frontière HTTP), `contracts.ts` (validation Zod), `store.ts` (accès Prisma), modules métier, et `index.ts`, seule entrée publique. Une feature n’importe une autre feature que par son `index.ts` ; `check:architecture` le vérifie. `src/shared/` contient ce qui n’appartient à aucune feature (contexte de requête). La migration est progressive : `auth` (connexion Google, session, jetons) et `accounts` (profil, déconnexion, reprise de la bibliothèque historique) sont sur Prisma ; les autres modules utilisent encore `db.query` sur le même pool jusqu’à leur lot.
+Le code serveur se range par feature dans `src/features/<feature>/` :
+
+- `routes.ts` : frontière HTTP, déclarée avec `createRoute` (`@hono/zod-openapi`) ; la requête est validée et la documentation OpenAPI générée depuis la même déclaration ;
+- `contracts.ts` : schémas Zod des entrées et des réponses, écrits indépendamment des tables ;
+- `store.ts` : accès à la base avec Drizzle ;
+- modules métier nommés par responsabilité ;
+- `index.ts` : seule entrée publique. Une feature n’importe une autre feature que par son `index.ts` ; `check:architecture` le vérifie.
+
+`src/db/` contient le schéma, le client et les migrations ; `src/shared/` ce qui n’appartient à aucune feature (contexte de requête, conventions OpenAPI). La migration est progressive : `auth` (connexion Google, session, jetons) et `accounts` (profil, déconnexion, reprise de la bibliothèque historique) sont faits ; les autres modules utilisent encore `db.query` sur le même pool jusqu’à leur lot. Le parcours de lecture du code est dans [server-tour.md](server-tour.md).
+
+En production, l’image exécute un bundle JavaScript produit par esbuild (`apps/server/build.mjs`), sans compilation TypeScript au démarrage.
 
 ## Organisation interne du DJ serveur
 

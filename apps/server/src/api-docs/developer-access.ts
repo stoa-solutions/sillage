@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { z } from "zod";
 
 export const developerFile = () =>
-  process.env.SILLAGE_DEV_CONNECTION ??
+  process.env["SILLAGE_DEV_CONNECTION"] ??
   join(homedir(), ".config", "sillage", "developer.json");
 export const developerConnection = z.object({
   id: z.string().uuid(),

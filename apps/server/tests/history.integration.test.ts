@@ -10,7 +10,7 @@ import { schedule } from "../src/queue.ts";
 vi.mock("../src/inference-client.ts", () => ({
   infer: vi.fn().mockResolvedValue({ vector: Array(384).fill(0.01) }),
 }));
-const url = process.env.TEST_DATABASE_URL;
+const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 const schema = "history_test";
@@ -34,7 +34,7 @@ const req = (method: string, path: string, token = tokenA, body?: unknown) =>
       Authorization: "Bearer " + token,
       "Content-Type": "application/json",
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 const event = (overrides: Record<string, unknown> = {}) => ({
   id: randomUUID(),
@@ -246,7 +246,7 @@ it("moves the legacy account's history with its library when claimed", async () 
 });
 
 it("stops synchronising a playlist once no account holds it", async () => {
-  process.env.SYNC_ENABLED = "true";
+  process.env["SYNC_ENABLED"] = "true";
   try {
     await db.query(
       "UPDATE playlists SET sync_enabled=true,next_sync_at=now()-interval '1 minute' WHERE id LIKE 'PL%'",
@@ -258,6 +258,6 @@ it("stops synchronising a playlist once no account holds it", async () => {
     );
     expect(jobs.rows.map((r) => r.id)).toEqual(["PLbob1234567"]);
   } finally {
-    delete process.env.SYNC_ENABLED;
+    delete process.env["SYNC_ENABLED"];
   }
 });

@@ -5,7 +5,7 @@ import { ownsPlaylist } from "../features/accounts/index.ts";
 export function enrichmentAccounts(): string[] {
   return [
     ...new Set(
-      (process.env.MUSICBRAINZ_ACCOUNT_IDS ?? "")
+      (process.env["MUSICBRAINZ_ACCOUNT_IDS"] ?? "")
         .split(",")
         .map((id) => id.trim().toLowerCase())
         .filter((id) =>

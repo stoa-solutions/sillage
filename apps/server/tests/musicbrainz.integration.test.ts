@@ -18,6 +18,7 @@ import { musicTracks } from "../src/music-mcp.ts";
 import { search } from "../src/search.ts";
 import { indexText } from "../src/indexing.ts";
 import { infer } from "../src/inference-client.ts";
+import { required } from "./support/required.ts";
 vi.mock("../src/inference-client.ts", () => ({
   infer: vi.fn(async () => ({
     texts: ["credits"],
@@ -25,7 +26,7 @@ vi.mock("../src/inference-client.ts", () => ({
     vector: Array(384).fill(0.01),
   })),
 }));
-const url = process.env.TEST_DATABASE_URL;
+const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 const admin = new pg.Pool({ connectionString: url });
@@ -154,7 +155,7 @@ it("indexes credits and albums and isolates search and MCP by account", async ()
     expect((await search(db, input, bob)).results).toEqual([]);
   }
   expect(
-    (await musicTracks(db, [video.id], alice))[0].musicMetadata?.artists,
+    required((await musicTracks(db, [video.id], alice))[0]).musicMetadata?.artists,
   ).toHaveLength(3);
   expect(await musicTracks(db, [video.id], bob)).toEqual([]);
   await indexText(db, video.id);
@@ -215,7 +216,7 @@ it("shares cached responses and limits concurrent uncached requests", async () =
   ]);
   await b.get("recording/", { query: "one" });
   expect(fetcher).toHaveBeenCalledTimes(2);
-  expect(times[1] - times[0]).toBeGreaterThanOrEqual(1000);
+  expect(required(times[1]) - required(times[0])).toBeGreaterThanOrEqual(1000);
 });
 
 it("rejects a result when the YouTube identity changes during lookup", async () => {

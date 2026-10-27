@@ -13,7 +13,7 @@ import {
   type LyricsSource,
 } from "../src/lyrics.ts";
 vi.mock("../src/inference-client.ts", () => ({ infer: vi.fn() }));
-const url = process.env.TEST_DATABASE_URL;
+const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 const schema = "lyrics_test";
@@ -56,7 +56,7 @@ const req = (path: string, token = tokenA, body?: unknown) =>
       Authorization: "Bearer " + token,
       "Content-Type": "application/json",
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 const lyrics = async (id: string, token = tokenA) => {
   const response = await req(`/v1/lyrics/${id}`, token);

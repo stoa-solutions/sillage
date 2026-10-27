@@ -184,6 +184,7 @@ export class TurnLeases {
       );
       if (index < 0) return;
       const [waiter] = this.waiting.splice(index, 1);
+      if (!waiter) return;
       // Reserve the slot synchronously so two releases cannot both grant it.
       this.active.set(waiter.account, {
         trigger: waiter.trigger,

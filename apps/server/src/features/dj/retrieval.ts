@@ -1,9 +1,9 @@
 /** Identity lookup and musical alternatives are separate clues, never one accidental AND filter. */
 export function musicQueries(input: {
   query: string;
-  artist?: string;
-  alternatives?: string[];
-  mode?: string;
+  artist?: string | undefined;
+  alternatives?: string[] | undefined;
+  mode?: string | undefined;
 }): string[] {
   if (input.mode === "image") return [input.query];
   const values = [
@@ -47,7 +47,9 @@ export function interleaveClues<T>(groups: T[][]): T[] {
     index < Math.max(0, ...groups.map((group) => group.length));
     index++
   )
-    for (const group of groups)
-      if (group[index] !== undefined) result.push(group[index]);
+    for (const group of groups) {
+      const item = group[index];
+      if (item !== undefined) result.push(item);
+    }
   return result;
 }

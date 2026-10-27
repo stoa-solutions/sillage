@@ -54,7 +54,7 @@ export async function finish(db: Database, job: Job, error?: Error) {
   );
 }
 export async function schedule(db: Database) {
-  if (process.env.SYNC_ENABLED !== "true") return;
+  if (process.env["SYNC_ENABLED"] !== "true") return;
   const { rows } = await db.query(
     // A playlist every account removed is no longer synchronised (quota and worker time).
     `SELECT p.id FROM playlists p WHERE p.sync_enabled AND p.next_sync_at<=now() AND EXISTS(SELECT 1 FROM user_playlists up WHERE up.playlist_id=p.id)`,

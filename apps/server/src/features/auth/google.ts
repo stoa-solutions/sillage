@@ -15,7 +15,7 @@ export interface IdentityProvider {
 export function googleProvider(): IdentityProvider | undefined {
   const { GOOGLE_CLIENT_ID: id, GOOGLE_CLIENT_SECRET: secret } = process.env;
   if (!id || !secret) return;
-  const origin = process.env.PUBLIC_URL ?? "https://recall.stoa.solutions";
+  const origin = process.env["PUBLIC_URL"] ?? "https://recall.stoa.solutions";
   const client = new OAuth2Client(id, secret, origin + "/auth/google/callback");
   return {
     authorize: (state, nonce) =>

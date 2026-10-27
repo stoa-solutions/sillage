@@ -4,7 +4,7 @@ export async function infer<T>(
   priority = "background",
 ): Promise<T> {
   const response = await fetch(
-    `${process.env.INFERENCE_URL ?? "http://127.0.0.1:3002"}/${task}`,
+    `${process.env["INFERENCE_URL"] ?? "http://127.0.0.1:3002"}/${task}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Priority": priority },

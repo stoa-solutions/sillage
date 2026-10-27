@@ -20,7 +20,7 @@ export type Decision =
       kind: "propose";
       reason: "browse" | "ambiguous" | "identified";
       cards: DiscoveryEvidence[];
-      explanation?: string;
+      explanation?: string | undefined;
       /** A sourced identification keeps the model's own words. */
       reply?: string;
       sources?: InformationSource[];
@@ -30,7 +30,7 @@ export type Decision =
       reason: "selection";
       action: "replace" | "append";
       ids: string[];
-      explanation?: string;
+      explanation?: string | undefined;
     }
   | { kind: "nothing"; reason: "no-match" }
   | { kind: "retry"; reason: Retry; prompt: string }

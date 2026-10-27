@@ -11,7 +11,7 @@ import {
   loadConversationMemory,
 } from "../src/features/dj/journal/store.ts";
 import { djInput } from "../src/features/dj/contracts.ts";
-const url = process.env.TEST_DATABASE_URL;
+const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 const schema = "dj_journal_test",
@@ -30,7 +30,7 @@ const req = (method: string, path: string, token = tokenA, body?: unknown) =>
       Authorization: "Bearer " + token,
       "Content-Type": "application/json",
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 const event = (overrides: Record<string, unknown> = {}) => ({
   id: randomUUID(),

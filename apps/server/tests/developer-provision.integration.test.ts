@@ -7,7 +7,7 @@ import { createApp } from "../src/app.ts";
 import { hash } from "../src/content.ts";
 import { provisionDeveloperToken } from "../src/api-docs/developer-provision.ts";
 
-const url = process.env.TEST_DATABASE_URL;
+const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 const schema = "developer_provision_test";

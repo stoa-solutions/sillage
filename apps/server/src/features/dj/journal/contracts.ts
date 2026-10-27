@@ -65,12 +65,12 @@ export const journalUpload = z.object({
 export type JournalClientEvent = z.infer<typeof journalClientEvent>;
 export interface TraceEvent {
   kind: "catalog" | "provider" | "tool" | "policy";
-  name?: string;
+  name?: string | undefined;
   callId?: string;
   round?: number;
   status: "ok" | "partial" | "error";
   durationMs?: number;
-  httpStatus?: number;
+  httpStatus?: number | undefined;
   input?: unknown;
   output?: unknown;
 }

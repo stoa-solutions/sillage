@@ -17,7 +17,7 @@ import { VISION_ID, VISION_REVISION } from "./indexing.ts";
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
 env.localModelPath =
-  process.env.MODEL_PATH ?? "../../apps/extension/public/models/";
+  process.env["MODEL_PATH"] ?? "../../apps/extension/public/models/";
 let e5: any;
 let vision: any;
 let visualText: any;
@@ -25,7 +25,7 @@ let tokenizer: any;
 let processor: any;
 let visionTokenizer: any;
 const session_options = {
-  intraOpNumThreads: Number(process.env.MODEL_THREADS ?? 2),
+  intraOpNumThreads: Number(process.env["MODEL_THREADS"] ?? 2),
   interOpNumThreads: 1,
 };
 const opts = { dtype: "q8" as const, device: "cpu" as const, session_options };
@@ -82,7 +82,7 @@ async function execute(task: string, data: any) {
     }
     return task === "query" ? { vector: vectors[0] } : { texts, vectors };
   }
-  if (process.env.VISION_ENABLED !== "true")
+  if (process.env["VISION_ENABLED"] !== "true")
     throw new Error("Visual indexing is disabled.");
   if (task === "image") {
     vision ??= await SiglipVisionModel.from_pretrained(VISION_ID, {

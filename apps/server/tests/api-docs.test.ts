@@ -4,6 +4,7 @@ import { createDocsApp } from "../src/api-docs/app.ts";
 import { openapi } from "../src/api-docs/openapi.ts";
 import { artifacts, postmanCollection } from "../src/api-docs/artifacts.ts";
 import type { Database } from "../src/db/index.ts";
+import { required } from "./support/required.ts";
 
 const database = {
   query: vi.fn(async () => ({ rows: [], rowCount: 0 })),
@@ -34,35 +35,35 @@ it("documents every mounted HTTP operation, including stateless MCP methods", ()
 
 it("keeps request defaults optional and preserves source and pagination constraints", () => {
   const schemas = openapi.components.schemas;
-  expect(schemas.DjRequest.required).toEqual(["message"]);
-  expect((schemas.DjRequest.properties as any).scope.enum).toEqual([
+  expect(required(schemas["DjRequest"])["required"]).toEqual(["message"]);
+  expect((required(schemas["DjRequest"])["properties"] as any).scope.enum).toEqual([
     "library",
     "youtube",
     "all",
   ]);
-  expect((schemas.LibrarySearch.properties as any).limit.maximum).toBe(100);
-  expect((schemas.HistoryPage.properties as any).limit.maximum).toBe(200);
-  expect((schemas.DjSettings.properties as any).apiKey.minLength).toBe(20);
+  expect((required(schemas["LibrarySearch"])["properties"] as any).limit.maximum).toBe(100);
+  expect((required(schemas["HistoryPage"])["properties"] as any).limit.maximum).toBe(200);
+  expect((required(schemas["DjSettings"])["properties"] as any).apiKey.minLength).toBe(20);
   const serialized = JSON.stringify(openapi);
   for (const [, schema] of serialized.matchAll(
     /"\$ref":"#\/components\/schemas\/([^"/]+)"/g,
   ))
-    expect(schemas[schema], schema).toBeDefined();
+    expect(schemas[required(schema)], schema).toBeDefined();
 });
 
 it("keeps developer documentation out of the public API and protected routes authenticated", async () => {
   for (const path of ["/docs", "/swagger", "/openapi.json", "/postman.json"])
     expect((await server.request(path)).status).toBe(404);
   expect((await server.request("/v1/me")).status).toBe(401);
-  expect(openapi.paths["/health"].get!.security).toEqual([]);
-  expect(openapi.paths["/v1/me"].get!.security).toBeUndefined(); // Inherits the global Bearer scheme.
+  expect(required(openapi.paths["/health"]).get!.security).toEqual([]);
+  expect(required(openapi.paths["/v1/me"]).get!.security).toBeUndefined(); // Inherits the global Bearer scheme.
   expect((await server.request("/health")).status).toBe(200);
 });
 
 it("exports one Postman request per operation with inherited auth and empty secrets", () => {
   const collection = postmanCollection();
   expect(collection.item.flatMap((group) => group.item).length).toBe(47);
-  expect(collection.auth.bearer[0].value).toBe("{{api_token}}");
+  expect(required(collection.auth.bearer[0]).value).toBe("{{api_token}}");
   for (const item of Object.values(artifacts()))
     expect(JSON.stringify(item)).not.toMatch(/AIza[\w-]{25,}/);
   for (const [path, artifact] of Object.entries(artifacts()))
@@ -132,10 +133,10 @@ it("forwards only documented paths to the fixed API, with an explicit Bearer and
   expect(response.status).toBe(200);
   expect(response.headers.get("set-cookie")).toBeNull();
   expect(response.headers.get("cache-control")).toBe("no-store");
-  expect(String(forward.mock.calls[0][0])).toBe(
+  expect(String(required(forward.mock.calls[0])[0])).toBe(
     "https://api.example.test/v1/me",
   );
-  const options = forward.mock.calls[0][1]!;
+  const options = required(forward.mock.calls[0])[1]!;
   expect(new Headers(options.headers).get("authorization")).toBe(
     "Bearer fixture-token",
   );
@@ -201,7 +202,7 @@ it("uses the private developer session automatically without sending it to the b
   expect(status).not.toContain(access.token);
   expect((await docs.request(`${local}/proxy/v1/me`)).status).toBe(200);
   expect(
-    new Headers(forward.mock.calls[0][1]!.headers).get("authorization"),
+    new Headers(required(forward.mock.calls[0])[1]!.headers).get("authorization"),
   ).toBe(`Bearer ${access.token}`);
   for (const path of [
     "/",
@@ -259,9 +260,9 @@ it("revokes only the developer session and keeps the file if the server cannot c
     (await docs.request(`${local}/developer/revoke`, options)).status,
   ).toBe(200);
   expect(clear).toHaveBeenCalledOnce();
-  expect(String(forward.mock.calls[0][0])).toBe(access.url + "/v1/logout");
+  expect(String(required(forward.mock.calls[0])[0])).toBe(access.url + "/v1/logout");
   expect(
-    new Headers(forward.mock.calls[0][1]!.headers).get("authorization"),
+    new Headers(required(forward.mock.calls[0])[1]!.headers).get("authorization"),
   ).toBe(`Bearer ${access.token}`);
 });
 

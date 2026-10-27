@@ -18,6 +18,7 @@ vi.mock("../src/discovery.ts", async (importOriginal) => ({
 }));
 import { djInput, djTurn } from "../src/dj.ts";
 import type { Database } from "../src/db/index.ts";
+import { required } from "./support/required.ts";
 
 const config = {
   configured: true,
@@ -162,15 +163,15 @@ it("never hydrates another account's metadata into a confirmation", async () => 
 });
 
 it("still requires a verified selection when a confirmation includes a new playback request", async () => {
-  responses.push(searchCall("cumbia"), selection([external[0].id], "replace"));
+  responses.push(searchCall("cumbia"), selection([required(external[0]).id], "replace"));
   const result = await run({ message: "Oui c'est ça, joue ce morceau maintenant", scope: "all" });
-  expect(result).toMatchObject({ action: "replace", tracks: [{ id: external[0].id }] });
+  expect(result).toMatchObject({ action: "replace", tracks: [{ id: required(external[0]).id }] });
   expect(boundaries.youtube).toHaveBeenCalledOnce();
 });
 
 it("cannot use a conversation label to execute unverified tracks", async () => {
-  responses.push({ content: JSON.stringify({ kind: "conversation", action: "replace", trackIds: [external[0].id], reply: "Je lance !" }) });
-  responses.push({ content: JSON.stringify({ kind: "conversation", action: "replace", trackIds: [external[0].id], reply: "Je lance !" }) });
+  responses.push({ content: JSON.stringify({ kind: "conversation", action: "replace", trackIds: [required(external[0]).id], reply: "Je lance !" }) });
+  responses.push({ content: JSON.stringify({ kind: "conversation", action: "replace", trackIds: [required(external[0]).id], reply: "Je lance !" }) });
   await expect(run({ message: "oui", scope: "all" })).rejects.toThrow("Je n’ai pas pu rechercher ces indices");
   expect(requests).toHaveLength(2);
 });
@@ -178,7 +179,7 @@ it("cannot use a conversation label to execute unverified tracks", async () => {
 it.each(["library", "youtube", "all"] as const)(
   "routes the real agent tools through %s only",
   async (scope) => {
-    const id = scope === "library" ? library[0].id : external[0].id;
+    const id = scope === "library" ? required(library[0]).id : required(external[0]).id;
     responses.push(searchCall(), cards([id]));
     const result = await run({
       message: "Propose un morceau de cumbia sans le jouer",
@@ -218,13 +219,13 @@ it("prepares five fresh Acid Coco successors without replacing the current track
     .concat(external.slice(0, 2).map((track) => track.id));
   responses.push(
     searchCall("cumbia tropical", { includeQueued: true }),
-    selection([library[0].id, ...ids, ids[0]], "replace"),
+    selection([required(library[0]).id, ...ids, required(ids[0])], "replace"),
   );
   const result = await run({
     message:
       "Prépare 5 nouveaux morceaux à suivre dans le même style, sans répétition et sans interrompre la lecture.",
     scope: "all",
-    excludeIds: [current.id, library[0].id],
+    excludeIds: [current.id, required(library[0]).id],
     playbackContext: { current, direction: "Cumbia tropicale" },
     history: [{ role: "assistant", content: "Je lance du Michael Jackson" }],
   });
@@ -302,23 +303,23 @@ it("shows the verified Jewel/Hedges card without executing a provider's launch a
 });
 
 it("keeps explicit card refusals excluded even when the model requests includeQueued", async () => {
-  const rejectedIds = [library[0].id, external[0].id];
+  const rejectedIds = [required(library[0]).id, required(external[0]).id];
   responses.push(
     searchCall("autre cumbia", { includeQueued: true }),
-    cards([external[1].id]),
+    cards([required(external[1]).id]),
   );
   const result = await run({
     message: "Propose d'autres morceaux, sauf ces deux-là",
     scope: "all",
     rejectedIds,
     discoveryContext: [
-      { id: library[0].id, title: library[0].title },
-      { id: external[0].id, title: external[0].title },
+      { id: required(library[0]).id, title: required(library[0]).title },
+      { id: required(external[0]).id, title: required(external[0]).title },
     ],
   });
   expect(result).toMatchObject({
     action: "keep",
-    discoveries: [{ video: { id: external[1].id } }],
+    discoveries: [{ video: { id: required(external[1]).id } }],
   });
   const evidenceIds = toolEvidence()[0].results.map(
     (item: any) => item.video.id,
@@ -334,7 +335,7 @@ it("keeps explicit card refusals excluded even when the model requests includeQu
 it("an explicit immediate correction executes an external result instead of appending", async () => {
   responses.push(
     searchCall("Omer Adam"),
-    selection([external[0].id], "append"),
+    selection([required(external[0]).id], "append"),
   );
   const result = await run({
     message: "Non, mets Omer Adam directement maintenant",
@@ -342,7 +343,7 @@ it("an explicit immediate correction executes an external result instead of appe
     history: [{ role: "user", content: "Ajoute Michael Jackson à la suite" }],
   });
   expect(result.action).toBe("replace");
-  expect(result.tracks.map((track) => track.id)).toEqual([external[0].id]);
+  expect(result.tracks.map((track) => track.id)).toEqual([required(external[0]).id]);
   expect(boundaries.search).not.toHaveBeenCalled();
 });
 
@@ -355,7 +356,7 @@ it("does not authorize an ID that was not returned by the real MCP tool", async 
 });
 
 it("cannot expose another account's library even if its search backend returns the ID", async () => {
-  responses.push(searchCall(), cards([library[0].id]));
+  responses.push(searchCall(), cards([required(library[0]).id]));
   await expect(
     run({ message: "Propose de la cumbia", scope: "library" }, "bob"),
   ).rejects.toThrow("non vérifié");
@@ -441,29 +442,29 @@ it("explains daily YouTube exhaustion truthfully when no authorized source has c
 
 it("reconsiders quota-driven browse without silently converting an ambiguous proposal into playback", async () => {
   boundaries.youtube.mockRejectedValue(new DiscoveryError("private", 429, "daily_quota"));
-  responses.push(searchCall("afro"), cards([library[0].id]), selection([library[0].id], "replace"));
+  responses.push(searchCall("afro"), cards([required(library[0]).id]), selection([required(library[0]).id], "replace"));
   const result = await run({ message: "Fais-moi une playlist afro", scope: "all" });
   expect(result.action).toBe("replace");
-  expect(result.tracks[0].id).toBe(library[0].id);
+  expect(required(result.tracks[0]).id).toBe(required(library[0]).id);
   expect(requests).toHaveLength(3);
   expect(JSON.stringify(requests[2].messages)).toContain("quota d’une source ne transforme pas");
 });
 
 it("keeps a genuinely ambiguous proposal after one reconsideration even with a source quota", async () => {
   boundaries.youtube.mockRejectedValue(new DiscoveryError("private", 429, "daily_quota"));
-  responses.push(searchCall("feat"), cards([library[0].id]), cards([library[0].id]));
+  responses.push(searchCall("feat"), cards([required(library[0]).id]), cards([required(library[0]).id]));
   const result = await run({ message: "Joue le morceau avec le featuring", scope: "all" });
   expect(result.action).toBe("keep");
   expect(result.tracks).toEqual([]);
-  expect(result).toMatchObject({ discoveries: [{ video: { id: library[0].id } }] });
+  expect(result).toMatchObject({ discoveries: [{ video: { id: required(library[0]).id } }] });
   expect(requests).toHaveLength(3);
 });
 
 it("does not let a later empty filtered search erase earlier candidates during a quota outage", async () => {
   boundaries.youtube.mockRejectedValue(new DiscoveryError("private", 429, "daily_quota"));
-  responses.push(searchCall("afro"), searchCall("afro", { playlist: "_library_all" }), selection([], "keep"), selection([library[0].id], "replace"));
+  responses.push(searchCall("afro"), searchCall("afro", { playlist: "_library_all" }), selection([], "keep"), selection([required(library[0]).id], "replace"));
   const result = await run({ message: "Fais-moi une playlist de musique afro", scope: "all" });
-  expect(result).toMatchObject({ action: "replace", tracks: [{ id: library[0].id }] });
+  expect(result).toMatchObject({ action: "replace", tracks: [{ id: required(library[0]).id }] });
   expect(boundaries.search).toHaveBeenCalledOnce();
   expect(toolEvidence()).toContainEqual(expect.objectContaining({ note: expect.stringContaining("No playlist matches") }));
   expect(requests).toHaveLength(4);
@@ -472,9 +473,9 @@ it("does not let a later empty filtered search erase earlier candidates during a
 
 it("clears a transient source warning after that source recovers in the same turn", async () => {
   boundaries.youtube.mockRejectedValueOnce(new DiscoveryError("private", 502));
-  responses.push(searchCall("cumbia"), searchCall("cumbia chill"), cards([external[0].id]));
+  responses.push(searchCall("cumbia"), searchCall("cumbia chill"), cards([required(external[0]).id]));
   const result = await run({ message: "Propose un morceau de cumbia", scope: "all" });
-  expect(result).toMatchObject({ discoveries: [{ video: { id: external[0].id } }] });
+  expect(result).toMatchObject({ discoveries: [{ video: { id: required(external[0]).id } }] });
   expect(result.reply).not.toMatch(/indisponible|quota|refuse/);
 });
 
@@ -567,7 +568,7 @@ it("does not fabricate an anecdote after an information search outage", async ()
 
 it("observes actual catalog, provider and MCP rounds without changing selection or source", async () => {
   const events: import("../src/features/dj/journal/contracts.ts").TraceEvent[] = [];
-  responses.push(searchCall("cumbia"), selection([external[0].id], "append"));
+  responses.push(searchCall("cumbia"), selection([required(external[0]).id], "append"));
   const result = await djTurn(db as unknown as Database, djInput.parse({message:"Ajoute 1 morceau de cumbia à la suite",scope:"all"}), undefined, config, "alice", event=>events.push(event));
   expect(result.action).toBe("append");
   expect(events.map(event=>event.kind)).toEqual(["catalog","provider","tool","provider","policy"]);
@@ -579,13 +580,13 @@ it("observes actual catalog, provider and MCP rounds without changing selection 
 });
 
 it("concludes from accumulated candidates when the exploratory budget runs out", async () => {
-  responses.push(searchCall("énergie"), searchCall("dynamique"), searchCall("workout"), searchCall("rock"), selection([library[0].id], "replace"));
+  responses.push(searchCall("énergie"), searchCall("dynamique"), searchCall("workout"), searchCall("rock"), selection([required(library[0]).id], "replace"));
   boundaries.search.mockResolvedValueOnce({results:library.map(video=>({video})),degraded:null}).mockResolvedValue({results:[],degraded:null});
   const result=await run({message:"De l’énergie pour avancer",scope:"library"});
-  expect(result).toMatchObject({action:"replace",tracks:[{id:library[0].id}]});
+  expect(result).toMatchObject({action:"replace",tracks:[{id:required(library[0]).id}]});
   const final=requests.at(-1);
   expect(final.messages.some((m:any)=>m.role==="tool")).toBe(false);
-  expect(JSON.stringify(final.messages)).toContain(library[0].id);
+  expect(JSON.stringify(final.messages)).toContain(required(library[0]).id);
 });
 it("offers known choices rather than claiming nothing exists if the final provider still requests a tool", async () => {
   responses.push(searchCall("énergie"),searchCall("dynamique"),searchCall("workout"),searchCall("rock"),searchCall("dance"));
@@ -595,7 +596,7 @@ it("offers known choices rather than claiming nothing exists if the final provid
   expect(result.reply).not.toMatch(/pas trouvé|aucun morceau/);
 });
 it("preserves a separate musical explanation while announcing the validated queue", async () => {
-  responses.push(searchCall(),{content:JSON.stringify({reply:"Je lance immédiatement !",explanation:"Une couleur électronique et atmosphérique pour prolonger le morceau actuel.",trackIds:[library[0].id],action:"append"})});
+  responses.push(searchCall(),{content:JSON.stringify({reply:"Je lance immédiatement !",explanation:"Une couleur électronique et atmosphérique pour prolonger le morceau actuel.",trackIds:[required(library[0]).id],action:"append"})});
   const result=await run({message:"Ajoute un morceau dans cette ambiance",scope:"library",playbackContext:{current,direction:"cumbia électronique"}});
   expect(result.action).toBe("append");
   expect(result.reply).toContain("J’ajoute à la suite");
@@ -614,7 +615,7 @@ it("chooses freely for carte blanche without stale failed artist requests or inv
 
 
 it("keeps the musical explanation on exploratory cards without executing the provider's announcement", async()=>{
- responses.push(searchCall(),{content:JSON.stringify({reply:"Je lance tout",explanation:"Ces morceaux prolongent la couleur tropicale recherchée.",trackIds:[],discoveryIds:[library[0].id],action:"keep"})});
+ responses.push(searchCall(),{content:JSON.stringify({reply:"Je lance tout",explanation:"Ces morceaux prolongent la couleur tropicale recherchée.",trackIds:[],discoveryIds:[required(library[0]).id],action:"keep"})});
  const result=await run({message:"Propose un morceau sans le lancer",scope:"library"});
  expect(result.action).toBe("keep");expect(result.tracks).toEqual([]);
  expect(result.reply).toContain("couleur tropicale");expect(result.reply).not.toContain("Je lance");
@@ -653,7 +654,7 @@ it("keeps a sourced identification in the DJ's words and names every proposed ca
   responses.push(
     { tool_calls: [{ id: "info", type: "function", function: { name: "seekInformation", arguments: JSON.stringify({ query: "Cabrel vapeurs des ports" }) } }] },
     searchCall("C'est écrit", { artist: "Francis Cabrel" }),
-    { content: JSON.stringify({ kind: "music", reply, trackIds: [], discoveryIds: [library[0].id, library[1].id], citationIds: [1], action: "keep" }) },
+    { content: JSON.stringify({ kind: "music", reply, trackIds: [], discoveryIds: [required(library[0]).id, required(library[1]).id], citationIds: [1], action: "keep" }) },
   );
   const result = await run({ message: "C'est laquelle de Francis Cabrel où il parle des vapeurs du port", scope: "library" });
   expect(result.reply).toBe(reply);
@@ -662,10 +663,10 @@ it("keeps a sourced identification in the DJ's words and names every proposed ca
 });
 
 it("names each card when it proposes several, so the count matches what is shown", async () => {
-  responses.push(searchCall("jazz"), cards([library[0].id, library[1].id]));
+  responses.push(searchCall("jazz"), cards([required(library[0]).id, required(library[1]).id]));
   const result = await run({ message: "Propose deux morceaux de jazz sans les lancer", scope: "library" });
-  expect(result.reply).toContain(`« ${library[0].title} »`);
-  expect(result.reply).toContain(`« ${library[1].title} »`);
+  expect(result.reply).toContain(`« ${required(library[0]).title} »`);
+  expect(result.reply).toContain(`« ${required(library[1]).title} »`);
   expect(result.reply).not.toContain("immédiatement");
 });
 

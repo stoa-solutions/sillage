@@ -71,7 +71,7 @@ export async function beginJournal(
             broaden: plan.broaden,
           }),
           promptHash,
-          process.env.RELEASE_SHA ?? "local",
+          process.env["RELEASE_SHA"] ?? "local",
         ],
       );
     });
@@ -197,13 +197,14 @@ export async function loadConversationMemory(
       [owner, conversationId, currentTurnId, MEMORY_EXCHANGES * 3],
     );
     const turns: JournalTurn[] = rows;
-    if (rows[0]?.status === "superseded" || rows[0]?.status === "canceled") {
+    const latest = turns[0];
+    if (latest?.status === "superseded" || latest?.status === "canceled") {
       const events = await db.query(
         `SELECT payload->'input' AS input,payload->'output' AS output FROM dj_journal_events
         WHERE user_id=$1 AND turn_id=$2 AND kind='tool' ORDER BY sequence LIMIT 16`,
         [owner, rows[0].id],
       );
-      turns[0] = { ...turns[0], tools: events.rows };
+      turns[0] = { ...latest, tools: events.rows };
     }
     return summarizeMemory(turns);
   } catch {

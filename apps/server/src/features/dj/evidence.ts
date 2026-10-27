@@ -67,8 +67,10 @@ function balancedCandidates(items: DiscoveryEvidence[]) {
     index < Math.max(owned.length, external.length);
     index++
   ) {
-    if (owned[index]) result.push(owned[index]);
-    if (external[index]) result.push(external[index]);
+    const own = owned[index];
+    const other = external[index];
+    if (own) result.push(own);
+    if (other) result.push(other);
   }
   return result;
 }
@@ -84,9 +86,9 @@ function compactSearch(
   const shown: DiscoveryEvidence[] = [];
   const envelope = {
     [key]: values,
-    ...(Array.isArray(data.queries) ? {queries:shortList(data.queries,3,200)} : {}),
-    sources: Array.isArray(data.sources)
-      ? data.sources.slice(0, 3).map((source) => ({
+    ...(Array.isArray(data["queries"]) ? {queries:shortList(data["queries"],3,200)} : {}),
+    sources: Array.isArray(data["sources"])
+      ? data["sources"].slice(0, 3).map((source) => ({
           source: shortText(source?.source, 20),
           status: shortText(source?.status, 20),
           reason: shortText(source?.reason, 40),
@@ -95,14 +97,14 @@ function compactSearch(
       : undefined,
     ...(name === "library_browse"
       ? {
-          playlists: compactPlaylists(data.playlists),
-          order: shortText(data.order, 10),
-          playlist: shortText(data.playlist, 300),
+          playlists: compactPlaylists(data["playlists"]),
+          order: shortText(data["order"], 10),
+          playlist: shortText(data["playlist"], 300),
         }
       : {}),
-    mode: shortText(data.mode, 20),
-    degraded: shortText(data.degraded, 220),
-    note: shortText(data.note, 220),
+    mode: shortText(data["mode"], 20),
+    degraded: shortText(data["degraded"], 220),
+    note: shortText(data["note"], 220),
     omittedCandidates: items.length,
   };
   for (const item of balancedCandidates(items)) {
@@ -135,9 +137,9 @@ export function readToolEvidence(
   name: string,
   result: Record<string, unknown>,
 ) {
-  if (result.isError || !Array.isArray(result.content))
+  if (result["isError"] || !Array.isArray(result["content"]))
     throw new Error("tool unavailable");
-  const text = result.content
+  const text = result["content"]
     .filter((part) => part?.type === "text" && typeof part.text === "string")
     .map((part) => part.text)
     .join("\n");

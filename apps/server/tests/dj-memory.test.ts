@@ -3,6 +3,7 @@ import { summarizeMemory, type JournalTurn } from "../src/features/dj/memory.ts"
 import { initialMessages } from "../src/features/dj/messages.ts";
 import { planTurn } from "../src/features/dj/plan.ts";
 import { djInput } from "../src/features/dj/contracts.ts";
+import { required } from "./support/required.ts";
 
 const completed = (message: string, titles: string[]): JournalTurn => ({
   trigger: "user",
@@ -17,7 +18,7 @@ it("remembers the latest exchanges in order and compresses older ones", () => {
   ).reverse();
   const memory = summarizeMemory(turns, 20);
   expect(memory.exchanges).toHaveLength(20);
-  expect(memory.exchanges[0].request).toBe("demande 3");
+  expect(required(memory.exchanges[0]).request).toBe("demande 3");
   expect(memory.exchanges.at(-1)?.tracks).toEqual(["Titre 22"]);
   expect(memory.earlier).toEqual({ exchanges: 3, tracks: 3 });
 });

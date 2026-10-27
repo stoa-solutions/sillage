@@ -5,7 +5,7 @@ import { DjUnavailable } from "./errors.ts";
 export function djDailyBudget(userId: string, now = Date.now()): number | null {
   let override: unknown;
   try {
-    override = JSON.parse(process.env.DJ_ACCOUNT_DAILY_LIMITS ?? "{}")[userId];
+    override = JSON.parse(process.env["DJ_ACCOUNT_DAILY_LIMITS"] ?? "{}")[userId];
   } catch {
     /* Invalid overrides retain the shared default. */
   }
@@ -26,7 +26,7 @@ export function djDailyBudget(userId: string, now = Date.now()): number | null {
   const configured =
     typeof override === "number" && Number.isFinite(override) && override > 0
       ? override
-      : Number(process.env.DJ_DAILY_REQUEST_LIMIT) || 100;
+      : Number(process.env["DJ_DAILY_REQUEST_LIMIT"]) || 100;
   return Math.floor(Math.max(1, Math.min(1000, configured)));
 }
 export async function reserveDj(db: Database, userId = LEGACY_USER) {

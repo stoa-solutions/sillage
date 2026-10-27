@@ -9,7 +9,7 @@ export interface TurnPlan {
   /** The request refers to the track actually playing (« même style », a refill). */
   relative: boolean;
   /** How many fresh tracks an append must aim for. */
-  targetCount?: number;
+  targetCount?: number | undefined;
   selectionLimit: number;
   avoidRepeats: boolean;
   /** Search further than the playing artist, after an empty refill. */

@@ -21,6 +21,7 @@ vi.mock("../src/music-mcp.ts", () => ({
 }));
 import { djInput, djTurn } from "../src/dj.ts";
 import type { Database } from "../src/db/index.ts";
+import { required } from "./support/required.ts";
 const db = { query: async () => ({ rowCount: 1 }) } as unknown as Database;
 const config = {
   configured: true,
@@ -721,7 +722,7 @@ it("does not execute a verified result omitted from the model's bounded context"
   mocks.call.mockResolvedValue({
     content: [{ type: "text", text: JSON.stringify({ results: many }) }],
   });
-  const bodies = provider([tool, answer([many[79].video.id])]);
+  const bodies = provider([tool, answer([required(many[79]).video.id])]);
   await expect(
     djTurn(
       db,

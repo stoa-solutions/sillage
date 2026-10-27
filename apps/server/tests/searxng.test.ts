@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import { SearxngDiscovery, youtubeResultId } from "../src/searxng.ts";
 import { YouTube } from "../src/youtube.ts";
 import { YouTubeError } from "../src/youtube-errors.ts";
+import { required } from "./support/required.ts";
 
 const ids = ["6R-R51CZ9tA", "ylpbHo6G6JU", "dixmrd_mN40"];
 const row = (id: string) => ({ url: `https://www.youtube.com/watch?v=${id}` });
@@ -21,7 +22,7 @@ const setup = (body: unknown) => {
     if (url.hostname === "searxng") return Response.json(body);
     if (url.pathname.endsWith("/videos"))
       return Response.json({
-        items: [metadata(ids[2], false), metadata(ids[0])],
+        items: [metadata(required(ids[2]), false), metadata(required(ids[0]))],
       });
     throw new Error("Official search must not be called");
   });
@@ -38,22 +39,22 @@ const setup = (body: unknown) => {
 it("deduplicates discovery IDs, verifies one metadata batch and keeps provider order without invented paging", async () => {
   const { source, request } = setup({
     results: [
-      row(ids[1]),
-      row(ids[0]),
-      row(ids[0]),
-      row(ids[2]),
-      { url: "https://evil.test/watch?v=" + ids[0] },
+      row(required(ids[1])),
+      row(required(ids[0])),
+      row(required(ids[0])),
+      row(required(ids[2])),
+      { url: "https://evil.test/watch?v=" + required(ids[0]) },
     ],
   });
   const result = await source.search("Acid Coco");
-  expect(result.videos.map((v) => v.id)).toEqual([ids[0]]);
-  expect(result.videos[0].title).toBe(`Verified ${ids[0]}`);
+  expect(result.videos.map((v) => v.id)).toEqual([required(ids[0])]);
+  expect(required(result.videos[0]).title).toBe(`Verified ${required(ids[0])}`);
   expect(result.nextPageToken).toBeNull();
   expect(request).toHaveBeenCalledTimes(2);
-  const query = new URL(String(request.mock.calls[0][0]));
+  const query = new URL(String(required(request.mock.calls[0])[0]));
   expect(query.searchParams.get("engines")).toBe("youtube");
   expect(query.searchParams.get("q")).toBe("!yt Acid Coco");
-  expect(String(request.mock.calls[1][0])).not.toContain("private-key");
+  expect(String(required(request.mock.calls[1])[0])).not.toContain("private-key");
   await expect(source.search("Acid Coco", "PAGE2")).rejects.toMatchObject({
     reason: "search_unavailable",
   });
@@ -71,7 +72,7 @@ it.each([
   expect(youtubeResultId(url)).toBeUndefined(),
 );
 it("accepts a direct short YouTube URL", () =>
-  expect(youtubeResultId("https://youtu.be/6R-R51CZ9tA?t=1")).toBe(ids[0]));
+  expect(youtubeResultId("https://youtu.be/6R-R51CZ9tA?t=1")).toBe(required(ids[0])));
 it("returns a true empty result without a Google call", async () => {
   const { source, request } = setup({ results: [], unresponsive_engines: [] });
   expect((await source.search("no matches")).videos).toEqual([]);
@@ -88,7 +89,7 @@ it.each([
   ],
   [
     {
-      results: [row(ids[0])],
+      results: [row(required(ids[0]))],
       unresponsive_engines: [["youtube", "too many requests"]],
     },
     "search_blocked",
@@ -110,7 +111,7 @@ it("bounds oversized provider responses", async () => {
   expect(youtube.videos).not.toHaveBeenCalled();
 });
 it("keeps metadata quotas distinct from SearXNG failures", async () => {
-  const request = vi.fn(async () => Response.json({ results: [row(ids[0])] }));
+  const request = vi.fn(async () => Response.json({ results: [row(required(ids[0]))] }));
   const error = new YouTubeError("daily_quota", 403);
   const source = new SearxngDiscovery(
     "http://searxng",
@@ -141,13 +142,13 @@ it("excludes non-music videos before discovery without changing general metadata
     Response.json({
       items: [
         {
-          ...metadata(ids[0]),
-          snippet: { ...metadata(ids[0]).snippet, categoryId: "27" },
+          ...metadata(required(ids[0])),
+          snippet: { ...metadata(required(ids[0])).snippet, categoryId: "27" },
         },
       ],
     }),
   );
   const youtube = new YouTube("fixture", undefined, request);
-  expect(await youtube.videos([ids[0]], true, true)).toEqual([]);
-  expect(await youtube.videos([ids[0]])).toHaveLength(1);
+  expect(await youtube.videos([required(ids[0])], true, true)).toEqual([]);
+  expect(await youtube.videos([required(ids[0])])).toHaveLength(1);
 });

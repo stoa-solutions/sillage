@@ -76,7 +76,7 @@ function matchesArtistSeed(
   const contains = (value: string) =>
     (" " + normalizeMusic(value) + " ").includes(" " + artist + " ");
   if (contains(channel)) return true;
-  const credit = title.split(/\s+[-–—]\s+/)[0];
+  const credit = title.split(/\s+[-–—]\s+/)[0] ?? title;
   if (contains(credit)) return true;
   return ["feat ", "ft ", "featuring ", "avec "].some((marker) =>
     normalizeMusic(title).includes(marker + artist),
@@ -105,12 +105,13 @@ export async function discoveryHome(
   for (let index = 0; index < 12; index++) {
     for (let seedIndex = 0; seedIndex < pages.length; seedIndex++) {
       const page = pages[seedIndex];
-      if (page.status !== "fulfilled") continue;
+      const seed = seeds[seedIndex];
+      if (page?.status !== "fulfilled" || !seed) continue;
       const candidates = page.value.results.filter(
         (item) =>
           !item.inLibrary &&
           matchesArtistSeed(
-            seeds[seedIndex],
+            seed,
             item.video.title ?? "",
             item.video.channel ?? "",
           ) &&
@@ -128,7 +129,7 @@ export async function discoveryHome(
         continue;
       seen.add(item.video.id);
       titles.add(titleKey(item.video.title));
-      suggestions.push({ ...item, reason: seeds[seedIndex].reason });
+      suggestions.push({ ...item, reason: seed.reason });
       if (suggestions.length >= 12) break;
     }
     if (suggestions.length >= 12) break;

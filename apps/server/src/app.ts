@@ -11,7 +11,7 @@ import {
   LEGACY_USER,
   ownsPlaylist,
 } from "./features/accounts/index.ts";
-import { Hono } from "hono";
+import { OpenAPIHono } from "@hono/zod-openapi";
 import { macosReleases } from "./macos-releases.ts";
 import type { ApiEnvironment } from "./shared/api-environment.ts";
 import { createDjRoutes } from "./features/dj/routes.ts";
@@ -38,13 +38,14 @@ export function createApp(
   identityProvider?: IdentityProvider,
   lyricsSource: LyricsSource = new Lrclib(),
 ) {
-  const app = new Hono<ApiEnvironment>();
+  // OpenAPIHono collects the documented routes of the features mounted below.
+  const app = new OpenAPIHono<ApiEnvironment>();
   app.use(
     "*",
     cors({
       origin: (origin) => {
         if (/^chrome-extension:\/\/[a-p]{32}$/.test(origin)) return origin;
-        return (process.env.ALLOWED_ORIGINS ?? "https://recall.stoa.solutions")
+        return (process.env["ALLOWED_ORIGINS"] ?? "https://recall.stoa.solutions")
           .split(",")
           .includes(origin)
           ? origin
@@ -87,7 +88,7 @@ export function createApp(
       return c.json({
         ok: true,
         version: "2.2.0",
-        release: process.env.RELEASE_SHA ?? "local",
+        release: process.env["RELEASE_SHA"] ?? "local",
       });
     } catch {
       return c.json({ ok: false }, 503);
@@ -120,9 +121,9 @@ export function createApp(
     return c.json({
       counts,
       jobs,
-      syncEnabled: process.env.SYNC_ENABLED === "true",
-      youtubeConfigured: Boolean(process.env.YOUTUBE_API_KEY),
-      visionEnabled: process.env.VISION_ENABLED === "true",
+      syncEnabled: process.env["SYNC_ENABLED"] === "true",
+      youtubeConfigured: Boolean(process.env["YOUTUBE_API_KEY"]),
+      visionEnabled: process.env["VISION_ENABLED"] === "true",
     });
   });
   app.get("/v1/playlists", async (c) =>

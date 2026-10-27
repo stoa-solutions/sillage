@@ -109,12 +109,13 @@ export function chooseRecording(track: SourceTrack, recordings: Recording[]) {
   const accepted = ranked.filter((r) => r.accepted);
   // Distinct MusicBrainz recordings can represent different mixes of the same song.
   // Do not resolve that ambiguity by provider relevance score alone.
-  if (accepted.length !== 1)
+  const [only] = accepted;
+  if (accepted.length !== 1 || only === undefined)
     return {
       status: recordings.length ? "ambiguous" : "not_found",
       score: ranked[0]?.score ?? 0,
     } as const;
-  return { status: "matched", ...accepted[0] } as const;
+  return { status: "matched", ...only } as const;
 }
 export function metadataFromRecording(
   r: Recording,
@@ -126,7 +127,7 @@ export function metadataFromRecording(
   const artists = (r["artist-credit"] ?? []).map((c, index, credits) => {
     if (
       index &&
-      /\b(feat|ft|featuring)\b/i.test(credits[index - 1].joinphrase ?? "")
+      /\b(feat|ft|featuring)\b/i.test(credits[index - 1]?.joinphrase ?? "")
     )
       featured = true;
     return {

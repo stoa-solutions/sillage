@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import { readToolEvidence } from "../src/features/dj/evidence.ts";
+import { required } from "./support/required.ts";
 
 function candidate(index: number, inLibrary: boolean) {
   return {
@@ -54,13 +55,13 @@ it("keeps mixed-source evidence valid and within budget even with very large enr
   expect(
     parsed.results.some((item: { inLibrary: boolean }) => !item.inLibrary),
   ).toBe(true);
-  expect(parsed.results[1].video.id).toBe(results[20].video.id);
+  expect(parsed.results[1].video.id).toBe(required(results[20]).video.id);
   expect(
     parsed.results.map((item: { video: { id: string } }) => item.video.id),
   ).toEqual(evidence.items.map((item) => item.video.id));
   expect(parsed.omittedCandidates).toBe(results.length - evidence.items.length);
   expect(parsed.omittedCandidates).toBeGreaterThan(0);
-  expect(evidence.items[0].video).toEqual(results[0].video); // authoritative data remains intact
+  expect(required(evidence.items[0]).video).toEqual(required(results[0]).video); // authoritative data remains intact
   expect(parsed.results[0].video.musicMetadata).toHaveProperty("artists");
   expect(parsed.results[0].video.musicMetadata).toHaveProperty("genres");
   expect(parsed.results[0].video.musicMetadata).not.toHaveProperty(

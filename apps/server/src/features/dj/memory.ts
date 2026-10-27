@@ -50,15 +50,15 @@ const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 function requestOf(turn: JournalTurn) {
   return turn.trigger === "continuation"
     ? "(suite automatique)"
-    : text(record(turn.input).message, 300);
+    : text(record(turn.input)["message"], 300);
 }
 
 function titlesOf(response: unknown) {
   const value = record(response);
   return [
-    ...list(value.tracks).map((track) => text(record(track).title, 120)),
-    ...list(value.discoveries).map((card) =>
-      text(record(record(card).video).title, 120),
+    ...list(value["tracks"]).map((track) => text(record(track)["title"], 120)),
+    ...list(value["discoveries"]).map((card) =>
+      text(record(record(card)["video"])["title"], 120),
     ),
   ].filter(Boolean);
 }
@@ -67,11 +67,11 @@ function interruptedTurn(turn: JournalTurn): InterruptedTurn {
   const searches = new Set<string>();
   const candidates = new Set<string>();
   for (const call of turn.tools ?? []) {
-    const query = text(record(call.input).query, 120);
+    const query = text(record(call.input)["query"], 120);
     if (query) searches.add(query);
     const output = record(call.output);
-    for (const item of [...list(output.results), ...list(output.tracks)]) {
-      const title = text(record(record(item).video ?? item).title, 120);
+    for (const item of [...list(output["results"]), ...list(output["tracks"])]) {
+      const title = text(record(record(item)["video"] ?? item)["title"], 120);
       if (title) candidates.add(title);
     }
   }
@@ -101,7 +101,7 @@ export function summarizeMemory(
       (turn): MemoryExchange => ({
         request: requestOf(turn),
         trigger: turn.trigger,
-        reply: text(record(turn.response).reply, 400),
+        reply: text(record(turn.response)["reply"], 400),
         tracks: titlesOf(turn.response).slice(0, 8),
       }),
     )

@@ -64,7 +64,7 @@ export function genreNameCollision(query: string, track: {title: string; channel
   if (!genre) return false;
   const parts = track.title.split(/\s+[-–—]\s+/);
   if (parts.length < 2) return false;
-  const artist = normalizeMusic(parts[0]);
+  const artist = normalizeMusic(parts[0] ?? "");
   if (!artist.split(" ").includes(genre)) return false;
   const evidence = normalizeMusic(parts.slice(1).join(" ") + " " + (track.description ?? "")).replaceAll(artist, "");
   return !evidence.split(" ").includes(genre);
