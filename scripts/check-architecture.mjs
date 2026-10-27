@@ -1,6 +1,5 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { isBuiltin } from "node:module";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
@@ -32,7 +31,6 @@ export function violations(file, source) {
   const errors = [];
   const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
   const core = file.startsWith("packages/core/src/");
-  const extension = file.startsWith("apps/extension/");
   const server = file.startsWith("apps/server/src/");
   const dj = file.startsWith("apps/server/src/features/dj/");
   const pure = core || (dj && pureDj.has(path.basename(file)));
@@ -49,20 +47,7 @@ export function violations(file, source) {
       : specifier;
     if (core && !target.startsWith("packages/core/src/"))
       report(node, "core must not import an app, adapter or external runtime");
-    if (
-      extension &&
-      (target.startsWith("apps/server/") ||
-        target.startsWith("@playlist-recall/server") ||
-        isBuiltin(target))
-    )
-      report(
-        node,
-        "the extension must use HTTP/contracts, never server code or Node",
-      );
-    if (
-      server &&
-      (target.startsWith("apps/extension/") || target.startsWith("apps/macos/"))
-    )
+    if (server && target.startsWith("apps/macos/"))
       report(node, "the server must not depend on a client application");
     const feature = (name) =>
       name.match(/^apps\/server\/src\/features\/([^/]+)\//)?.[1];
@@ -183,8 +168,6 @@ if (
       [
         "packages/core/src",
         "apps/server/src",
-        "apps/extension/src",
-        "apps/extension/entrypoints",
       ].map(walk),
     )
   ).flat();

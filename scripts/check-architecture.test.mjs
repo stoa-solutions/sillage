@@ -18,16 +18,16 @@ test("shared contracts cannot import server implementations, even through re-exp
     0,
   );
 });
-test("client bundles cannot import server code or Node via dynamic imports", () => {
+test("shared core cannot reach server code or Node through dynamic imports", () => {
   assert.equal(
     violations(
-      "apps/extension/src/leak.ts",
-      'import("../../server/src/dj-settings.ts")',
+      "packages/core/src/leak.ts",
+      'import("../../../apps/server/src/dj-settings.ts")',
     ).length,
     1,
   );
   assert.equal(
-    violations("apps/extension/src/leak.ts", 'import fs from "node:fs"').length,
+    violations("packages/core/src/leak.ts", 'import fs from "node:fs"').length,
     1,
   );
 });
@@ -71,10 +71,10 @@ test("DJ internals cannot introduce facade cycles or untyped boundaries", () => 
 });
 
 test("checks bare Node/workspace imports and permits type-only re-exports", () => {
-  const extension = "apps/extension/src/leak.ts";
-  assert.equal(violations(extension, 'import fs from "fs"').length, 1);
+  const core = "packages/core/src/leak.ts";
+  assert.equal(violations(core, 'import fs from "fs"').length, 1);
   assert.equal(
-    violations(extension, 'import "@playlist-recall/server"').length,
+    violations(core, 'import "@playlist-recall/server"').length,
     1,
   );
   assert.equal(

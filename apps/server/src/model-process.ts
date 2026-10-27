@@ -17,7 +17,7 @@ import { VISION_ID, VISION_REVISION } from "./indexing.ts";
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
 env.localModelPath =
-  process.env["MODEL_PATH"] ?? "../../apps/extension/public/models/";
+  process.env["MODEL_PATH"] ?? "../../.runtime/models/";
 let e5: any;
 let vision: any;
 let visualText: any;

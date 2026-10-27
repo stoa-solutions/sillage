@@ -12,7 +12,7 @@
 | [design.md](design.md) | Design de l’app Mac : principes, composants communs, enchaînements. |
 | [operations.md](operations.md) | Déploiement Dokploy, sauvegardes, vérifications après mise en production. |
 | [validation.md](validation.md) / [verification.md](verification.md) | Recettes et vérifications réalisées. |
-| [implementation.md](implementation.md) | Réalisation de la V2 : extension, API, worker. |
+| [implementation.md](implementation.md) | Réalisation de la V2 : API, worker (historique, extension retirée). |
 | [CHANGELOG.md](CHANGELOG.md) | Changements visibles, version par version. |
 | [adr/](adr/) | Décisions d’architecture. |
 | [research/](research/) | Recherches et analyses produit. |

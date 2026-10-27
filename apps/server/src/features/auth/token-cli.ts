@@ -5,7 +5,7 @@ import { pool, tokens } from "../../db/index.ts";
 import { hash } from "../../content.ts";
 
 /**
- * Personal tokens for the extension and scripts, from inside the API container:
+ * Personal tokens for scripts and the MCP endpoint, from inside the API container:
  * `create <private file>` writes the connection once; `revoke <id>` ends it.
  */
 const [action, argument] = process.argv.slice(2);
@@ -15,7 +15,7 @@ try {
     const id = randomUUID();
     await pool.orm.insert(tokens).values({
       id,
-      name: process.env["TOKEN_NAME"] ?? "Extension personnelle",
+      name: process.env["TOKEN_NAME"] ?? "Jeton personnel",
       hash: hash(token),
     });
     await writeFile(

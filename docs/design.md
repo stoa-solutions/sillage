@@ -78,9 +78,9 @@ Les paroles restent dans le panneau latéral, jamais au centre du clip. Le racco
 
 ## Identité Sillage — by Stoa
 
-Nom visible et icône approuvés le 26 octobre 2026. Le nom du produit est Sillage ; Stoa signe les supports de présentation. L’app conserve ses contrôles et polices système. Le signe est un artwork orange sculptural ; l’ICNS haute résolution est dans `apps/macos/Resources/Sillage.icns`, les exports Chrome dans `apps/extension/public/icon/`. Provenance : `assets/branding/sillage/`.
+Nom visible et icône approuvés le 26 octobre 2026. Le nom du produit est Sillage ; Stoa signe les supports de présentation. L’app conserve ses contrôles et polices système. Le signe est un artwork orange sculptural ; l’ICNS haute résolution est dans `apps/macos/Resources/Sillage.icns`. Provenance : `assets/branding/sillage/`.
 
-Le renommage reste visuel : bundle ID, chemins de données, Trousseau, schéma OAuth, noms d’archives Sparkle et dossier Chrome chargé restent inchangés. Le bundle produit porte `Sillage.app`. Aucun renommage du dépôt ou publication open source implicite.
+Le renommage reste visuel : bundle ID, chemins de données, Trousseau, schéma OAuth, noms d’archives Sparkle restent inchangés. Le bundle produit porte `Sillage.app`. Aucun renommage du dépôt ou publication open source implicite.
 
 ## Écarts assumés avec le cahier (choix de Samuel, 26 octobre 2026)
 

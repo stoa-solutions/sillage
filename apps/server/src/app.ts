@@ -42,14 +42,12 @@ export function createApp(
   app.use(
     "*",
     cors({
-      origin: (origin) => {
-        if (/^chrome-extension:\/\/[a-p]{32}$/.test(origin)) return origin;
-        return (process.env["ALLOWED_ORIGINS"] ?? "https://recall.stoa.solutions")
+      origin: (origin) =>
+        (process.env["ALLOWED_ORIGINS"] ?? "https://recall.stoa.solutions")
           .split(",")
           .includes(origin)
           ? origin
-          : null;
-      },
+          : null,
       allowMethods: ["GET", "POST", "OPTIONS"],
       allowHeaders: ["Content-Type", "Authorization"],
       maxAge: 3600,
@@ -67,7 +65,7 @@ export function createApp(
   app.get("/dj/player", (c) => {
     c.header(
       "Content-Security-Policy",
-      "default-src 'none'; script-src 'self' https://www.youtube.com https://s.ytimg.com; style-src 'self'; frame-src https://www.youtube.com; connect-src https://www.youtube.com; frame-ancestors chrome-extension: http://localhost:* http://127.0.0.1:*",
+      "default-src 'none'; script-src 'self' https://www.youtube.com https://s.ytimg.com; style-src 'self'; frame-src https://www.youtube.com; connect-src https://www.youtube.com; frame-ancestors http://localhost:* http://127.0.0.1:*",
     );
     c.header("Referrer-Policy", "strict-origin-when-cross-origin");
     return c.html(djPlayerHtml);

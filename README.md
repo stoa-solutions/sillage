@@ -1,6 +1,6 @@
 # Playlist Recall
 
-Extension Chrome avec bibliothèque locale et serveur personnel pour retrouver une vidéo à partir d'un souvenir, de mots-clés ou de sa durée. Interface en français, panneau latéral et bibliothèque dans un onglet. La V2 ajoute la synchronisation YouTube, les descriptions complètes, une recherche hybride PostgreSQL/pgvector et une recherche visuelle des miniatures.
+Serveur personnel et app Mac pour retrouver une vidéo à partir d'un souvenir, de mots-clés ou de sa durée, et écouter sa bibliothèque avec un DJ conversationnel. Interface en français. Le serveur assure la synchronisation YouTube, les descriptions complètes, une recherche hybride PostgreSQL/pgvector et une recherche visuelle des miniatures.
 
 ## App Mac
 
@@ -8,51 +8,27 @@ Une app native SwiftUI est disponible dans `apps/macos` : chat DJ, micro Apple, 
 
 Cette première version est destinée aux essais locaux. Sparkle est intégré pour les mises à jour signées ; la distribution publique sans avertissement attend une signature et une notarisation Apple. Voir [le guide Mac](docs/macos.md) pour les fonctions, les limites, la compilation et la publication.
 
-## Installation locale
-
-1. Ouvrez `chrome://extensions` dans Chrome.
-2. Activez **Mode développeur**.
-3. Cliquez sur **Charger l'extension non empaquetée** et sélectionnez le dossier `extension` de ce projet.
-4. Épinglez **Playlist Recall** puis cliquez sur son icône. Le bouton d'agrandissement ouvre la bibliothèque dans un onglet.
-
-Laissez le dossier `extension` en place : Chrome l'utilise directement. Après une nouvelle compilation, cliquez sur **Actualiser** dans la fiche de l'extension.
-
-## Mises à jour automatiques et publication Google
-
-La version chargée depuis un dossier nécessite un rechargement après modification des fichiers. Les changements du serveur (Gemini, recherche, synchronisation) s’appliquent sans recharger l’extension.
-
-Pour les mises à jour automatiques de l’extension, publier sur le Chrome Web Store puis installer depuis sa fiche Google. `npm run package:webstore` crée une archive dans `.output/`, sans playlists ni vecteurs personnels. Cette commande ne publie rien. Le compte développeur, la fiche, les déclarations de confidentialité et la validation Google restent nécessaires. Chrome distribue ensuite les mises à jour, qui peuvent attendre la fermeture des pages actives de l’extension.
-
 ## Connexion au serveur
 
-Lors de la première connexion seulement, cliquez sur **Connecter mon serveur**, puis **Importer la connexion** et choisissez le fichier privé fourni. Ce fichier contient votre jeton personnel : ne le partagez pas. Vous pouvez ensuite ajouter une playlist publique ou non répertoriée, actualiser et suivre la collecte et l’indexation. La synchronisation automatique passe toutes les six heures lorsqu’elle est activée côté serveur.
+L’app Mac se connecte avec un compte Google. Vous pouvez ajouter une playlist publique ou non répertoriée, actualiser et suivre la collecte et l’indexation. La synchronisation automatique passe toutes les six heures lorsqu’elle est activée côté serveur.
+
+Pour les scripts et le point d’entrée MCP, un jeton personnel révocable se crée sur le serveur avec `node dist/features/auth/token-cli.js`. Ce jeton est privé : ne le partagez pas.
 
 Le mode **Textes et souvenirs** combine mots-clés et sens du texte. Le mode **Miniatures** utilise les encodeurs texte et image SigLIP 2 correspondants. Les filtres de durée, chaîne, publication et playlist s’appliquent avant le classement. Les descriptions longues sont découpées en passages E5 avec contexte.
-
-**Utiliser le mode local** retrouve la bibliothèque existante de cet ordinateur. Cette copie conserve la date de son dernier import ; elle ne contient pas automatiquement les nouvelles vidéos du serveur. **État des playlists → Copier ma bibliothèque locale vers le serveur** télécharge d’abord une sauvegarde et conserve l’original.
 
 ## Configuration personnelle et redistribution
 
 Dans **Réglages → Ton IA musicale**, chaque compte peut utiliser une clé Gemini personnelle et choisir le modèle. La clé est chiffrée sur le serveur, jamais incluse dans les exports ni renvoyée au client. Un changement de modèle ne demande pas de la ressaisir. Le serveur doit configurer `DJ_SETTINGS_ENCRYPTION_KEY` pour activer cette fonction.
 
-Le client peut se connecter à un serveur HTTPS choisi lors de la première connexion. Chrome demande l’accès uniquement à cette origine. Les comptes Google ont chacun leurs playlists et leur clé Gemini ; le catalogue public et les vecteurs sont mutualisés, avec filtrage par compte. Voir [les comptes](docs/accounts.md).
+Les comptes Google ont chacun leurs playlists et leur clé Gemini ; le catalogue public et les vecteurs sont mutualisés, avec filtrage par compte. Voir [les comptes](docs/accounts.md).
 
 Voir [l’architecture et la trajectoire Mac](docs/architecture.md) pour les frontières de code, les secrets et les limites actuelles.
 
 ## Mode DJ
 
-Une fois connecté, cliquez sur **Mode DJ**. Depuis le panneau latéral, le DJ s’ouvre dans un onglet pour garder le lecteur et la demande d’autorisation du micro visibles. Décrivez votre mood dans le chat ou avec le micro : le DJ cherche dans votre bibliothèque par MCP et prépare une file de titres. **Me répondre à voix haute** active la voix du DJ. Le micro fonctionne au clic et peut demander une autorisation Chrome. Le chat et les métadonnées utiles à la sélection sont transmis à Gemini ; la clé reste sur le serveur.
+Décrivez votre mood dans le chat ou avec le micro : le DJ cherche dans votre bibliothèque par MCP et prépare une file de titres. La réponse vocale du DJ est optionnelle. Le chat et les métadonnées utiles à la sélection sont transmis à Gemini ; la clé reste sur le serveur.
 
-La musique utilise le lecteur officiel YouTube. Certains titres restent indisponibles en intégration ; un lien permet de les ouvrir sur YouTube. Il s’agit d’une sélection qui enchaîne les titres, sans mixage audio ni mesure du tempo. Le bouton **Revenir à la bibliothèque** termine l’écoute du DJ.
-
-## Rechercher et importer en mode local
-
-- Essayez `jazz romantique de plus d'une heure` ou `musique douce pour un dîner en amoureux`.
-- Le filtre de durée s'applique aux secondes réelles, pas au sens du texte. Une durée inconnue est exclue lorsqu'un filtre de durée est actif.
-- Le bouton **Importer** accepte l'export JSON normalisé de cette conversation, un export `yt-dlp --flat-playlist --dump-single-json`, ou une sauvegarde Playlist Recall.
-- Réimporter la même playlist actualise ses entrées. Les autres playlists sont conservées. Les vecteurs dont les métadonnées n'ont pas changé sont réutilisés.
-- **Indexer** calcule localement les vecteurs manquants. Chaque lot est enregistré ; une interruption permet de reprendre. La recherche par mots-clés reste utilisable pendant ce temps.
-- Les résultats sont des pistes classées, pas des identifications certaines. La recherche sémantique utilise les textes disponibles ; elle n'écoute pas la musique et n'analyse pas les miniatures.
+La musique utilise le lecteur officiel YouTube. Certains titres restent indisponibles en intégration ; un lien permet de les ouvrir sur YouTube. Il s’agit d’une sélection qui enchaîne les titres, sans mixage audio ni mesure du tempo.
 
 ## Développement
 
@@ -62,41 +38,23 @@ Node.js 24 ou plus récent. Règles de travail, validation et collaboration entr
 
 ```sh
 npm ci --legacy-peer-deps
-npm run prepare:model
-npm run prepare:seed
-npm test
-npm run check
-npm run package:local
+npm run verify:node    # contrôles, tests et build du serveur
+npm run verify:macos   # app Mac
 ```
 
-Placez votre export dans `apps/extension/public/data/library.json` avant de générer l'index personnel. La compilation produit `apps/extension/.output/chrome-mv3`. La commande `package:local` vérifie les ressources et crée le dossier `extension` à charger dans Chrome.
-
-Le modèle multilingue E5, ses fichiers ONNX et le runtime WASM sont préparés dans `apps/extension/public/models` et `apps/extension/public/ort`. Le script de préparation télécharge les ressources publiques une fois. Le calcul s'effectue ensuite dans un Web Worker avec des ressources empaquetées.
+Pour lancer une app Mac de développement sans toucher aux données personnelles : `RECALL_DATA_DIR=<dossier temporaire> swift run --package-path apps/macos RecallMac`. Le parcours du serveur est décrit dans [docs/server-tour.md](docs/server-tour.md).
 
 ## Données et confidentialité
 
-Les playlists et vecteurs sont stockés dans IndexedDB, dans le profil Chrome qui a chargé l'extension. Le mode local n’utilise aucun service d’inférence distant. Le mode serveur envoie les recherches et métadonnées à votre VPS, avec un jeton révocable ; les modèles y calculent les vecteurs sur CPU. La clé YouTube reste côté serveur. La recherche seule n’utilise pas d’API d’IA payante. Le mode DJ fait appel à Gemini côté serveur, avec un plafond quotidien ; aucune télémétrie applicative n’est ajoutée. Les miniatures sont chargées depuis `i.ytimg.com` et cliquer un résultat ouvre YouTube. La recherche textuelle et sémantique peut fonctionner hors ligne ; l'affichage des miniatures et la lecture demandent une connexion.
-
-La version personnelle empaquetée contient vos métadonnées et vos vecteurs. Ces fichiers sont ignorés par Git. Ne partagez pas ce dossier si vous souhaitez garder votre bibliothèque privée. Désinstaller l'extension peut supprimer sa bibliothèque : exportez une sauvegarde auparavant.
+Les recherches et métadonnées sont envoyées à votre serveur ; les modèles y calculent les vecteurs sur CPU. La clé YouTube reste côté serveur. La recherche seule n’utilise pas d’API d’IA payante. Le mode DJ fait appel à Gemini côté serveur, avec un plafond quotidien ; aucune télémétrie applicative n’est ajoutée. Les miniatures sont chargées depuis `i.ytimg.com` ; l'affichage des miniatures et la lecture demandent une connexion.
 
 Les dates d'écoute ne sont pas disponibles. La synchronisation du serveur utilise uniquement l’API officielle YouTube pour les playlists publiques ou non répertoriées. Des entrées dont YouTube n'a pas renvoyé les métadonnées restent identifiées comme telles.
 
-## Architecture
-
-- `apps/extension/src/import.ts` : validation et normalisation des deux formats d'entrée.
-- `apps/extension/src/db.ts` : import transactionnel, bibliothèque et vecteurs persistants.
-- `apps/extension/src/search.ts` : extraction de contraintes de durée, recherche lexicale, cosinus et fusion des rangs.
-- `apps/extension/src/embedding-worker.ts` : modèle E5 local et calcul séquentiel hors du thread d'interface.
-- `apps/extension/src/App.tsx` : import, indexation avec reprise, recherche et affichage.
-- `apps/extension/entrypoints/background.ts` : ouverture du panneau Chrome.
-
-Sources techniques : [Chrome Side Panel](https://developer.chrome.com/docs/extensions/reference/api/sidePanel), [Transformers.js](https://huggingface.co/docs/transformers.js), [E5 multilingue](https://huggingface.co/intfloat/multilingual-e5-small), [WXT](https://wxt.dev/).
-
 ## Monorepo et exploitation
 
-- `apps/extension` : WXT, React, IndexedDB et mode local conservé.
 - `apps/server` : API Hono, file PostgreSQL avec baux/reprise, collecte officielle YouTube et processus d’inférence isolé.
-- `packages/core` : formats d’import, types, filtres et modèle E5 partagés.
+- `apps/macos` : app SwiftUI cliente du serveur.
+- `packages/core` : formats d’import, types, filtres et contrats partagés.
 - `docker-compose.yml` : API, worker, inférence. PostgreSQL est une ressource Dokploy indépendante.
 
 Voir [le guide d’exploitation](docs/operations.md). Les tests de base utilisent exclusivement une base jetable dont le nom finit par `_test` :

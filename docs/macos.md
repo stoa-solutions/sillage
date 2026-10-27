@@ -7,7 +7,7 @@ DMG universel, notice de connexion Google et clés Gemini/Claude, signatures imb
 
 État actuel : comptes et données sur serveur, session persistante sans Trousseau (1.4.1). Les sections ci-dessous conservent l’historique des versions ; la dernière section décrit le stockage actuel.
 
-App native SwiftUI pour macOS 14 ou plus récent, compilable pour Apple Silicon et Intel. Elle ne charge pas l’interface de l’extension : le micro, les contrôles et les réglages sont natifs. WebKit est réservé au lecteur officiel YouTube.
+App native SwiftUI pour macOS 14 ou plus récent, compilable pour Apple Silicon et Intel. Le micro, les contrôles et les réglages sont natifs. WebKit est réservé au lecteur officiel YouTube.
 
 ## Fonctionnalités et données
 

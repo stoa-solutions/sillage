@@ -1,6 +1,6 @@
 # V2 — réalisation
 
-Architecture approuvée le 7 octobre 2026. Monorepo npm : extension, API/worker, contrats et moteur local partagés.
+Architecture approuvée le 7 octobre 2026. L’extension Chrome décrite ici a depuis été retirée du dépôt. Monorepo npm : extension, API/worker, contrats et moteur local partagés.
 
 1. Préserver le paquet Chrome et migrer le code en workspaces.
 2. Construire et tester stockage PostgreSQL/pgvector, tâches persistantes et synchronisation YouTube.

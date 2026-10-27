@@ -2,7 +2,7 @@
 
 ## Produit et limites
 
-Recall comprend une app Mac, une extension Chrome et un serveur. Le Mac utilise uniquement la bibliothèque serveur. L’extension conserve un mode local historique indépendant.
+Recall comprend une app Mac et un serveur. Le Mac utilise uniquement la bibliothèque serveur.
 
 La connexion Google crée un compte isolé : playlists, réglages Gemini, limites et calage des paroles sont propres au compte. Le catalogue public de vidéos et ses vecteurs sont mutualisés, mais les recherches filtrent les abonnements `user_playlists`. Chaque nouvelle requête SQL ou outil MCP doit conserver ce filtre. Les identifiants proposés par le modèle sont revalidés avant de quitter le serveur. Voir [accounts.md](accounts.md).
 
@@ -13,9 +13,6 @@ Le serveur peut accueillir plusieurs comptes ; cela ne prouve pas une capacité 
 | Module | Responsabilité |
 | --- | --- |
 | `packages/core` | Formats de bibliothèque, recherche pure et contrats du DJ. Aucun accès réseau ni secret. |
-| `apps/extension/src/server-client.ts` | Connexion HTTP et permission Chrome limitée au serveur choisi. |
-| `apps/extension/src/dj-app.tsx` | Conversation et session de lecture. |
-| `apps/extension/src/dj-settings.tsx` | Saisie de clé et modèle ; aucun stockage local de clé Gemini. |
 | `apps/server/src/features/dj/routes.ts` | Frontière HTTP du DJ, validation et bail par compte. |
 | `apps/server/src/dj-config.ts` | Configuration par défaut du déploiement. |
 | `apps/server/src/dj-settings.ts` | Configuration personnelle, chiffrement et persistance. |
@@ -127,7 +124,7 @@ La séparation est progressive. Les domaines recherche, comptes, playlists et pa
 
 ## Garde-fous automatisés
 
-`npm run check:architecture` lit la syntaxe TypeScript : contrats partagés autonomes, aucun import serveur dans l'extension, aucun import client dans le serveur, pas d'effet réseau/configuration globale dans les règles pures du DJ, pas de retour des modules internes vers leur façade et pas de `any` dans cette feature. Le contrôle est intégré à `check`, donc à `verify:node` et à la CI. Ses propres tests vérifient notamment les imports dynamiques et les réexports.
+`npm run check:architecture` lit la syntaxe TypeScript : contrats partagés autonomes, aucun import client dans le serveur, pas d'effet réseau/configuration globale dans les règles pures du DJ, pas de retour des modules internes vers leur façade et pas de `any` dans cette feature. Le contrôle est intégré à `check`, donc à `verify:node` et à la CI. Ses propres tests vérifient notamment les imports dynamiques et les réexports.
 
 La CI exécute trois validations distinctes : Node (frontières, types, comportement, build), Mac (compilation et scénarios natifs), PostgreSQL jetable (migrations, isolation des comptes et opérations persistantes). Les réponses tardives, les exclusions, les sélections partielles et les erreurs fournisseur restent des scénarios de comportement ; ne pas les remplacer par des tests qui recopient l'implémentation.
 

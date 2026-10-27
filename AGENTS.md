@@ -7,7 +7,6 @@ Règles communes à Codex et Claude Code. Samuel travaille avec les deux en para
 | Zone | Rôle | Validation |
 | --- | --- | --- |
 | `packages/core` | Formats d’import, recherche pure, contrats du DJ. Aucun réseau ni secret. | `npm run verify:node` |
-| `apps/extension` | Extension Chrome WXT/React, IndexedDB, E5 local. | `npm run verify:node` |
 | `apps/server` | API Hono, worker à baux PostgreSQL, inférence, MCP, DJ. | `npm run verify:node` ; tout changement SQL ajoute `npm run test:integration` sur une base jetable `*_test` |
 | `apps/macos` | App SwiftUI : `RecallKit` (cœur testable), `RecallMac` (UI, session privée, WebKit, Sparkle), `RecallAudio`. | `npm run verify:macos` |
 
@@ -26,7 +25,6 @@ L’étape 4 est terminée quand `origin/main` contient le commit et que la vali
 ## Invariants
 
 - **Secrets** : clés Gemini/YouTube, jetons serveur, configuration Dokploy et signature restent hors du dépôt, des exports et des paquets. Les fichiers de connexion privés ne sont jamais lus dans une réponse ni copiés.
-- **Extension Chrome** : Chrome charge le dossier `extension/` du checkout principal ; son chemin absolu fait partie de l’identité installée. `npm run package:local` s’exécute uniquement depuis le checkout principal. Un worktree n’a ni `node_modules` ni les modèles ignorés : `npm ci --legacy-peer-deps`, puis `npm run prepare:model` s’il faut les modèles.
 - **Déploiement** : Dokploy construit `apps/server/Dockerfile` via `docker-compose.yml` ; ces chemins et noms de services sont un contrat. Un déploiement suit `docs/operations.md` jusqu’au bout : image, migrations, SHA servi par `/health`, progression du worker.
 - **App Mac** : toutes les builds partagent la bibliothèque `~/Library/Application Support/Playlist Recall` et le fichier de session privé de Samuel. Les essais de développement passent `RECALL_DATA_DIR=<dossier temporaire>` ; les tests utilisent toujours un dossier temporaire. Seul `scripts/build-macos.py`, depuis `main`, produit une version publiée, avec le numéro de build de `apps/macos/version.json` incrémenté.
 - **Données utilisateur** : une migration conserve les originaux et s’exécute dans une transaction. Un import incomplet ne remplace rien.

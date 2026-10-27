@@ -10,3 +10,4 @@ output
 **/public/ort
 .env*
 **/dist
+**/dist

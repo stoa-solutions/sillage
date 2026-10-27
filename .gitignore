@@ -36,3 +36,6 @@ __pycache__/
 
 # Server bundle built by `npm run build -w @playlist-recall/server`.
 apps/server/dist/
+
+# Server bundle built by `npm run build -w @playlist-recall/server`.
+apps/server/dist/

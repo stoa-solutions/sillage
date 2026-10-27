@@ -113,14 +113,18 @@ it.each([false, true])("accepts native=%s player commands only from its trusted 
   expect(playerVars.controls).toBe(native ? 0 : undefined);
   expect(playerVars.fs).toBe(native ? 0 : undefined);
   expect(playerVars.cc_load_policy).toBe(native ? 0 : undefined);
-  listener({
-    source: parent,
-    origin: "https://attacker.example",
-    data: { source: "recall-dj", command: "hello" },
-  });
+  for (const foreign of [
+    "https://attacker.example",
+    `chrome-extension://${"a".repeat(32)}`,
+  ])
+    listener({
+      source: parent,
+      origin: foreign,
+      data: { source: "recall-dj", command: "hello" },
+    });
   events.onReady();
   expect(posted).toEqual([]);
-  const origin = `chrome-extension://${"a".repeat(32)}`;
+  const origin = "http://127.0.0.1:5173";
   listener({
     source: parent,
     origin,

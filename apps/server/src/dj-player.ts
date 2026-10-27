@@ -15,7 +15,7 @@ export const djPlayerJs = String.raw`(() => {
     if(value.autoplay) player.loadVideoById({videoId:value.id,startSeconds:Math.max(0,Number(value.start)||0)}); else player.cueVideoById({videoId:value.id,startSeconds:Math.max(0,Number(value.start)||0)});
   };
   window.addEventListener('message',(event)=>{
-    if(event.source!==parent || !(/^chrome-extension:\/\/[a-p]{32}$/.test(event.origin) || /^http:\/\/(127\.0\.0\.1|localhost):[0-9]+$/.test(event.origin) || (parent===window && event.origin===location.origin))) return;
+    if(event.source!==parent || !(/^http:\/\/(127\.0\.0\.1|localhost):[0-9]+$/.test(event.origin) || (parent===window && event.origin===location.origin))) return;
     const value=event.data;
     if(!value || value.source!=='recall-dj' || !['hello','cue','play','pause','seek','volume','duck','restore'].includes(value.command)) return;
     parentOrigin=event.origin;
