@@ -40,7 +40,6 @@ struct DeskMenu: View {
             Capsule().fill(Color.recall.opacity(0.6)).frame(width: 2)
           }
       }
-      microphoneButton
       requestField
       Divider()
       footer
@@ -120,68 +119,67 @@ struct DeskMenu: View {
     return text.isEmpty ? nil : text
   }
 
-  private var microphoneButton: some View {
-    Button {
-      if microphone.listening {
-        microphone.stop(submit: true)
-      } else if microphone.active {
-        microphone.stop()
-      } else {
-        desk.startDictation(showingPill: false)
-      }
-    } label: {
-      HStack(spacing: 10) {
-        Group {
-          if microphone.listening {
-            LiveWaveform(meter: microphone.meter)
-          } else {
-            Image(systemName: "mic.fill").font(.system(size: 13, weight: .semibold))
-          }
+  /// One composer, like the main window's: the request on top, then where to search, the
+  /// shortcut as a quiet hint, the microphone and send.
+  private var requestField: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      if microphone.active {
+        HStack(spacing: 8) {
+          if microphone.listening { LiveWaveform(meter: microphone.meter) }
+          Text(microphoneTitle).font(.system(size: 13)).foregroundStyle(.secondary)
+            .lineLimit(2).truncationMode(.head)
         }
-        .foregroundStyle(.white).frame(width: 28, height: 28)
-        .background(Circle().fill(Color.recall))
-        Text(microphoneTitle).font(.system(size: 13, weight: .medium)).lineLimit(1)
-          .truncationMode(.head)
-        Spacer(minLength: 6)
-        if !microphone.active, let shortcut = desk.shortcut { Keycaps(shortcut: shortcut) }
+      } else {
+        TextField("Demande au DJ…", text: $request)
+          .textFieldStyle(.plain).font(.system(size: 13)).focused($requestFocused)
+          .onSubmit(send)
       }
-      .padding(.horizontal, 8).padding(.vertical, 7)
-      .background(
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
-          .fill(Color.recall.opacity(microphone.active ? 0.18 : 0.1))
-      )
-      .contentShape(Rectangle())
-    }.buttonStyle(.plain)
-      .accessibilityLabel(microphone.active ? "Envoyer la demande vocale" : "Parler au DJ")
+      HStack(spacing: 8) {
+        // Shared with the main window, so typed and spoken requests search the same place.
+        ScopeMenu(scope: $dj.searchScope)
+        Spacer(minLength: 0)
+        if !microphone.active, request.isEmpty, let shortcut = desk.shortcut {
+          Text(shortcut.keycaps.joined(separator: " "))
+            .font(.system(size: 10.5, design: .rounded)).foregroundStyle(.tertiary)
+            .help("Raccourci global pour parler au DJ depuis n’importe quelle app")
+        }
+        Button(action: toggleMicrophone) {
+          Image(systemName: microphone.active ? "mic.fill" : "mic")
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(microphone.active ? Color.recall : .secondary)
+            .frame(width: 24, height: 24).contentShape(Circle())
+        }.buttonStyle(.plain)
+          .accessibilityLabel(microphone.active ? "Envoyer la demande vocale" : "Parler au DJ")
+        if !request.isEmpty {
+          Button(action: send) {
+            Image(systemName: "arrow.up").font(.system(size: 11, weight: .bold))
+              .foregroundStyle(.white).frame(width: 22, height: 22)
+              .background(Circle().fill(Color.recall))
+          }.buttonStyle(.plain).accessibilityLabel("Envoyer")
+        }
+      }
+    }
+    .padding(.horizontal, 12).padding(.vertical, 10)
+    .background(
+      RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.06)))
+  }
+
+  private func toggleMicrophone() {
+    if microphone.listening {
+      microphone.stop(submit: true)
+    } else if microphone.active {
+      microphone.stop()
+    } else {
+      desk.startDictation(showingPill: false)
+    }
   }
 
   private var microphoneTitle: String {
-    guard microphone.active else { return "Parler au DJ" }
     if microphone.listening {
       return microphone.transcript.isEmpty
-        ? "Je t’écoute… Clique pour envoyer" : microphone.transcript
+        ? "Je t’écoute… clique le micro pour envoyer" : microphone.transcript
     }
     return microphone.status
-  }
-
-  private var requestField: some View {
-    HStack(spacing: 8) {
-      TextField("Demande au DJ…", text: $request)
-        .textFieldStyle(.plain).font(.system(size: 13)).focused($requestFocused)
-        .onSubmit(send)
-      // Shared with the main window, so typed and spoken requests search the same place.
-      ScopeMenu(scope: $dj.searchScope)
-      if !request.isEmpty {
-        Button(action: send) {
-          Image(systemName: "arrow.up").font(.system(size: 11, weight: .bold))
-            .foregroundStyle(.white).frame(width: 22, height: 22)
-            .background(Circle().fill(Color.recall))
-        }.buttonStyle(.plain).accessibilityLabel("Envoyer")
-      }
-    }
-    .padding(.horizontal, 12).padding(.vertical, 8)
-    .background(
-      RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.06)))
   }
 
   private func send() {
@@ -213,7 +211,7 @@ struct LiveWaveform: View {
   var body: some View {
     HStack(spacing: 2) {
       ForEach(Array(history.enumerated()), id: \.offset) { _, level in
-        Capsule().fill(.white).frame(width: 2.5, height: 4 + CGFloat(level) * 12)
+        Capsule().fill(Color.recall).frame(width: 2, height: 3 + CGFloat(level) * 10)
       }
     }
     .animation(.easeOut(duration: 0.1), value: history)
