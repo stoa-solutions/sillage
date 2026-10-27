@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -135,5 +136,38 @@ export const djJournalEvents = pgTable(
     index("dj_journal_turn")
       .on(t.userId, t.turnId, t.sequence)
       .where(sql`turn_id IS NOT NULL`),
+  ],
+);
+
+/**
+ * DJ agents: a profile added to the DJ's rules, never a replacement for them. A base agent
+ * (`base_key`, no owner) is written from code at every start; a custom one belongs to its account.
+ */
+export const djAgents = pgTable(
+  "dj_agents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id"),
+    baseKey: text("base_key").unique("dj_agents_base_key_key"),
+    name: text("name").notNull(),
+    instructions: text("instructions").notNull(),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+    updatedAt: timestamptz("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    foreignKey({
+      name: "dj_agents_user_id_fkey",
+      columns: [t.userId],
+      foreignColumns: [users.id],
+    }).onDelete("cascade"),
+    check(
+      "dj_agents_owner_check",
+      sql`(${t.userId} IS NULL) <> (${t.baseKey} IS NULL)`,
+    ),
+    check(
+      "dj_agents_size_check",
+      sql`char_length(${t.name}) BETWEEN 1 AND 40 AND char_length(${t.instructions}) <= 1500`,
+    ),
+    index("dj_agents_user").on(t.userId, t.createdAt),
   ],
 );

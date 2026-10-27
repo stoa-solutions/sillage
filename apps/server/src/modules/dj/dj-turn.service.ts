@@ -10,7 +10,7 @@ import { DjUnavailable } from "./errors.ts";
 import { compactVideo } from "./evidence.ts";
 import type { TraceObserver } from "./journal/journal.contracts.ts";
 import { EMPTY_MEMORY, type ConversationMemory } from "./memory.ts";
-import { initialMessages } from "./messages.ts";
+import { initialMessages, type DjProfile } from "./messages.ts";
 import { planTurn, type TurnPlan } from "./plan.ts";
 import { completeTurn, MAX_ROUNDS } from "./provider.ts";
 import { reserveDj } from "./dj-quota.service.ts";
@@ -64,6 +64,7 @@ export async function djTurn(
   userId = LEGACY_USER_ID,
   observe?: TraceObserver,
   memory: ConversationMemory = EMPTY_MEMORY,
+  profile?: DjProfile,
 ): Promise<TurnResult> {
   const plan = planTurn(input);
   const started = Date.now();
@@ -88,6 +89,7 @@ export async function djTurn(
     plan,
     (await recentTracks(db, input, plan, userId)).map(compactVideo),
     memory,
+    profile,
   );
   const messages = [...base];
   const mcp = await connectMusicMcp(

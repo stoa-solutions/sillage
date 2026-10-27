@@ -50,6 +50,7 @@ import {
 import { planTurn } from "./plan.ts";
 import { djSystemPrompt } from "./prompt.ts";
 import { djTurn } from "./dj-turn.service.ts";
+import { djAgentsService } from "../dj-agents/index.ts";
 
 const TAG = "DJ";
 const unavailableResponses = {
@@ -196,6 +197,7 @@ export function createDjRoutes(
   }),
 ) {
   const app = featureRouter<ApiEnvironment>();
+  const agents = djAgentsService(db);
   app.route("/", journalRoutes(db));
   app.openapi(rulesRoute, (c) => c.json({ prompt: djSystemPrompt }, 200));
   app.openapi(statusRoute, async (c) => {
@@ -271,7 +273,14 @@ export function createDjRoutes(
   app.openapi(chatRoute, async (c) => {
     const input = c.req.valid("json");
     const user = c.get("userId");
-    const journal = await beginJournal(db, user, c.get("installationId"), input);
+    const agent = await agents.resolve(user, input.agentId);
+    const journal = await beginJournal(
+      db,
+      user,
+      c.get("installationId"),
+      input,
+      agent.trace,
+    );
     c.header("X-Sillage-Trace-Id", journal.id);
     async function finish(
       status: TurnStatus,
@@ -319,6 +328,7 @@ export function createDjRoutes(
         user,
         journal.observe,
         memory,
+        agent.profile,
       );
       await finish("completed", response, model);
       return c.json(response, 200);

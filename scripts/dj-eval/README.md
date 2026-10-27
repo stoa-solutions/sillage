@@ -59,4 +59,6 @@ Les rapports enregistrent le SHA serveur avant/après, le modèle, la durée, la
 Codes de sortie : `0` toutes les assertions passent ; `1` écart de comportement ; `2` blocage, préparation invalide ou serveur changé. La pertinence musicale et la fluidité audio restent à juger séparément : cinq IDs valides ne prouvent pas une bonne sélection.
 
 
+Le lot `--suite agents` rejoue trois contrats avec un agent de base (`agentId` du scénario) : Disquaire sur une envie d’énergie, Focus avec « sans le lancer », Archiviste en carte blanche. Il vérifie qu’un profil ne change ni l’action ni la taille ; le ton se lit dans le rapport.
+
 Le lot `--suite journal-regressions` rejoue les quatre formulations issues du journal : énergie, carte blanche après une ancienne direction, « sans le lancer » et suite autour de Sean. Prévisualiser avant `--live` ; le lot consomme quatre tours HTTP et peut interroger YouTube. Les assertions contrôlent action, taille et exclusions ; une sélection de cinq titres ne prouve pas à elle seule la cohérence musicale.

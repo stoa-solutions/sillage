@@ -821,6 +821,201 @@
       ]
     },
     {
+      "name": "Agents du DJ",
+      "item": [
+        {
+          "name": "listDjAgents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/agents",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "agents"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Agents de base (id stable comme focus, lecture seule) puis agents personnalisés du compte. Un agent ajoute un profil aux règles du DJ : il ne change ni le format, ni les outils, ni la source. Envoyer son id dans agentId de /v1/dj/chat.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "createDjAgent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/agents",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "agents"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Crée un agent personnalisé pour le compte courant, 20 au maximum. Pour partir d’un agent de base, recopier ses instructions.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Soirée calme\",\n  \"instructions\": \"Réponses courtes. Pour une suite, reste sur des morceaux doux et évite les ruptures d’énergie.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "updateDjAgent",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/agents/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "agents",
+                ":id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{playlist_id}}"
+                }
+              ]
+            },
+            "description": "Remplace le nom et les instructions d’un agent personnalisé du compte. Les agents de base ne sont pas modifiables.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Soirée calme\",\n  \"instructions\": \"Réponses courtes. Pour une suite, reste sur des morceaux doux et évite les ruptures d’énergie.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "deleteDjAgent",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/dj/agents/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "dj",
+                "agents",
+                ":id"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{playlist_id}}"
+                }
+              ]
+            },
+            "description": "Supprime un agent personnalisé du compte. Une demande au DJ qui l’utilise encore repasse sur l’agent par défaut.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Journal DJ",
       "item": [
         {

@@ -746,3 +746,21 @@ it("does not execute a verified result omitted from the model's bounded context"
     ),
   ).toBe(true);
 });
+it("adds the chosen agent's profile between the DJ rules and this turn's constraints", async () => {
+  const bodies = provider([tool, answer()]);
+  await djTurn(
+    db,
+    djInput.parse({ message: "un morceau avec Edge en feat" }),
+    undefined,
+    config,
+    "alice",
+    undefined,
+    undefined,
+    { name: "Focus", instructions: "Une phrase courte, sans anecdote." },
+  );
+  const system: string = bodies[0].messages[0].content;
+  const profile = system.indexOf("PROFIL DE L’AGENT « Focus »");
+  expect(profile).toBeGreaterThan(system.indexOf("N'invente jamais un morceau"));
+  expect(profile).toBeLessThan(system.indexOf("INTENTION DU TOUR"));
+  expect(system).toContain("Une phrase courte, sans anecdote.");
+});

@@ -6,6 +6,11 @@ export const djInput = z.object({
   requestId: z.string().uuid().optional(),
   trigger: z.enum(["user", "continuation"]).optional(),
   scope: z.enum(["library", "youtube", "all"]).optional(),
+  /** A base agent key (`focus`) or a custom agent uuid; unknown ones fall back to the default. */
+  agentId: z
+    .string()
+    .regex(/^[a-z0-9-]{1,64}$/i)
+    .optional(),
   playbackContext: z
     .object({
       current: z

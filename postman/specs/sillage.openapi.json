@@ -1376,6 +1376,382 @@
         }
       }
     },
+    "/v1/dj/agents": {
+      "get": {
+        "operationId": "listDjAgents",
+        "summary": "Agents disponibles",
+        "description": "Agents de base (id stable comme focus, lecture seule) puis agents personnalisés du compte. Un agent ajoute un profil aux règles du DJ : il ne change ni le format, ni les outils, ni la source. Envoyer son id dans agentId de /v1/dj/chat.",
+        "tags": [
+          "Agents du DJ"
+        ],
+        "x-sillage-effect": "read",
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DjAgents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDjAgent",
+        "summary": "Créer un agent",
+        "description": "Crée un agent personnalisé pour le compte courant, 20 au maximum. Pour partir d’un agent de base, recopier ses instructions.",
+        "tags": [
+          "Agents du DJ"
+        ],
+        "x-sillage-effect": "write",
+        "x-sillage-example": {
+          "name": "Soirée calme",
+          "instructions": "Réponses courtes. Pour une suite, reste sur des morceaux doux et évite les ruptures d’énergie."
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "name": "Soirée calme",
+                "instructions": "Réponses courtes. Pour une suite, reste sur des morceaux doux et évite les ruptures d’énergie."
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DjAgentInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DjAgent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nombre maximal d’agents atteint",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dj/agents/{id}": {
+      "put": {
+        "operationId": "updateDjAgent",
+        "summary": "Modifier un agent",
+        "description": "Remplace le nom et les instructions d’un agent personnalisé du compte. Les agents de base ne sont pas modifiables.",
+        "tags": [
+          "Agents du DJ"
+        ],
+        "x-sillage-effect": "write",
+        "x-sillage-example": {
+          "name": "Soirée calme",
+          "instructions": "Réponses courtes. Pour une suite, reste sur des morceaux doux et évite les ruptures d’énergie."
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "name": "Soirée calme",
+                "instructions": "Réponses courtes. Pour une suite, reste sur des morceaux doux et évite les ruptures d’énergie."
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DjAgentInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DjAgent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Agent introuvable pour ce compte",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteDjAgent",
+        "summary": "Supprimer un agent",
+        "description": "Supprime un agent personnalisé du compte. Une demande au DJ qui l’utilise encore repasse sur l’agent par défaut.",
+        "tags": [
+          "Agents du DJ"
+        ],
+        "x-sillage-effect": "write",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Saved"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Agent introuvable pour ce compte",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/dj/conversations": {
       "get": {
         "operationId": "getDjConversations",
@@ -5000,6 +5376,71 @@
           "videoId"
         ]
       },
+      "DjAgents": {
+        "type": "object",
+        "properties": {
+          "defaultId": {
+            "type": "string"
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DjAgent"
+            }
+          }
+        },
+        "required": [
+          "defaultId",
+          "agents"
+        ]
+      },
+      "DjAgent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "instructions": {
+            "type": "string"
+          },
+          "base": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "instructions",
+          "base",
+          "updatedAt"
+        ]
+      },
+      "DjAgentInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "instructions": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          }
+        },
+        "required": [
+          "name",
+          "instructions"
+        ]
+      },
       "JournalConversation": {
         "type": "object",
         "properties": {
@@ -5751,6 +6192,10 @@
               "youtube",
               "all"
             ]
+          },
+          "agentId": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,64}$/i"
           },
           "playbackContext": {
             "type": "object",

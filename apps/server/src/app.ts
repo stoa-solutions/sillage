@@ -13,6 +13,7 @@ import { playerRoutes } from "./modules/player/index.ts";
 import { systemRoutes } from "./modules/system/index.ts";
 import type { ApiEnvironment } from "./shared/api-environment.ts";
 import { createDjRoutes } from "./modules/dj/index.ts";
+import { djAgentRoutes } from "./modules/dj-agents/index.ts";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
@@ -59,6 +60,7 @@ export function createApp(
   app.use("/v1/*", sessionGuard(db));
   app.route("/v1", accountRoutes(db));
   app.route("/v1/discover", discoveryRoutes(db));
+  app.route("/v1/dj/agents", djAgentRoutes(db));
   app.route("/v1/dj", createDjRoutes(db));
   app.route("/v1/history", historyRoutes(db));
   app.route("/v1", mcpRoutes(db));

@@ -20,7 +20,7 @@ async function main() {
   if (values.help) {
     console.log(`Évaluation du vrai DJ via HTTP (aucun pilotage de l’app).
 Sans --live : affiche uniquement les cas, sans lire les identifiants ni appeler le réseau.
---suite smoke|external|all  --case ID  --max-requests 3
+--suite smoke|external|journal-regressions|agents|all  --case ID  --max-requests 3
 --scenarios fichier.json  --out dossier
 --live --connection-file fichier-privé.json
 Alternative : RECALL_API_URL et RECALL_API_TOKEN dans l’environnement.

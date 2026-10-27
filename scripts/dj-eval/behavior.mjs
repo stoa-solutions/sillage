@@ -16,6 +16,7 @@ export function requestFor(scenario, step, state) {
     : state.rejected;
   return {
     scope: scenario.scope,
+    ...(scenario.agentId ? { agentId: scenario.agentId } : {}),
     message: step.message,
     history: state.history.slice(-12),
     playbackContext: { current: state.current, direction: scenario.direction ?? "" },

@@ -103,6 +103,17 @@ Ouvrir dans cet ordre :
 
 Les règles de décision sont décrites dans [dj-behavior.md](dj-behavior.md).
 
+### Les agents du DJ : `dj-agents`
+
+Un agent est un profil ajouté aux règles du DJ, jamais un remplacement : ton et préférences de sélection, sans toucher au format, aux outils, à la source, à l’intention, au nombre de titres ni aux exclusions.
+
+1. `base-agents.ts` : les agents de base (`dj`, `disquaire`, `archiviste`, `focus`) et leur texte. `syncBaseAgents` les écrit dans `dj_agents` à chaque démarrage, après les migrations : retoucher un texte demande un commit et un déploiement, jamais une migration.
+2. `dj-agents.controller.ts` : `GET/POST /v1/dj/agents`, `PUT/DELETE /v1/dj/agents/{id}` ; un compte ne voit et ne modifie que ses agents personnalisés (20 au maximum), les agents de base sont en lecture seule.
+3. `dj-agents.service.ts` → `resolve()` : appelé par `/v1/dj/chat` avant le journal. Un `agentId` inconnu, étranger ou supprimé repasse sur l’agent par défaut (`fallback` au journal) : une suite envoyée avec une sélection périmée joue quand même.
+4. `dj/messages.ts` → `rules(plan, profile)` place le profil entre `djSystemPrompt` et les règles du Tour, qui restent les dernières. Le journal garde l’agent, son nom et l’empreinte de ses instructions dans `plan.agent` ; `promptHash` reste celui du prompt de base.
+
+Limites : l’annonce « C’est parti : … » est écrite par le serveur, l’agent agit sur le choix, `explanation` et les réponses de conversation. Un titre exact trouvé dans le catalogue répond sans modèle, donc sans agent.
+
 ## 9. Lecteur, versions Mac, santé : `player`, `releases`, `system`
 
 - `player` : page publique du lecteur YouTube (`/dj/player`, `.js`, `.css`) intégrée par le Mac, servie en HTTPS pour un référent valide. Aucun jeton dans cette page.
@@ -116,7 +127,7 @@ Ces trois modules servent des fichiers tels quels : leurs routes sont documenté
 - `src/db/schema/` : un fichier par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`, plus `columns.ts` et `legacy.ts`). Une table = un `pgTable(...)`, noms snake_case en base, camelCase en TypeScript, contraintes avec leur nom réel. Les valeurs fixes sont des enums PostgreSQL (`pgEnum`) : `job_kind`, `job_status`, `playlist_status`, `sync_run_status`, `listening_outcome`, `lyrics_status`, `ai_provider`, `user_dj_provider`, `discovery_scope`, `turn_trigger`, `turn_status`, `journal_origin`.
 - `src/db/client.ts` : `openDatabase()` crée le pool et l’objet Drizzle `orm` ; `pool` est l’instance du processus. Les dépôts reçoivent `db.orm` ou une transaction (`Executor`).
 - `src/db/migrate.ts` : prend un verrou consultatif de session (740071) sur une connexion dédiée **avant** que Drizzle lise son journal, puis applique les migrations en attente dans une transaction. Deux processus qui démarrent ensemble s’attendent.
-- `drizzle/` : `0000_baseline` (ancien schéma idempotent : une base existante l’applique sans changement), `0001` enums des tâches et playlists, `0002` enums d’écoute et de paroles, `0003` enums du DJ. Seuls le déclencheur `recall_music_revision` et la configuration de recherche `recall_simple` restent en SQL écrit à la main.
+- `drizzle/` : `0000_baseline` (ancien schéma idempotent : une base existante l’applique sans changement), `0001` enums des tâches et playlists, `0002` enums d’écoute et de paroles, `0003` enums du DJ, `0004` table `dj_agents` (structure seule ; les agents de base sont écrits au démarrage). Seuls le déclencheur `recall_music_revision` et la configuration de recherche `recall_simple` restent en SQL écrit à la main.
 
 Une requête Drizzle se lit comme son SQL, et son résultat est typé depuis le schéma :
 

@@ -1,0 +1,18 @@
+$kind: http-request
+description: >-
+  Supprime un agent personnalisé du compte. Une demande au DJ qui l’utilise encore repasse sur l’agent par défaut.
+
+
+  Effet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/dj/agents/:id"
+method: DELETE
+headers:
+  Accept: application/json
+pathVariables:
+  id: "{{playlist_id}}"
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 4000

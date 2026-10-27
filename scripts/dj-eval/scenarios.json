@@ -265,5 +265,56 @@
         }
       }
     ]
+  },
+  {
+    "id": "agent-disquaire-energy",
+    "suite": "agents",
+    "description": "Le Disquaire garde le contrat : une envie d’énergie lance une sélection, son ton ne change pas l’action.",
+    "scope": "library",
+    "agentId": "disquaire",
+    "steps": [
+      {
+        "message": "De l’énergie pour avancer",
+        "expect": {
+          "action": "replace",
+          "minTracks": 1,
+          "maxTracks": 5
+        }
+      }
+    ]
+  },
+  {
+    "id": "agent-focus-no-autoplay",
+    "suite": "agents",
+    "description": "Focus respecte « sans le lancer » : des cartes, aucune lecture.",
+    "scope": "library",
+    "agentId": "focus",
+    "steps": [
+      {
+        "message": "Propose un morceau de Jewel Usain sans le lancer.",
+        "expect": {
+          "action": "keep",
+          "minCards": 1,
+          "maxCards": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "agent-archiviste-carte-blanche",
+    "suite": "agents",
+    "description": "L’Archiviste lance une sélection de la bibliothèque sur une carte blanche.",
+    "scope": "library",
+    "agentId": "archiviste",
+    "steps": [
+      {
+        "message": "met ce que tu veux",
+        "expect": {
+          "action": "replace",
+          "minTracks": 1,
+          "maxTracks": 5
+        }
+      }
+    ]
   }
 ]

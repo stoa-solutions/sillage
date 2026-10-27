@@ -1,0 +1,17 @@
+$kind: http-request
+description: >-
+  Agents de base (id stable comme focus, lecture seule) puis agents personnalisés du compte. Un agent ajoute un profil
+  aux règles du DJ : il ne change ni le format, ni les outils, ni la source. Envoyer son id dans agentId de /v1/dj/chat.
+
+
+  Effet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection
+  sur son compte.
+url: "{{base_url}}/v1/dj/agents"
+method: GET
+headers:
+  Accept: application/json
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 1000

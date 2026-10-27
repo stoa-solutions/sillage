@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Agents du DJ côté serveur : profils qui changent le ton et les préférences du DJ sans toucher à ses règles. Quatre agents de base (Le DJ, Le Disquaire, L’Archiviste, Focus) et agents personnalisés par compte dans `dj_agents` (`/v1/dj/agents`), choisis par `agentId` dans `/v1/dj/chat`, suites comprises. Un agent inconnu ou supprimé repasse sur l’agent par défaut ; le journal garde l’agent utilisé. Scénarios `--suite agents` dans le banc d’évaluation.
+
 - Sillage 1.8.3 (74) : nouvelle construction locale depuis main, incluant les derniers contrôles de barre des menus, la pastille d’écoute et les messages en attente. Les sauvegardes d’installation se conservent en ZIP pour ne plus apparaître comme des applications dans macOS ; le prototype d’agents reste sur sa branche de développement.
 
 - Extension Chrome retirée du dépôt : le produit se compose du serveur et de l’app Mac. Les jetons personnels existants restent valides pour les scripts et le MCP.

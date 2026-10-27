@@ -1,0 +1,25 @@
+$kind: http-request
+description: >-
+  Crée un agent personnalisé pour le compte courant, 20 au maximum. Pour partir d’un agent de base, recopier ses
+  instructions.
+
+
+  Effet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/dj/agents"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Soirée calme",
+      "instructions": "Réponses courtes. Pour une suite, reste sur des morceaux doux et évite les ruptures d’énergie."
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 2000

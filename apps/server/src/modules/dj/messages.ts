@@ -20,10 +20,21 @@ export function continuationRequest(count: number, broaden: boolean) {
   );
 }
 
-function rules(plan: TurnPlan) {
+/** A DJ agent's profile: tone and preferences layered on the rules, never replacing them. */
+export interface DjProfile {
+  name: string;
+  instructions: string;
+}
+
+/** The profile comes after the DJ's rules and before this turn's: the turn's constraints win. */
+const profileRules = (profile: DjProfile) =>
+  ` PROFIL DE L’AGENT « ${profile.name} », choisi par la personne : ${profile.instructions} Ce profil règle le ton et les préférences de sélection. Il ne change jamais le format JSON, les outils, les preuves, la source choisie, l’intention du tour, le nombre de titres demandé ni les exclusions : en cas de conflit, les règles ci-dessus et ci-dessous priment.`;
+
+export function rules(plan: TurnPlan, profile?: DjProfile) {
   const { targetCount, grounded, intent, scope, openChoice } = plan;
   return (
     djSystemPrompt +
+    (profile ? profileRules(profile) : "") +
     (openChoice
       ? " CARTE BLANCHE : la personne te laisse choisir. Les anciennes envies et anciens échecs ne sont pas des contraintes de cette nouvelle demande. Choisis librement de vrais morceaux variés dans les sources autorisées, en respectant seulement ses contraintes actuelles explicites et les exclusions. Tu n’as pas à rester sur l’ancien artiste, ni à retrouver une playlist portant un nom. Prépare une sélection cohérente à lancer ou à ajouter selon l’intention du tour ; ne demande pas un style alors qu’elle te confie ce choix."
       : "") +
@@ -85,12 +96,13 @@ export function initialMessages(
   plan: TurnPlan,
   recentTracks: ReturnType<typeof compactVideo>[] = [],
   memory: ConversationMemory = EMPTY_MEMORY,
+  profile?: DjProfile,
 ): ChatMessage[] {
   const request = input.continuation
     ? continuationRequest(plan.targetCount ?? 5, plan.broaden)
     : input.message;
   return [
-    { role: "system", content: rules(plan) },
+    { role: "system", content: rules(plan, profile) },
     ...conversation(input, plan, memory),
     ...(memory.interrupted
       ? [

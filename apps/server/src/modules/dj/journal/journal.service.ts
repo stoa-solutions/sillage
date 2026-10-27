@@ -9,6 +9,7 @@ import {
   recordClientEvents,
   toolEvents,
 } from "./journal.repository.ts";
+import type { ResolvedAgent } from "../../dj-agents/index.ts";
 import { djSystemPrompt } from "../prompt.ts";
 import { planTurn } from "../plan.ts";
 import type { DjInput } from "../dj.contracts.ts";
@@ -43,6 +44,7 @@ export async function beginJournal(
   owner: string,
   installation: string,
   input: DjInput,
+  agent?: ResolvedAgent["trace"],
 ) {
   const id = randomUUID(),
     conversationId = input.conversationId ?? randomUUID();
@@ -70,6 +72,7 @@ export async function beginJournal(
         selectionLimit: plan.selectionLimit,
         avoidRepeats: plan.avoidRepeats,
         broaden: plan.broaden,
+        ...(agent ? { agent } : {}),
       },
       promptHash,
       releaseSha: process.env["RELEASE_SHA"] ?? "local",
