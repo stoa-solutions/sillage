@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { YouTube } from "./youtube.ts";
+import type { YouTube } from "./integrations/youtube/index.ts";
 
 export { SearxngError } from "./searxng-errors.ts";
 import { SearxngError } from "./searxng-errors.ts";

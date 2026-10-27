@@ -5,16 +5,16 @@ import { randomUUID } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
-import { enqueue, claim, finish, schedule } from "../src/queue.ts";
+import { enqueue, claim, finish } from "../src/features/jobs/index.ts";
 import { infer } from "../src/inference-client.ts";
-import { indexText, indexImage } from "../src/indexing.ts";
+import { enqueueMissing, indexText, indexImage } from "../src/indexing.ts";
 import {
-  enqueueMissing,
   enrichVideos,
   importLibrary,
+  scheduleSync,
   syncPlaylist,
-} from "../src/library.ts";
-import { YouTube } from "../src/youtube.ts";
+} from "../src/features/library/index.ts";
+import { YouTube } from "../src/integrations/youtube/index.ts";
 import type { LibraryImport } from "@playlist-recall/core/types";
 vi.mock("../src/inference-client.ts", () => ({ infer: vi.fn() }));
 const url = process.env["TEST_DATABASE_URL"];
@@ -85,27 +85,27 @@ it("requires authentication and applies numerical search filters through HTTP", 
   expect((await (await request(7200)).json()).total).toBe(0);
 });
 it("deduplicates active tasks and rejects completion from an expired lease", async () => {
-  const first = await enqueue(db, "sync", "PL1234567890", {
+  const first = await enqueue(db.orm, "sync", "PL1234567890", {
     playlistId: "PL1234567890",
   });
   expect(
-    (await enqueue(db, "sync", "PL1234567890", { playlistId: "PL1234567890" }))
+    (await enqueue(db.orm, "sync", "PL1234567890", { playlistId: "PL1234567890" }))
       .id,
   ).toBe(first.id);
-  const job = await claim(db);
+  const job = await claim(db.orm);
   expect(job).toBeTruthy();
   await db.query(
     `UPDATE jobs SET lease_until=now()-interval '1 second' WHERE id=$1`,
     [job!.id],
   );
-  const replacement = await claim(db);
-  expect(replacement!.lease_id).not.toBe(job!.lease_id);
-  await finish(db, job!);
+  const replacement = await claim(db.orm);
+  expect(replacement!.leaseId).not.toBe(job!.leaseId);
+  await finish(db.orm, job!);
   expect(
     (await db.query("SELECT status FROM jobs WHERE id=$1", [job!.id])).rows[0]
       .status,
   ).toBe("running");
-  await finish(db, replacement!);
+  await finish(db.orm, replacement!);
   expect(
     (await db.query("SELECT status FROM jobs WHERE id=$1", [job!.id])).rows[0]
       .status,
@@ -114,8 +114,8 @@ it("deduplicates active tasks and rejects completion from an expired lease", asy
 it("does not replace active memberships when remote pagination fails", async () => {
   await importLibrary(db, fixture);
   await db.query("DELETE FROM jobs");
-  await enqueue(db, "sync", "PL1234567890", { playlistId: "PL1234567890" });
-  const job = await claim(db);
+  await enqueue(db.orm, "sync", "PL1234567890", { playlistId: "PL1234567890" });
+  const job = await claim(db.orm);
   const youtube = {
     playlist: async () => {
       throw new Error("YouTube HTTP 503");
@@ -137,10 +137,10 @@ it("requires two successful snapshots before removing missing entries", async ()
     playlist: async () => ({ title: "Music", entries: [] }),
   } as unknown as YouTube;
   for (let i = 0; i < 2; i++) {
-    await enqueue(db, "sync", "PL1234567890", { playlistId: "PL1234567890" });
-    const job = await claim(db);
+    await enqueue(db.orm, "sync", "PL1234567890", { playlistId: "PL1234567890" });
+    const job = await claim(db.orm);
     await syncPlaylist(db, youtube, job!);
-    await finish(db, job!);
+    await finish(db.orm, job!);
     expect(
       (await db.query("SELECT active FROM memberships")).rows[0].active,
     ).toBe(i === 0);
@@ -231,11 +231,11 @@ it("matches unaccented words against accented metadata", async () => {
   expect(result.rowCount).toBe(1);
 });
 it("requeues failed work once and permits successful recovery", async () => {
-  const first = await enqueue(db, "sync", "PL1234567890", {
+  const first = await enqueue(db.orm, "sync", "PL1234567890", {
     playlistId: "PL1234567890",
   });
-  const job = await claim(db);
-  await finish(db, { ...job!, attempts: 5 }, new Error("temporary"));
+  const job = await claim(db.orm);
+  await finish(db.orm, { ...job!, attempts: 5 }, new Error("temporary"));
   expect(
     (await db.query("SELECT status FROM jobs WHERE id=$1", [first.id])).rows[0]
       .status,
@@ -245,8 +245,8 @@ it("requeues failed work once and permits successful recovery", async () => {
     headers: { Authorization: `Bearer ${token}` },
   });
   expect((await response.json()).retried).toBe(1);
-  const retry = await claim(db);
-  await finish(db, retry!);
+  const retry = await claim(db.orm);
+  await finish(db.orm, retry!);
   expect(
     (await db.query("SELECT status FROM jobs WHERE id=$1", [first.id])).rows[0]
       .status,
@@ -344,13 +344,13 @@ it("excludes queued videos and caps results inside the search", async () => {
 });
 
 it("hides historical failures after a newer successful attempt", async () => {
-  await enqueue(db, "sync", "PL1234567890", { playlistId: "PL1234567890" });
-  const failed = await claim(db);
-  await finish(db, { ...failed!, attempts: 5 }, new Error("old"));
+  await enqueue(db.orm, "sync", "PL1234567890", { playlistId: "PL1234567890" });
+  const failed = await claim(db.orm);
+  await finish(db.orm, { ...failed!, attempts: 5 }, new Error("old"));
   await db.query("UPDATE jobs SET created_at=now()-interval '1 minute'");
-  await enqueue(db, "sync", "PL1234567890", { playlistId: "PL1234567890" });
-  const current = await claim(db);
-  await finish(db, current!);
+  await enqueue(db.orm, "sync", "PL1234567890", { playlistId: "PL1234567890" });
+  const current = await claim(db.orm);
+  await finish(db.orm, current!);
   const response = await app.request("/v1/status", {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -366,8 +366,8 @@ it("migrates moved duplicate entries by occurrence without duplicating the first
     ],
   });
   await db.query("DELETE FROM jobs");
-  await enqueue(db, "sync", "PL1234567890", { playlistId: "PL1234567890" });
-  const job = await claim(db);
+  await enqueue(db.orm, "sync", "PL1234567890", { playlistId: "PL1234567890" });
+  const job = await claim(db.orm);
   const youtube = {
     playlist: async () => ({
       title: "Music",
@@ -408,8 +408,8 @@ it("queues a due playlist once and advances its six-hour schedule", async () => 
   await db.query("DELETE FROM jobs");
   process.env["SYNC_ENABLED"] = "true";
   try {
-    await schedule(db);
-    await schedule(db);
+    await scheduleSync(db.orm);
+    await scheduleSync(db.orm);
   } finally {
     process.env["SYNC_ENABLED"] = "false";
   }
@@ -427,19 +427,19 @@ it("queues a due playlist once and advances its six-hour schedule", async () => 
 });
 
 it("keeps YouTube work pending without consuming retries when the key is absent", async () => {
-  const sync = await enqueue(db, "sync", "waiting", {
+  const sync = await enqueue(db.orm, "sync", "waiting", {
     playlistId: "PL1234567890",
   });
-  await enqueue(db, "image", "available", { videoId: "abcdefghijk" });
-  const image = await claim(db, false);
+  await enqueue(db.orm, "image", "available", { videoId: "abcdefghijk" });
+  const image = await claim(db.orm, { exclude: ["sync", "enrich"] });
   expect(image?.kind).toBe("image");
-  await finish(db, image!);
-  expect(await claim(db, false)).toBeUndefined();
+  await finish(db.orm, image!);
+  expect(await claim(db.orm, { exclude: ["sync", "enrich"] })).toBeUndefined();
   expect(
     (await db.query("SELECT status,attempts FROM jobs WHERE id=$1", [sync.id]))
       .rows[0],
   ).toEqual({ status: "pending", attempts: 0 });
-  expect((await claim(db, true))?.kind).toBe("sync");
+  expect((await claim(db.orm))?.kind).toBe("sync");
 });
 it("records unavailable thumbnails without failing and checks them again after a day", async () => {
   process.env["VISION_ENABLED"] = "true";

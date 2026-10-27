@@ -1,8 +1,20 @@
 import pg from "pg";
-import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { ExtractTablesWithRelations } from "drizzle-orm";
+import {
+  drizzle,
+  type NodePgDatabase,
+  type NodePgQueryResultHKT,
+} from "drizzle-orm/node-postgres";
+import type { PgDatabase } from "drizzle-orm/pg-core";
 import * as tables from "./schema/index.ts";
 
 export type Orm = NodePgDatabase<typeof tables>;
+/** The database or an open transaction: store functions accept both. */
+export type Executor = PgDatabase<
+  NodePgQueryResultHKT,
+  typeof tables,
+  ExtractTablesWithRelations<typeof tables>
+>;
 
 /**
  * One PostgreSQL pool per process. Features query it through `orm` (Drizzle); `query` remains
@@ -39,6 +51,10 @@ export function openDatabase({
 }
 
 export const pool = openDatabase({ url: process.env["DATABASE_URL"] ?? "" });
+
+/** Drizzle on a client inside a raw pg transaction, for SQL modules calling Drizzle stores. */
+export const ormOn = (client: pg.PoolClient): Executor =>
+  drizzle(client, { schema: tables });
 
 /** Raw pg transaction for the modules still written in SQL; Drizzle code uses orm.transaction. */
 export async function transaction<T>(

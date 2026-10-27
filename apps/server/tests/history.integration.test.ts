@@ -6,7 +6,7 @@ import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import type { IdentityProvider } from "../src/features/auth/index.ts";
 import { LEGACY_USER } from "../src/features/accounts/index.ts";
-import { schedule } from "../src/queue.ts";
+import { scheduleSync } from "../src/features/library/index.ts";
 vi.mock("../src/inference-client.ts", () => ({
   infer: vi.fn().mockResolvedValue({ vector: Array(384).fill(0.01) }),
 }));
@@ -252,7 +252,7 @@ it("stops synchronising a playlist once no account holds it", async () => {
       "UPDATE playlists SET sync_enabled=true,next_sync_at=now()-interval '1 minute' WHERE id LIKE 'PL%'",
     );
     await req("DELETE", "/v1/playlists/PLalice12345");
-    await schedule(db);
+    await scheduleSync(db.orm);
     const jobs = await db.query(
       "SELECT payload->>'playlistId' AS id FROM jobs WHERE kind='sync' ORDER BY 1",
     );

@@ -1,7 +1,8 @@
 import { MODEL_KEY } from "@playlist-recall/core/model";
 import { hash, documentText, vectorSql } from "./content.ts";
 import { transaction, type Database } from "./db/index.ts";
-import { videoFromRow } from "./library.ts";
+import { videoFromRow } from "./features/library/index.ts";
+import { enqueue } from "./features/jobs/index.ts";
 import { infer } from "./inference-client.ts";
 export const TEXT_KEY = `${MODEL_KEY}:chunks-v2`;
 export const VISION_ID = "onnx-community/siglip2-base-patch16-224-ONNX";
@@ -138,5 +139,25 @@ export async function indexImage(db: Database, id: string) {
       error instanceof Error ? error.message : "Image indisponible",
     ]);
     throw error;
+  }
+}
+
+/** Queues text and image indexing for library videos whose index is missing or outdated. */
+export async function enqueueMissing(db: Database) {
+  const { rows } = await db.query(
+    `SELECT v.id,v.content_hash,v.index_hash,v.title,v.image_checked_at,v.image_error,v.image_hash,i.source_hash,i.model_key AS image_model,EXISTS(SELECT 1 FROM passages p WHERE p.video_id=v.id AND p.model_key=$1) AS text_current
+    FROM videos v LEFT JOIN images i ON i.video_id=v.id WHERE v.available AND EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active)`,
+    [TEXT_KEY],
+  );
+  for (const v of rows) {
+    if (v.title && (v.content_hash !== v.index_hash || !v.text_current))
+      await enqueue(db.orm, "text", `${v.id}:${v.content_hash}`, { videoId: v.id });
+    if (
+      process.env["VISION_ENABLED"] === "true" &&
+      (!v.image_checked_at ||
+        (!v.image_error && v.image_model !== VISION_KEY) ||
+        Date.now() - new Date(v.image_checked_at).getTime() > 86400000)
+    )
+      await enqueue(db.orm, "image", v.id, { videoId: v.id });
   }
 }

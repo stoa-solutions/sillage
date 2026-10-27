@@ -736,11 +736,11 @@
     "/v1/status": {
       "get": {
         "operationId": "getLibraryStatus",
+        "summary": "État de la bibliothèque et du worker",
+        "description": "Compteurs de vidéos, index et tâches visibles pour le compte courant. Les tâches des autres comptes ne sont pas listées.",
         "tags": [
           "Bibliothèque"
         ],
-        "summary": "État de la bibliothèque et du worker",
-        "description": "Compteurs de vidéos, index et tâches visibles pour le compte courant. Les tâches des autres comptes ne sont pas listées.",
         "x-sillage-effect": "read",
         "responses": {
           "200": {
@@ -809,11 +809,11 @@
     "/v1/playlists": {
       "get": {
         "operationId": "listPlaylists",
+        "summary": "Playlists du compte",
+        "description": "Instantanés des playlists rattachées au compte et nombre d’entrées actives. Ce ne sont pas des droits d’écriture sur YouTube.",
         "tags": [
           "Bibliothèque"
         ],
-        "summary": "Playlists du compte",
-        "description": "Instantanés des playlists rattachées au compte et nombre d’entrées actives. Ce ne sont pas des droits d’écriture sur YouTube.",
         "x-sillage-effect": "read",
         "responses": {
           "200": {
@@ -891,16 +891,22 @@
       },
       "post": {
         "operationId": "importYouTubePlaylist",
+        "summary": "Importer une playlist par lien",
+        "description": "Ajoute le rattachement au compte puis programme une synchronisation. 202 signifie tâche créée, pas import terminé. Playlists publiques ou non répertoriées ; pas d’OAuth YouTube. Un import incomplet conserve l’instantané précédent.",
         "tags": [
           "Bibliothèque"
         ],
-        "summary": "Importer une playlist par lien",
-        "description": "Ajoute le rattachement au compte puis programme une synchronisation. 202 signifie tâche créée, pas import terminé. Playlists publiques ou non répertoriées ; pas d’OAuth YouTube. Un import incomplet conserve l’instantané précédent.",
         "x-sillage-effect": "write",
+        "x-sillage-example": {
+          "url": "https://www.youtube.com/playlist?list={{playlist_id}}"
+        },
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
+              "example": {
+                "url": "https://www.youtube.com/playlist?list={{playlist_id}}"
+              },
               "schema": {
                 "type": "object",
                 "properties": {
@@ -913,15 +919,9 @@
                 "required": [
                   "url"
                 ]
-              },
-              "example": {
-                "url": "https://www.youtube.com/playlist?list={{playlist_id}}"
               }
             }
           }
-        },
-        "x-sillage-example": {
-          "url": "https://www.youtube.com/playlist?list={{playlist_id}}"
         },
         "responses": {
           "202": {
@@ -990,12 +990,26 @@
     "/v1/playlists/{id}": {
       "delete": {
         "operationId": "removePlaylist",
+        "summary": "Retirer une playlist du compte",
+        "description": "Retire uniquement le rattachement Sillage du compte courant. Ne supprime rien sur YouTube ni chez les autres comptes. Les morceaux restent accessibles si une autre playlist du compte les contient. Retirer Mes découvertes vide cette collection privée.",
         "tags": [
           "Bibliothèque"
         ],
-        "summary": "Retirer une playlist du compte",
-        "description": "Retire uniquement le rattachement Sillage du compte courant. Ne supprime rien sur YouTube ni chez les autres comptes. Les morceaux restent accessibles si une autre playlist du compte les contient. Retirer Mes découvertes vide cette collection privée.",
         "x-sillage-effect": "write",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160,
+              "description": "Identifiant de playlist Sillage ou YouTube"
+            },
+            "required": true,
+            "description": "Identifiant de playlist Sillage ou YouTube",
+            "name": "id",
+            "in": "path"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Réponse réussie",
@@ -1075,29 +1089,30 @@
               }
             }
           }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Identifiant de playlist Sillage ou YouTube"
-          }
-        ]
+        }
       }
     },
     "/v1/playlists/{id}/sync": {
       "post": {
         "operationId": "syncYouTubePlaylist",
+        "summary": "Actualiser une playlist YouTube",
+        "description": "Programme une synchronisation idempotente. Lire ensuite les tâches et la liste de playlists pour vérifier l’achèvement. Ne pas appeler pour Mes découvertes, qui n’a pas de source YouTube.",
         "tags": [
           "Bibliothèque"
         ],
-        "summary": "Actualiser une playlist YouTube",
-        "description": "Programme une synchronisation idempotente. Lire ensuite les tâches et la liste de playlists pour vérifier l’achèvement. Ne pas appeler pour Mes découvertes, qui n’a pas de source YouTube.",
         "x-sillage-effect": "write",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Identifiant d’une playlist YouTube déjà rattachée au compte"
+            },
+            "required": true,
+            "description": "Identifiant d’une playlist YouTube déjà rattachée au compte",
+            "name": "id",
+            "in": "path"
+          }
+        ],
         "responses": {
           "202": {
             "description": "Réponse réussie",
@@ -1169,18 +1184,302 @@
               }
             }
           }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Identifiant d’une playlist YouTube déjà rattachée au compte"
+        }
+      }
+    },
+    "/v1/export": {
+      "get": {
+        "operationId": "exportLibrary",
+        "summary": "Exporter la bibliothèque",
+        "description": "Export Recall JSON version 1 au format collections/playlist/videos, limité au compte. Aucun jeton ni clé Gemini n’est inclus.",
+        "tags": [
+          "Bibliothèque"
+        ],
+        "x-sillage-effect": "read",
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryExport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        ]
+        }
+      }
+    },
+    "/v1/import": {
+      "post": {
+        "operationId": "importLegacyBackup",
+        "summary": "Importer une sauvegarde JSON",
+        "description": "Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les exports Recall, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.",
+        "tags": [
+          "Maintenance"
+        ],
+        "x-sillage-effect": "write",
+        "x-sillage-example": {
+          "format": "playlist-recall",
+          "version": 1,
+          "collections": [
+            {
+              "playlist": {
+                "id": "playlist_example",
+                "title": "Exemple"
+              },
+              "videos": []
+            }
+          ]
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "format": "playlist-recall",
+                "version": 1,
+                "collections": [
+                  {
+                    "playlist": {
+                      "id": "playlist_example",
+                      "title": "Exemple"
+                    },
+                    "videos": []
+                  }
+                ]
+              },
+              "schema": {
+                "$ref": "#/components/schemas/LibraryImport"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "playlists": {
+                      "type": "integer"
+                    },
+                    "videos": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "playlists",
+                    "videos"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Maintenance uniquement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/jobs/retry": {
+      "post": {
+        "operationId": "retryFailedJobs",
+        "summary": "Relancer les tâches échouées",
+        "description": "Réservé au compte historique de maintenance. Relance les dernières tâches en échec sans dupliquer une tâche active. Opération globale de maintenance, pas une action de playlist ordinaire.",
+        "tags": [
+          "Maintenance"
+        ],
+        "x-sillage-effect": "write",
+        "responses": {
+          "202": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "retried": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "retried"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Maintenance uniquement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/search": {
@@ -1312,301 +1611,6 @@
           },
           "401": {
             "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/export": {
-      "get": {
-        "operationId": "exportLibrary",
-        "tags": [
-          "Bibliothèque"
-        ],
-        "summary": "Exporter la bibliothèque",
-        "description": "Export Recall JSON version 1 au format collections/playlist/videos, limité au compte. Aucun jeton ni clé Gemini n’est inclus.",
-        "x-sillage-effect": "read",
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LibraryExport"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/import": {
-      "post": {
-        "operationId": "importLegacyBackup",
-        "tags": [
-          "Maintenance"
-        ],
-        "summary": "Importer une sauvegarde JSON",
-        "description": "Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les exports Recall, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.",
-        "x-sillage-effect": "write",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LibraryImport"
-              },
-              "example": {
-                "format": "playlist-recall",
-                "version": 1,
-                "collections": [
-                  {
-                    "playlist": {
-                      "id": "playlist_example",
-                      "title": "Exemple"
-                    },
-                    "videos": []
-                  }
-                ]
-              }
-            }
-          }
-        },
-        "x-sillage-example": {
-          "format": "playlist-recall",
-          "version": 1,
-          "collections": [
-            {
-              "playlist": {
-                "id": "playlist_example",
-                "title": "Exemple"
-              },
-              "videos": []
-            }
-          ]
-        },
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "playlists": {
-                      "type": "integer"
-                    },
-                    "videos": {
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "playlists",
-                    "videos"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Maintenance uniquement",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/jobs/retry": {
-      "post": {
-        "operationId": "retryFailedJobs",
-        "tags": [
-          "Maintenance"
-        ],
-        "summary": "Relancer les tâches échouées",
-        "description": "Réservé au compte historique de maintenance. Relance les dernières tâches en échec sans dupliquer une tâche active. Opération globale de maintenance, pas une action de playlist ordinaire.",
-        "x-sillage-effect": "write",
-        "responses": {
-          "202": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "retried": {
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "retried"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Maintenance uniquement",
             "content": {
               "application/json": {
                 "schema": {
@@ -5098,23 +5102,6 @@
           "app_state"
         ]
       },
-      "AuthExchange": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{43,128}$"
-          },
-          "verifier": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{43,128}$"
-          }
-        },
-        "required": [
-          "code",
-          "verifier"
-        ]
-      },
       "LibrarySearch": {
         "type": "object",
         "properties": {
@@ -5622,41 +5609,6 @@
           }
         }
       },
-      "Error": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "string"
-          },
-          "source": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string"
-          },
-          "retryAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "error"
-        ]
-      },
-      "Saved": {
-        "type": "object",
-        "properties": {
-          "saved": {
-            "type": "boolean",
-            "enum": [
-              true
-            ]
-          }
-        },
-        "required": [
-          "saved"
-        ]
-      },
       "Health": {
         "type": "object",
         "properties": {
@@ -5674,36 +5626,6 @@
           "ok",
           "version",
           "release"
-        ]
-      },
-      "Account": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "email": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "google": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "email",
-          "name",
-          "google"
         ]
       },
       "DjStatus": {
@@ -6356,168 +6278,6 @@
           "tracks"
         ]
       },
-      "Playlist": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "source_url": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "status": {
-            "type": "string"
-          },
-          "sync_enabled": {
-            "type": "boolean"
-          },
-          "next_sync_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "entries": {
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "source_url",
-          "entries"
-        ],
-        "description": "Les champs de cette route historique utilisent snake_case. Les champs additionnels du suivi de synchronisation restent possibles."
-      },
-      "Job": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "enum": [
-              "pending",
-              "running",
-              "done",
-              "failed"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "status"
-        ]
-      },
-      "SyncAccepted": {
-        "type": "object",
-        "properties": {
-          "job": {
-            "$ref": "#/components/schemas/Job"
-          }
-        },
-        "required": [
-          "job"
-        ]
-      },
-      "PlaylistAccepted": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "job": {
-            "$ref": "#/components/schemas/Job"
-          }
-        },
-        "required": [
-          "id",
-          "job"
-        ]
-      },
-      "LibraryStatus": {
-        "type": "object",
-        "properties": {
-          "counts": {
-            "type": "object",
-            "properties": {
-              "videos": {
-                "type": "integer"
-              },
-              "titled": {
-                "type": "integer"
-              },
-              "descriptions": {
-                "type": "integer"
-              },
-              "text_indexed": {
-                "type": "integer"
-              },
-              "images": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "videos",
-              "titled",
-              "descriptions",
-              "text_indexed",
-              "images"
-            ]
-          },
-          "jobs": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "type": "string"
-                },
-                "status": {
-                  "type": "string"
-                },
-                "count": {
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "kind",
-                "status",
-                "count"
-              ]
-            }
-          },
-          "syncEnabled": {
-            "type": "boolean"
-          },
-          "youtubeConfigured": {
-            "type": "boolean"
-          },
-          "visionEnabled": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "counts",
-          "jobs",
-          "syncEnabled",
-          "youtubeConfigured",
-          "visionEnabled"
-        ]
-      },
       "Enrichment": {
         "type": "object",
         "properties": {
@@ -6671,69 +6431,363 @@
           "source"
         ]
       },
-      "ExportVideo": {
+      "RpcRequest": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "const": "2.0"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "method": {
+            "type": "string"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "jsonrpc",
+          "method"
+        ]
+      },
+      "RpcResponse": {
+        "type": "object",
+        "description": "Enveloppe JSON-RPC 2.0 : result ou error, selon la méthode MCP.",
+        "properties": {
+          "jsonrpc": {
+            "const": "2.0"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {},
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "integer"
+              },
+              "message": {
+                "type": "string"
+              },
+              "data": {}
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "jsonrpc",
+          "id"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "retryAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "AuthExchange": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43,128}$"
+          },
+          "verifier": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43,128}$"
+          }
+        },
+        "required": [
+          "code",
+          "verifier"
+        ]
+      },
+      "Account": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{11}$"
+            "format": "uuid"
           },
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+          "email": {
+            "type": [
+              "string",
+              "null"
             ]
           },
-          "channel": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+          "name": {
+            "type": [
+              "string",
+              "null"
             ]
           },
-          "duration_seconds": {
-            "anyOf": [
-              {
-                "type": "number"
+          "google": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name",
+          "google"
+        ]
+      },
+      "Saved": {
+        "type": "object",
+        "properties": {
+          "saved": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "saved"
+        ]
+      },
+      "LibraryStatus": {
+        "type": "object",
+        "properties": {
+          "counts": {
+            "type": "object",
+            "properties": {
+              "videos": {
+                "type": "integer"
               },
-              {
-                "type": "null"
+              "titled": {
+                "type": "integer"
+              },
+              "descriptions": {
+                "type": "integer"
+              },
+              "text_indexed": {
+                "type": "integer"
+              },
+              "images": {
+                "type": "integer"
               }
+            },
+            "required": [
+              "videos",
+              "titled",
+              "descriptions",
+              "text_indexed",
+              "images"
             ]
           },
-          "description": {
-            "type": "string"
-          },
-          "tags": {
+          "jobs": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "status",
+                "count"
+              ]
             }
           },
-          "upload_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+          "syncEnabled": {
+            "type": "boolean"
+          },
+          "youtubeConfigured": {
+            "type": "boolean"
+          },
+          "visionEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "counts",
+          "jobs",
+          "syncEnabled",
+          "youtubeConfigured",
+          "visionEnabled"
+        ]
+      },
+      "Playlist": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_sync_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "next_sync_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "sync_enabled": {
+            "type": "boolean"
+          },
+          "generation": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
             ]
           },
-          "position": {
+          "entries": {
             "type": "integer"
           }
         },
         "required": [
-          "id"
+          "id",
+          "title",
+          "source_url",
+          "entries"
+        ],
+        "description": "Les champs de cette route historique utilisent snake_case. Les champs additionnels du suivi de synchronisation restent possibles."
+      },
+      "PlaylistAccepted": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "job": {
+            "$ref": "#/components/schemas/Job"
+          }
+        },
+        "required": [
+          "id",
+          "job"
         ]
+      },
+      "Job": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "done",
+              "failed"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ]
+      },
+      "SyncAccepted": {
+        "type": "object",
+        "properties": {
+          "job": {
+            "$ref": "#/components/schemas/Job"
+          }
+        },
+        "required": [
+          "job"
+        ]
+      },
+      "LibraryExport": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "playlist-recall"
+            ]
+          },
+          "version": {
+            "type": "number",
+            "enum": [
+              1
+            ]
+          },
+          "collections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportCollection"
+            }
+          }
+        },
+        "required": [
+          "format",
+          "version",
+          "collections"
+        ],
+        "description": "Export Recall normalisé ; aucune clé ni session n’est exportée."
       },
       "ExportCollection": {
         "type": "object",
@@ -6763,6 +6817,54 @@
         },
         "required": [
           "videos"
+        ]
+      },
+      "ExportVideo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{11}$"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "duration_seconds": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "upload_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
         ]
       },
       "LibraryImport": {
@@ -6834,101 +6936,6 @@
               "entries"
             ]
           }
-        ]
-      },
-      "LibraryExport": {
-        "type": "object",
-        "properties": {
-          "format": {
-            "const": "playlist-recall"
-          },
-          "version": {
-            "const": 1
-          },
-          "collections": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ExportCollection"
-            }
-          }
-        },
-        "required": [
-          "format",
-          "version",
-          "collections"
-        ],
-        "description": "Export Recall normalisé ; aucune clé ni session n’est exportée."
-      },
-      "RpcRequest": {
-        "type": "object",
-        "properties": {
-          "jsonrpc": {
-            "const": "2.0"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "integer"
-              }
-            ]
-          },
-          "method": {
-            "type": "string"
-          },
-          "params": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        },
-        "required": [
-          "jsonrpc",
-          "method"
-        ]
-      },
-      "RpcResponse": {
-        "type": "object",
-        "description": "Enveloppe JSON-RPC 2.0 : result ou error, selon la méthode MCP.",
-        "properties": {
-          "jsonrpc": {
-            "const": "2.0"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "result": {},
-          "error": {
-            "type": "object",
-            "properties": {
-              "code": {
-                "type": "integer"
-              },
-              "message": {
-                "type": "string"
-              },
-              "data": {}
-            },
-            "required": [
-              "code",
-              "message"
-            ]
-          }
-        },
-        "required": [
-          "jsonrpc",
-          "id"
         ]
       }
     }

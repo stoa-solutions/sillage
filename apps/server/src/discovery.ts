@@ -2,17 +2,17 @@ import { discoveryHome } from "./discovery-home.ts";
 import { Hono } from "hono";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
-import { transaction, type Database } from "./db/index.ts";
+import { ormOn, transaction, type Database } from "./db/index.ts";
 import { ownsPlaylist } from "./features/accounts/index.ts";
-import { upsertVideo } from "./library.ts";
+import { upsertVideo } from "./features/library/index.ts";
 import { documentText, hash } from "./content.ts";
-import { YouTube } from "./youtube.ts";
+import { YouTube } from "./integrations/youtube/index.ts";
 import { SearxngDiscovery, SearxngError } from "./searxng.ts";
 import {
   searchFailureMessage,
   type SearchFailureReason,
 } from "./search-feedback.ts";
-import { nextYouTubeQuotaReset, YouTubeError } from "./youtube-errors.ts";
+import { nextYouTubeQuotaReset, YouTubeError } from "./integrations/youtube/index.ts";
 import type { ApiEnvironment } from "./shared/api-environment.ts";
 
 export const discoveryInput = z.object({
@@ -127,7 +127,7 @@ export class Discovery {
         `INSERT INTO user_playlists(user_id,playlist_id) VALUES($1,$2) ON CONFLICT DO NOTHING`,
         [user, playlistId],
       );
-      await upsertVideo(client, video, true);
+      await upsertVideo(ormOn(client), video, true);
       await client.query(
         `INSERT INTO memberships(key,playlist_id,video_id,position,added_at,seen_generation)
         SELECT $1,$2,$3,COALESCE(max(position),0)+1,now(),0 FROM memberships WHERE playlist_id=$2

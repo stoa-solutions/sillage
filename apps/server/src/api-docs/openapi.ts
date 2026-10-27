@@ -172,70 +172,6 @@ add(
 Object.assign(paths, generated.paths);
 
 add(
-  "get",
-  "/v1/status",
-  "getLibraryStatus",
-  "Bibliothèque",
-  "État de la bibliothèque et du worker",
-  "Compteurs de vidéos, index et tâches visibles pour le compte courant. Les tâches des autres comptes ne sont pas listées.",
-  "LibraryStatus",
-);
-add(
-  "get",
-  "/v1/playlists",
-  "listPlaylists",
-  "Bibliothèque",
-  "Playlists du compte",
-  "Instantanés des playlists rattachées au compte et nombre d’entrées actives. Ce ne sont pas des droits d’écriture sur YouTube.",
-  object({ playlists: array(ref("Playlist")) }),
-);
-add(
-  "post",
-  "/v1/playlists",
-  "importYouTubePlaylist",
-  "Bibliothèque",
-  "Importer une playlist par lien",
-  "Ajoute le rattachement au compte puis programme une synchronisation. 202 signifie tâche créée, pas import terminé. Playlists publiques ou non répertoriées ; pas d’OAuth YouTube. Un import incomplet conserve l’instantané précédent.",
-  "PlaylistAccepted",
-  {
-    status: "202",
-    effect: "write",
-    input: object({ url: { type: "string", minLength: 1, maxLength: 500 } }),
-    example: { url: "https://www.youtube.com/playlist?list={{playlist_id}}" },
-  },
-);
-add(
-  "delete",
-  "/v1/playlists/{id}",
-  "removePlaylist",
-  "Bibliothèque",
-  "Retirer une playlist du compte",
-  "Retire uniquement le rattachement Sillage du compte courant. Ne supprime rien sur YouTube ni chez les autres comptes. Les morceaux restent accessibles si une autre playlist du compte les contient. Retirer Mes découvertes vide cette collection privée.",
-  object({ removed: string() }),
-  {
-    effect: "write",
-    parameters: [id("id", "Identifiant de playlist Sillage ou YouTube")],
-    responses: { "404": error("Playlist inconnue pour ce compte") },
-  },
-);
-add(
-  "post",
-  "/v1/playlists/{id}/sync",
-  "syncYouTubePlaylist",
-  "Bibliothèque",
-  "Actualiser une playlist YouTube",
-  "Programme une synchronisation idempotente. Lire ensuite les tâches et la liste de playlists pour vérifier l’achèvement. Ne pas appeler pour Mes découvertes, qui n’a pas de source YouTube.",
-  "SyncAccepted",
-  {
-    status: "202",
-    effect: "write",
-    parameters: [
-      id("id", "Identifiant d’une playlist YouTube déjà rattachée au compte"),
-    ],
-    responses: { "404": error("Playlist inconnue pour ce compte") },
-  },
-);
-add(
   "post",
   "/v1/search",
   "searchLibrary",
@@ -263,51 +199,6 @@ add(
   "Compteurs propres au compte : matched, ambiguous, not_found, attente YouTube, tâches et erreurs. processed indique une décision d’enrichissement, pas forcément une correspondance certaine. Les genres d’artiste ne prouvent pas le genre du morceau.",
   "Enrichment",
 );
-add(
-  "get",
-  "/v1/export",
-  "exportLibrary",
-  "Bibliothèque",
-  "Exporter la bibliothèque",
-  "Export Recall JSON version 1 au format collections/playlist/videos, limité au compte. Aucun jeton ni clé Gemini n’est inclus.",
-  "LibraryExport",
-);
-add(
-  "post",
-  "/v1/import",
-  "importLegacyBackup",
-  "Maintenance",
-  "Importer une sauvegarde JSON",
-  "Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les exports Recall, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.",
-  object({ playlists: integer, videos: integer }),
-  {
-    effect: "write",
-    input: "LibraryImport",
-    example: {
-      format: "playlist-recall",
-      version: 1,
-      collections: [
-        { playlist: { id: "playlist_example", title: "Exemple" }, videos: [] },
-      ],
-    },
-    responses: { "403": error("Maintenance uniquement") },
-  },
-);
-add(
-  "post",
-  "/v1/jobs/retry",
-  "retryFailedJobs",
-  "Maintenance",
-  "Relancer les tâches échouées",
-  "Réservé au compte historique de maintenance. Relance les dernières tâches en échec sans dupliquer une tâche active. Opération globale de maintenance, pas une action de playlist ordinaire.",
-  object({ retried: integer }),
-  {
-    status: "202",
-    effect: "write",
-    responses: { "403": error("Maintenance uniquement") },
-  },
-);
-
 add(
   "get",
   "/v1/discover/home",

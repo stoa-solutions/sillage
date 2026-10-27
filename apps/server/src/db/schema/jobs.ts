@@ -4,6 +4,7 @@ import {
   index,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   text,
   uniqueIndex,
@@ -11,15 +12,29 @@ import {
 } from "drizzle-orm/pg-core";
 import { timestamptz } from "./columns.ts";
 
+export const jobKind = pgEnum("job_kind", [
+  "sync",
+  "enrich",
+  "text",
+  "image",
+  "musicbrainz",
+]);
+export const jobStatus = pgEnum("job_status", [
+  "pending",
+  "running",
+  "done",
+  "failed",
+]);
+
 /** Worker queue leased with row locks: at most one pending or running job per dedupe key. */
 export const jobs = pgTable(
   "jobs",
   {
     id: uuid("id").primaryKey(),
-    kind: text("kind").notNull(),
+    kind: jobKind("kind").notNull(),
     dedupeKey: text("dedupe_key").notNull(),
-    payload: jsonb("payload").notNull(),
-    status: text("status").notNull().default("pending"),
+    payload: jsonb("payload").$type<Record<string, string>>().notNull(),
+    status: jobStatus("status").notNull().default("pending"),
     attempts: integer("attempts").notNull().default(0),
     availableAt: timestamptz("available_at").notNull().defaultNow(),
     leaseUntil: timestamptz("lease_until"),

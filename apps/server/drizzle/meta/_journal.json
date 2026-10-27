@@ -8,6 +8,13 @@
       "when": 1793127171544,
       "tag": "0000_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793128117430,
+      "tag": "0001_job_and_playlist_enums",
+      "breakpoints": true
     }
   ]
 }

@@ -1,8 +1,8 @@
 import type { MusicMetadata } from "@playlist-recall/core/types";
 import { hash } from "../content.ts";
-import { transaction, type Database } from "../db/index.ts";
+import { ormOn, transaction, type Database } from "../db/index.ts";
 import { enrichmentAccounts, enrichmentBatchSize } from "./rollout.ts";
-import { enqueue, type Job } from "../queue.ts";
+import { enqueue, type ClaimedJob } from "../features/jobs/index.ts";
 import { MusicBrainzClient } from "./client.ts";
 import {
   chooseRecording,
@@ -59,14 +59,14 @@ export async function scheduleMusicEnrichment(db: Database) {
       [ids, accounts, capacity],
     );
     for (const row of rows)
-      await enqueue(client, "musicbrainz", `${row.id}:${fingerprint(row)}`, {
+      await enqueue(ormOn(client), "musicbrainz", `${row.id}:${fingerprint(row)}`, {
         videoId: row.id,
       });
   });
 }
 export async function enrichMusic(
   db: Database,
-  job: Job,
+  job: ClaimedJob,
   provider = new MusicBrainzClient(db),
 ) {
   const id = job.payload["videoId"]!;
@@ -154,11 +154,11 @@ export async function enrichMusic(
       source.channel,
       source.durationSeconds,
       job.id,
-      job.lease_id,
+      job.leaseId,
     ],
   );
   if (updated.rowCount && metadata.status === "matched")
-    await enqueue(db, "text", `${id}:${updated.rows[0].content_hash}`, {
+    await enqueue(db.orm, "text", `${id}:${updated.rows[0].content_hash}`, {
       videoId: id,
     });
 }

@@ -4,7 +4,7 @@ import type { SearchResult } from "@playlist-recall/core/types";
 import type { Database } from "./db/index.ts";
 import { infer } from "./inference-client.ts";
 import { TEXT_KEY, VISION_KEY } from "./indexing.ts";
-import { videoFromRow } from "./library.ts";
+import { videoFromRow } from "./features/library/index.ts";
 import { vectorSql } from "./content.ts";
 import { approximateLookupPatterns, hasGenreEvidence, isDescriptiveQuery, lookupTokens, matchesLookup, genreNameCollision, descriptiveRank } from "./search-relevance.ts";
 import { musicMatchRank, normalizeMusic } from "./music-matching.ts";

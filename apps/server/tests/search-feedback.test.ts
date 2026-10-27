@@ -5,7 +5,7 @@ import {
 } from "../src/search-feedback.ts";
 import { Discovery, discoveryRoutes } from "../src/discovery.ts";
 import { SearxngError } from "../src/searxng.ts";
-import { YouTubeError, youtubeError } from "../src/youtube-errors.ts";
+import { YouTubeError, youtubeError } from "../src/integrations/youtube/index.ts";
 import { readToolEvidence } from "../src/features/dj/evidence.ts";
 import { noSelectionReply } from "../src/features/dj/reply.ts";
 import type { Database } from "../src/db/index.ts";

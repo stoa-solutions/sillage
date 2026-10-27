@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { YouTube } from "../src/youtube.ts";
+import { YouTube } from "../src/integrations/youtube/index.ts";
 import {
   nextYouTubeQuotaReset,
   youtubeError,
   YouTubeError,
-} from "../src/youtube-errors.ts";
+} from "../src/integrations/youtube/index.ts";
 import { Discovery } from "../src/discovery.ts";
 import type { Database } from "../src/db/index.ts";
 import { required } from "./support/required.ts";

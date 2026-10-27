@@ -1,5 +1,6 @@
-import type { Database } from "./db/index.ts";
-import { isoDuration } from "./content.ts";
+import { sql } from "drizzle-orm";
+import { quotaUsage, type Database } from "../../db/index.ts";
+import { isoDuration } from "../../content.ts";
 import type { Video } from "@playlist-recall/core/types";
 export interface PlaylistEntry {
   key: string;
@@ -13,7 +14,7 @@ import {
   YouTubeError,
   youtubeError,
   nextYouTubeQuotaReset,
-} from "./youtube-errors.ts";
+} from "./errors.ts";
 type Fetcher = typeof fetch;
 export class YouTube {
   private exhausted = new Map<string, { until: number; error: YouTubeError }>();
@@ -33,12 +34,21 @@ export class YouTube {
     if (cooldown && cooldown.until > this.now()) throw cooldown.error;
     this.exhausted.delete(endpoint);
     if (this.db) {
-      const { rows } = await this.db.query(
-        `INSERT INTO quota_usage(day,units) VALUES((now() AT TIME ZONE 'America/Los_Angeles')::date,1)
-        ON CONFLICT(day) DO UPDATE SET units=quota_usage.units+1 WHERE quota_usage.units<$1 RETURNING units`,
-        [Number(process.env["YOUTUBE_DAILY_BUDGET"] ?? 8000)],
-      );
-      if (!rows.length) throw new YouTubeError("daily_quota", 429);
+      // YouTube resets its quota at midnight Pacific time; the budget stops us before it does.
+      const budget = Number(process.env["YOUTUBE_DAILY_BUDGET"] ?? 8000);
+      const counted = await this.db.orm
+        .insert(quotaUsage)
+        .values({
+          day: sql`(now() AT TIME ZONE 'America/Los_Angeles')::date`,
+          units: 1,
+        })
+        .onConflictDoUpdate({
+          target: quotaUsage.day,
+          set: { units: sql`${quotaUsage.units} + 1` },
+          setWhere: sql`${quotaUsage.units} < ${budget}`,
+        })
+        .returning({ units: quotaUsage.units });
+      if (!counted.length) throw new YouTubeError("daily_quota", 429);
     }
     const url = new URL(`https://www.googleapis.com/youtube/v3/${endpoint}`);
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);

@@ -7,6 +7,7 @@ import {
   index,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -14,6 +15,18 @@ import {
 } from "drizzle-orm/pg-core";
 import { timestamptz, tsvector } from "./columns.ts";
 import { users } from "./accounts.ts";
+
+export const playlistStatus = pgEnum("playlist_status", [
+  "pending",
+  "syncing",
+  "ready",
+  "error",
+]);
+export const syncRunStatus = pgEnum("sync_run_status", [
+  "running",
+  "done",
+  "error",
+]);
 
 /** A YouTube playlist. The catalogue is shared between accounts; ownership is userPlaylists. */
 export const playlists = pgTable("playlists", {
@@ -25,7 +38,7 @@ export const playlists = pgTable("playlists", {
   nextSyncAt: timestamptz("next_sync_at").notNull().defaultNow(),
   syncEnabled: boolean("sync_enabled").notNull().default(true),
   generation: bigint("generation", { mode: "number" }).notNull().default(0),
-  status: text("status").notNull().default("pending"),
+  status: playlistStatus("status").notNull().default("pending"),
   error: text("error"),
 });
 
@@ -128,7 +141,7 @@ export const syncRuns = pgTable(
     playlistId: text("playlist_id").notNull(),
     startedAt: timestamptz("started_at").notNull().defaultNow(),
     finishedAt: timestamptz("finished_at"),
-    status: text("status").notNull().default("running"),
+    status: syncRunStatus("status").notNull().default("running"),
     entries: integer("entries"),
     error: text("error"),
   },

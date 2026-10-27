@@ -20,7 +20,8 @@ import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import { parsePlaylistId } from "./content.ts";
 import { transaction, type Database } from "./db/index.ts";
-import { enqueue } from "./queue.ts";
+import { jobRoutes } from "./features/jobs/index.ts";
+import { libraryRoutes } from "./features/library/index.ts";
 import { search } from "./search.ts";
 import { librarySearchInput } from "./library-contracts.ts";
 import {
@@ -29,8 +30,6 @@ import {
   setLyricsOffset,
   type LyricsSource,
 } from "./lyrics.ts";
-import { importLibrary, videoFromRow } from "./library.ts";
-import { parseImport, exportLibrary } from "@playlist-recall/core/import";
 import { handleMusicMcp } from "./music-mcp.ts";
 import { djPlayerHtml, djPlayerCss, djPlayerJs } from "./dj-player.ts";
 export function createApp(
@@ -103,97 +102,8 @@ export function createApp(
   app.get("/v1/library/enrichment", async (c) =>
     c.json(await enrichmentProgress(db, c.get("userId"))),
   );
-  app.get("/v1/status", async (c) => {
-    const counts = (
-      await db.query(
-        `SELECT count(*)::int AS videos,count(*) FILTER(WHERE title IS NOT NULL)::int AS titled,
-      count(*) FILTER(WHERE description<>'')::int AS descriptions,count(*) FILTER(WHERE index_hash=content_hash)::int AS text_indexed,
-      (SELECT count(*)::int FROM images i JOIN videos iv ON iv.id=i.video_id WHERE i.source_url=iv.thumbnail_url AND EXISTS(SELECT 1 FROM memberships im WHERE im.video_id=i.video_id AND im.active AND ${ownsPlaylist("im.playlist_id", "$1")})) AS images FROM videos v WHERE EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active AND ${ownsPlaylist("m.playlist_id", "$1")})`,
-        [c.get("userId")],
-      )
-    ).rows[0];
-    const jobs = (
-      await db.query(
-        `SELECT kind,status,count(*)::int AS count FROM jobs j WHERE (EXISTS(SELECT 1 FROM user_playlists up WHERE up.user_id=$1 AND up.playlist_id=j.payload->>'playlistId') OR EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=j.payload->>'videoId' AND m.active AND ${ownsPlaylist("m.playlist_id", "$1")})) AND (status IN ('pending','running') OR (status='failed' AND NOT EXISTS(SELECT 1 FROM jobs newer WHERE newer.dedupe_key=j.dedupe_key AND newer.created_at>j.created_at))) GROUP BY kind,status`,
-        [c.get("userId")],
-      )
-    ).rows;
-    return c.json({
-      counts,
-      jobs,
-      syncEnabled: process.env["SYNC_ENABLED"] === "true",
-      youtubeConfigured: Boolean(process.env["YOUTUBE_API_KEY"]),
-      visionEnabled: process.env["VISION_ENABLED"] === "true",
-    });
-  });
-  app.get("/v1/playlists", async (c) =>
-    c.json({
-      playlists: (
-        await db.query(
-          `SELECT p.*, (SELECT count(*)::int FROM memberships m WHERE m.playlist_id=p.id AND m.active) AS entries FROM playlists p WHERE ${ownsPlaylist("p.id", "$1")} ORDER BY created_at`,
-          [c.get("userId")],
-        )
-      ).rows,
-    }),
-  );
-  app.post("/v1/playlists", async (c) => {
-    const { url } = z
-      .object({ url: z.string().min(1).max(500) })
-      .parse(await c.req.json());
-    const id = parsePlaylistId(url);
-    await db.query(
-      `INSERT INTO playlists(id,title,source_url) VALUES($1,$2,$3) ON CONFLICT(id) DO NOTHING`,
-      [id, "Nouvelle playlist", `https://www.youtube.com/playlist?list=${id}`],
-    );
-    await db.query(
-      "INSERT INTO user_playlists(user_id,playlist_id) VALUES($1,$2) ON CONFLICT DO NOTHING",
-      [c.get("userId"), id],
-    );
-    const job = await enqueue(db, "sync", id, { playlistId: id });
-    return c.json({ id, job }, 202);
-  });
-  // Removes the playlist from this account only: YouTube and other accounts keep it, and its
-  // videos leave the library unless another of the account's playlists holds them.
-  app.delete("/v1/playlists/:id", async (c) => {
-    const id = z.string().min(1).max(160).parse(c.req.param("id"));
-    const user = c.get("userId");
-    const removed = await transaction(db, async (client) => {
-      const link = await client.query(
-        "DELETE FROM user_playlists WHERE playlist_id=$1 AND user_id=$2",
-        [id, user],
-      );
-      // Mes découvertes belongs to this account alone: emptied, so a later addition starts
-      // afresh. The row lock serialises with a concurrent discovery addition.
-      if (link.rowCount && id === `recall-discoveries:${user}`) {
-        await client.query("SELECT id FROM playlists WHERE id=$1 FOR UPDATE", [
-          id,
-        ]);
-        await client.query(
-          "UPDATE memberships SET active=false WHERE playlist_id=$1",
-          [id],
-        );
-      }
-      return Boolean(link.rowCount);
-    });
-    if (!removed) return c.json({ error: "Playlist inconnue." }, 404);
-    return c.json({ removed: id });
-  });
-  app.post("/v1/playlists/:id/sync", async (c) => {
-    const id = parsePlaylistId(c.req.param("id"));
-    if (
-      !(
-        await db.query(
-          "SELECT 1 FROM user_playlists WHERE playlist_id=$1 AND user_id=$2",
-          [id, c.get("userId")],
-        )
-      ).rowCount
-    )
-      return c.json({ error: "Playlist inconnue." }, 404);
-    return c.json(
-      { job: await enqueue(db, "sync", id, { playlistId: id }) },
-      202,
-    );
-  });
+  app.route("/v1", libraryRoutes(db));
+  app.route("/v1", jobRoutes(db));
   app.post("/v1/search", async (c) => {
     const input = librarySearchInput.parse(await c.req.json());
     return c.json(await search(db, input, c.get("userId")));
@@ -223,58 +133,6 @@ export function createApp(
     return saved
       ? c.json({ offsetMs })
       : c.json({ error: "Vidéo absente de ta bibliothèque." }, 404);
-  });
-  app.post("/v1/jobs/retry", async (c) => {
-    if (c.get("userId") !== LEGACY_USER)
-      return c.json({ error: "Action réservée à la maintenance." }, 403);
-    const result = await db.query(
-      `UPDATE jobs j SET status='pending',attempts=0,error=NULL,available_at=now(),completed_at=NULL WHERE status='failed' AND NOT EXISTS(SELECT 1 FROM jobs active WHERE active.dedupe_key=j.dedupe_key AND active.status IN ('pending','running')) AND id=(SELECT newest.id FROM jobs newest WHERE newest.dedupe_key=j.dedupe_key ORDER BY created_at DESC LIMIT 1)`,
-    );
-    return c.json({ retried: result.rowCount }, 202);
-  });
-  app.post("/v1/import", async (c) => {
-    if (c.get("userId") !== LEGACY_USER)
-      return c.json(
-        { error: "Ajoute une playlist avec son lien YouTube." },
-        403,
-      );
-    const data = parseImport(await c.req.json());
-    await importLibrary(db, data);
-    return c.json({
-      playlists: data.playlists.length,
-      videos: data.videos.length,
-    });
-  });
-  app.get("/v1/export", async (c) => {
-    const playlists = (
-      await db.query(
-        `SELECT * FROM playlists p WHERE ${ownsPlaylist("p.id", "$1")}`,
-        [c.get("userId")],
-      )
-    ).rows.map((p) => ({
-      id: p.id,
-      title: p.title,
-      sourceUrl: p.source_url,
-      importedAt: p.created_at.toISOString(),
-    }));
-    const videos = (
-      await db.query(
-        `SELECT * FROM videos v WHERE EXISTS(SELECT 1 FROM memberships m WHERE m.video_id=v.id AND m.active AND ${ownsPlaylist("m.playlist_id", "$1")})`,
-        [c.get("userId")],
-      )
-    ).rows.map(videoFromRow);
-    const memberships = (
-      await db.query(
-        `SELECT * FROM memberships m WHERE active AND ${ownsPlaylist("m.playlist_id", "$1")}`,
-        [c.get("userId")],
-      )
-    ).rows.map((m) => ({
-      key: m.key,
-      playlistId: m.playlist_id,
-      videoId: m.video_id,
-      position: m.position,
-    }));
-    return c.json(exportLibrary({ playlists, videos, memberships }));
   });
   app.onError((error, c) => {
     if (error instanceof z.ZodError)

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { authExchangeInput, authStartInput } from "../features/auth/index.ts";
+import { authStartInput } from "../features/auth/index.ts";
 import { discoveryAddInput, discoveryInput } from "../discovery.ts";
 import { djSettingsInput } from "../dj-settings.ts";
 import {
@@ -100,7 +100,6 @@ export const schemas: Record<string, Schema> = {
     journal_complete: boolean,
   }),
   AuthStart: jsonSchema(authStartInput),
-  AuthExchange: jsonSchema(authExchangeInput),
   LibrarySearch: jsonSchema(librarySearchInput),
   DiscoverySearch: jsonSchema(discoveryInput),
   DiscoveryAdd: jsonSchema(discoveryAddInput),
@@ -123,18 +122,7 @@ export const schemas: Record<string, Schema> = {
       limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
     },
   },
-  Error: object(
-    { error: string(), source: string(), reason: string(), retryAt: date },
-    ["error"],
-  ),
-  Saved: object({ saved: { const: true } }),
   Health: object({ ok: boolean, version: string(), release: string() }),
-  Account: object({
-    id: uuid,
-    email: nullable(string()),
-    name: nullable(string()),
-    google: boolean,
-  }),
   DjStatus: object({
     provider: {type:"string",enum:["google","anthropic"]},
     providers: array(object({
@@ -280,42 +268,6 @@ export const schemas: Record<string, Schema> = {
     },
     ["reply", "action", "tracks"],
   ),
-  Playlist: {
-    ...object(
-      {
-        id: string(),
-        title: string(),
-        source_url: string(),
-        created_at: date,
-        status: string(),
-        sync_enabled: boolean,
-        next_sync_at: nullable(date),
-        entries: integer,
-      },
-      ["id", "title", "source_url", "entries"],
-    ),
-    description:
-      "Les champs de cette route historique utilisent snake_case. Les champs additionnels du suivi de synchronisation restent possibles.",
-  },
-  Job: object({
-    id: uuid,
-    status: { enum: ["pending", "running", "done", "failed"] },
-  }),
-  SyncAccepted: object({ job: ref("Job") }),
-  PlaylistAccepted: object({ id: string(), job: ref("Job") }),
-  LibraryStatus: object({
-    counts: object({
-      videos: integer,
-      titled: integer,
-      descriptions: integer,
-      text_indexed: integer,
-      images: integer,
-    }),
-    jobs: array(object({ kind: string(), status: string(), count: integer })),
-    syncEnabled: boolean,
-    youtubeConfigured: boolean,
-    visionEnabled: boolean,
-  }),
   Enrichment: object(
     Object.fromEntries([
       ...[
@@ -346,60 +298,6 @@ export const schemas: Record<string, Schema> = {
     durationDeltaMs: nullable(integer),
     source: nullable(object({ name: { const: "LRCLIB" }, id: integer })),
   }),
-  ExportVideo: object(
-    {
-      id: videoId,
-      title: nullable(string()),
-      channel: nullable(string()),
-      duration_seconds: nullable({ type: "number" }),
-      description: string(),
-      tags: array(string()),
-      upload_date: nullable(string()),
-      position: integer,
-    },
-    ["id"],
-  ),
-  ExportCollection: object(
-    {
-      playlist: object({ id: string(), title: string() }),
-      videos: { ...array(ref("ExportVideo")), maxItems: 50000 },
-    },
-    ["videos"],
-  ),
-  LibraryImport: {
-    description:
-      "Export Recall, playlist normalisée ou playlist plate yt-dlp. Au plus 100 playlists et 50 000 entrées au total ; max. 30 Mio. Réservé à la maintenance historique.",
-    anyOf: [
-      object({ collections: array(ref("ExportCollection")) }),
-      ref("ExportCollection"),
-      object(
-        {
-          id: string(),
-          title: string(),
-          entries: array(
-            object(
-              {
-                id: videoId,
-                duration: nullable({ type: "number" }),
-                title: nullable(string()),
-              },
-              ["id"],
-            ),
-          ),
-        },
-        ["entries"],
-      ),
-    ],
-  },
-  LibraryExport: {
-    ...object({
-      format: { const: "playlist-recall" },
-      version: { const: 1 },
-      collections: array(ref("ExportCollection")),
-    }),
-    description:
-      "Export Recall normalisé ; aucune clé ni session n’est exportée.",
-  },
   RpcRequest: object(
     {
       jsonrpc: { const: "2.0" },

@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
-import { upsertVideo, videoFromRow } from "../src/library.ts";
+import { upsertVideo, videoFromRow } from "../src/features/library/index.ts";
 import { enrichmentProgress } from "../src/musicbrainz/rollout.ts";
 import { createApp } from "../src/app.ts";
 import { hash } from "../src/content.ts";
@@ -13,7 +13,7 @@ import {
   pilotIds,
 } from "../src/musicbrainz/enrichment.ts";
 import { MusicBrainzClient } from "../src/musicbrainz/client.ts";
-import { claim, finish } from "../src/queue.ts";
+import { claim, finish } from "../src/features/jobs/index.ts";
 import { musicTracks } from "../src/music-mcp.ts";
 import { search } from "../src/search.ts";
 import { indexText } from "../src/indexing.ts";
@@ -89,7 +89,7 @@ beforeEach(async () => {
     "INSERT INTO user_playlists(user_id,playlist_id) VALUES($1,'pilot')",
     [alice],
   );
-  await upsertVideo(db, video, true);
+  await upsertVideo(db.orm, video, true);
   await db.query(
     "INSERT INTO memberships(key,playlist_id,video_id,position,seen_generation) VALUES('pilot:1','pilot',$1,0,1)",
     [video.id],
@@ -105,9 +105,9 @@ const row = async () =>
   (await db.query("SELECT * FROM videos WHERE id=$1", [video.id])).rows[0];
 async function run() {
   await scheduleMusicEnrichment(db);
-  const job = (await claim(db))!;
+  const job = (await claim(db.orm))!;
   await enrichMusic(db, job, provider);
-  await finish(db, job);
+  await finish(db.orm, job);
   return job;
 }
 it("is opt-in, caps the pilot at ten, deduplicates and preserves YouTube", async () => {
@@ -169,16 +169,16 @@ it("indexes credits and albums and isolates search and MCP by account", async ()
 it("retains enrichment across unchanged sync and invalidates changed identity", async () => {
   await run();
   const enriched = await row();
-  await upsertVideo(db, video, true);
+  await upsertVideo(db.orm, video, true);
   expect((await row()).content_hash).toBe(enriched.content_hash);
   expect((await row()).music_metadata).toEqual(enriched.music_metadata);
-  await upsertVideo(db, { ...video, title: "Different recording" }, true);
+  await upsertVideo(db.orm, { ...video, title: "Different recording" }, true);
   expect((await row()).music_metadata).toBeNull();
   expect((await row()).content_hash).not.toBe(enriched.content_hash);
 });
 it("rejects a superseded job lease", async () => {
   await scheduleMusicEnrichment(db);
-  const job = (await claim(db))!;
+  const job = (await claim(db.orm))!;
   await db.query("UPDATE jobs SET lease_id=$1 WHERE id=$2", [
     randomUUID(),
     job.id,
@@ -188,14 +188,14 @@ it("rejects a superseded job lease", async () => {
 });
 it("retries temporary failures without publishing false missing metadata", async () => {
   await scheduleMusicEnrichment(db);
-  const job = (await claim(db))!;
+  const job = (await claim(db.orm))!;
   const failed = {
     get: async () => {
       throw new Error("MusicBrainz unavailable");
     },
   } as unknown as MusicBrainzClient;
   await expect(enrichMusic(db, job, failed)).rejects.toThrow("unavailable");
-  await finish(db, job, new Error("temporary"));
+  await finish(db.orm, job, new Error("temporary"));
   expect((await row()).music_metadata).toBeNull();
   expect(
     (await db.query("SELECT status FROM jobs WHERE id=$1", [job.id])).rows[0]
@@ -221,12 +221,12 @@ it("shares cached responses and limits concurrent uncached requests", async () =
 
 it("rejects a result when the YouTube identity changes during lookup", async () => {
   await scheduleMusicEnrichment(db);
-  const job = (await claim(db))!;
+  const job = (await claim(db.orm))!;
   const changing = {
     get: async (path: string) => {
       const value = await get(path);
       if (path === "recording/")
-        await upsertVideo(db, { ...video, title: "Other song" }, true);
+        await upsertVideo(db.orm, { ...video, title: "Other song" }, true);
       return value;
     },
   } as unknown as MusicBrainzClient;
@@ -237,7 +237,7 @@ it("rejects a result when the YouTube identity changes during lookup", async () 
 it("treats a known album as literal even when its name looks conversational", async () => {
   await run();
   await upsertVideo(
-    db,
+    db.orm,
     {
       ...video,
       id: "other123456",
@@ -247,7 +247,7 @@ it("treats a known album as literal even when its name looks conversational", as
     true,
   );
   await upsertVideo(
-    db,
+    db.orm,
     {
       ...video,
       id: "album123456",
@@ -284,13 +284,13 @@ it("bounds concurrent account rollout scheduling, excludes other owners and stop
   vi.stubEnv("MUSICBRAINZ_ACCOUNT_IDS", alice);
   for (let i = 0; i < 24; i++) {
     const id = String(i).padStart(11, "0");
-    await upsertVideo(db, { ...video, id }, true);
+    await upsertVideo(db.orm, { ...video, id }, true);
     await db.query(
       "INSERT INTO memberships(key,playlist_id,video_id,position,seen_generation) VALUES($1,'pilot',$1,1,1)",
       [id],
     );
   }
-  await upsertVideo(db, { ...video, id: "outsider123" }, true);
+  await upsertVideo(db.orm, { ...video, id: "outsider123" }, true);
   await db.query(
     "INSERT INTO playlists(id,title,source_url) VALUES('bob','Bob','https://youtube.com')",
   );
@@ -310,15 +310,15 @@ it("bounds concurrent account rollout scheduling, excludes other owners and stop
       )
     ).rowCount,
   ).toBe(0);
-  const job = (await claim(db))!;
-  await finish(db, job);
+  const job = (await claim(db.orm))!;
+  await finish(db.orm, job);
   await scheduleMusicEnrichment(db);
   expect(
     (await db.query("SELECT * FROM jobs WHERE status IN ('pending','running')"))
       .rowCount,
   ).toBe(10);
   vi.stubEnv("MUSICBRAINZ_ACCOUNT_IDS", "");
-  const next = (await claim(db))!;
+  const next = (await claim(db.orm))!;
   await enrichMusic(db, next, provider);
   expect(get).not.toHaveBeenCalled();
 });
@@ -327,7 +327,7 @@ it("does not enrich a video removed from an opted-in account while queued", asyn
   vi.stubEnv("MUSICBRAINZ_PILOT_IDS", "");
   vi.stubEnv("MUSICBRAINZ_ACCOUNT_IDS", alice);
   await scheduleMusicEnrichment(db);
-  const job = (await claim(db))!;
+  const job = (await claim(db.orm))!;
   await db.query("DELETE FROM user_playlists WHERE user_id=$1", [alice]);
   await enrichMusic(db, job, provider);
   expect(get).not.toHaveBeenCalled();
@@ -355,11 +355,11 @@ it("reports truthful account-scoped progress, including retries and unavailable 
     video.id,
   ]);
   await scheduleMusicEnrichment(db);
-  const job = (await claim(db))!;
+  const job = (await claim(db.orm))!;
   // A text reindex may precede MusicBrainz after the successful attribution.
-  if (job.kind !== "musicbrainz") await finish(db, job);
-  const retry = job.kind === "musicbrainz" ? job : (await claim(db))!;
-  await finish(db, retry, new Error("temporary"));
+  if (job.kind !== "musicbrainz") await finish(db.orm, job);
+  const retry = job.kind === "musicbrainz" ? job : (await claim(db.orm))!;
+  await finish(db.orm, retry, new Error("temporary"));
   progress = await enrichmentProgress(db, alice);
   expect(progress).toMatchObject({
     processed: 0,
@@ -399,9 +399,9 @@ it("authenticates progress and never accepts a different account from the client
 
 it("keeps exhausted failures on a daily cooldown rather than filling the queue again", async () => {
   await scheduleMusicEnrichment(db);
-  const job = (await claim(db))!;
+  const job = (await claim(db.orm))!;
   job.attempts = 5;
-  await finish(db, job, new Error("temporary"));
+  await finish(db.orm, job, new Error("temporary"));
   await scheduleMusicEnrichment(db);
   expect(
     (await db.query("SELECT * FROM jobs WHERE status='pending'")).rowCount,

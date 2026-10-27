@@ -63,12 +63,37 @@ Toutes les features suivent ce modèle :
 
 `/v1/me`, `/v1/logout` et `/v1/account/claim-library`. À lire : `claimLegacyLibrary` dans `store.ts`. La transaction verrouille la ligne du compte historique (`SELECT … FOR UPDATE`) : si deux comptes tentent la reprise en même temps, le second attend puis voit la bibliothèque déjà prise. La preuve (un jeton historique valide) est vérifiée par la feature `auth`, passée en paramètre plutôt qu’importée de ses fichiers internes.
 
-## 4. Les règles qui tiennent l’ensemble
+## 4. La bibliothèque et la file de tâches
+
+### `src/features/jobs/` : une file générique
+
+La file vit dans PostgreSQL (table `jobs`). Elle ne connaît aucune tâche en particulier :
+
+- `store.ts`, `enqueue` : une tâche par clé (`dedupe_key`). Tant qu’une tâche de même clé attend ou tourne, `INSERT … ON CONFLICT` la renvoie au lieu d’en créer une seconde. L’index unique partiel `jobs_active_key` porte cette règle.
+- `store.ts`, `claim` : prend la prochaine tâche due avec `SELECT … FOR UPDATE SKIP LOCKED` (deux workers ne prennent jamais la même) et lui donne un nouveau `leaseId`. Une tâche dont le bail a expiré (worker tué) est reprise ; le résultat tardif de l’ancien worker est refusé, car son `leaseId` ne correspond plus.
+- `store.ts`, `finish` : terminée, réessayée plus tard (30 s, 60 s… jusqu’à 6 h) ou en échec après 5 essais.
+- `runner.ts` : la boucle du worker, avec un registre `{ type de tâche → traitement }` et un battement qui prolonge le bail toutes les 30 s.
+
+`src/worker.ts` assemble ce registre : chaque feature fournit les traitements des types qu’elle possède (`libraryJobHandlers` pour `sync` et `enrich`).
+
+### `src/features/library/`
+
+- `routes.ts` : `/v1/status`, `/v1/playlists` (liste, ajout, retrait, actualisation), `/v1/export`, `/v1/import`.
+- `store.ts` : `followedBy` et `inLibraryOf`, les deux filtres qui isolent les comptes : une vidéo appartient à la bibliothèque d’un compte seulement si elle est active dans une playlist que ce compte suit. Toute lecture de la bibliothèque passe par eux.
+- `sync.ts`, `syncPlaylist` : lit toute la playlist YouTube, puis dans une seule transaction (et seulement si le bail est toujours détenu) crée la génération suivante. Une entrée absente de deux synchronisations consécutives devient inactive.
+- `enrich.ts` : métadonnées complètes par lots de 50 vidéos, photos de chaînes.
+- `jobs.ts` : les traitements enregistrés auprès du worker et la synchronisation périodique.
+
+### `src/integrations/`
+
+Les clients de services externes, sans règle métier. `youtube/` compte chaque appel dans `quota_usage` et s’arrête avant le quota journalier de Google.
+
+## 5. Les règles qui tiennent l’ensemble
 
 - `npm run check:architecture` (`scripts/check-architecture.mjs`) : une feature n’importe une autre feature que par son `index.ts` ; le cœur partagé n’importe rien du serveur ; les règles pures du DJ n’ont pas d’effet.
 - TypeScript très strict (`apps/server/tsconfig.json`) : `rows[0]` peut être `undefined`, une propriété optionnelle ne reçoit pas `undefined` explicitement, `process.env["X"]`.
 - Tests : `apps/server/tests/*.test.ts` (sans base) et `*.integration.test.ts` (PostgreSQL jetable, un schéma par suite). `accounts.integration.test.ts` rejoue tout le parcours Google avec un faux fournisseur.
 
-## 5. À venir
+## 6. À venir
 
-Bibliothèque et file de tâches, historique et paroles, recherche et MCP, DJ : encore dans `src/*.ts` et `src/features/dj/`, en SQL via `db.query`. Chaque lot les déplace dans ce modèle et complète cette page.
+Historique et paroles, MusicBrainz, découverte, recherche et indexation, MCP, DJ : encore dans `src/*.ts` et `src/features/dj/`, en SQL via `db.query`. Chaque lot les déplace dans ce modèle et complète cette page.

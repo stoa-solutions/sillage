@@ -5,7 +5,7 @@ import {
   isoDuration,
   vectorSql,
 } from "../src/content.ts";
-import { YouTube } from "../src/youtube.ts";
+import { YouTube } from "../src/integrations/youtube/index.ts";
 import { fetchThumbnail } from "../src/indexing.ts";
 import { required } from "./support/required.ts";
 describe("YouTube input and complete snapshots", () => {

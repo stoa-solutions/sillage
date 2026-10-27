@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { SearxngDiscovery, youtubeResultId } from "../src/searxng.ts";
-import { YouTube } from "../src/youtube.ts";
-import { YouTubeError } from "../src/youtube-errors.ts";
+import { YouTube } from "../src/integrations/youtube/index.ts";
+import { YouTubeError } from "../src/integrations/youtube/index.ts";
 import { required } from "./support/required.ts";
 
 const ids = ["6R-R51CZ9tA", "ylpbHo6G6JU", "dixmrd_mN40"];
