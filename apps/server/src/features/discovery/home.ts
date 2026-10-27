@@ -1,15 +1,6 @@
-import type { Database } from "./db/index.ts";
-import type { Discovery } from "./discovery.ts";
-import { normalizeMusic } from "./music-matching.ts";
-import type { MusicMetadata } from "@playlist-recall/core/types";
-
-type HistoryRow = {
-  video_id: string;
-  title: string;
-  channel: string | null;
-  outcome: string;
-  music_metadata: MusicMetadata | null;
-};
+import { normalizeMusic } from "../../music-matching.ts";
+import type { Discovery } from "./service.ts";
+import type { HistoryRow } from "./store.ts";
 export interface DiscoverySeed {
   query: string;
   reason: string;
@@ -85,16 +76,11 @@ function matchesArtistSeed(
 
 /** Per-account history is always reread; only the public source's catalog cache is shared. */
 export async function discoveryHome(
-  db: Database,
+  history: (user: string) => Promise<HistoryRow[]>,
   user: string,
   source: Pick<Discovery, "search">,
 ) {
-  const { rows } = await db.query<HistoryRow>(
-    `SELECT h.video_id,h.title,h.channel,h.outcome,v.music_metadata
-     FROM listening_history h LEFT JOIN videos v ON v.id=h.video_id
-     WHERE h.user_id=$1 ORDER BY h.played_at DESC,h.event_id DESC LIMIT 80`,
-    [user],
-  );
+  const rows = await history(user);
   const seeds = discoverySeeds(rows);
   const seen = new Set(rows.map((row) => row.video_id));
   const titles = new Set(rows.map((row) => titleKey(row.title)));

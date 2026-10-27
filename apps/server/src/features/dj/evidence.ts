@@ -1,4 +1,4 @@
-import type { SearchFailure } from "../../search-feedback.ts";
+import type { SearchFailure } from "../discovery/index.ts";
 import type { DjTrack } from "../../music-mcp.ts";
 
 export interface DiscoveryEvidence {

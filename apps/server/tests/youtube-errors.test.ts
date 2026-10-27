@@ -5,7 +5,7 @@ import {
   youtubeError,
   YouTubeError,
 } from "../src/integrations/youtube/index.ts";
-import { Discovery } from "../src/discovery.ts";
+import { Discovery } from "../src/features/discovery/index.ts";
 import type { Database } from "../src/db/index.ts";
 import { required } from "./support/required.ts";
 
@@ -95,16 +95,17 @@ describe("YouTube quota diagnosis", () => {
     expect(request).toHaveBeenCalledTimes(2);
   });
   it("preserves a daily diagnosis through discovery and keeps cached results account-scoped", async () => {
-    const db = { query: vi.fn().mockResolvedValue({ rows: [] }) };
+    const owned = vi.fn().mockResolvedValue(new Set<string>());
     const video = { id: "video000001", title: "Afro", channel: "Artist" };
     const search = vi
       .fn()
       .mockResolvedValueOnce({ videos: [video], nextPageToken: null })
       .mockRejectedValue(new YouTubeError("daily_quota", 429));
-    const service = new Discovery(db as unknown as Database, {
-      search,
-      videos: vi.fn(),
-    });
+    const service = new Discovery(
+      {} as Database,
+      { search, videos: vi.fn() },
+      owned,
+    );
     await service.search("alice", "afro");
     await expect(service.search("alice", "afro pop")).rejects.toMatchObject({
       status: 429,
@@ -112,7 +113,7 @@ describe("YouTube quota diagnosis", () => {
     });
     const cached = await service.search("bob", "afro");
     expect(required(cached.results[0]).inLibrary).toBe(false);
-    expect(db.query.mock.calls.at(-1)?.[1]).toEqual(["bob", [video.id]]);
+    expect(owned).toHaveBeenLastCalledWith("bob", [video.id]);
     expect(search).toHaveBeenCalledTimes(2);
   });
 });

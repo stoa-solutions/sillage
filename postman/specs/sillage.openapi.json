@@ -733,6 +733,709 @@
         }
       }
     },
+    "/v1/discover/home": {
+      "get": {
+        "operationId": "getDiscoveryHome",
+        "summary": "Suggestions selon l’historique",
+        "description": "Relit les 80 dernières écoutes du compte. Parmi les 20 écoutes finished/replaced les plus récentes, extrait au plus 3 pistes artiste/genre MusicBrainz. Cherche ces pistes, écarte les vidéos déjà possédées ou récemment écoutées et entrelace au plus 12 suggestions. Heuristique sans appel Gemini, pas apprentissage de goûts collaboratif. Pas d’historique : emptyReason et suggestions vides.",
+        "tags": [
+          "Découvrir"
+        ],
+        "x-sillage-effect": "provider",
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryHome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Fournisseur temporairement indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Configuration ou service indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/discover/search": {
+      "post": {
+        "operationId": "searchYouTube",
+        "summary": "Chercher des morceaux sur YouTube",
+        "description": "SearXNG privé si configuré, sinon YouTube search.list. Les vidéos sont vérifiées par YouTube ; inLibrary est recalculé pour chaque compte. Cache public des requêtes de 5 minutes, maximum 100 entrées ; demandes identiques partagées, 4 recherches distinctes simultanées. pageToken est opaque et doit être renvoyé tel quel.",
+        "tags": [
+          "Découvrir"
+        ],
+        "x-sillage-effect": "provider",
+        "x-sillage-example": {
+          "query": "Mac Miller",
+          "pageToken": ""
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "query": "Mac Miller",
+                "pageToken": ""
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DiscoverySearch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Quota, budget ou recherche occupée ; reason et retryAt précisent la limite",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Fournisseur temporairement indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Configuration ou service indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/discover/add": {
+      "post": {
+        "operationId": "saveDiscovery",
+        "summary": "Ajouter à Mes découvertes",
+        "description": "Revérifie l’identifiant sur YouTube, enregistre dans la collection privée du compte, puis programme les index texte et image si activés. Ajout idempotent. Ne modifie aucune playlist YouTube. L’enrichissement MusicBrainz est ensuite pris en charge par le worker pour les comptes activés.",
+        "tags": [
+          "Découvrir"
+        ],
+        "x-sillage-effect": "write",
+        "x-sillage-example": {
+          "videoId": "{{video_id}}"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "videoId": "{{video_id}}"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DiscoveryAdd"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoverySaved"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Vidéo absente ou inaccessible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Fournisseur temporairement indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Configuration ou service indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/history": {
+      "post": {
+        "operationId": "recordListeningEvents",
+        "summary": "Enregistrer des écoutes",
+        "description": "1 à 100 événements par lot. L’identifiant UUID de chaque événement rend les réémissions idempotentes pour ce compte. finished, skipped, unavailable et replaced sont conservés ; pas de suivi audio implicite.",
+        "tags": [
+          "Historique"
+        ],
+        "x-sillage-effect": "write",
+        "x-sillage-example": {
+          "events": [
+            {
+              "id": "00000000-0000-4000-8000-000000000010",
+              "videoId": "video000001",
+              "title": "Titre de test",
+              "channel": "Artiste de test",
+              "outcome": "finished",
+              "playedAt": "2026-10-26T09:00:00Z"
+            }
+          ]
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "events": [
+                  {
+                    "id": "00000000-0000-4000-8000-000000000010",
+                    "videoId": "video000001",
+                    "title": "Titre de test",
+                    "channel": "Artiste de test",
+                    "outcome": "finished",
+                    "playedAt": "2026-10-26T09:00:00Z"
+                  }
+                ]
+              },
+              "schema": {
+                "$ref": "#/components/schemas/HistoryUpload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "recorded": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "recorded"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listListeningEvents",
+        "summary": "Lire l’historique",
+        "description": "Tri décroissant par playedAt et id. Pagination par curseur : reprendre playedAt et id de la dernière ligne dans before et beforeId. beforeId exige before. Valeur par défaut : 50 ; maximum : 200.",
+        "tags": [
+          "Historique"
+        ],
+        "x-sillage-effect": "read",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "beforeId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HistoryEvent"
+                      }
+                    }
+                  },
+                  "required": [
+                    "events"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "clearListeningHistory",
+        "summary": "Effacer l’historique du compte",
+        "description": "Supprime uniquement les événements d’écoute du compte courant ; cela réduit les signaux disponibles pour l’accueil Découvrir.",
+        "tags": [
+          "Historique"
+        ],
+        "x-sillage-effect": "write",
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "deleted": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "deleted"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/library/enrichment": {
+      "get": {
+        "operationId": "getEnrichmentProgress",
+        "summary": "Avancement MusicBrainz",
+        "description": "Compteurs propres au compte : matched, ambiguous, not_found, attente YouTube, tâches et erreurs. processed indique une décision d’enrichissement, pas forcément une correspondance certaine. Les genres d’artiste ne prouvent pas le genre du morceau.",
+        "tags": [
+          "Bibliothèque"
+        ],
+        "x-sillage-effect": "read",
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Enrichment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/status": {
       "get": {
         "operationId": "getLibraryStatus",
@@ -1482,6 +2185,234 @@
         }
       }
     },
+    "/v1/lyrics/{videoId}": {
+      "get": {
+        "operationId": "getLyrics",
+        "summary": "Paroles du morceau",
+        "description": "Réservé aux vidéos présentes dans les playlists du compte. Cherche/cache LRCLIB et applique la correction personnelle. missing et unavailable sont des états métier en HTTP 200. Le clic temporel et le rendu restent gérés par le lecteur Mac.",
+        "tags": [
+          "Paroles"
+        ],
+        "x-sillage-effect": "provider",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{11}$",
+              "description": "Vidéo appartenant à la bibliothèque du compte"
+            },
+            "required": true,
+            "description": "Vidéo appartenant à la bibliothèque du compte",
+            "name": "videoId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lyrics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Vidéo absente de la bibliothèque",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/lyrics/{videoId}/offset": {
+      "post": {
+        "operationId": "saveLyricsOffset",
+        "summary": "Caler les paroles",
+        "description": "Correction personnelle en millisecondes, entre −30 000 et +30 000. Une valeur positive retarde les paroles. Ne modifie pas les corrections des autres comptes.",
+        "tags": [
+          "Paroles"
+        ],
+        "x-sillage-effect": "write",
+        "x-sillage-example": {
+          "offsetMs": 0
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{11}$",
+              "description": "Vidéo appartenant à la bibliothèque du compte"
+            },
+            "required": true,
+            "description": "Vidéo appartenant à la bibliothèque du compte",
+            "name": "videoId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "offsetMs": 0
+              },
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "offsetMs": {
+                    "type": "integer",
+                    "minimum": -30000,
+                    "maximum": 30000
+                  }
+                },
+                "required": [
+                  "offsetMs"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "offsetMs": {
+                      "type": "integer",
+                      "minimum": -30000,
+                      "maximum": 30000
+                    }
+                  },
+                  "required": [
+                    "offsetMs"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Vidéo absente de la bibliothèque",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/search": {
       "post": {
         "operationId": "searchLibrary",
@@ -1568,402 +2499,6 @@
           },
           "500": {
             "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/library/enrichment": {
-      "get": {
-        "operationId": "getEnrichmentProgress",
-        "tags": [
-          "Bibliothèque"
-        ],
-        "summary": "Avancement MusicBrainz",
-        "description": "Compteurs propres au compte : matched, ambiguous, not_found, attente YouTube, tâches et erreurs. processed indique une décision d’enrichissement, pas forcément une correspondance certaine. Les genres d’artiste ne prouvent pas le genre du morceau.",
-        "x-sillage-effect": "read",
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Enrichment"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/discover/home": {
-      "get": {
-        "operationId": "getDiscoveryHome",
-        "tags": [
-          "Découvrir"
-        ],
-        "summary": "Suggestions selon l’historique",
-        "description": "Relit les 80 dernières écoutes du compte. Parmi les 20 écoutes finished/replaced les plus récentes, extrait au plus 3 pistes artiste/genre MusicBrainz. Cherche ces pistes, écarte les vidéos déjà possédées ou récemment écoutées et entrelace au plus 12 suggestions. Heuristique sans appel Gemini, pas apprentissage de goûts collaboratif. Pas d’historique : emptyReason et suggestions vides.",
-        "x-sillage-effect": "provider",
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DiscoveryHome"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Fournisseur temporairement indisponible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Configuration ou service indisponible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/discover/search": {
-      "post": {
-        "operationId": "searchYouTube",
-        "tags": [
-          "Découvrir"
-        ],
-        "summary": "Chercher des morceaux sur YouTube",
-        "description": "SearXNG privé si configuré, sinon YouTube search.list. Les vidéos sont vérifiées par YouTube ; inLibrary est recalculé pour chaque compte. Cache public des requêtes de 5 minutes, maximum 100 entrées ; demandes identiques partagées, 4 recherches distinctes simultanées. pageToken est opaque et doit être renvoyé tel quel.",
-        "x-sillage-effect": "provider",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DiscoverySearch"
-              },
-              "example": {
-                "query": "Mac Miller",
-                "pageToken": ""
-              }
-            }
-          }
-        },
-        "x-sillage-example": {
-          "query": "Mac Miller",
-          "pageToken": ""
-        },
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DiscoveryPage"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Quota, budget ou recherche occupée ; reason et retryAt précisent la limite",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Fournisseur temporairement indisponible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Configuration ou service indisponible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/discover/add": {
-      "post": {
-        "operationId": "saveDiscovery",
-        "tags": [
-          "Découvrir"
-        ],
-        "summary": "Ajouter à Mes découvertes",
-        "description": "Revérifie l’identifiant sur YouTube, enregistre dans la collection privée du compte, puis programme les index texte et image si activés. Ajout idempotent. Ne modifie aucune playlist YouTube. L’enrichissement MusicBrainz est ensuite pris en charge par le worker pour les comptes activés.",
-        "x-sillage-effect": "write",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DiscoveryAdd"
-              },
-              "example": {
-                "videoId": "{{video_id}}"
-              }
-            }
-          }
-        },
-        "x-sillage-example": {
-          "videoId": "{{video_id}}"
-        },
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DiscoverySaved"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Vidéo absente ou inaccessible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Fournisseur temporairement indisponible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Configuration ou service indisponible",
             "content": {
               "application/json": {
                 "schema": {
@@ -2636,539 +3171,6 @@
             }
           }
         }
-      }
-    },
-    "/v1/history": {
-      "post": {
-        "operationId": "recordListeningEvents",
-        "tags": [
-          "Historique"
-        ],
-        "summary": "Enregistrer des écoutes",
-        "description": "1 à 100 événements par lot. L’identifiant UUID de chaque événement rend les réémissions idempotentes pour ce compte. finished, skipped, unavailable et replaced sont conservés ; pas de suivi audio implicite.",
-        "x-sillage-effect": "write",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HistoryUpload"
-              },
-              "example": {
-                "events": [
-                  {
-                    "id": "00000000-0000-4000-8000-000000000010",
-                    "videoId": "video000001",
-                    "title": "Titre de test",
-                    "channel": "Artiste de test",
-                    "outcome": "finished",
-                    "playedAt": "2026-10-26T09:00:00Z"
-                  }
-                ]
-              }
-            }
-          }
-        },
-        "x-sillage-example": {
-          "events": [
-            {
-              "id": "00000000-0000-4000-8000-000000000010",
-              "videoId": "video000001",
-              "title": "Titre de test",
-              "channel": "Artiste de test",
-              "outcome": "finished",
-              "playedAt": "2026-10-26T09:00:00Z"
-            }
-          ]
-        },
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "recorded": {
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "recorded"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "operationId": "listListeningEvents",
-        "tags": [
-          "Historique"
-        ],
-        "summary": "Lire l’historique",
-        "description": "Tri décroissant par playedAt et id. Pagination par curseur : reprendre playedAt et id de la dernière ligne dans before et beforeId. beforeId exige before. Valeur par défaut : 50 ; maximum : 200.",
-        "x-sillage-effect": "read",
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "events": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/HistoryEvent"
-                      }
-                    }
-                  },
-                  "required": [
-                    "events"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 200,
-              "default": 50
-            }
-          },
-          {
-            "name": "before",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "date-time",
-              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-            }
-          },
-          {
-            "name": "beforeId",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          }
-        ]
-      },
-      "delete": {
-        "operationId": "clearListeningHistory",
-        "tags": [
-          "Historique"
-        ],
-        "summary": "Effacer l’historique du compte",
-        "description": "Supprime uniquement les événements d’écoute du compte courant ; cela réduit les signaux disponibles pour l’accueil Découvrir.",
-        "x-sillage-effect": "write",
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "deleted": {
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "deleted"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/lyrics/{videoId}": {
-      "get": {
-        "operationId": "getLyrics",
-        "tags": [
-          "Paroles"
-        ],
-        "summary": "Paroles du morceau",
-        "description": "Réservé aux vidéos présentes dans les playlists du compte. Cherche/cache LRCLIB et applique la correction personnelle. missing et unavailable sont des états métier en HTTP 200. Le clic temporel et le rendu restent gérés par le lecteur Mac.",
-        "x-sillage-effect": "provider",
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Lyrics"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Vidéo absente de la bibliothèque",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "videoId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{11}$"
-            },
-            "description": "Vidéo appartenant à la bibliothèque du compte"
-          }
-        ]
-      }
-    },
-    "/v1/lyrics/{videoId}/offset": {
-      "post": {
-        "operationId": "saveLyricsOffset",
-        "tags": [
-          "Paroles"
-        ],
-        "summary": "Caler les paroles",
-        "description": "Correction personnelle en millisecondes, entre −30 000 et +30 000. Une valeur positive retarde les paroles. Ne modifie pas les corrections des autres comptes.",
-        "x-sillage-effect": "write",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "offsetMs": {
-                    "type": "integer",
-                    "minimum": -30000,
-                    "maximum": 30000
-                  }
-                },
-                "required": [
-                  "offsetMs"
-                ]
-              },
-              "example": {
-                "offsetMs": 0
-              }
-            }
-          }
-        },
-        "x-sillage-example": {
-          "offsetMs": 0
-        },
-        "responses": {
-          "200": {
-            "description": "Réponse réussie",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "offsetMs": {
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "offsetMs"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Données invalides",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Session absente, expirée ou révoquée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Vidéo absente de la bibliothèque",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Corps supérieur à 30 Mio",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Limite de débit ou opération déjà en cours",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur interne sans diagnostic privé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "videoId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{11}$"
-            },
-            "description": "Vidéo appartenant à la bibliothèque du compte"
-          }
-        ]
       }
     },
     "/v1/mcp": {
@@ -5172,37 +5174,6 @@
           }
         }
       },
-      "DiscoverySearch": {
-        "type": "object",
-        "properties": {
-          "query": {
-            "type": "string",
-            "minLength": 2,
-            "maxLength": 200
-          },
-          "pageToken": {
-            "default": "",
-            "type": "string",
-            "maxLength": 500,
-            "pattern": "^[\\w=-]*$"
-          }
-        },
-        "required": [
-          "query"
-        ]
-      },
-      "DiscoveryAdd": {
-        "type": "object",
-        "properties": {
-          "videoId": {
-            "type": "string",
-            "pattern": "^[\\w-]{11}$"
-          }
-        },
-        "required": [
-          "videoId"
-        ]
-      },
       "DjRequest": {
         "type": "object",
         "properties": {
@@ -5475,119 +5446,6 @@
         ],
         "description": "Le texte est nettoyé des espaces aux extrémités."
       },
-      "HistoryEvent": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "videoId": {
-            "type": "string",
-            "pattern": "^[\\w-]{11}$"
-          },
-          "title": {
-            "type": "string",
-            "maxLength": 300
-          },
-          "channel": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 200
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "outcome": {
-            "type": "string",
-            "enum": [
-              "finished",
-              "skipped",
-              "unavailable",
-              "replaced"
-            ]
-          },
-          "playedAt": {
-            "type": "string",
-            "format": "date-time",
-            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-          }
-        },
-        "required": [
-          "id",
-          "videoId",
-          "title",
-          "outcome",
-          "playedAt"
-        ]
-      },
-      "HistoryUpload": {
-        "type": "object",
-        "properties": {
-          "events": {
-            "minItems": 1,
-            "maxItems": 100,
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string",
-                  "format": "uuid",
-                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                },
-                "videoId": {
-                  "type": "string",
-                  "pattern": "^[\\w-]{11}$"
-                },
-                "title": {
-                  "type": "string",
-                  "maxLength": 300
-                },
-                "channel": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "maxLength": 200
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "outcome": {
-                  "type": "string",
-                  "enum": [
-                    "finished",
-                    "skipped",
-                    "unavailable",
-                    "replaced"
-                  ]
-                },
-                "playedAt": {
-                  "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                }
-              },
-              "required": [
-                "id",
-                "videoId",
-                "title",
-                "outcome",
-                "playedAt"
-              ]
-            }
-          }
-        },
-        "required": [
-          "events"
-        ]
-      },
       "HistoryPage": {
         "type": "object",
         "properties": {
@@ -5764,250 +5622,6 @@
           "mimeType"
         ]
       },
-      "MusicMetadata": {
-        "type": "object",
-        "properties": {
-          "source": {
-            "const": "MusicBrainz"
-          },
-          "status": {
-            "enum": [
-              "matched",
-              "ambiguous",
-              "not_found"
-            ]
-          },
-          "checkedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "recordingId": {
-            "type": "string"
-          },
-          "confidence": {
-            "type": "number"
-          },
-          "reason": {
-            "type": "string"
-          },
-          "artists": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "role": {
-                  "enum": [
-                    "primary",
-                    "featured"
-                  ]
-                }
-              },
-              "required": [
-                "id",
-                "name",
-                "role"
-              ]
-            }
-          },
-          "albums": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "title": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "title"
-              ]
-            }
-          },
-          "genres": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "artistGenres": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Genres de l’artiste, pas nécessairement ceux du morceau."
-          },
-          "searchText": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "source",
-          "status",
-          "checkedAt",
-          "artists",
-          "albums",
-          "genres",
-          "artistGenres",
-          "searchText"
-        ]
-      },
-      "Video": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{11}$"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "channel": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "durationSeconds": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "description": {
-            "type": "string"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "thumbnailUrl": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          },
-          "publishedAt": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "channelAvatarUrl": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "musicMetadata": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MusicMetadata"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "channel",
-          "durationSeconds",
-          "description",
-          "tags",
-          "thumbnailUrl",
-          "url",
-          "publishedAt"
-        ]
-      },
-      "DjTrack": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9_-]{11}$"
-          },
-          "title": {
-            "type": "string"
-          },
-          "channel": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "durationSeconds": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "url": {
-            "type": "string"
-          },
-          "thumbnailUrl": {
-            "type": "string"
-          },
-          "musicMetadata": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MusicMetadata"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "title"
-        ]
-      },
       "Membership": {
         "type": "object",
         "properties": {
@@ -6098,123 +5712,6 @@
           "mode"
         ]
       },
-      "DiscoveryItem": {
-        "type": "object",
-        "properties": {
-          "video": {
-            "$ref": "#/components/schemas/DjTrack"
-          },
-          "inLibrary": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "video",
-          "inLibrary"
-        ]
-      },
-      "DiscoveryPage": {
-        "type": "object",
-        "properties": {
-          "results": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DiscoveryItem"
-            }
-          },
-          "nextPageToken": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "results",
-          "nextPageToken"
-        ]
-      },
-      "DiscoveryHome": {
-        "type": "object",
-        "properties": {
-          "suggestions": {
-            "type": "array",
-            "items": {
-              "allOf": [
-                {
-                  "$ref": "#/components/schemas/DiscoveryItem"
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "reason": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "reason"
-                  ]
-                }
-              ]
-            }
-          },
-          "basedOn": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "notice": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "emptyReason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "suggestions",
-          "basedOn",
-          "notice",
-          "emptyReason"
-        ]
-      },
-      "DiscoverySaved": {
-        "type": "object",
-        "properties": {
-          "saved": {
-            "const": true
-          },
-          "playlistId": {
-            "type": "string"
-          },
-          "video": {
-            "$ref": "#/components/schemas/Video"
-          }
-        },
-        "required": [
-          "saved",
-          "playlistId",
-          "video"
-        ]
-      },
       "InformationSource": {
         "type": "object",
         "properties": {
@@ -6276,159 +5773,6 @@
           "reply",
           "action",
           "tracks"
-        ]
-      },
-      "Enrichment": {
-        "type": "object",
-        "properties": {
-          "total": {
-            "type": "integer"
-          },
-          "processed": {
-            "type": "integer"
-          },
-          "matched": {
-            "type": "integer"
-          },
-          "ambiguous": {
-            "type": "integer"
-          },
-          "not_found": {
-            "type": "integer"
-          },
-          "unavailable": {
-            "type": "integer"
-          },
-          "awaiting_youtube": {
-            "type": "integer"
-          },
-          "queued": {
-            "type": "integer"
-          },
-          "running": {
-            "type": "integer"
-          },
-          "retrying": {
-            "type": "integer"
-          },
-          "failed": {
-            "type": "integer"
-          },
-          "batchSize": {
-            "type": "integer"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "checkedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "total",
-          "processed",
-          "matched",
-          "ambiguous",
-          "not_found",
-          "unavailable",
-          "awaiting_youtube",
-          "queued",
-          "running",
-          "retrying",
-          "failed",
-          "batchSize",
-          "enabled",
-          "checkedAt"
-        ]
-      },
-      "Lyrics": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "enum": [
-              "synced",
-              "plain",
-              "instrumental",
-              "missing",
-              "unavailable"
-            ]
-          },
-          "lines": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "startMs": {
-                  "type": "integer"
-                },
-                "endMs": {
-                  "type": "integer"
-                },
-                "text": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "startMs",
-                "endMs",
-                "text"
-              ]
-            }
-          },
-          "text": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "offsetMs": {
-            "type": "integer"
-          },
-          "durationDeltaMs": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "source": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "const": "LRCLIB"
-                  },
-                  "id": {
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "name",
-                  "id"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "status",
-          "lines",
-          "text",
-          "offsetMs",
-          "durationDeltaMs",
-          "source"
         ]
       },
       "RpcRequest": {
@@ -6583,6 +5927,490 @@
         },
         "required": [
           "saved"
+        ]
+      },
+      "DiscoveryHome": {
+        "type": "object",
+        "properties": {
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/DiscoveryItem"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "reason"
+                  ]
+                }
+              ]
+            }
+          },
+          "basedOn": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "notice": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emptyReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "suggestions",
+          "basedOn",
+          "notice",
+          "emptyReason"
+        ]
+      },
+      "DjTrack": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{11}$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "channel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "durationSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": "string"
+          },
+          "musicMetadata": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MusicMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "MusicMetadata": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "MusicBrainz"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "matched",
+              "ambiguous",
+              "not_found"
+            ]
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recordingId": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "artists": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "primary",
+                    "featured"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "role"
+              ]
+            }
+          },
+          "albums": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "title"
+              ]
+            }
+          },
+          "genres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "artistGenres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Genres de l’artiste, pas nécessairement ceux du morceau."
+          },
+          "searchText": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "status",
+          "checkedAt",
+          "artists",
+          "albums",
+          "genres",
+          "artistGenres",
+          "searchText"
+        ]
+      },
+      "DiscoveryItem": {
+        "type": "object",
+        "properties": {
+          "video": {
+            "$ref": "#/components/schemas/DjTrack"
+          },
+          "inLibrary": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "video",
+          "inLibrary"
+        ]
+      },
+      "DiscoveryPage": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryItem"
+            }
+          },
+          "nextPageToken": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "results",
+          "nextPageToken"
+        ]
+      },
+      "DiscoverySearch": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "pageToken": {
+            "type": "string",
+            "maxLength": 500,
+            "pattern": "^[\\w=-]*$",
+            "default": ""
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "DiscoverySaved": {
+        "type": "object",
+        "properties": {
+          "saved": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "playlistId": {
+            "type": "string"
+          },
+          "video": {
+            "$ref": "#/components/schemas/Video"
+          }
+        },
+        "required": [
+          "saved",
+          "playlistId",
+          "video"
+        ]
+      },
+      "Video": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{11}$"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "durationSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "thumbnailUrl": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channelAvatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "musicMetadata": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MusicMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "channel",
+          "durationSeconds",
+          "description",
+          "tags",
+          "thumbnailUrl",
+          "url",
+          "publishedAt"
+        ]
+      },
+      "DiscoveryAdd": {
+        "type": "object",
+        "properties": {
+          "videoId": {
+            "type": "string",
+            "pattern": "^[\\w-]{11}$"
+          }
+        },
+        "required": [
+          "videoId"
+        ]
+      },
+      "HistoryUpload": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryEvent"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "events"
+        ]
+      },
+      "HistoryEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "videoId": {
+            "type": "string",
+            "pattern": "^[\\w-]{11}$"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "channel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "finished",
+              "skipped",
+              "unavailable",
+              "replaced"
+            ]
+          },
+          "playedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "videoId",
+          "title",
+          "outcome",
+          "playedAt"
+        ]
+      },
+      "Enrichment": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "processed": {
+            "type": "integer"
+          },
+          "matched": {
+            "type": "integer"
+          },
+          "ambiguous": {
+            "type": "integer"
+          },
+          "not_found": {
+            "type": "integer"
+          },
+          "unavailable": {
+            "type": "integer"
+          },
+          "awaiting_youtube": {
+            "type": "integer"
+          },
+          "queued": {
+            "type": "integer"
+          },
+          "running": {
+            "type": "integer"
+          },
+          "retrying": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "batchSize": {
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "total",
+          "processed",
+          "matched",
+          "ambiguous",
+          "not_found",
+          "unavailable",
+          "awaiting_youtube",
+          "queued",
+          "running",
+          "retrying",
+          "failed",
+          "batchSize",
+          "enabled",
+          "checkedAt"
         ]
       },
       "LibraryStatus": {
@@ -6936,6 +6764,87 @@
               "entries"
             ]
           }
+        ]
+      },
+      "Lyrics": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "synced",
+              "plain",
+              "instrumental",
+              "missing",
+              "unavailable"
+            ]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "startMs": {
+                  "type": "integer"
+                },
+                "endMs": {
+                  "type": "integer"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "startMs",
+                "endMs",
+                "text"
+              ]
+            }
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "offsetMs": {
+            "type": "integer"
+          },
+          "durationDeltaMs": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "source": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "enum": [
+                  "LRCLIB"
+                ]
+              },
+              "id": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "name",
+              "id"
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "lines",
+          "text",
+          "offsetMs",
+          "durationDeltaMs",
+          "source"
         ]
       }
     }

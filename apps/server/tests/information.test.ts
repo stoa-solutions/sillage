@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { InformationSearch, publicSourceUrl } from "../src/information.ts";
+import { InformationSearch, publicSourceUrl } from "../src/integrations/searxng/index.ts";
 import { required } from "./support/required.ts";
 
 it("returns numbered public sources, removes markup, deduplicates and caches only the query", async () => {

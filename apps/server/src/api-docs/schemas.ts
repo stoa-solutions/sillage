@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authStartInput } from "../features/auth/index.ts";
-import { discoveryAddInput, discoveryInput } from "../discovery.ts";
+import { discoveryAddInput, discoveryInput } from "../features/discovery/index.ts";
 import { djSettingsInput } from "../dj-settings.ts";
 import {
   journalPage,
@@ -8,7 +8,7 @@ import {
   journalUpload,
 } from "../features/dj/journal/contracts.ts";
 import { djInput } from "../features/dj/contracts.ts";
-import { historyEvent, historyPage, historyUpload } from "../history.ts";
+import { historyEvent, historyPage, historyUpload } from "../features/history/index.ts";
 import { librarySearchInput } from "../library-contracts.ts";
 
 export type Schema = Record<string, unknown>;
@@ -101,8 +101,6 @@ export const schemas: Record<string, Schema> = {
   }),
   AuthStart: jsonSchema(authStartInput),
   LibrarySearch: jsonSchema(librarySearchInput),
-  DiscoverySearch: jsonSchema(discoveryInput),
-  DiscoveryAdd: jsonSchema(discoveryAddInput),
   DjRequest: jsonSchema(djInput),
   DjSettings: jsonSchema(djSettingsInput),
   DjReset: jsonSchema(z.object({provider:z.enum(["google","anthropic"]).optional()})),
@@ -113,8 +111,6 @@ export const schemas: Record<string, Schema> = {
     ...object({ text: { type: "string", minLength: 1, maxLength: 600 } }),
     description: "Le texte est nettoyé des espaces aux extrémités.",
   },
-  HistoryEvent: jsonSchema(historyEvent),
-  HistoryUpload: jsonSchema(historyUpload),
   HistoryPage: {
     ...jsonSchema(historyPage),
     properties: {
@@ -144,78 +140,6 @@ export const schemas: Record<string, Schema> = {
     },
     mimeType: { const: "audio/wav" },
   }),
-  MusicMetadata: object(
-    {
-      source: { const: "MusicBrainz" },
-      status: { enum: ["matched", "ambiguous", "not_found"] },
-      checkedAt: date,
-      recordingId: string(),
-      confidence: { type: "number" },
-      reason: string(),
-      artists: array(
-        object({
-          id: string(),
-          name: string(),
-          role: { enum: ["primary", "featured"] },
-        }),
-      ),
-      albums: array(object({ id: string(), title: string() })),
-      genres: array(string()),
-      artistGenres: {
-        ...array(string()),
-        description: "Genres de l’artiste, pas nécessairement ceux du morceau.",
-      },
-      searchText: string(),
-    },
-    [
-      "source",
-      "status",
-      "checkedAt",
-      "artists",
-      "albums",
-      "genres",
-      "artistGenres",
-      "searchText",
-    ],
-  ),
-  Video: object(
-    {
-      id: videoId,
-      title: nullable(string()),
-      channel: nullable(string()),
-      durationSeconds: nullable(integer),
-      description: string(),
-      tags: array(string()),
-      thumbnailUrl: string(),
-      url: string(),
-      publishedAt: nullable(string()),
-      channelAvatarUrl: nullable(string()),
-      musicMetadata: nullable(ref("MusicMetadata")),
-    },
-    [
-      "id",
-      "title",
-      "channel",
-      "durationSeconds",
-      "description",
-      "tags",
-      "thumbnailUrl",
-      "url",
-      "publishedAt",
-    ],
-  ),
-  DjTrack: object(
-    {
-      id: videoId,
-      title: string(),
-      channel: nullable(string()),
-      durationSeconds: nullable(integer),
-      url: string(),
-      thumbnailUrl: string(),
-      musicMetadata: nullable(ref("MusicMetadata")),
-    },
-    ["id", "title"],
-  ),
   Membership: object({
     key: string(),
     playlistId: string(),
@@ -235,24 +159,6 @@ export const schemas: Record<string, Schema> = {
     degraded: nullable(string()),
     mode: { enum: ["text", "image"] },
   }),
-  DiscoveryItem: object({ video: ref("DjTrack"), inLibrary: boolean }),
-  DiscoveryPage: object({
-    results: array(ref("DiscoveryItem")),
-    nextPageToken: nullable(string()),
-  }),
-  DiscoveryHome: object({
-    suggestions: array({
-      allOf: [ref("DiscoveryItem"), object({ reason: string() })],
-    }),
-    basedOn: array(string()),
-    notice: nullable(string()),
-    emptyReason: nullable(string()),
-  }),
-  DiscoverySaved: object({
-    saved: { const: true },
-    playlistId: string(),
-    video: ref("Video"),
-  }),
   InformationSource: object(
     { id: integer, title: string(), url: string(), snippet: string() },
     ["id", "title", "url"],
@@ -268,36 +174,6 @@ export const schemas: Record<string, Schema> = {
     },
     ["reply", "action", "tracks"],
   ),
-  Enrichment: object(
-    Object.fromEntries([
-      ...[
-        "total",
-        "processed",
-        "matched",
-        "ambiguous",
-        "not_found",
-        "unavailable",
-        "awaiting_youtube",
-        "queued",
-        "running",
-        "retrying",
-        "failed",
-        "batchSize",
-      ].map((k) => [k, integer]),
-      ["enabled", boolean],
-      ["checkedAt", date],
-    ]),
-  ),
-  Lyrics: object({
-    status: {
-      enum: ["synced", "plain", "instrumental", "missing", "unavailable"],
-    },
-    lines: array(object({ startMs: integer, endMs: integer, text: string() })),
-    text: nullable(string()),
-    offsetMs: integer,
-    durationDeltaMs: nullable(integer),
-    source: nullable(object({ name: { const: "LRCLIB" }, id: integer })),
-  }),
   RpcRequest: object(
     {
       jsonrpc: { const: "2.0" },

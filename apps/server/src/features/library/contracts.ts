@@ -127,3 +127,57 @@ export const importedBody = z.object({
   playlists: z.number().int(),
   videos: z.number().int(),
 });
+
+/** MusicBrainz decision attached to a video; artist genres are not the song's genres. */
+export const musicMetadataBody = z
+  .object({
+    source: z.literal("MusicBrainz"),
+    status: z.enum(["matched", "ambiguous", "not_found"]),
+    checkedAt: z.iso.datetime(),
+    recordingId: z.string().optional(),
+    confidence: z.number().optional(),
+    reason: z.string().optional(),
+    artists: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        role: z.enum(["primary", "featured"]),
+      }),
+    ),
+    albums: z.array(z.object({ id: z.string(), title: z.string() })),
+    genres: z.array(z.string()),
+    artistGenres: z.array(z.string()).openapi({
+      description: "Genres de l’artiste, pas nécessairement ceux du morceau.",
+    }),
+    searchText: z.string(),
+  })
+  .openapi("MusicMetadata");
+
+export const videoBody = z
+  .object({
+    id: videoId,
+    title: z.string().nullable(),
+    channel: z.string().nullable(),
+    durationSeconds: z.number().int().nullable(),
+    description: z.string(),
+    tags: z.array(z.string()),
+    thumbnailUrl: z.string(),
+    url: z.string(),
+    publishedAt: z.string().nullable(),
+    channelAvatarUrl: z.string().nullable().optional(),
+    musicMetadata: z.union([musicMetadataBody, z.null()]).optional(),
+  })
+  .openapi("Video");
+
+/** The compact track shape shared by the DJ and Discover. */
+export const trackBody = z
+  .object({
+    id: videoId,
+    title: z.string(),
+    channel: z.string().nullable().optional(),
+    durationSeconds: z.number().int().nullable().optional(),
+    url: z.string().optional(),
+    thumbnailUrl: z.string().optional(),
+    musicMetadata: z.union([musicMetadataBody, z.null()]).optional(),
+  })
+  .openapi("DjTrack");

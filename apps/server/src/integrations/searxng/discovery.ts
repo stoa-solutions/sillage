@@ -1,9 +1,8 @@
 import { z } from "zod";
-import type { YouTube } from "./integrations/youtube/index.ts";
+import type { YouTube } from "../youtube/index.ts";
 
-export { SearxngError } from "./searxng-errors.ts";
-import { SearxngError } from "./searxng-errors.ts";
-import { boundedJson } from "./searxng-client.ts";
+import { SearxngError } from "./errors.ts";
+import { boundedJson } from "./client.ts";
 
 const responseSchema = z.object({
   results: z.array(z.object({ url: z.string() })).max(200),

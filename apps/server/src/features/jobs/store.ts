@@ -129,11 +129,15 @@ export async function extendLease(orm: Executor, job: ClaimedJob) {
     );
 }
 
-/** True while this job still holds its lease: a replaced worker must not write its result. */
+/**
+ * True while this job still holds its lease: a replaced worker must not write its result.
+ * `lock` keeps the job row locked until the caller's transaction ends, so the lease cannot be
+ * taken over between this check and the writes; `unexpired` also refuses an expired lease.
+ */
 export async function holdsLease(
   orm: Executor,
   job: ClaimedJob,
-  { lock = false } = {},
+  { lock = false, unexpired = false } = {},
 ) {
   const query = orm
     .select({ id: jobs.id })
@@ -143,7 +147,7 @@ export async function holdsLease(
         eq(jobs.id, job.id),
         eq(jobs.leaseId, job.leaseId),
         eq(jobs.status, "running"),
-        lock ? undefined : gt(jobs.leaseUntil, sql`now()`),
+        unexpired ? gt(jobs.leaseUntil, sql`now()`) : undefined,
       ),
     );
   const rows = lock ? await query.for("update") : await query;

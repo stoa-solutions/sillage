@@ -1,9 +1,9 @@
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { InformationSource } from "../../information.ts";
+import type { InformationSource } from "../../integrations/searxng/index.ts";
 import {
   searchFailureSummary,
   type SearchFailure,
-} from "../../search-feedback.ts";
+} from "../discovery/index.ts";
 import type { Composition } from "./composition.ts";
 import { DjUnavailable } from "./errors.ts";
 import { readToolEvidence } from "./evidence.ts";

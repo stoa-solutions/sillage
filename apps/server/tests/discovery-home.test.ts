@@ -1,6 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { discoveryHome, discoverySeeds } from "../src/discovery-home.ts";
-import type { Database } from "../src/db/index.ts";
+import { discoveryHome, discoverySeeds } from "../src/features/discovery/index.ts";
 import { required } from "./support/required.ts";
 const played = {
   video_id: "played00001",
@@ -33,7 +32,7 @@ it("uses recent positive history and ignores skips", () => {
   ]);
 });
 it("queries only this account, excludes heard titles and owned tracks and labels its recommendation", async () => {
-  const query = vi.fn().mockResolvedValue({ rows: history });
+  const loadHistory = vi.fn().mockResolvedValue(history);
   const search = vi.fn().mockResolvedValue({
     results: [
       { video: video("played00001", "Known Song"), inLibrary: false },
@@ -46,19 +45,19 @@ it("queries only this account, excludes heard titles and owned tracks and labels
     ],
   });
   const result = await discoveryHome(
-    { query } as unknown as Database,
+    loadHistory,
     "alice",
     { search },
   );
-  expect(required(query.mock.calls[0])[1]).toEqual(["alice"]);
+  expect(loadHistory).toHaveBeenCalledWith("alice");
   expect(search).toHaveBeenCalledWith("alice", "Artist official music");
   expect(result.suggestions.map((r) => r.video.id)).toEqual(["newtrack001"]);
   expect(required(result.suggestions[0]).reason).toContain("Artist");
 });
 it("does not invent personal recommendations for an empty account, and does not cache deleted history", async () => {
-  const query = vi.fn().mockResolvedValue({ rows: [] });
+  const loadHistory = vi.fn().mockResolvedValue([]);
   const search = vi.fn();
-  const result = await discoveryHome({ query } as unknown as Database, "bob", {
+  const result = await discoveryHome(loadHistory, "bob", {
     search,
   });
   expect(result.suggestions).toEqual([]);
@@ -66,9 +65,8 @@ it("does not invent personal recommendations for an empty account, and does not 
   expect(result.emptyReason).toContain("Écoute quelques morceaux");
 });
 it("keeps available suggestions when another seed fails", async () => {
-  const query = vi.fn().mockResolvedValue({
-    rows: [...history, { ...history[0], channel: "Second" }],
-  });
+  const loadHistory = vi.fn().mockResolvedValue([...history, { ...history[0], channel: "Second" }],
+  );
   const search = vi
     .fn()
     .mockResolvedValueOnce({
@@ -76,7 +74,7 @@ it("keeps available suggestions when another seed fails", async () => {
     })
     .mockRejectedValueOnce(new Error("provider failure"));
   const result = await discoveryHome(
-    { query } as unknown as Database,
+    loadHistory,
     "alice",
     { search },
   );
@@ -85,9 +83,7 @@ it("keeps available suggestions when another seed fails", async () => {
 });
 
 it("distinguishes an artist credit from a homonymous song title", async () => {
-  const query = vi
-    .fn()
-    .mockResolvedValue({ rows: [{ ...history[0], channel: "The Alchemist" }] });
+  const loadHistory = vi.fn().mockResolvedValue([{ ...history[0], channel: "The Alchemist" }]);
   const search = vi.fn().mockResolvedValue({
     results: [
       {
@@ -113,7 +109,7 @@ it("distinguishes an artist credit from a homonymous song title", async () => {
     ],
   });
   const result = await discoveryHome(
-    { query } as unknown as Database,
+    loadHistory,
     "alice",
     { search },
   );

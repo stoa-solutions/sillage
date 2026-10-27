@@ -276,3 +276,18 @@ it("preserves journal diagnostics through the local proxy without forwarding pri
   expect(response.headers.has("set-cookie")).toBe(false);
   expect(response.headers.has("authorization")).toBe(false);
 });
+
+it("answers malformed or untyped JSON bodies as invalid input, not as a server error", async () => {
+  for (const init of [
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{oops",
+    },
+    { method: "POST", body: JSON.stringify({ code: "x", verifier: "y" }) },
+  ]) {
+    const response = await server.request("/auth/exchange", init);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Données invalides." });
+  }
+});

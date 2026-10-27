@@ -5,7 +5,7 @@ import {
   sourceIdentity,
   unsupported,
   type Recording,
-} from "../src/musicbrainz/matching.ts";
+} from "../src/features/enrichment/index.ts";
 import { required } from "./support/required.ts";
 const track = {
   title: "Incapable (feat. HEDGES)",

@@ -1,4 +1,4 @@
-import type { InformationSource } from "../../information.ts";
+import type { InformationSource } from "../../integrations/searxng/index.ts";
 import type { ComposedSelection } from "./composition.ts";
 import type { Selection } from "./contracts.ts";
 import type { DiscoveryEvidence } from "./evidence.ts";

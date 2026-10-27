@@ -1,4 +1,4 @@
-import { SearxngError } from "./searxng-errors.ts";
+import { SearxngError } from "./errors.ts";
 
 export async function boundedJson(response: Response): Promise<unknown> {
   const reader = response.body?.getReader();

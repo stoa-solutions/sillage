@@ -12,3 +12,4 @@ export {
   videoFromRecord,
   videoFromRow,
 } from "./store.ts";
+export { musicMetadataBody, trackBody, videoBody } from "./contracts.ts";

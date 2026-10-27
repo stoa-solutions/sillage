@@ -10,7 +10,7 @@ import { YouTube } from "./integrations/youtube/index.ts";
 import {
   enrichMusic,
   scheduleMusicEnrichment,
-} from "./musicbrainz/enrichment.ts";
+} from "./features/enrichment/index.ts";
 
 // The worker process: each feature registers the job kinds it owns.
 const key = process.env["YOUTUBE_API_KEY"] ?? "";

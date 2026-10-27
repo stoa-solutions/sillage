@@ -1,5 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
-import { transaction, type Database } from "../db/index.ts";
+import { and, eq, gt, sql } from "drizzle-orm";
+import { musicbrainzCache, type Database } from "../../db/index.ts";
 
 /** Shared response cache and rate gate: all workers together stay below one request/second. */
 export class MusicBrainzClient {
@@ -10,13 +11,19 @@ export class MusicBrainzClient {
   async get<T>(path: string, params: Record<string, string> = {}): Promise<T> {
     const url = new URL(`https://musicbrainz.org/ws/2/${path}`);
     url.search = new URLSearchParams({ ...params, fmt: "json" }).toString();
-    return transaction(this.db, async (client) => {
-      await client.query("SELECT pg_advisory_xact_lock(740073)");
-      const cached = await client.query(
-        "SELECT response FROM musicbrainz_cache WHERE url=$1 AND fetched_at>now()-interval '30 days'",
-        [url.href],
-      );
-      if (cached.rows.length) return cached.rows[0].response as T;
+    return this.db.orm.transaction(async (tx) => {
+      // One request at a time across every worker: the lock is held until the cache write.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(740073)`);
+      const [cached] = await tx
+        .select({ response: musicbrainzCache.response })
+        .from(musicbrainzCache)
+        .where(
+          and(
+            eq(musicbrainzCache.url, url.href),
+            gt(musicbrainzCache.fetchedAt, sql`now() - interval '30 days'`),
+          ),
+        );
+      if (cached) return cached.response as T;
       let response: Response;
       try {
         response = await this.fetcher(url, {
@@ -36,10 +43,13 @@ export class MusicBrainzClient {
           `MusicBrainz indisponible (HTTP ${response.status}). Réessai différé.`,
         );
       const data = (await response.json()) as T;
-      await client.query(
-        "INSERT INTO musicbrainz_cache(url,response) VALUES($1,$2) ON CONFLICT(url) DO UPDATE SET response=excluded.response,fetched_at=now()",
-        [url.href, JSON.stringify(data)],
-      );
+      await tx
+        .insert(musicbrainzCache)
+        .values({ url: url.href, response: data })
+        .onConflictDoUpdate({
+          target: musicbrainzCache.url,
+          set: { response: data, fetchedAt: sql`now()` },
+        });
       return data;
     });
   }

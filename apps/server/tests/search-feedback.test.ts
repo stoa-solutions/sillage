@@ -2,9 +2,9 @@ import { expect, it, vi } from "vitest";
 import {
   searchFailureMessage,
   searchFailureSummary,
-} from "../src/search-feedback.ts";
-import { Discovery, discoveryRoutes } from "../src/discovery.ts";
-import { SearxngError } from "../src/searxng.ts";
+} from "../src/features/discovery/index.ts";
+import { Discovery, discoveryRoutes } from "../src/features/discovery/index.ts";
+import { SearxngError } from "../src/integrations/searxng/index.ts";
 import { YouTubeError, youtubeError } from "../src/integrations/youtube/index.ts";
 import { readToolEvidence } from "../src/features/dj/evidence.ts";
 import { noSelectionReply } from "../src/features/dj/reply.ts";

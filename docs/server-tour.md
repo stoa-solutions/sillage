@@ -88,6 +88,17 @@ La file vit dans PostgreSQL (table `jobs`). Elle ne connaît aucune tâche en pa
 
 Les clients de services externes, sans règle métier. `youtube/` compte chaque appel dans `quota_usage` et s’arrête avant le quota journalier de Google.
 
+### `src/features/history/`, `lyrics/`, `enrichment/`, `discovery/`
+
+- `history` : enregistre les écoutes par lots ; l’identifiant d’événement fourni par le Mac rend un renvoi sans effet (`ON CONFLICT DO NOTHING`). Pagination par curseur `(playedAt, id)`.
+- `lyrics` : `lyrics.ts` décide (cache encore frais ? sinon LRCLIB, et en cas d’échec on garde l’ancien résultat) ; `matching.ts` choisit l’enregistrement LRCLIB sans réseau ; `store.ts` lit et écrit. Seules les vidéos de la bibliothèque du compte ont des paroles.
+- `enrichment` : l’enrichissement MusicBrainz, par lots bornés et seulement pour les comptes inscrits (`MUSICBRAINZ_ACCOUNT_IDS`). Le résultat n’est publié que si la tâche tient toujours son bail et que la vidéo n’a pas changé entre-temps.
+- `discovery` : recherche YouTube (ou SearXNG), « Mes découvertes » et l’accueil Découvrir. `home.ts` reçoit une fonction qui charge l’historique, ce qui le rend testable sans base.
+
+### `src/integrations/`
+
+`youtube/`, `lrclib/`, `musicbrainz/` (cache partagé et une requête par seconde pour tous les workers, sous verrou PostgreSQL), `searxng/` (recherche privée et sources d’information du DJ).
+
 ## 5. Les règles qui tiennent l’ensemble
 
 - `npm run check:architecture` (`scripts/check-architecture.mjs`) : une feature n’importe une autre feature que par son `index.ts` ; le cœur partagé n’importe rien du serveur ; les règles pures du DJ n’ont pas d’effet.
@@ -96,4 +107,4 @@ Les clients de services externes, sans règle métier. `youtube/` compte chaque 
 
 ## 6. À venir
 
-Historique et paroles, MusicBrainz, découverte, recherche et indexation, MCP, DJ : encore dans `src/*.ts` et `src/features/dj/`, en SQL via `db.query`. Chaque lot les déplace dans ce modèle et complète cette page.
+Recherche et indexation, outils MCP, DJ : encore dans `src/*.ts` et `src/features/dj/`, en SQL via `db.query`. Chaque lot les déplace dans ce modèle et complète cette page.

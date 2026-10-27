@@ -1,11 +1,10 @@
-import { sql } from "drizzle-orm";
 import {
   bigint,
-  check,
   foreignKey,
   index,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -15,6 +14,20 @@ import { timestamptz } from "./columns.ts";
 import { users } from "./accounts.ts";
 import { videos } from "./library.ts";
 
+export const listeningOutcome = pgEnum("listening_outcome", [
+  "finished",
+  "skipped",
+  "unavailable",
+  "replaced",
+]);
+/** "unavailable" is an answer of the API, never stored. */
+export const lyricsStatus = pgEnum("lyrics_status", [
+  "synced",
+  "plain",
+  "instrumental",
+  "missing",
+]);
+
 export const listeningHistory = pgTable(
   "listening_history",
   {
@@ -23,7 +36,7 @@ export const listeningHistory = pgTable(
     videoId: text("video_id").notNull(),
     title: text("title").notNull(),
     channel: text("channel"),
-    outcome: text("outcome").notNull(),
+    outcome: listeningOutcome("outcome").notNull(),
     playedAt: timestamptz("played_at").notNull(),
     receivedAt: timestamptz("received_at").notNull().defaultNow(),
   },
@@ -37,10 +50,6 @@ export const listeningHistory = pgTable(
       columns: [t.userId],
       foreignColumns: [users.id],
     }).onDelete("cascade"),
-    check(
-      "listening_history_outcome_check",
-      sql`${t.outcome} = ANY (ARRAY['finished'::text, 'skipped'::text, 'unavailable'::text, 'replaced'::text])`,
-    ),
     index("listening_history_recent").on(t.userId, t.playedAt.desc().nullsFirst()),
   ],
 );
@@ -49,7 +58,7 @@ export const lyrics = pgTable(
   "lyrics",
   {
     videoId: text("video_id").primaryKey(),
-    status: text("status").notNull(),
+    status: lyricsStatus("status").notNull(),
     sourceId: bigint("source_id", { mode: "number" }),
     lines: jsonb("lines").notNull().default([]),
     plainText: text("plain_text"),

@@ -6,11 +6,13 @@ import type { Env } from "hono";
  * response schemas, Hono validates the request, and the OpenAPI document is generated from the
  * same declarations (see api-docs/openapi.ts).
  */
-export function featureRouter<E extends Env = Env>() {
+export function featureRouter<E extends Env = Env>(
+  invalid = "Données invalides.",
+) {
   return new OpenAPIHono<E>({
-    // Same answer as any other invalid input of the API, whatever the validator.
+    // Same answer as any other invalid input of the feature, whatever the validator.
     defaultHook: (result, c) => {
-      if (!result.success) return c.json({ error: "Données invalides." }, 400);
+      if (!result.success) return c.json({ error: invalid }, 400);
       return undefined;
     },
   });

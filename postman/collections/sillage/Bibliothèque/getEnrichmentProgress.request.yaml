@@ -15,4 +15,4 @@ scripts:
   - type: afterResponse
     code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
     language: text/javascript
-order: 7000
+order: 1000

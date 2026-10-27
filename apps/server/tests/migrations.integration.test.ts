@@ -61,6 +61,11 @@ it("adopts a pre-Drizzle database with its data, even with concurrent migrators"
     INSERT INTO jobs(id,kind,dedupe_key,payload,status) VALUES
       (gen_random_uuid(),'sync','sync:PL1','{"playlistId":"PL1"}','pending'),
       (gen_random_uuid(),'musicbrainz','musicbrainz:v','{"videoId":"abcdefghijk"}','failed');
+    INSERT INTO users(id) VALUES('11111111-1111-4111-8111-111111111111');
+    INSERT INTO listening_history(user_id,event_id,video_id,title,outcome,played_at) VALUES
+      ('11111111-1111-4111-8111-111111111111',gen_random_uuid(),'abcdefghijk','A','skipped',now());
+    INSERT INTO videos(id,thumbnail_url,content_hash) VALUES('abcdefghijk','x','h');
+    INSERT INTO lyrics(video_id,status) VALUES('abcdefghijk','missing');
   `);
   await Promise.all([migrate(first), migrate(second)]);
   expect(await applied(first)).toBe(journal.entries.length);
@@ -78,6 +83,10 @@ it("adopts a pre-Drizzle database with its data, even with concurrent migrators"
     { id: "PL1", status: "ready" },
     { id: "PL2", status: "error" },
   ]);
+  const converted = await first.query(
+    "SELECT (SELECT pg_typeof(outcome)::text FROM listening_history) AS outcome, (SELECT status::text FROM lyrics) AS lyrics",
+  );
+  expect(converted.rows[0]).toEqual({ outcome: "listening_outcome", lyrics: "missing" });
   // The rebuilt partial index still deduplicates active jobs.
   const again = await enqueue(first.orm, "sync", "PL1", { playlistId: "PL1" });
   expect(

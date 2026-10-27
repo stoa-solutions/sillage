@@ -3,7 +3,7 @@ import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
 import { upsertVideo, videoFromRow } from "../src/features/library/index.ts";
-import { enrichmentProgress } from "../src/musicbrainz/rollout.ts";
+import { enrichmentProgress } from "../src/features/enrichment/index.ts";
 import { createApp } from "../src/app.ts";
 import { hash } from "../src/content.ts";
 import { documentText } from "../src/content.ts";
@@ -11,8 +11,8 @@ import {
   scheduleMusicEnrichment,
   enrichMusic,
   pilotIds,
-} from "../src/musicbrainz/enrichment.ts";
-import { MusicBrainzClient } from "../src/musicbrainz/client.ts";
+} from "../src/features/enrichment/index.ts";
+import { MusicBrainzClient } from "../src/integrations/musicbrainz/index.ts";
 import { claim, finish } from "../src/features/jobs/index.ts";
 import { musicTracks } from "../src/music-mcp.ts";
 import { search } from "../src/search.ts";
@@ -337,7 +337,7 @@ it("does not enrich a video removed from an opted-in account while queued", asyn
 it("reports truthful account-scoped progress, including retries and unavailable videos", async () => {
   vi.stubEnv("MUSICBRAINZ_ACCOUNT_IDS", alice);
   await run();
-  let progress = await enrichmentProgress(db, alice);
+  let progress = await enrichmentProgress(db.orm, alice);
   expect(progress).toMatchObject({
     total: 1,
     processed: 1,
@@ -346,7 +346,7 @@ it("reports truthful account-scoped progress, including retries and unavailable 
     not_found: 0,
     enabled: true,
   });
-  expect(await enrichmentProgress(db, bob)).toMatchObject({
+  expect(await enrichmentProgress(db.orm, bob)).toMatchObject({
     total: 0,
     processed: 0,
     enabled: false,
@@ -360,7 +360,7 @@ it("reports truthful account-scoped progress, including retries and unavailable 
   if (job.kind !== "musicbrainz") await finish(db.orm, job);
   const retry = job.kind === "musicbrainz" ? job : (await claim(db.orm))!;
   await finish(db.orm, retry, new Error("temporary"));
-  progress = await enrichmentProgress(db, alice);
+  progress = await enrichmentProgress(db.orm, alice);
   expect(progress).toMatchObject({
     processed: 0,
     matched: 0,
@@ -369,7 +369,7 @@ it("reports truthful account-scoped progress, including retries and unavailable 
     failed: 0,
   });
   await db.query("UPDATE videos SET available=false WHERE id=$1", [video.id]);
-  expect(await enrichmentProgress(db, alice)).toMatchObject({
+  expect(await enrichmentProgress(db.orm, alice)).toMatchObject({
     total: 1,
     processed: 0,
     unavailable: 1,
@@ -406,7 +406,7 @@ it("keeps exhausted failures on a daily cooldown rather than filling the queue a
   expect(
     (await db.query("SELECT * FROM jobs WHERE status='pending'")).rowCount,
   ).toBe(0);
-  expect(await enrichmentProgress(db, alice)).toMatchObject({
+  expect(await enrichmentProgress(db.orm, alice)).toMatchObject({
     processed: 0,
     failed: 1,
   });

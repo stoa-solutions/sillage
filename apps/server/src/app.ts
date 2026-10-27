@@ -1,6 +1,6 @@
-import { enrichmentProgress } from "./musicbrainz/rollout.ts";
-import { discoveryRoutes } from "./discovery.ts";
-import { historyRoutes } from "./history.ts";
+import { enrichmentRoutes } from "./features/enrichment/index.ts";
+import { discoveryRoutes } from "./features/discovery/index.ts";
+import { historyRoutes } from "./features/history/index.ts";
 import {
   authRoutes,
   sessionGuard,
@@ -17,6 +17,7 @@ import type { ApiEnvironment } from "./shared/api-environment.ts";
 import { createDjRoutes } from "./features/dj/routes.ts";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
+import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { parsePlaylistId } from "./content.ts";
 import { transaction, type Database } from "./db/index.ts";
@@ -24,12 +25,8 @@ import { jobRoutes } from "./features/jobs/index.ts";
 import { libraryRoutes } from "./features/library/index.ts";
 import { search } from "./search.ts";
 import { librarySearchInput } from "./library-contracts.ts";
-import {
-  Lrclib,
-  lyricsFor,
-  setLyricsOffset,
-  type LyricsSource,
-} from "./lyrics.ts";
+import { lyricsRoutes } from "./features/lyrics/index.ts";
+import { Lrclib, type LyricsSource } from "./integrations/lrclib/index.ts";
 import { handleMusicMcp } from "./music-mcp.ts";
 import { djPlayerHtml, djPlayerCss, djPlayerJs } from "./dj-player.ts";
 export function createApp(
@@ -97,43 +94,20 @@ export function createApp(
   app.route("/v1/dj", createDjRoutes(db));
   app.route("/v1/history", historyRoutes(db));
   app.all("/v1/mcp", (c) => handleMusicMcp(db, c.req.raw, c.get("userId")));
-  app.get("/v1/library/enrichment", async (c) =>
-    c.json(await enrichmentProgress(db, c.get("userId"))),
-  );
+  app.route("/v1", enrichmentRoutes(db));
   app.route("/v1", libraryRoutes(db));
   app.route("/v1", jobRoutes(db));
   app.post("/v1/search", async (c) => {
     const input = librarySearchInput.parse(await c.req.json());
     return c.json(await search(db, input, c.get("userId")));
   });
-  const videoId = z.string().regex(/^[A-Za-z0-9_-]{11}$/);
-  app.get("/v1/lyrics/:videoId", async (c) => {
-    const lyrics = await lyricsFor(
-      db,
-      lyricsSource,
-      c.get("userId"),
-      videoId.parse(c.req.param("videoId")),
-    );
-    return lyrics
-      ? c.json(lyrics)
-      : c.json({ error: "Vidéo absente de ta bibliothèque." }, 404);
-  });
-  app.post("/v1/lyrics/:videoId/offset", async (c) => {
-    const { offsetMs } = z
-      .object({ offsetMs: z.number().int().min(-30000).max(30000) })
-      .parse(await c.req.json());
-    const saved = await setLyricsOffset(
-      db,
-      c.get("userId"),
-      videoId.parse(c.req.param("videoId")),
-      offsetMs,
-    );
-    return saved
-      ? c.json({ offsetMs })
-      : c.json({ error: "Vidéo absente de ta bibliothèque." }, 404);
-  });
+  app.route("/v1/lyrics", lyricsRoutes(db, lyricsSource));
   app.onError((error, c) => {
-    if (error instanceof z.ZodError)
+    // Malformed JSON or a body without its JSON content type, rejected by the route validator.
+    if (
+      error instanceof z.ZodError ||
+      (error instanceof HTTPException && [400, 415].includes(error.status))
+    )
       return c.json({ error: "Données invalides." }, 400);
     if (
       /Identifiant|Utilisez un lien|fichier|playlist JSON|entrée|durée|Durée|Position|sauvegarde|import/i.test(

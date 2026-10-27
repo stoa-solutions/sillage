@@ -11,7 +11,7 @@ import {
   type LyricsQuery,
   type LyricsRecord,
   type LyricsSource,
-} from "../src/lyrics.ts";
+} from "../src/integrations/lrclib/index.ts";
 vi.mock("../src/inference-client.ts", () => ({ infer: vi.fn() }));
 const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))

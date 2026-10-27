@@ -1,4 +1,4 @@
-import { DiscoveryError } from "../src/discovery.ts";
+import { DiscoveryError } from "../src/features/discovery/index.ts";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   current,
@@ -10,10 +10,10 @@ import {
 // The agent loop, MCP SDK, tool schemas and evidence validation are real.
 // Only search backends, SQL and the provider's HTTP responses are controlled.
 const boundaries = vi.hoisted(() => ({ search: vi.fn(), youtube: vi.fn(), information: vi.fn() }));
-vi.mock("../src/information.ts", () => ({ informationSearch: () => ({ search: boundaries.information }) }));
+vi.mock("../src/integrations/searxng/information.ts", () => ({ informationSearch: () => ({ search: boundaries.information }) }));
 vi.mock("../src/search.ts", () => ({ search: boundaries.search }));
-vi.mock("../src/discovery.ts", async (importOriginal) => ({
-  ...await importOriginal<typeof import("../src/discovery.ts")>(),
+vi.mock("../src/features/discovery/index.ts", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../src/features/discovery/index.ts")>(),
   discoveryFor: () => ({ search: boundaries.youtube }),
 }));
 import { djInput, djTurn } from "../src/dj.ts";

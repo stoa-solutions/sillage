@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { boundedJson } from "./searxng-client.ts";
+import { boundedJson } from "./client.ts";
 
 export interface InformationSource {
   id: number;

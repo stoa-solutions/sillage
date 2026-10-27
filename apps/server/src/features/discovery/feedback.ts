@@ -1,4 +1,4 @@
-import { nextYouTubeQuotaReset } from "./integrations/youtube/index.ts";
+import { nextYouTubeQuotaReset } from "../../integrations/youtube/index.ts";
 
 export type SearchFailureReason =
   | "daily_quota"

@@ -1,9 +1,9 @@
-import { DiscoveryError } from "../src/discovery.ts";
+import { DiscoveryError } from "../src/features/discovery/index.ts";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ search: vi.fn(), youtube: vi.fn() }));
 vi.mock("../src/search.ts", () => ({ search: mocks.search }));
-vi.mock("../src/discovery.ts", async (importOriginal) => ({
-  ...await importOriginal<typeof import("../src/discovery.ts")>(),
+vi.mock("../src/features/discovery/index.ts", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../src/features/discovery/index.ts")>(),
   discoveryFor: () => ({ search: mocks.youtube }),
 }));
 import { connectMusicMcp } from "../src/music-mcp.ts";

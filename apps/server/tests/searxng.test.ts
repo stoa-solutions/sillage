@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { SearxngDiscovery, youtubeResultId } from "../src/searxng.ts";
+import { SearxngDiscovery, youtubeResultId } from "../src/integrations/searxng/index.ts";
 import { YouTube } from "../src/integrations/youtube/index.ts";
 import { YouTubeError } from "../src/integrations/youtube/index.ts";
 import { required } from "./support/required.ts";
