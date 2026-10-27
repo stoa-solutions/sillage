@@ -2,6 +2,8 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate } from "../src/migrate.ts";
+import { openDatabase } from "../src/db.ts";
+import { replayBaseline } from "./support/database.ts";
 import { createApp } from "../src/app.ts";
 import { hash } from "../src/content.ts";
 
@@ -11,10 +13,7 @@ if (!url || !new URL(url).pathname.endsWith("_test")) {
 }
 const schema = "ai_settings_test";
 const admin = new pg.Pool({ connectionString: url });
-const db = new pg.Pool({
-  connectionString: url,
-  options: `-c search_path=${schema},public`,
-});
+const db = openDatabase({ url, schema });
 const alice = randomUUID();
 const bob = randomUUID();
 const tokenA = "alice-ai-settings-test-token";
@@ -32,7 +31,7 @@ const request = (path: string, body?: unknown, token = tokenA) =>
 
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
-  await migrate(db);
+  await migrate({ url, schema });
 });
 beforeEach(async () => {
   vi.stubEnv("DJ_SETTINGS_ENCRYPTION_KEY", "42".repeat(32));
@@ -192,8 +191,8 @@ it.runIf(Boolean(process.env.AI_SIMULATION_URL))(
     // Recreate the pre-upgrade storage state using the legacy client's saved credential.
     await db.query("DELETE FROM account_ai_credentials");
     await db.query("DELETE FROM schema_migrations WHERE version=3");
-    await migrate(db);
-    await migrate(db);
+    await replayBaseline(db);
+    await replayBaseline(db);
     expect(await (await request("status")).json()).toMatchObject({
       provider: "google",
       model: "gemini-3.8-flash",
@@ -248,7 +247,7 @@ it.runIf(Boolean(process.env.AI_SIMULATION_URL)).each(["google", "compatible"])(
       [randomUUID(), hash("legacy-ai-settings-token"), legacy],
     );
     await db.query("DELETE FROM schema_migrations WHERE version=3");
-    await migrate(db);
+    await replayBaseline(db);
     const send = (path: string, body?: unknown) =>
       request(path, body, "legacy-ai-settings-token");
     expect(await (await send("status")).json()).toMatchObject({
@@ -268,7 +267,7 @@ it.runIf(Boolean(process.env.AI_SIMULATION_URL)).each(["google", "compatible"])(
       configured: false,
       provider: "anthropic",
     });
-    await migrate(db);
+    await replayBaseline(db);
     expect(await (await send("status")).json()).toMatchObject({
       configured: false,
       provider: "anthropic",

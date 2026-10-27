@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate } from "../src/migrate.ts";
+import { openDatabase } from "../src/db.ts";
 import { upsertVideo, videoFromRow } from "../src/library.ts";
 import { enrichmentProgress } from "../src/musicbrainz/rollout.ts";
 import { createApp } from "../src/app.ts";
@@ -29,10 +30,7 @@ const url = process.env.TEST_DATABASE_URL;
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 const admin = new pg.Pool({ connectionString: url });
-const db = new pg.Pool({
-  connectionString: url,
-  options: "-c search_path=musicbrainz_test,public",
-});
+const db = openDatabase({ url, schema: "musicbrainz_test" });
 const alice = randomUUID(),
   bob = randomUUID();
 const video = {
@@ -74,7 +72,7 @@ const get = vi.fn(async (path: string) =>
 const provider = { get } as unknown as MusicBrainzClient;
 beforeAll(async () => {
   await admin.query("CREATE SCHEMA musicbrainz_test");
-  await migrate(db);
+  await migrate({ url, schema: "musicbrainz_test" });
 });
 beforeEach(async () => {
   vi.clearAllMocks();

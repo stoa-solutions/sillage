@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate } from "../src/migrate.ts";
+import { openDatabase } from "../src/db.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import type { IdentityProvider } from "../src/auth.ts";
@@ -15,10 +16,7 @@ if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 const schema = "history_test";
 const admin = new pg.Pool({ connectionString: url });
-const db = new pg.Pool({
-  connectionString: url,
-  options: `-c search_path=${schema},public`,
-});
+const db = openDatabase({ url, schema });
 const alice = randomUUID(),
   bob = randomUUID();
 const tokenA = "alice-history-session-token-1234",
@@ -50,7 +48,7 @@ const event = (overrides: Record<string, unknown> = {}) => ({
 });
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
-  await migrate(db);
+  await migrate({ url, schema });
 });
 beforeEach(async () => {
   await db.query("TRUNCATE users,tokens,playlists,videos,jobs CASCADE");

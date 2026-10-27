@@ -3,6 +3,7 @@ import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { migrate } from "../src/migrate.ts";
+import { openDatabase } from "../src/db.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import {
@@ -18,10 +19,7 @@ if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 const schema = "lyrics_test";
 const admin = new pg.Pool({ connectionString: url });
-const db = new pg.Pool({
-  connectionString: url,
-  options: `-c search_path=${schema},public`,
-});
+const db = openDatabase({ url, schema });
 // Real LRCLIB answers, trimmed to their first lines.
 const fixture = (name: string): LyricsRecord[] =>
   JSON.parse(
@@ -67,7 +65,7 @@ const lyrics = async (id: string, token = tokenA) => {
 };
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
-  await migrate(db);
+  await migrate({ url, schema });
 });
 beforeEach(async () => {
   queries.length = 0;

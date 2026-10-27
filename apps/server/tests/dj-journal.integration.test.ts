@@ -2,6 +2,8 @@ import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate } from "../src/migrate.ts";
+import { openDatabase } from "../src/db.ts";
+import { replayBaseline } from "./support/database.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import {
@@ -15,10 +17,7 @@ if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 const schema = "dj_journal_test",
   admin = new pg.Pool({ connectionString: url }),
-  db = new pg.Pool({
-    connectionString: url,
-    options: `-c search_path=${schema},public`,
-  });
+  db = openDatabase({ url, schema });
 const alice = randomUUID(),
   bob = randomUUID(),
   installation = randomUUID();
@@ -48,8 +47,8 @@ const event = (overrides: Record<string, unknown> = {}) => ({
 });
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
-  await migrate(db);
-  await migrate(db);
+  await migrate({ url, schema });
+  await replayBaseline(db);
 });
 beforeEach(async () => {
   await db.query("TRUNCATE users CASCADE");

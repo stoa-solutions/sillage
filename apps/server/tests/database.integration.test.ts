@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate } from "../src/migrate.ts";
+import { openDatabase } from "../src/db.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import { enqueue, claim, finish, schedule } from "../src/queue.ts";
@@ -20,7 +21,7 @@ vi.mock("../src/inference-client.ts", () => ({ infer: vi.fn() }));
 const url = process.env.TEST_DATABASE_URL;
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("TEST_DATABASE_URL must name a disposable _test database.");
-const db = new pg.Pool({ connectionString: url });
+const db = openDatabase({ url });
 const app = createApp(db);
 const token = "integration-test-token";
 const fixture: LibraryImport = {
@@ -54,7 +55,7 @@ const fixture: LibraryImport = {
     },
   ],
 };
-beforeAll(() => migrate(db));
+beforeAll(() => migrate({ url }));
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();

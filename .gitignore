@@ -33,3 +33,6 @@ apps/macos/.build/
 apps/macos/.swiftpm/
 
 __pycache__/
+
+# Prisma Client, generated from apps/server/prisma/schema by `prisma generate`.
+apps/server/src/generated/

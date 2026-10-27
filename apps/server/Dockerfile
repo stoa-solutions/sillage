@@ -6,7 +6,10 @@ COPY apps/extension/package.json apps/extension/package.json
 COPY packages/core/package.json packages/core/package.json
 RUN npm ci --omit=dev --workspace=@playlist-recall/server --workspace=@playlist-recall/core --include-workspace-root=false --legacy-peer-deps && npm cache clean --force
 COPY packages/core packages/core
+COPY apps/server/prisma apps/server/prisma
+COPY apps/server/prisma.config.ts apps/server/prisma.config.ts
 COPY apps/server/src apps/server/src
+RUN cd apps/server && npx prisma generate
 USER node
 ENV NODE_ENV=production MODEL_PATH=/models/ MODEL_THREADS=2
 WORKDIR /app/apps/server

@@ -1,0 +1,20 @@
+// Prisma reads every file in this folder as one schema: one file per domain.
+// Database names stay snake_case (@map); the generated client is camelCase.
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Versions applied by the pre-Prisma migration script; kept so the baseline stays idempotent.
+model LegacySchemaMigration {
+  version   Int      @id
+  appliedAt DateTime @default(now()) @map("applied_at") @db.Timestamptz(6)
+
+  @@map("schema_migrations")
+}

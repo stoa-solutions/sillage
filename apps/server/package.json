@@ -4,15 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "prisma generate && tsx watch src/main.ts",
     "start": "tsx src/main.ts",
     "worker": "tsx src/worker.ts",
     "inference": "tsx src/inference.ts",
     "migrate": "tsx src/migrate.ts",
-    "check": "tsc --noEmit",
-    "test": "vitest run --exclude '**/*.integration.test.ts'",
-    "test:integration": "vitest run tests/*.integration.test.ts",
-    "test:dj": "vitest run tests/dj-*.test.ts tests/music-search.test.ts tests/music-matching.test.ts"
+    "check": "prisma generate && tsc --noEmit",
+    "test": "prisma generate && vitest run --exclude '**/*.integration.test.ts'",
+    "test:integration": "prisma generate && vitest run tests/*.integration.test.ts",
+    "test:dj": "prisma generate && vitest run tests/dj-*.test.ts tests/music-search.test.ts tests/music-matching.test.ts",
+    "generate": "prisma generate"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.88",
@@ -22,16 +23,19 @@
     "@huggingface/transformers": "4.3.1",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@playlist-recall/core": "*",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
     "ai": "7.0.153",
     "google-auth-library": "11.3.1",
     "hono": "4.13.13",
     "pg": "8.23.1",
+    "prisma": "7.10.1",
     "tsx": "4.23.15",
     "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/node": "24.0.0",
-    "@types/pg": "8.15.6",
+    "@types/pg": "8.23.1",
     "swagger-ui-dist": "5.34.0",
     "typescript": "5.9.3",
     "vitest": "4.1.11",

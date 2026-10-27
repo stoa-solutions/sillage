@@ -10,6 +10,7 @@ import {
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate } from "../src/migrate.ts";
+import { openDatabase } from "../src/db.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import { connectMusicMcp } from "../src/music-mcp.ts";
@@ -22,10 +23,7 @@ if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 const schema = "discovery_test";
 const admin = new pg.Pool({ connectionString: url });
-const createPool = () => new pg.Pool({
-  connectionString: url,
-  options: `-c search_path=${schema},public`,
-});
+const createPool = () => openDatabase({ url, schema });
 let db = createPool();
 const alice = randomUUID(),
   bob = randomUUID();
@@ -58,7 +56,7 @@ const req = (path: string, token = tokenA, body?: unknown) =>
   });
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
-  await migrate(db);
+  await migrate({ url, schema });
   await db.end();
 });
 // Each case models a fresh service instance: public cache and quota cooldown

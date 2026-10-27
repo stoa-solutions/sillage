@@ -2,6 +2,8 @@ import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID, randomBytes } from "node:crypto";
 import { migrate } from "../src/migrate.ts";
+import { openDatabase } from "../src/db.ts";
+import { replayBaseline } from "./support/database.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
 import { pkceChallenge, type IdentityProvider } from "../src/auth.ts";
@@ -21,10 +23,7 @@ if (!url || !new URL(url).pathname.endsWith("_test"))
 // Separate schema avoids interference with the existing worker integration suite.
 const schema = "accounts_test";
 const admin = new pg.Pool({ connectionString: url });
-const db = new pg.Pool({
-  connectionString: url,
-  options: `-c search_path=${schema},public`,
-});
+const db = openDatabase({ url, schema });
 const alice = randomUUID(),
   bob = randomUUID();
 const tokenA = "alice-test-session-token-123456",
@@ -52,7 +51,7 @@ const req = (path: string, token = tokenA, body?: unknown) =>
   });
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
-  await migrate(db);
+  await migrate({ url, schema });
 });
 beforeEach(async () => {
   vi.stubEnv("DJ_SETTINGS_ENCRYPTION_KEY", "42".repeat(32));
@@ -481,7 +480,7 @@ it("new imports belong only to the importing account, even on migration reruns",
   expect(
     JSON.stringify(await (await req("/v1/playlists", tokenB)).json()),
   ).not.toContain("PLnew123456789");
-  await migrate(db);
+  await replayBaseline(db);
   expect(
     (
       await db.query(

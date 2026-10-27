@@ -3,6 +3,7 @@ import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { migrate } from "../src/migrate.ts";
+import { openDatabase } from "../src/db.ts";
 import { createApp } from "../src/app.ts";
 import { hash } from "../src/content.ts";
 import { provisionDeveloperToken } from "../src/api-docs/developer-provision.ts";
@@ -12,10 +13,7 @@ if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");
 const schema = "developer_provision_test";
 const admin = new pg.Pool({ connectionString: url });
-const db = new pg.Pool({
-  connectionString: url,
-  options: `-c search_path=${schema},public`,
-});
+const db = openDatabase({ url, schema });
 const scoped = new URL(url);
 scoped.searchParams.set("options", `-c search_path=${schema},public`);
 const alice = randomUUID(),
@@ -50,7 +48,7 @@ function authorize(email = "alice@example.test", tokenHash = hash(credential)) {
 }
 beforeAll(async () => {
   await admin.query(`CREATE SCHEMA ${schema}`);
-  await migrate(db);
+  await migrate({ url, schema });
 });
 beforeEach(async () => {
   await db.query("TRUNCATE users,tokens,playlists CASCADE");
