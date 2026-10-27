@@ -118,7 +118,7 @@ export function authRoutes(db: Database, provider = googleProvider()) {
       code.length > 4096
     )
       return c.text(
-        "Connexion annulée. Retourne dans Recall pour réessayer.",
+        "Connexion annulée. Retourne dans Sillage pour réessayer.",
         400,
       );
     const { rows } = await db.query(
@@ -126,7 +126,7 @@ export function authRoutes(db: Database, provider = googleProvider()) {
       [hash(state), hash(cookie)],
     );
     if (!rows.length)
-      return c.text("Cette connexion a expiré. Recommence depuis Recall.", 400);
+      return c.text("Cette connexion a expiré. Recommence depuis Sillage.", 400);
     const flow = rows[0];
     try {
       const identity = await provider.verify(code, flow.nonce);
@@ -150,7 +150,7 @@ export function authRoutes(db: Database, provider = googleProvider()) {
       ));
     } catch {
       return c.text(
-        "Google n’a pas pu confirmer cette connexion. Réessaie depuis Recall.",
+        "Google n’a pas pu confirmer cette connexion. Réessaie depuis Sillage.",
         400,
       );
     }

@@ -363,7 +363,7 @@ it("binds Google callback to browser state and app PKCE; grants are single-use a
   expect(callback.headers.get("cache-control")).toBe("no-store");
   expect(callback.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
   const html = await callback.text();
-  expect(html).toContain("Ouvrir Playlist Recall");
+  expect(html).toContain("Ouvrir Sillage");
   const location = new URL(html.match(/id="return" href="([^"]+)"/)![1].replaceAll("&amp;", "&"));
   expect(location.searchParams.get("state")).toBe(flow.appState);
   expect(location.searchParams.has("token")).toBe(false);
