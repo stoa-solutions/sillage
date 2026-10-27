@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { authExchangeInput, authStartInput } from "../auth.ts";
+import { authExchangeInput, authStartInput } from "../features/auth/index.ts";
 import { discoveryAddInput, discoveryInput } from "../discovery.ts";
 import { djSettingsInput } from "../dj-settings.ts";
 import {

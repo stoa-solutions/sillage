@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { transaction, type Database } from "./db.ts";
-import { ownsPlaylist } from "./accounts.ts";
+import { ownsPlaylist } from "./features/accounts/index.ts";
 import { upsertVideo } from "./library.ts";
 import { documentText, hash } from "./content.ts";
 import { YouTube } from "./youtube.ts";
@@ -13,7 +13,7 @@ import {
   type SearchFailureReason,
 } from "./search-feedback.ts";
 import { nextYouTubeQuotaReset, YouTubeError } from "./youtube-errors.ts";
-import type { ApiEnvironment } from "./api-environment.ts";
+import type { ApiEnvironment } from "./shared/api-environment.ts";
 
 export const discoveryInput = z.object({
   query: z.string().trim().min(2).max(200),

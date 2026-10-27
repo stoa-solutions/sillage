@@ -1,4 +1,4 @@
-import { LEGACY_USER } from "./accounts.ts";
+import { LEGACY_USER } from "./features/accounts/index.ts";
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import type { Video, LibraryImport } from "@playlist-recall/core/types";

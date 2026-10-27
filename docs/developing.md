@@ -18,7 +18,7 @@ Pour les tests SQL, créer un PostgreSQL jetable avec pgvector, définir `TEST_D
 
 | Besoin | Point d’entrée | Logique / validation |
 | --- | --- | --- |
-| Connexion et clé | `Session`, `GoogleSignIn`, `SettingsView` | `accounts.ts`, `auth.ts`, `dj-settings.ts`, tests comptes |
+| Connexion et clé | `Session`, `GoogleSignIn`, `SettingsView` | `features/auth`, `features/accounts`, `dj-settings.ts`, tests comptes |
 | Chercher une musique | `DiscoveryModel`, `LibraryModel` | `search.ts`, `search-relevance.ts`, MCP ; filtrage propriétaire obligatoire |
 | Comprendre une demande | `DJModel.send` | commandes locales puis `features/dj/plan.ts`, `decision.ts` et `turn.ts` |
 | Ordre et suite | `DJModel` | `PlaybackQueue`, `DJComposition`, tests session/composition |
@@ -36,6 +36,14 @@ Les noms Swift correspondent aux fichiers de `apps/macos/Sources/RecallKit` (rè
 4. Tester un succès et les risques réels : réponse tardive, changement de compte, requêtes concurrentes ou file vide selon le cas.
 5. Lancer les validations de la zone, puis contrôler le parcours dans l’app avec son vrai lecteur. Distinguer les tests simulés du test réel.
 6. Rebaser, vérifier le commit final, intégrer selon AGENTS.md. Le guide operations.md couvre la production ; une compilation ne vaut pas déploiement.
+
+## Base de données (Prisma)
+
+- Le client Prisma est généré dans `apps/server/src/generated/` (ignoré par Git) par `npm run generate -w @playlist-recall/server`. `check`, `test` et `dev` le régénèrent.
+- Modifier un modèle dans `apps/server/prisma/schema/<domaine>.prisma`, puis créer la migration sur une base jetable : `DATABASE_URL=… SHADOW_DATABASE_URL=… npx prisma migrate dev --create-only --name <sujet>` depuis `apps/server`. Relire le SQL produit : retirer les `DROP DEFAULT` proposés sur `search_document` et `music_search_document` (colonnes générées que Prisma ne sait pas décrire), et écrire à la main ce que Prisma ne modélise pas (CHECK, index d’expression, pgvector).
+- `npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema --script` doit seulement proposer ces deux lignes : sinon le schéma et les migrations divergent.
+- Le serveur applique les migrations au démarrage (`src/boot.ts`) ; `npm run migrate -w @playlist-recall/server` le fait à la main. Les suites d’intégration migrent leur propre schéma PostgreSQL de la même façon.
+- Le nouveau code passe par `db.prisma` dans le `store.ts` de sa feature, jamais par du SQL concaténé.
 
 ## Avant de vouloir scaler
 

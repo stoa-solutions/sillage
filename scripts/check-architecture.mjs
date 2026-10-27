@@ -20,6 +20,8 @@ const pureDj = new Set([
   "composition.ts",
   "retrieval.ts",
 ]);
+// Features still reached through a facade outside their folder until their own refactor lot.
+const featuresWithoutIndex = new Set(["dj"]);
 const pureDjImports = new Set([
   "zod",
   ...[...pureDj].map((file) => `./${file}`),
@@ -62,6 +64,21 @@ export function violations(file, source) {
       (target.startsWith("apps/extension/") || target.startsWith("apps/macos/"))
     )
       report(node, "the server must not depend on a client application");
+    const feature = (name) =>
+      name.match(/^apps\/server\/src\/features\/([^/]+)\//)?.[1];
+    const from = feature(file),
+      to = feature(target);
+    if (
+      server &&
+      to &&
+      from !== to &&
+      !featuresWithoutIndex.has(to) &&
+      !target.endsWith(`features/${to}/index.ts`)
+    )
+      report(
+        node,
+        `a feature is used through its index.ts, not features/${to} internals`,
+      );
     if (dj && target === "apps/server/src/dj.ts")
       report(
         node,

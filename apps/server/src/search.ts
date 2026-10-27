@@ -1,4 +1,4 @@
-import { LEGACY_USER, ownsPlaylist } from "./accounts.ts";
+import { LEGACY_USER, ownsPlaylist } from "./features/accounts/index.ts";
 import { parseQuery, tokenize } from "@playlist-recall/core/search";
 import type { SearchResult } from "@playlist-recall/core/types";
 import type { Database } from "./db.ts";

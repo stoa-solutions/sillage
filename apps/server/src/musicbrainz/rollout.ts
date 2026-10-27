@@ -1,5 +1,5 @@
 import type { Database } from "../db.ts";
-import { ownsPlaylist } from "../accounts.ts";
+import { ownsPlaylist } from "../features/accounts/index.ts";
 
 /** Explicit account opt-in; never enables the public catalog globally. */
 export function enrichmentAccounts(): string[] {

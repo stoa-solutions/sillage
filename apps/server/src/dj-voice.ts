@@ -1,4 +1,4 @@
-import { LEGACY_USER } from "./accounts.ts";
+import { LEGACY_USER } from "./features/accounts/index.ts";
 import { djConfig, type DjConfig } from "./dj-config.ts";
 import { DjUnavailable } from "./features/dj/errors.ts";
 import { reserveDj } from "./features/dj/quota.ts";

@@ -7,7 +7,7 @@ import { musicMatchRank } from "./music-matching.ts";
 import { informationSearch } from "./information.ts";
 import type { SearchFailureReason } from "./search-feedback.ts";
 import { DiscoveryError, discoveryFor } from "./discovery.ts";
-import { LEGACY_USER, ownsPlaylist } from "./accounts.ts";
+import { LEGACY_USER, ownsPlaylist } from "./features/accounts/index.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";

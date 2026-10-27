@@ -1,4 +1,4 @@
-import { LEGACY_USER } from "../src/accounts.ts";
+import { LEGACY_USER } from "../src/features/accounts/index.ts";
 import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";

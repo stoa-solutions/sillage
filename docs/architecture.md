@@ -67,6 +67,14 @@ Ne pas ajouter un framework d’agents ou un fournisseur pour une règle déterm
 Démarrage et parcours de contribution : [developing.md](developing.md).
 
 
+## Serveur : données et features
+
+Le schéma PostgreSQL est décrit avec Prisma dans `apps/server/prisma/schema/`, un fichier par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`). Les noms SQL restent en snake_case ; le client généré expose des modèles et champs camelCase typés. Les migrations versionnées sont dans `prisma/migrations/` : `0_init` reprend à l’identique l’ancien `schema.sql`, idempotent. Une base créée avant Prisma rejoue ce socle puis l’enregistre comme appliqué, sans étape manuelle (`src/migrate.ts`).
+
+Prisma ne modélise pas tout : colonnes `tsvector` générées, `vector` de pgvector, contraintes CHECK, index d’expression, configuration de recherche `recall_simple` et déclencheur de révision musicale vivent dans les migrations SQL. Le schéma Prisma les signale en commentaire.
+
+Le code serveur se range par feature dans `src/features/<feature>/` : `routes.ts` (frontière HTTP), `contracts.ts` (validation Zod), `store.ts` (accès Prisma), modules métier, et `index.ts`, seule entrée publique. Une feature n’importe une autre feature que par son `index.ts` ; `check:architecture` le vérifie. `src/shared/` contient ce qui n’appartient à aucune feature (contexte de requête). La migration est progressive : `auth` (connexion Google, session, jetons) et `accounts` (profil, déconnexion, reprise de la bibliothèque historique) sont sur Prisma ; les autres modules utilisent encore `db.query` sur le même pool jusqu’à leur lot.
+
 ## Organisation interne du DJ serveur
 
 ```text

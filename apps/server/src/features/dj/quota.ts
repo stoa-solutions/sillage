@@ -1,4 +1,4 @@
-import { LEGACY_USER } from "../../accounts.ts";
+import { LEGACY_USER } from "../accounts/index.ts";
 import type { Database } from "../../db.ts";
 import { DjUnavailable } from "./errors.ts";
 

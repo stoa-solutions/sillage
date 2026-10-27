@@ -1,17 +1,24 @@
 import { enrichmentProgress } from "./musicbrainz/rollout.ts";
 import { discoveryRoutes } from "./discovery.ts";
-import { accountRoutes } from "./account-routes.ts";
 import { historyRoutes } from "./history.ts";
-import { authRoutes, type IdentityProvider } from "./auth.ts";
-import { LEGACY_USER, ownsPlaylist, accountProfile } from "./accounts.ts";
+import {
+  authRoutes,
+  sessionGuard,
+  type IdentityProvider,
+} from "./features/auth/index.ts";
+import {
+  accountRoutes,
+  LEGACY_USER,
+  ownsPlaylist,
+} from "./features/accounts/index.ts";
 import { Hono } from "hono";
 import { macosReleases } from "./macos-releases.ts";
-import type { ApiEnvironment } from "./api-environment.ts";
+import type { ApiEnvironment } from "./shared/api-environment.ts";
 import { createDjRoutes } from "./features/dj/routes.ts";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
-import { hash, parsePlaylistId } from "./content.ts";
+import { parsePlaylistId } from "./content.ts";
 import { transaction, type Database } from "./db.ts";
 import { enqueue } from "./queue.ts";
 import { search } from "./search.ts";
@@ -86,51 +93,8 @@ export function createApp(
       return c.json({ ok: false }, 503);
     }
   });
-  const rate = new Map<string, { minute: number; count: number }>();
-  app.use("/v1/*", async (c, next) => {
-    const authorization = c.req.header("Authorization");
-    if (!authorization?.startsWith("Bearer ") || authorization.length > 512)
-      return c.json({ error: "Connexion requise." }, 401);
-    const tokenHash = hash(authorization.slice(7));
-    const found = await db.query(
-      "SELECT id,user_id FROM tokens WHERE hash=$1 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at>now())",
-      [tokenHash],
-    );
-    if (!found.rowCount)
-      return c.json({ error: "Connexion expirée ou jeton invalide." }, 401);
-    const minute = Math.floor(Date.now() / 60000);
-    const state = rate.get(tokenHash);
-    if (state?.minute === minute && state.count >= 180)
-      return c.json(
-        { error: "Trop de demandes. Réessayez dans une minute." },
-        429,
-      );
-    rate.set(tokenHash, {
-      minute,
-      count: state?.minute === minute ? state.count + 1 : 1,
-    });
-    if (rate.size > 1000)
-      for (const [key, value] of rate)
-        if (value.minute !== minute) rate.delete(key);
-    c.header("Cache-Control", "no-store");
-    c.set("installationId", found.rows[0].id);
-    c.set("userId", found.rows[0].user_id);
-    await db.query(
-      "UPDATE tokens SET expires_at=now()+interval '90 days' WHERE id=$1 AND expires_at<now()+interval '60 days'",
-      [found.rows[0].id],
-    );
-    await next();
-  });
-  app.get("/v1/me", async (c) =>
-    c.json(await accountProfile(db, c.get("userId"))),
-  );
-  app.post("/v1/logout", async (c) => {
-    await db.query("UPDATE tokens SET revoked_at=now() WHERE id=$1", [
-      c.get("installationId"),
-    ]);
-    return c.json({ saved: true });
-  });
-  app.route("/v1/account", accountRoutes(db));
+  app.use("/v1/*", sessionGuard(db));
+  app.route("/v1", accountRoutes(db));
   app.route("/v1/discover", discoveryRoutes(db));
   app.route("/v1/dj", createDjRoutes(db));
   app.route("/v1/history", historyRoutes(db));

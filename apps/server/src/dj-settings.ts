@@ -1,4 +1,4 @@
-import { LEGACY_USER } from "./accounts.ts";
+import { LEGACY_USER } from "./features/accounts/index.ts";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { z } from "zod";
 import {

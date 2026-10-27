@@ -5,6 +5,8 @@ generator client {
   provider        = "prisma-client"
   output          = "../../src/generated/prisma"
   previewFeatures = ["partialIndexes"]
+  // Half the size of the default query compiler: the API runs within 192 MB.
+  compilerBuild   = "small"
 }
 
 datasource db {

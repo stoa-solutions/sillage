@@ -85,3 +85,25 @@ test("checks bare Node/workspace imports and permits type-only re-exports", () =
     0,
   );
 });
+test("a feature reaches another feature only through its index", () => {
+  const file = "apps/server/src/features/accounts/routes.ts";
+  assert.equal(
+    violations(file, 'import { revokeSession } from "../auth/store.ts"').length,
+    1,
+  );
+  assert.equal(
+    violations(file, 'import { revokeSession } from "../auth/index.ts"').length,
+    0,
+  );
+  assert.equal(
+    violations(
+      "apps/server/src/app.ts",
+      'import { sessionGuard } from "./features/auth/session.ts"',
+    ).length,
+    1,
+  );
+  assert.equal(
+    violations(file, 'import { claimLibraryInput } from "./contracts.ts"').length,
+    0,
+  );
+});

@@ -1,4 +1,4 @@
-import { ownsPlaylist } from "./accounts.ts";
+import { ownsPlaylist } from "./features/accounts/index.ts";
 import type { Database } from "./db.ts";
 
 /** One LRCLIB record, as returned by /api/search. */

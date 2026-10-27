@@ -5,8 +5,8 @@ import { migrate } from "../src/migrate.ts";
 import { openDatabase } from "../src/db.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
-import type { IdentityProvider } from "../src/auth.ts";
-import { LEGACY_USER } from "../src/accounts.ts";
+import type { IdentityProvider } from "../src/features/auth/index.ts";
+import { LEGACY_USER } from "../src/features/accounts/index.ts";
 import { schedule } from "../src/queue.ts";
 vi.mock("../src/inference-client.ts", () => ({
   infer: vi.fn().mockResolvedValue({ vector: Array(384).fill(0.01) }),
