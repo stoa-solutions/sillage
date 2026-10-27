@@ -1,4 +1,4 @@
-# Comptes Recall
+# Comptes Sillage
 
 La connexion Google identifie un utilisateur par le `sub` vérifié du jeton OIDC,
 jamais par une adresse fournie par le client. Les seuls scopes sont openid,
@@ -6,8 +6,9 @@ email et profile. Pas de permission YouTube, pas de refresh token Google conserv
 
 ## Configuration
 
-Créer un client OAuth « Application Web » dans le projet Google personnel Recall.
-URL de redirection exacte : `https://recall.stoa.solutions/auth/google/callback`.
+Créer un client OAuth « Application Web » dans le projet Google Sillage (`secure-path-512617-s5`).
+URL de redirection : `https://sillage.stoa.solutions/auth/google/callback`.
+Conserver aussi `https://recall.stoa.solutions/auth/google/callback` pendant la compatibilité. Le démarrage OAuth sur l’ancienne origine est redirigé vers Sillage **avant** de poser le cookie ; les requêtes API et le lecteur intégrés restent servis sur les deux origines. Voir [la configuration du proxy](../deploy/sillage/traefik-compatibility.yml).
 Renseigner `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `PUBLIC_URL` dans
 l’environnement privé du serveur. Le secret reste côté serveur. Activer le
 stockage des clés avec `DJ_SETTINGS_ENCRYPTION_KEY` (32 octets hexadécimaux).

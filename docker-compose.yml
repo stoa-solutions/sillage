@@ -29,7 +29,7 @@ services:
       PORT: 3001
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
       SEARXNG_URL: ${SEARXNG_URL:-}
-      PUBLIC_URL: ${PUBLIC_URL:-https://recall.stoa.solutions}
+      PUBLIC_URL: ${PUBLIC_URL:-https://sillage.stoa.solutions}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       DJ_SETTINGS_ENCRYPTION_KEY: ${DJ_SETTINGS_ENCRYPTION_KEY:-}
@@ -42,7 +42,7 @@ services:
       DJ_DAILY_REQUEST_LIMIT: ${DJ_DAILY_REQUEST_LIMIT:-100}
       DJ_ACCOUNT_DAILY_LIMITS: ${DJ_ACCOUNT_DAILY_LIMITS:-}
       MAC_RELEASES_DIR: /releases
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://recall.stoa.solutions}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://sillage.stoa.solutions,https://recall.stoa.solutions}
     volumes:
       - /srv/playlist-recall/releases:/releases:ro
     mem_limit: 192m

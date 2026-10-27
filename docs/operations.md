@@ -1,8 +1,8 @@
-# Exploitation de Playlist Recall V2
+# Exploitation de Sillage
 
 ## Production
 
-API : `https://recall.stoa.solutions`. Projet Dokploy autonome, PostgreSQL 17/pgvector 0.8.7 dans une ressource séparée. Aucune publication du port PostgreSQL. Réseau `playlist-recall-data` géré par Dokploy ; inférence sur un réseau Compose interne. Seule l’API rejoint aussi le proxy Dokploy.
+API : `https://sillage.stoa.solutions`. L’ancienne origine `https://recall.stoa.solutions` reste compatible avec les apps installées. Voir [le renommage et les invariants](sillage-infrastructure.md). Projet Dokploy autonome, PostgreSQL 17/pgvector 0.8.7 dans une ressource séparée. Aucune publication du port PostgreSQL. Réseau `playlist-recall-data` géré par Dokploy ; inférence sur un réseau Compose interne. Seule l’API rejoint aussi le proxy Dokploy.
 
 Les modèles sont préparés avec `python3 scripts/prepare-server-models.py` puis copiés et vérifiés dans `/srv/playlist-recall/models`. Ils ne sont ni versionnés ni téléchargés à chaque redémarrage. Le script vérifie les empreintes des poids SigLIP et réutilise les ressources E5 épinglées. Les images téléchargées sont bornées à 2 Mio et restent uniquement en mémoire ; seules leurs empreintes et vecteurs persistent.
 
@@ -33,7 +33,7 @@ Pour un retour arrière, arrêter le worker via Dokploy, redéployer le commit p
 
 ## Sauvegardes et restauration
 
-Configurer la sauvegarde native Dokploy de la base dédiée vers la destination privée R2 existante, sous son propre préfixe `playlist-recall/daily`, chaque jour à 02:30 UTC, rétention 30 versions. Déclencher une sauvegarde manuelle et vérifier l’objet distant et une restauration isolée avec PostgreSQL 17/pgvector. Comparer les comptes de playlists, vidéos, appartenances et vecteurs. Ne jamais utiliser la base Stoa comme cible.
+Configurer la sauvegarde native Dokploy de la base dédiée vers la destination privée R2 existante, sous son propre préfixe `sillage/daily`, chaque jour à 02:30 UTC, rétention 30 versions. Déclencher une sauvegarde manuelle et vérifier l’objet distant et une restauration isolée avec PostgreSQL 17/pgvector. Comparer les comptes de playlists, vidéos, appartenances et vecteurs. Ne jamais utiliser la base Stoa comme cible.
 
 Les sauvegardes contiennent les liens non répertoriés et les hash de jetons : garder les objets privés. Les secrets Dokploy et les modèles ne sont pas dans l’export de métadonnées de l’extension. Le guide de déploiement et les modèles épinglés permettent de reconstruire l’application ; la base sauvegardée contient aussi la file et les index.
 
@@ -47,7 +47,7 @@ La connexion existante de l’extension est migrée vers `chrome.storage.local`,
 
 Les playlists sont actualisées toutes les six heures lorsque `SYNC_ENABLED=true` et la clé est configurée. L’interface consulte le serveur toutes les dix secondes. Le paquet Chrome chargé depuis `extension/` reste une extension locale : le remplacer puis le recharger dans Chrome met son code à jour ; cela ne constitue pas une distribution automatique via le Chrome Web Store.
 
-YouTube Data API v3 est activée dans le projet personnel `secure-path-512617-s5` (Playlist Recall). La clé « Playlist Recall - serveur Stoa » est limitée à cette API et à l’IPv4 sortante `109.199.114.247`, vérifiée depuis le conteneur API. La valeur reste dans l’environnement privé Dokploy et `/root/playlist-recall/application.env` ; `SYNC_ENABLED=true`. Ne pas copier la clé dans l’extension. Si l’adresse du VPS change, adapter sa restriction IP dans Google Cloud.
+YouTube Data API v3 est activée dans le projet personnel `secure-path-512617-s5` (Sillage). La clé « Sillage - serveur Stoa » est limitée à cette API et à l’IPv4 sortante `109.199.114.247`, vérifiée depuis le conteneur API. La valeur reste dans l’environnement privé Dokploy et `/root/playlist-recall/application.env` ; `SYNC_ENABLED=true`. Ne pas copier la clé dans l’extension. Si l’adresse du VPS change, adapter sa restriction IP dans Google Cloud.
 
 ## Mode DJ — 2.1
 
