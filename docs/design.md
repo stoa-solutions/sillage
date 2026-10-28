@@ -26,7 +26,7 @@ Référence commune pour toute nouvelle vue Mac, Découvrir comprise. Plan valid
 
 La géométrie vit dans `RecallKit/RecallWindowLayout` (contrôles natifs : retour au format de poche sous le même bord haut, aucune dérive après dix replis, fenêtre toujours dans l’espace utile, taille de lecture mémorisée). `WindowSizer` l’applique seulement quand la présentation change : changer d’onglet de lecture ne redimensionne jamais.
 
-Pour la recette, une copie de test peut s’ouvrir sur une page (`SILLAGE_QA_SECTION=dj|library|discover`) ou une recherche (`SILLAGE_QA_QUERY`), rendre le verre malgré Réduire la transparence (`SILLAGE_QA_TRANSPARENCY=1`, copie de test seulement), et l’apparence se force par argument (`-AppleInterfaceStyle Dark` ou `-NSRequiresAquaSystemAppearance YES`) : captures sans clic simulé.
+Pour la recette, une copie de test peut s’ouvrir sur une page (`SILLAGE_QA_SECTION=dj|library|discover`) ou une recherche (`SILLAGE_QA_QUERY`), Bibliothèque → Mon goût (`SILLAGE_QA_LIBRARY=taste`), les Réglages sur une page (`SILLAGE_QA_SETTINGS=dj|agents|taste|playback|appearance|desk|account`), rendre le verre malgré Réduire la transparence (`SILLAGE_QA_TRANSPARENCY=1`, copie de test seulement), et l’apparence se force par argument (`-AppleInterfaceStyle Dark` ou `-NSRequiresAquaSystemAppearance YES`) : captures sans clic simulé.
 
 Pas de libellés en capitales, pas de points médians en séparateur, pas de numéros devant les étapes ou les lignes quand l’ordre est déjà visible.
 

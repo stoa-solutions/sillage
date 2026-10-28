@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage 1.8.7 (78) : Bibliothèque → Mon goût, Réglages refaits sur le verre Sillage (apparence du système, page Goût, aucun emoji), boutons J’aime / Je n’aime pas.
+
 - Goût, version aboutie : Bibliothèque → Mon goût (chiffres, artistes et titres par catégorie avec affinité 0–100, avis modifiables sur place). Logique revue : seules les vraies écoutes comptent (finies ou au-delà de 60 s), « souvent passé vite » demande deux passages rapides, J’aime pèse plus qu’une douzaine d’écoutes, une recherche par artiste garde son ordre et les titres écartés, ordre de fusion bibliothèque/YouTube fixe. Test A/B à l’aveugle (8 demandes, 3 juges) : le tri par goût l’emporte sur l’adéquation au goût (4–2) et l’expérience (5–1). Suites : `library_browse order=taste` pour « ce que j’aime », 3 à 5 titres sur une demande ouverte, tutoiement constant, identifiants de source écrits en toutes lettres ignorés au lieu de faire échouer le tour. Réglages refaits sur le verre Sillage, apparence du système, page Goût dédiée, aucun emoji dans l’app.
 
 - Sillage 1.8.6 (77) : 👍 / 👎 sur le morceau en cours (lecteur, barre de lecture, barre des menus), réglage du délai d’un 👎 dans Réglages → DJ et voix → Goût, temps écouté envoyé avec chaque écoute. Installation locale propre : anciennes copies, aperçus et sauvegardes retirés.

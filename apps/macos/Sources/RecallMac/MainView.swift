@@ -34,6 +34,7 @@ struct MainView: View {
   @State private var compactRestHeight: CGFloat = 0
   @AppStorage("djPanelCollapsed") private var panelCollapsed = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.openSettings) private var openSettings
   /// Compact's narrow toolbar: smaller tabs and an icon-only Studio toggle, nothing hidden.
   private var pocket: Bool { section == .dj && !dj.player.studio }
   /// The Studio clip fills the window only on the DJ page; lists keep the Stoa backdrop.
@@ -46,6 +47,8 @@ struct MainView: View {
   /// by itself: the scene is rebuilt whenever the player changes.
   var body: some View {
     ObservingPlayer(player: dj.player) { scene }
+      // Recette: a test build opens Réglages on a page (SILLAGE_QA_SETTINGS=taste), no click.
+      .task { if SettingsPage.qaPage != nil { openSettings() } }
   }
 
   private var scene: some View {

@@ -45,8 +45,13 @@ final class TasteModel: ObservableObject {
       }
       error = ""
     } catch {
-      if started == epoch { self.error = error.localizedDescription }
+      // A page left while loading cancels its request: that is not an error to show.
+      if started == epoch && !Self.cancelled(error) { self.error = error.localizedDescription }
     }
+  }
+
+  private static func cancelled(_ error: Error) -> Bool {
+    error is CancellationError || (error as? URLError)?.code == .cancelled
   }
 
   /// The opinion of a track as the server has it, once per track and account.
@@ -75,7 +80,7 @@ final class TasteModel: ObservableObject {
         try await HTTPClient().setTrackOpinion(connection, videoId: videoId, next)
         if started == epoch { error = "" }
       } catch {
-        guard started == epoch, opinions[videoId] == next else { return }
+        guard started == epoch, opinions[videoId] == next, !Self.cancelled(error) else { return }
         opinions[videoId] = previous
         self.error = error.localizedDescription
       }
@@ -100,7 +105,7 @@ final class TasteModel: ObservableObject {
       let saved = try await HTTPClient().saveDislikeDays(connection, days)
       if started == epoch { dislikeDays = saved }
     } catch {
-      guard started == epoch else { return }
+      guard started == epoch, !Self.cancelled(error) else { return }
       dislikeDays = previous
       self.error = error.localizedDescription
     }

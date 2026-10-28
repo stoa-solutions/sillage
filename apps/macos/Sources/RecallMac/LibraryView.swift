@@ -12,7 +12,9 @@ struct LibraryView: View {
   @State private var adding = false
   @State private var deleting: ServerPlaylistSummary?
   @State private var showingHistory = false
-  @State private var showingTaste = false
+  // Recette: a test build can open on Mon goût (SILLAGE_QA_LIBRARY=taste) without a click.
+  @State private var showingTaste =
+    ProcessInfo.processInfo.environment["SILLAGE_QA_LIBRARY"] == "taste"
   @EnvironmentObject var history: ListeningHistoryModel
 
   var body: some View {

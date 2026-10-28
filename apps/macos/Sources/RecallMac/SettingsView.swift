@@ -34,6 +34,9 @@ enum SettingsPage: String, CaseIterable, Identifiable {
     case .account: "Ton compte, tes playlists et ta session."
     }
   }
+  /// Recette: the page named by SILLAGE_QA_SETTINGS (a case name such as taste).
+  static let qaPage: SettingsPage? = ProcessInfo.processInfo.environment["SILLAGE_QA_SETTINGS"]
+    .flatMap { name in allCases.first { "\($0)" == name } }
   /// Sidebar groups, in order.
   static let groups: [(title: String, pages: [SettingsPage])] = [
     ("Écoute", [.dj, .agents, .taste, .playback]),
@@ -49,7 +52,7 @@ struct SettingsView: View {
   @EnvironmentObject var library: LibraryModel
   @EnvironmentObject var dj: DJModel
   @EnvironmentObject var desk: DeskIntegration
-  @State private var page = SettingsPage.dj
+  @State private var page = SettingsPage.qaPage ?? .dj
   /// A page asked for from elsewhere (the composer's agent menu), consumed once.
   @AppStorage(SettingsPage.requestKey) private var requestedPage = ""
   @State private var key = ""
@@ -210,7 +213,7 @@ struct SettingsView: View {
         )
       Link(
         "Obtenir une clé \(session.provider.name)", destination: session.provider.keyURL
-      )
+      ).tint(Color.recall)
       HStack {
         Button(busy ? "Vérification…" : "Vérifier et enregistrer") {
           busy = true
