@@ -259,7 +259,7 @@ export function musicMcp(
       "library_browse",
       {
         description:
-          "Browse the listener's own playlists without a search query: list playlists, then tracks by date added (order=oldest for « le plus vieux », recent for the latest additions), optionally within one playlist or for one artist or genre. Use music_search for moods, styles and remembered clues. Read-only.",
+          "Browse the listener's own playlists without a search query: list playlists, then tracks by date added (order=oldest for « le plus vieux », recent for the latest additions), optionally within one playlist or for one artist or genre. order=taste lists the tracks this listener likes or plays most, best first: use it for « ce que j’aime », « mes favoris », « mes plus écoutés »; playlist, artist and genre do not apply to it. Use music_search for moods, styles and remembered clues. Read-only.",
         inputSchema: {
           playlist: z
             .string()
@@ -276,7 +276,7 @@ export function musicMcp(
             .max(60)
             .optional()
             .describe("A genre word from MusicBrainz metadata, e.g. soul."),
-          order: z.enum(["recent", "oldest"]).default("recent"),
+          order: z.enum(["recent", "oldest", "taste"]).default("recent"),
           limit: z.number().int().min(1).max(30).default(15),
         },
         annotations: {
@@ -307,6 +307,21 @@ export function musicMcp(
             [],
             "No playlist matches this name. Pick a title from playlists, or omit playlist to browse the whole library.",
           );
+        if (order === "taste") {
+          const favourites = await tasteService(db).favourites(userId, limit + rejectedIds.length);
+          const owned = await ownedTracks(
+            db.orm,
+            favourites.filter((id) => !rejectedIds.includes(id)),
+            userId,
+          );
+          const ranked = await tasteService(db).rank(userId, owned.slice(0, limit).map((video) => ({ video })), {
+            targeted: true,
+          });
+          return body(
+            ranked.map((item) => item.video),
+            ranked.length ? undefined : "No favourite yet: likes and listens build this list.",
+          );
+        }
         const tracks = await browseOwnedTracks(db.orm, userId, {
           playlistId: chosen?.id,
           artist,

@@ -834,3 +834,27 @@ it("plays a selection whose reply is empty, as a terse agent may write it", asyn
   expect(result.tracks.map((item) => item.id)).toEqual([track.id]);
   expect(result.reply.startsWith("C’est parti")).toBe(true);
 });
+
+it("ignores citation IDs a model wrote as words instead of failing the turn", async () => {
+  // Seen in production: citationIds ["library"] made a play request unreadable.
+  provider([
+    tool,
+    {
+      content: JSON.stringify({
+        kind: "music",
+        reply: "C’est parti",
+        action: "replace",
+        trackIds: [track.id],
+        citationIds: ["library", 2],
+      }),
+    },
+  ]);
+  const result = await djTurn(
+    db,
+    djInput.parse({ message: "Mets du Edge", scope: "all" }),
+    undefined,
+    config,
+    "alice",
+  );
+  expect(result.action).toBe("replace");
+});

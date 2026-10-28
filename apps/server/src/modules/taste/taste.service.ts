@@ -86,6 +86,15 @@ export function tasteService(db: Database) {
       }
     },
 
+    /** Tracks the listener likes or plays most, best first: what « ce que j’aime » asks for. */
+    async favourites(owner: string, limit: number) {
+      const { tracks } = await this.overview(owner);
+      return tracks
+        .filter((track) => ["favourite", "frequent", "heard"].includes(track.category))
+        .slice(0, limit)
+        .map((track) => track.id);
+    },
+
     /** What the listener's plays and opinions say: totals, artists, and every heard track. */
     async overview(owner: string, now = new Date()) {
       const [tracks, days] = await Promise.all([

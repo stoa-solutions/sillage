@@ -80,7 +80,19 @@ export const selection = z.object({
   // Conversation is an explicit no-operation, not a failed musical selection.
   kind: absent(z.enum(["music", "information", "conversation"]), "music"),
   discoveryIds: absent(videoIds, []),
-  citationIds: absent(z.array(z.number().int().min(1).max(40)).max(5), []),
+  // A model sometimes names a source ("library") instead of numbering it: such IDs are
+  // dropped, not taken for an unreadable answer.
+  citationIds: absent(
+    z
+      .array(z.unknown())
+      .max(40)
+      .transform((ids) =>
+        ids
+          .filter((id): id is number => Number.isInteger(id) && (id as number) >= 1 && (id as number) <= 40)
+          .slice(0, 5),
+      ),
+    [],
+  ),
   // An empty reply is not an unreadable answer: a play is announced by the server anyway.
   reply: z
     .string()

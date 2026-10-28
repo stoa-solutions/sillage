@@ -169,3 +169,20 @@ it("summarises the account's taste: totals, artists and categorised tracks", asy
   const bobs = await (await req("GET", "/taste/overview", tokenB)).json();
   expect(bobs.summary).toEqual({ tracks: 1, listens: 1, liked: 0, hidden: 0 });
 });
+
+it("lists the listener's favourites best first for « ce que j'aime »", async () => {
+  const events = [
+    ...Array.from({ length: 5 }, () => play("often000001", "finished")),
+    play("once0000001", "finished"),
+    play("skipped0001", "skipped", 2_000),
+    play("skipped0001", "skipped", 2_000),
+  ];
+  await req("POST", "/history", tokenA, { events });
+  await req("PUT", "/taste/feedback/liked000001", tokenA, { value: "like" });
+  expect(await tasteService(db).favourites(alice, 10)).toEqual([
+    "liked000001",
+    "often000001",
+    "once0000001",
+  ]);
+  expect(await tasteService(db).favourites(bob, 10)).toEqual([]);
+});
