@@ -1,0 +1,26 @@
+$kind: http-request
+description: >-
+  Vues, j’aime et commentaires les mieux classés par YouTube (API officielle, 2 unités de quota), et l’article Wikipedia
+  du morceau quand artist et title permettent de le trouver. Gardé 1 jour pour tous les comptes.
+
+
+  Effet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/insights/video/:videoId"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  videoId: "{{video_id}}"
+queryParams:
+  - key: artist
+    value: "{{artist}}"
+    disabled: true
+  - key: title
+    value: "{{title}}"
+    disabled: true
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 2000

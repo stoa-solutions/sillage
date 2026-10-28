@@ -1,0 +1,23 @@
+$kind: http-request
+description: >-
+  Images, audience, sorties et artistes proches (YouTube Music, nom identique uniquement), faits et genres
+  (MusicBrainz), biographie (Wikipedia, français puis anglais, via Wikidata quand MusicBrainz le relie). Gardée 7 jours
+  pour tous les comptes, 1 jour si rien n’est trouvé ; jamais gardée si une source a échoué. found=false : aucune source
+  ne connaît ce nom.
+
+
+  Effet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/insights/artist?name={{name}}"
+method: GET
+headers:
+  Accept: application/json
+queryParams:
+  - key: name
+    value: "{{name}}"
+    disabled: false
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 1000

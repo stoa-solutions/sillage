@@ -165,3 +165,10 @@ export const musicbrainzCache = pgTable("musicbrainz_cache", {
   response: jsonb("response").notNull(),
   fetchedAt: timestamptz("fetched_at").notNull().defaultNow(),
 });
+
+/** Artist pages and video reactions gathered from public sources, shared by every account. */
+export const insightsCache = pgTable("insights_cache", {
+  key: text("key").primaryKey(),
+  value: jsonb("value"),
+  fetchedAt: timestamptz("fetched_at").notNull().defaultNow(),
+});

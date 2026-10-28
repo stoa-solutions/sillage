@@ -32,6 +32,7 @@ import SwiftUI
   @StateObject private var history: HistorySync
   @StateObject private var listened: ListeningHistoryModel
   @StateObject private var desk: DeskIntegration
+  @StateObject private var insights = InsightsModel()
   @AppStorage("showsMenuBarExtra") private var showsMenuBar = true
   private let nowPlaying: DeskNowPlaying
   @State private var didBootstrap = false
@@ -133,7 +134,7 @@ import SwiftUI
     // Reopening from the Dock, the menu bar or a URL must reuse the one player.
     Window("Sillage", id: Self.mainWindowID) {
       MainView().environmentObject(session).environmentObject(library).environmentObject(dj)
-        .environmentObject(discovery).environmentObject(listened)
+        .environmentObject(discovery).environmentObject(listened).environmentObject(insights)
         .task {
           if !didBootstrap {
             didBootstrap = true

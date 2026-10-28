@@ -26,6 +26,7 @@ struct MainView: View {
   @EnvironmentObject var session: Session
   @EnvironmentObject var library: LibraryModel
   @EnvironmentObject var dj: DJModel
+  @EnvironmentObject var discovery: DiscoveryModel
   @StateObject private var immersion = StudioImmersion()
   // Recette: a test build can open on a given page without scripted clicks.
   @State private var section =
@@ -104,6 +105,11 @@ struct MainView: View {
     }
     .background(WindowSizer(presentation: presentation, animate: !reduceMotion))
     .tint(.sillageOrange)
+    // A name clicked anywhere (the player, « Le morceau », the Studio card) opens its page.
+    .environment(\.openArtist) { name in
+      discovery.open(.artist(name))
+      section = .discover
+    }
     .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: section)
     .sheet(isPresented: $session.showOnboarding) {
       OnboardingView().environmentObject(session).environmentObject(library)

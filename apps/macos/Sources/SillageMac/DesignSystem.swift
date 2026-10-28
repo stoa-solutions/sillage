@@ -115,12 +115,28 @@ struct TrackHeadline: View {
   var detailFont: Font = .callout
   var lines = 1
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.openArtist) private var openArtist
+  @State private var hovering = false
   var body: some View {
     let name = track.map(TrackTitle.init)
+    let lead = openArtist == nil ? nil : name?.leadArtist
     VStack(alignment: .leading, spacing: 3) {
       Text(name?.title ?? placeholder).font(titleFont).lineLimit(lines).minimumScaleFactor(0.7)
-      Text(track == nil ? detail : name?.artist ?? "YouTube").font(detailFont)
-        .foregroundStyle(.secondary).lineLimit(1)
+      if let lead, let openArtist {
+        // The artist is a way in: its page in Découvrir.
+        Button {
+          openArtist(lead)
+        } label: {
+          Text(name?.artist ?? lead).font(detailFont).lineLimit(1)
+            .foregroundStyle(hovering ? Color.primary : Color.secondary)
+            .underline(hovering, color: .secondary)
+        }
+        .buttonStyle(.plain).onHover { hovering = $0 }
+        .help("Découvrir \(lead)").accessibilityHint("Ouvre la page de l’artiste")
+      } else {
+        Text(track == nil ? detail : name?.artist ?? "YouTube").font(detailFont)
+          .foregroundStyle(.secondary).lineLimit(1)
+      }
     }
     .id(track?.id)
     .transition(
@@ -128,7 +144,8 @@ struct TrackHeadline: View {
         ? .opacity : .asymmetric(insertion: .push(from: .bottom), removal: .push(from: .bottom))
     )
     .animation(.easeOut(duration: 0.25), value: track?.id)
-    .accessibilityElement(children: .combine)
+    // A clickable artist keeps its own button for VoiceOver.
+    .accessibilityElement(children: lead == nil ? .combine : .contain)
   }
 }
 

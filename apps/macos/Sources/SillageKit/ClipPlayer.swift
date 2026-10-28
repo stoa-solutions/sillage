@@ -9,6 +9,8 @@ public final class ClipPlayer: PlaybackBackend {
   public var onFailure: ((String) -> Void)?
   public let player = AVPlayer()
   public private(set) var videoHeight = 0
+  /// The playing file's video and audio, read once it is ready; nil while none is.
+  public private(set) var quality: StreamQuality?
   private var pendingLoad: (id: UUID, continuation: CheckedContinuation<Void, Error>)?
   private var itemObservation: NSKeyValueObservation?
   private var statusObservation: NSKeyValueObservation?
@@ -64,6 +66,7 @@ public final class ClipPlayer: PlaybackBackend {
   public func load(_ source: PlaybackSource, at start: Double, autoplay: Bool) async throws {
     guard case .file(let url) = source else { return }
     finishLoad(throwing: CancellationError())
+    quality = nil
     let item = AVPlayerItem(url: url)
     let id = UUID()
     player.replaceCurrentItem(with: item)
@@ -110,6 +113,7 @@ public final class ClipPlayer: PlaybackBackend {
     player.replaceCurrentItem(with: nil)
     itemObservation = nil
     videoHeight = 0
+    quality = nil
   }
   public func setVolume(_ level: Double) { player.volume = Float(level) }
 
@@ -118,6 +122,12 @@ public final class ClipPlayer: PlaybackBackend {
     switch item.status {
     case .readyToPlay:
       finishLoad(id: id, throwing: nil)
+      quality = nil
+      Task { [weak self] in
+        let described = await StreamQuality.describe(item.asset)
+        guard let self, self.player.currentItem === item else { return }
+        self.quality = described
+      }
     case .failed:
       if pendingLoad?.id == id {
         finishLoad(id: id, throwing: item.error ?? SillageError.message("Clip illisible."))

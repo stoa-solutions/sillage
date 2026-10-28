@@ -2839,6 +2839,113 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Autour du morceau",
+      "item": [
+        {
+          "name": "getArtistProfile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/insights/artist?name={{name}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "insights",
+                "artist"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "{{name}}",
+                  "disabled": false,
+                  "description": "Nom de l’artiste, tel qu’affiché"
+                }
+              ],
+              "variable": []
+            },
+            "description": "Images, audience, sorties et artistes proches (YouTube Music, nom identique uniquement), faits et genres (MusicBrainz), biographie (Wikipedia, français puis anglais, via Wikidata quand MusicBrainz le relie). Gardée 7 jours pour tous les comptes, 1 jour si rien n’est trouvé ; jamais gardée si une source a échoué. found=false : aucune source ne connaît ce nom.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getVideoInsights",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/insights/video/:videoId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "insights",
+                "video",
+                ":videoId"
+              ],
+              "query": [
+                {
+                  "key": "artist",
+                  "value": "{{artist}}",
+                  "disabled": true,
+                  "description": "Artiste, pour trouver l’article du morceau"
+                },
+                {
+                  "key": "title",
+                  "value": "{{title}}",
+                  "disabled": true,
+                  "description": "Titre du morceau, sans l’artiste"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": "{{video_id}}"
+                }
+              ]
+            },
+            "description": "Vues, j’aime et commentaires les mieux classés par YouTube (API officielle, 2 unités de quota), et l’article Wikipedia du morceau quand artist et title permettent de le trouver. Gardé 1 jour pour tous les comptes.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -48,6 +48,10 @@ final class Player: ObservableObject {
   /// YouTube stays on screen only until the clip has fully faded in.
   var youtubeHidden: Bool { clipActive && !engine.fading }
   var videoHeight: Int { clipActive ? clipPlayer.videoHeight : 0 }
+  /// What actually plays: the clip's file, or the definition the YouTube player reports.
+  var streamQuality: StreamQuality? {
+    clipActive ? clipPlayer.quality : StreamQuality.youtube(youtube.playbackQuality)
+  }
   var volume: Double {
     get { engine.volume }
     set {
@@ -111,6 +115,8 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
   var onFailure: ((String) -> Void)?
   let webView: WKWebView
   private(set) var position: Double = 0
+  /// The player's own definition label (`hd1080`…), empty until it reports one.
+  private(set) var playbackQuality = ""
   private var ready = false
   private var pending: (id: String, start: Double, autoplay: Bool)?
   private var currentID: String?
@@ -168,6 +174,7 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
     guard case .youtube(let id) = source else { return }
     loadPageIfNeeded()
     currentID = id
+    playbackQuality = ""
     canEnd = false
     seeking = nil
     position = start
@@ -232,6 +239,7 @@ final class YouTubePlayer: NSObject, PlaybackBackend, WKNavigationDelegate, WKSc
       if let resume = resumeAt, time < resume - 2 { return }
       resumeAt = nil
       position = time
+      if let label = value["quality"] as? String, label != "unknown" { playbackQuality = label }
       let length = value["duration"] as? Double ?? 0
       onSignal?(.progress(elapsed: time, duration: length.isFinite ? length : 0))
     case "state":

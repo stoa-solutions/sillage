@@ -9,6 +9,7 @@ enum SessionPanelTab: String, CaseIterable, Identifiable {
   case queue = "À suivre"
   case history = "Historique"
   case lyrics = "Paroles"
+  case track = "Le morceau"
   var id: Self { self }
   var symbol: String {
     switch self {
@@ -16,6 +17,7 @@ enum SessionPanelTab: String, CaseIterable, Identifiable {
     case .queue: "list.bullet"
     case .history: "clock.arrow.circlepath"
     case .lyrics: "quote.bubble"
+    case .track: "info.circle"
     }
   }
 }

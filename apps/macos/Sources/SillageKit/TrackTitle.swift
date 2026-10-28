@@ -31,6 +31,18 @@ public struct TrackTitle: Equatable, Sendable {
 
   public init(_ track: Track) { self.init(title: track.title, channel: track.channel) }
 
+  /// The first credited artist: « Kaytranada, H.E.R. » and « Pahua feat. Barzo » lead with
+  /// one name. « & » stays, since « Simon & Garfunkel » is one act.
+  public var leadArtist: String? {
+    guard let artist else { return nil }
+    let first = artist.components(separatedBy: ", ")[0]
+    let cut = first.range(
+      of: #"\s+(feat\.?|ft\.?|featuring|x|avec)\s+"#, options: [.regularExpression, .caseInsensitive])
+    let lead = (cut.map { String(first[..<$0.lowerBound]) } ?? first)
+      .trimmingCharacters(in: .whitespaces)
+    return lead.isEmpty || lead == "YouTube" ? nil : lead
+  }
+
   private init(song: String, artist: String?) {
     title = song
     self.artist = artist.flatMap { $0.isEmpty ? nil : $0 }

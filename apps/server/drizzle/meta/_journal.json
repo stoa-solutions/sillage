@@ -50,6 +50,13 @@
       "when": 1793217942249,
       "tag": "0006_lyrics_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793224802410,
+      "tag": "0007_insights_cache",
+      "breakpoints": true
     }
   ]
 }

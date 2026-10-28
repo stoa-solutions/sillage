@@ -5578,6 +5578,201 @@
           }
         }
       }
+    },
+    "/v1/insights/artist": {
+      "get": {
+        "operationId": "getArtistProfile",
+        "summary": "Fiche d’un artiste",
+        "description": "Images, audience, sorties et artistes proches (YouTube Music, nom identique uniquement), faits et genres (MusicBrainz), biographie (Wikipedia, français puis anglais, via Wikidata quand MusicBrainz le relie). Gardée 7 jours pour tous les comptes, 1 jour si rien n’est trouvé ; jamais gardée si une source a échoué. found=false : aucune source ne connaît ce nom.",
+        "tags": [
+          "Autour du morceau"
+        ],
+        "x-sillage-effect": "provider",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Nom de l’artiste, tel qu’affiché"
+            },
+            "required": true,
+            "description": "Nom de l’artiste, tel qu’affiché",
+            "name": "name",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtistProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/insights/video/{videoId}": {
+      "get": {
+        "operationId": "getVideoInsights",
+        "summary": "Ce qu’on dit du morceau",
+        "description": "Vues, j’aime et commentaires les mieux classés par YouTube (API officielle, 2 unités de quota), et l’article Wikipedia du morceau quand artist et title permettent de le trouver. Gardé 1 jour pour tous les comptes.",
+        "tags": [
+          "Autour du morceau"
+        ],
+        "x-sillage-effect": "provider",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{11}$",
+              "description": "Vidéo YouTube, dans la bibliothèque ou non"
+            },
+            "required": true,
+            "description": "Vidéo YouTube, dans la bibliothèque ou non",
+            "name": "videoId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Artiste, pour trouver l’article du morceau"
+            },
+            "required": false,
+            "description": "Artiste, pour trouver l’article du morceau",
+            "name": "artist",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 300,
+              "description": "Titre du morceau, sans l’artiste"
+            },
+            "required": false,
+            "description": "Titre du morceau, sans l’artiste",
+            "name": "title",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoInsights"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8172,6 +8367,300 @@
           "offsetMs",
           "durationDeltaMs",
           "source"
+        ]
+      },
+      "ArtistProfile": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Ligne d’en-tête Wikipedia, ex. « groupe de rock américain »"
+          },
+          "bio": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri"
+              }
+            },
+            "required": [
+              "text",
+              "source",
+              "url"
+            ]
+          },
+          "banner": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri",
+            "description": "Bannière large de YouTube Music"
+          },
+          "portrait": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri",
+            "description": "Photo de l’article Wikipedia (Wikimedia Commons)"
+          },
+          "audience": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Telle que YouTube Music la formule"
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "origin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "active": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "genres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "releases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "browseId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "year": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "artwork": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uri"
+                }
+              },
+              "required": [
+                "browseId",
+                "title",
+                "kind",
+                "year",
+                "artwork"
+              ]
+            }
+          },
+          "related": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "portrait": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uri"
+                }
+              },
+              "required": [
+                "name",
+                "portrait"
+              ]
+            }
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "youtubeMusic": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri"
+              },
+              "wikipedia": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri"
+              },
+              "musicbrainz": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri"
+              }
+            },
+            "required": [
+              "youtubeMusic",
+              "wikipedia",
+              "musicbrainz"
+            ]
+          },
+          "found": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "bio",
+          "banner",
+          "portrait",
+          "photo",
+          "audience",
+          "kind",
+          "origin",
+          "active",
+          "genres",
+          "releases",
+          "related",
+          "links",
+          "found"
+        ]
+      },
+      "VideoInsights": {
+        "type": "object",
+        "properties": {
+          "views": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "likes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "commentCount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "author": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "likes": {
+                  "type": "integer"
+                },
+                "publishedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "author",
+                "text",
+                "likes",
+                "publishedAt"
+              ]
+            }
+          },
+          "song": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "required": [
+              "title",
+              "description",
+              "text",
+              "url"
+            ]
+          }
+        },
+        "required": [
+          "views",
+          "likes",
+          "commentCount",
+          "comments",
+          "song"
         ]
       }
     }

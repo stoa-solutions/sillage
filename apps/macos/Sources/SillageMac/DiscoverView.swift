@@ -235,6 +235,9 @@ struct DiscoverView: View {
       let compact = geometry.size.width < LibraryColumns.compactBelow
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 0) {
+          if case .artist(let name) = discovery.place, !discovery.searched {
+            ArtistHero(name: name).padding(.bottom, 28).id(name)
+          }
           if let content {
             ForEach(content.sections) { section in
               DiscoveryShelf(section: section, compact: compact).padding(.bottom, 28)

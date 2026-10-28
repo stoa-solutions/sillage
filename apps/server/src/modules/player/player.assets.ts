@@ -31,7 +31,7 @@ export const djPlayerJs = String.raw`(() => {
     if(ready && value.command==='restore' && duckedVolume!==null){player.setVolume(duckedVolume);duckedVolume=null;}
     if(ready && value.command==='volume' && Number.isFinite(value.value))player.setVolume(Math.max(0,Math.min(100,value.value)));
   });
-  setInterval(()=>{if(ready)emit('progress',{id:player.getVideoData()?.video_id,elapsed:player.getCurrentTime(),duration:player.getDuration()});},250);
+  setInterval(()=>{if(ready)emit('progress',{id:player.getVideoData()?.video_id,elapsed:player.getCurrentTime(),duration:player.getDuration(),quality:player.getPlaybackQuality?.()||''});},250);
   play.addEventListener('click',()=>{if(ready)player.playVideo();});
   window.onYouTubeIframeAPIReady=()=>{
     player=new YT.Player('player',{width:'100%',height:'250',playerVars:{playsinline:1,origin:location.origin,...(native?{controls:0,disablekb:1,fs:0,cc_load_policy:0,iv_load_policy:3}:{})},events:{

@@ -181,6 +181,51 @@ export class YouTube {
         url: `https://www.youtube.com/watch?v=${v.id}`,
       }));
   }
+  /** Views, likes and comment count of one video, or null when it is gone. One quota unit. */
+  async statistics(
+    id: string,
+  ): Promise<{ views: number | null; likes: number | null; comments: number | null } | null> {
+    const data = await this.get("videos", { part: "statistics", id });
+    const stats = data.items?.[0]?.statistics;
+    if (!stats) return null;
+    const count = (value: unknown) => (typeof value === "string" && /^\d+$/.test(value) ? Number(value) : null);
+    return { views: count(stats.viewCount), likes: count(stats.likeCount), comments: count(stats.commentCount) };
+  }
+  /**
+   * The comments YouTube ranks first, as plain text, one quota unit. Comments turned off
+   * answer an empty list, not an error.
+   */
+  async topComments(
+    id: string,
+    count = 10,
+  ): Promise<{ author: string; text: string; likes: number; publishedAt: string | null }[]> {
+    let data: any;
+    try {
+      data = await this.get("commentThreads", {
+        part: "snippet",
+        videoId: id,
+        order: "relevance",
+        textFormat: "plainText",
+        maxResults: String(count),
+      });
+    } catch (error) {
+      if (error instanceof YouTubeError && error.kind === "access_denied") return [];
+      throw error;
+    }
+    return (data.items ?? []).flatMap((item: any) => {
+      const top = item.snippet?.topLevelComment?.snippet;
+      const text = typeof top?.textDisplay === "string" ? top.textDisplay.trim() : "";
+      if (!text) return [];
+      return [
+        {
+          author: String(top.authorDisplayName ?? "").replace(/^@/, ""),
+          text: text.length > 600 ? text.slice(0, 599).trimEnd() + "…" : text,
+          likes: Number(top.likeCount ?? 0),
+          publishedAt: top.publishedAt ?? null,
+        },
+      ];
+    });
+  }
   /** Channel photos (88 px), at most 50 channels per call and one quota unit. */
   async channelAvatars(ids: string[]): Promise<Map<string, string>> {
     if (!ids.length) return new Map();

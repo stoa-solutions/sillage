@@ -11,6 +11,7 @@ struct DJView: View {
   @State private var panelTab = SessionPanelTab.dj
   @StateObject private var lyrics = LyricsModel()
   @EnvironmentObject var listened: ListeningHistoryModel
+  @EnvironmentObject var insights: InsightsModel
   let panelOnly: Bool
   let source: DiscoveryScope?
   @ObservedObject var model: DJModel
@@ -55,6 +56,7 @@ struct DJView: View {
       .onChange(of: model.current?.id, initial: true) { _, _ in
         lyrics.show(
           model.current, next: model.upcoming.first?.track, connection: session.connection)
+        loadInsights()
       }
       .onChange(of: session.generation) { _, _ in
         lyrics.reset()
@@ -65,6 +67,16 @@ struct DJView: View {
         lyrics.show(
           model.current, next: model.upcoming.first?.track, connection: session.connection)
       }
+  }
+
+  /// The artist's page and what people say, asked as soon as a song starts: the Studio card,
+  /// « Le morceau » and Découvrir then open on them without waiting.
+  private func loadInsights() {
+    guard let current = model.current else { return }
+    let name = TrackTitle(current)
+    if let lead = name.leadArtist { insights.loadArtist(lead, connection: session.connection) }
+    insights.loadVideo(
+      current.id, artist: name.leadArtist, title: name.title, connection: session.connection)
   }
 
   /// Compact (Sillage spec): a pocket near 520 × 224, then the panel below it when opened.
@@ -108,11 +120,15 @@ struct DJView: View {
           }
         }
       VStack(alignment: .leading, spacing: 8) {
-        TrackHeadline(
-          track: model.current, titleFont: .system(size: 17, weight: .semibold),
-          detailFont: .system(size: 14)
-        )
-        .help(model.current.map { TrackTitle($0).spoken } ?? "")
+        HStack(alignment: .top, spacing: 6) {
+          TrackHeadline(
+            track: model.current, titleFont: .system(size: 17, weight: .semibold),
+            detailFont: .system(size: 14)
+          )
+          .help(model.current.map { TrackTitle($0).spoken } ?? "")
+          Spacer(minLength: 0)
+          if model.current != nil { QualityBadge(player: player) }
+        }
         HStack(spacing: 12) {
           playButton(size: 38)
           Button {
@@ -229,6 +245,11 @@ struct DJView: View {
         }
       }
       .frame(width: geometry.size.width, height: geometry.size.height)
+      // The artist steps in over the clip for a moment, even while the controls rest.
+      .overlay(alignment: .topLeading) {
+        StudioArtistCard(track: model.current, player: player)
+          .padding(.leading, narrow ? 20 : 32).padding(.top, 20)
+      }
     }
   }
 
@@ -249,6 +270,7 @@ struct DJView: View {
         ).accessibilityLabel("Position du morceau")
           .accessibilityValue("\(clock(player.elapsed)) sur \(clock(player.duration))")
         Text(clock(player.duration))
+        QualityBadge(player: player, onStage: true)
       }.font(.caption.monospacedDigit()).foregroundStyle(.secondary)
     }
   }
@@ -411,6 +433,8 @@ struct DJView: View {
         historyPanel
       case .lyrics:
         LyricsPanel(model: lyrics, player: player, connection: session.connection)
+      case .track:
+        TrackInsightsPanel(track: model.current)
       }
     }
   }
