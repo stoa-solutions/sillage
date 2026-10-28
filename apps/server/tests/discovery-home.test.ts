@@ -53,6 +53,7 @@ const sources = (overrides: Partial<Parameters<typeof discoveryHome>[0]> = {}) =
   history: vi.fn().mockResolvedValue([]),
   profile: vi.fn().mockResolvedValue(profile),
   artistId: vi.fn().mockResolvedValue(undefined),
+  cached: vi.fn().mockReturnValue(false),
   similar: vi.fn().mockResolvedValue([
     neighbour("Bonobo", "bo"),
     neighbour("Kiasmos", "ki"),
@@ -95,24 +96,7 @@ it("proposes unknown neighbours of a favourite artist, by those artists only, ne
   expect(required(around.items[0]).reason).toBe("Kiasmos, proche de Maribou State");
   expect(result.suggestions).toHaveLength(2);
   expect(result.ideas).toEqual(["electronic", "hip hop"]);
-});
-
-it("explores the listener's genres without their usual artists", async () => {
-  const given = sources({
-    similar: vi.fn().mockResolvedValue([]),
-    search: vi.fn().mockImplementation(async (_user: string, query: string) =>
-      query === "electronic official music video"
-        ? found(
-            { id: "known000001", title: "Maribou State - Turnmills", channel: "Maribou State" },
-            { id: "unknown0001", title: "Caribou - Can't Do Without You", channel: "Caribou" },
-          )
-        : found(),
-    ),
-  });
-  const result = await discoveryHome(given, "alice");
-  const genre = required(result.sections.find((section) => section.kind === "genre"));
-  expect(genre.title).toBe("Côté electronic");
-  expect(genre.items.map((item) => item.video.id)).toEqual(["unknown0001"]);
+  expect(result.sections.map((section) => section.kind)).not.toContain("genre");
 });
 
 it("does not invent personal recommendations for an empty account", async () => {
@@ -141,7 +125,8 @@ it("keeps what was found when a neighbour source or a search fails", async () =>
 
 it("draws other neighbours on refresh", async () => {
   const many = Array.from({ length: 8 }, (_, index) => neighbour(`New ${index}`, `n${index}`));
-  const search = vi.fn().mockResolvedValue(found());
+  // Pages without a track by these artists: each neighbour is replaced once.
+  const search = vi.fn().mockResolvedValue(found({ id: "someone0001", title: "Someone - Else" }));
   const given = sources({
     profile: vi.fn().mockResolvedValue({ ...profile, artists: profile.artists.slice(0, 1) }),
     similar: vi.fn().mockResolvedValue(many),
@@ -235,4 +220,28 @@ it("keeps one version of a song, the studio one first", async () => {
   });
   const result = await discoveryHome(given, "alice");
   expect(result.suggestions.map((item) => item.video.id)).toEqual(["studio00001", "studio00002"]);
+});
+
+it("spends few fresh searches and stops when the catalog answers nothing", async () => {
+  const many = Array.from({ length: 30 }, (_, index) => neighbour(`New ${index}`, `n${index}`));
+  const search = vi.fn().mockResolvedValue(found());
+  const given = sources({
+    profile: vi.fn().mockResolvedValue({
+      ...profile,
+      artists: Array.from({ length: 8 }, (_, index) => ({ name: `Seed ${index}`, mbid: `s${index}` })),
+    }),
+    similar: vi.fn().mockImplementation(async (mbid: string) =>
+      many.slice(Number(mbid.slice(1)) * 3, Number(mbid.slice(1)) * 3 + 3),
+    ),
+    search,
+  });
+  await discoveryHome(given, "alice");
+  // Two empty answers in a row: YouTube is throttling, the rest waits for another visit.
+  expect(search.mock.calls.length).toBeLessThanOrEqual(3);
+});
+
+it("uses kept artist pages beyond the fresh search budget", async () => {
+  const given = sources({ cached: vi.fn().mockReturnValue(true) });
+  const result = await discoveryHome(given, "alice");
+  expect(result.suggestions.map((item) => item.video.id)).toEqual(["kiasmos0001", "khruang0001"]);
 });

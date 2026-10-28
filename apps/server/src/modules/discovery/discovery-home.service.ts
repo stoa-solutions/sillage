@@ -30,8 +30,8 @@ export const HOME_RULES = {
   tracksPerArtist: 2,
   /** « Plus loin »: neighbours of the first new artists found. */
   furtherArtists: 3,
-  genreSections: 2,
-  tracksPerGenre: 6,
+  /** Searches not already kept, per page: YouTube throttles a burst for minutes. */
+  freshSearches: 10,
   /** Searches running at once: the catalog source accepts four, YouTube throttles bursts. */
   concurrency: 2,
   ideas: 8,
@@ -55,6 +55,8 @@ export interface HomeSources {
   /** The MusicBrainz ID of an artist known only by name, when it is unambiguous. */
   artistId(name: string): Promise<string | undefined>;
   search: Discovery["search"];
+  /** Whether a search page is already kept, so free. */
+  cached(query: string): boolean;
 }
 
 type SearchItem = Awaited<ReturnType<Discovery["search"]>>["results"][number];
@@ -175,13 +177,6 @@ function byArtist(artist: string, title: string, channel: string) {
   );
 }
 
-/** The artist a video credits by itself (Topic channel or « Artist - Song »), never a channel. */
-function creditedArtist(video: { title?: string | null; channel?: string | null }) {
-  const channel = video.channel ?? "";
-  const titled = /^(.+?)\s+[-–—]\s+\S/.test(video.title ?? "");
-  return /-\s*Topic$/i.test(channel) || titled ? artistName({ ...video, musicMetadata: null }) : undefined;
-}
-
 /** Runs the tasks a few at a time, in order; a failed task yields undefined. */
 async function limited<T>(tasks: (() => Promise<T>)[], concurrency: number) {
   const results: (T | undefined)[] = new Array(tasks.length);
@@ -204,9 +199,9 @@ async function limited<T>(tasks: (() => Promise<T>)[], concurrency: number) {
 
 /**
  * « Pour toi »: artists the listener does not know yet, near the ones they love (ListenBrainz
- * listening neighbours, excluding every artist of their library and plays), then their own
- * genres without their own artists, then new tracks of their recent artists. Nothing is cached
- * per account here; `rotate` draws other neighbours for a refresh.
+ * listening neighbours, excluding every artist of their library and plays), one step further,
+ * then new tracks of their recent artists. Nothing is cached per account here; `rotate` draws
+ * other neighbours for a refresh.
  */
 export async function discoveryHome(
   sources: HomeSources,
@@ -317,17 +312,27 @@ export async function discoveryHome(
     }
   }
 
-  // First pass: two neighbours per shelf, the genres and the listener's own artists.
-  const first = plans.flatMap((plan) =>
-    plan.pool.slice(0, HOME_RULES.neighboursPerSeed).map((artist) => ({ plan, artist })),
-  );
-  const genres = profile.genres.slice(0, HOME_RULES.genreSections);
+  // Searches: YouTube throttles a burst for minutes, for the DJ and the search too. A page
+  // makes a few fresh ones, an artist page already kept costs nothing, and two empty answers
+  // in a row stop the fresh ones. Order: one artist per shelf, then the second ones.
+  let fresh = 0;
+  let empties = 0;
+  const find = async (query: string) => {
+    if (sources.cached(query)) return sources.search(user, query);
+    if (fresh >= HOME_RULES.freshSearches || empties >= 2) return undefined;
+    fresh++;
+    const page = await sources.search(user, query);
+    empties = page.results.length ? 0 : empties + 1;
+    return page;
+  };
+  const first = Array.from({ length: HOME_RULES.neighboursPerSeed }, (_, rank) =>
+    plans.flatMap((plan) => (plan.pool[rank] ? [{ plan, artist: plan.pool[rank] }] : [])),
+  ).flat();
   const ownArtists = recentArtists.slice(0, 2);
   const firstSearches = await limited(
     [
-      ...first.map(({ artist }) => () => sources.search(user, artist.name)),
-      ...genres.map((genre) => () => sources.search(user, genre + " official music video")),
-      ...ownArtists.map((seed) => () => sources.search(user, seed.query + " official music")),
+      ...first.map(({ artist }) => () => find(artist.name)),
+      ...ownArtists.map((seed) => () => find(seed.query + " official music")),
     ],
     HOME_RULES.concurrency,
   );
@@ -335,6 +340,8 @@ export async function discoveryHome(
     const items = tracksOf(artist.name, firstSearches.results[index]?.results);
     if (items.length) plan.found.push({ artist, items });
   });
+  for (const plan of plans)
+    plan.found.sort((a, b) => plan.pool.indexOf(a.artist) - plan.pool.indexOf(b.artist));
 
   // Second pass: a spare neighbour for each one without a usable track, and one step further.
   const second = plans.flatMap((plan) =>
@@ -358,7 +365,7 @@ export async function discoveryHome(
     return [{ ...step, artist: next }];
   });
   const secondSearches = await limited(
-    [...second, ...further].map(({ artist }) => () => sources.search(user, artist.name)),
+    [...second, ...further].map(({ artist }) => () => find(artist.name)),
     HOME_RULES.concurrency,
   );
   second.forEach(({ plan, artist }, index) => {
@@ -393,31 +400,9 @@ export async function discoveryHome(
       reason: "Un pas de plus : les voisins de tes nouvelles découvertes",
       items: far,
     });
-  genres.forEach((genre, index) => {
-    const artists = new Set<string>();
-    const items = (firstSearches.results[first.length + index]?.results ?? [])
-      .filter((item) => {
-        const name = creditedArtist(item.video);
-        if (!name || !usable(item)) return false;
-        const key = nameKey(name);
-        if (profile.knownNames.has(key) || key === nameKey(genre) || artists.has(key)) return false;
-        artists.add(key);
-        return true;
-      })
-      .slice(0, HOME_RULES.tracksPerGenre)
-      .map((item) => take(item, `${creditedArtist(item.video)}, côté ${genre}`, creditedArtist(item.video)));
-    if (items.length)
-      sections.push({
-        id: `genre:${genre.toLowerCase()}`,
-        kind: "genre",
-        title: `Côté ${genre}`,
-        reason: `Un genre très présent dans ta bibliothèque, sans tes artistes habituels`,
-        items,
-      });
-  });
   const own: HomeItem[] = [];
   ownArtists.forEach((seed, index) => {
-    tracksOf(seed.query, firstSearches.results[first.length + genres.length + index]?.results)
+    tracksOf(seed.query, firstSearches.results[first.length + index]?.results)
       .forEach((item) => own.push(take(item, seed.reason, seed.query)));
   });
   if (own.length)
@@ -439,7 +424,6 @@ export async function discoveryHome(
       ...new Set([
         ...plans.filter((plan) => plan.found.length).map((plan) => plan.seed.name),
         ...ownArtists.map((seed) => seed.query),
-        ...genres,
       ]),
     ],
     ideas: profile.genres.slice(0, HOME_RULES.ideas),

@@ -146,6 +146,7 @@ export function discoveryRoutes(
         // A name lookup that fails only leaves this artist out: no warning for it.
         artistId: (name) => artistId(name).catch(() => undefined),
         search: (owner, query) => service.search(owner, query, "", ARTIST_PAGE_TTL),
+        cached: (query) => service.cached(query),
       },
       user,
       { rotate: refresh },

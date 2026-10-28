@@ -47,6 +47,11 @@ export class Discovery {
       ids,
     ) => ownedAmong(db.orm, user, ids),
   ) {}
+  /** Whether this first page is kept, so a search would cost nothing. */
+  cached(query: string) {
+    const hit = this.cache.get(JSON.stringify([query.trim().toLowerCase(), ""]));
+    return !!hit && hit.until >= Date.now();
+  }
   /** `keep` is how long a public page stays cached; « Pour toi » keeps an artist's a day. */
   async search(user: string, query: string, pageToken = "", keep = 300000) {
     const parsed = discoveryInput.parse({ query, pageToken });

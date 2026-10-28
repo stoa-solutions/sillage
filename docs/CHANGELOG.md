@@ -2,7 +2,7 @@
 
 ## Non publié
 
-- Sillage 1.9.1 (81) : Découvrir propose enfin des artistes que tu ne connais pas. « Pour toi » part de tes artistes préférés (Mon goût) et récents, demande leurs voisins d’écoute à ListenBrainz, écarte tout artiste déjà dans ta bibliothèque ou ton historique et range les titres en rayons : « Autour de X », « Côté <genre> », « De tes artistes, pas encore chez toi ». Chaque titre dit pourquoi il est là ; « D’autres propositions » tire d’autres voisins. Écran repris dans le style de Bibliothèque : barre latérale (Pour toi, récentes, tes genres en envies, playlists), en-tête avec surtitre, lignes de table.
+- Sillage 1.9.1 (81) : Découvrir propose enfin des artistes que tu ne connais pas. « Pour toi » part de tes artistes préférés (Mon goût) et récents, demande leurs voisins d’écoute à ListenBrainz, écarte tout artiste déjà dans ta bibliothèque ou ton historique et range les titres en rayons : « Autour de X », « Plus loin », « De tes artistes, pas encore chez toi ». Chaque titre dit pourquoi il est là ; « D’autres propositions » tire d’autres voisins. Écran repris dans le style de Bibliothèque : barre latérale (Pour toi, récentes, tes genres en envies, playlists), en-tête avec surtitre, lignes de table.
 
 - Sillage 1.9.0 (80) : un seul nom partout. Dépôt `stoa-solutions/sillage`, paquets `@sillage/*`, modules SillageKit, SillageAudio et SillageMac, identifiant `solutions.stoa.sillage`, schéma `sillage://`, variables `SILLAGE_*`. Au premier lancement, l’app reprend l’installation précédente (session, réglages, apparence, cache Studio). Serveur : base, rôle, réseau, dossiers et application Dokploy renommés ; l’ancien domaine de compatibilité est retiré.
 

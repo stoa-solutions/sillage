@@ -6,15 +6,17 @@
 
 « Pour toi » cherche d’abord **des artistes que tu ne connais pas encore**, puis des titres neufs de tes propres artistes.
 
-1. **Ton profil.** Le serveur relit toutes les vidéos de ta bibliothèque et de ton historique, avec leur nombre d’écoutes : artistes connus (nom et identifiant MusicBrainz), genres pondérés par les écoutes. Les artistes de Mon goût, classés par affinité, deviennent les points de départ.
-2. **Les voisins.** Pour les 5 artistes préférés qui ont un identifiant MusicBrainz, puis 2 artistes récents, il demande à ListenBrainz les artistes écoutés dans les mêmes sessions. Tout artiste déjà présent dans ta bibliothèque ou ton historique est écarté, par identifiant comme par nom. Il garde 3 voisins par point de départ, tirés d’une réserve de 8.
-3. **Les titres.** Chaque voisin est cherché sur YouTube (SearXNG d’abord) ; seuls les titres crédités à cet artiste sont gardés, 2 par artiste. Un rayon « Autour de X » regroupe les voisins d’un même point de départ, avec la raison « Kiasmos, proche de Maribou State ».
-4. **Les genres.** Deux rayons « Côté <genre> » explorent tes genres les plus écoutés sans tes artistes habituels.
+1. **Ton profil.** Le serveur relit toutes les vidéos de ta bibliothèque et de ton historique, avec leur nombre d’écoutes : artistes connus (nom et identifiant MusicBrainz), genres pondérés par les écoutes. Les points de départ sont les artistes de Mon goût, puis tes artistes les plus écoutés.
+2. **Les voisins.** Pour chaque point de départ, il demande à ListenBrainz les artistes écoutés dans les mêmes sessions, jusqu’à remplir 6 rayons. Un artiste sans identifiant MusicBrainz est cherché par son nom (6 recherches par page au plus, mises en cache 30 jours). Beaucoup d’artistes confidentiels n’ont aucun voisin : ils sont passés. Tout artiste déjà présent dans ta bibliothèque ou ton historique est écarté, par identifiant comme par nom.
+3. **Les titres.** Chaque voisin est cherché sur YouTube (SearXNG) ; seuls les titres crédités à cet artiste sont gardés (une chaîne « X - Topic » d’un autre artiste ou un simple titre homonyme ne comptent pas), sans mix ni compilation, une version par chanson, la version studio avant les lives. Deux artistes par rayon, deux titres par artiste ; un voisin sans titre utilisable est remplacé.
+4. **Plus loin.** Les voisins des premières découvertes, pour sortir encore un peu de tes habitudes.
 5. **Tes artistes.** Un dernier rayon propose des titres de tes artistes récents absents de ta bibliothèque.
 
-« D’autres propositions » tire d’autres voisins dans la réserve. Le serveur garde la page 20 minutes par compte ; ListenBrainz est mis en cache une journée. Un artiste trop confidentiel n’a parfois aucun voisin : il ne sert alors qu’au rayon de tes artistes. Ce circuit n’appelle aucun modèle d’IA. Sans écoute ni bibliothèque, l’accueil invite à écouter quelques morceaux.
+YouTube bride le moteur de recherche après une rafale, et la recherche comme le DJ en pâtiraient. Une page fait donc au plus 10 recherches nouvelles et s’arrête après deux réponses vides ; la page d’un artiste est gardée une journée et ne coûte plus rien ensuite. La page se complète ainsi d’une visite à l’autre.
 
-La barre latérale rappelle tes recherches récentes, propose tes genres comme « envies » et permet de chercher dans une playlist.
+« D’autres propositions » tire d’autres voisins dans une réserve de 10. Le serveur garde la page 20 minutes par compte ; ListenBrainz est mis en cache une journée. Ce circuit n’appelle aucun modèle d’IA. Sans écoute ni bibliothèque, l’accueil invite à écouter quelques morceaux.
+
+La barre latérale rappelle tes recherches récentes, propose tes genres les plus écoutés comme « envies » et permet de chercher dans une playlist.
 
 ## Quand tu saisis une recherche
 
