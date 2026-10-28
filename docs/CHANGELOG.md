@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage 1.8.6 (77) : 👍 / 👎 sur le morceau en cours (lecteur, barre de lecture, barre des menus), réglage du délai d’un 👎 dans Réglages → DJ et voix → Goût, temps écouté envoyé avec chaque écoute. Installation locale propre : anciennes copies, aperçus et sauvegardes retirés.
+
 - Goût de la personne : boutons 👍 / 👎 sur le morceau en cours (lecteur, barre de lecture, barre des menus). Un 👎 écarte le titre des propositions du DJ pendant 5 jours, réglables de 1 à 60 dans Réglages → DJ et voix, puis il revient peu à peu ; il reste jouable s’il est demandé. Aucune playlist n’est modifiée. Chaque écoute enregistre son temps écouté pour distinguer un vrai rejet d’un simple « suivant ». La recherche du DJ est ordonnée par goût, avec une place sur quatre pour la découverte, et le DJ voit « aimé », « écouté 13 fois » ou « souvent passé vite ». Règles réunies dans `apps/server/src/modules/taste/taste.rules.ts`.
 
 - Sillage 1.8.5 (76) : dernière intégration des agents de Claude, quota de création atomique, liste défilable et isolation des réponses entre comptes. Les brouillons de réglages sont réinitialisés au changement de compte ; deux chargements simultanés gardent la réponse la plus récente.
