@@ -84,7 +84,7 @@ const JUNK = /\b(type beat|backing track|tutorial|audiobook|podcast|for drummers
 const MIX = /\b(mix|mixtape|compilation|playlist|best of|greatest hits|full album|non-?stop|\d+\s*hours?)\b/i;
 const LONGEST_SONG = 15 * 60;
 /** Lives and sessions come after the studio version of the same artist. */
-const LIVE = /\b(live|tiny desk|kexp|session|concert|performance)\b/i;
+const LIVE = /\b(live|tiny desk|kexp|sofar|colors show|session|concert|performance|unplugged|acoustic)\b/i;
 
 /** The listener's artists and genres, from their library, their plays and their taste ranking. */
 export function listenerProfile(
@@ -233,11 +233,21 @@ export async function discoveryHome(
     return { ...item, reason, ...(artist ? { artist } : {}) };
   };
 
-  const tracksOf = (artist: string, results: SearchItem[] | undefined) =>
-    (results ?? [])
+  /** The song of an « Artist - Song | Channel » title, to keep one version of each. */
+  const songKey = (title: string) => titleKey(title.split(/\s+[-–—]\s+/)[1]?.split(/\s+\|\s+/)[0] ?? title);
+  const tracksOf = (artist: string, results: SearchItem[] | undefined) => {
+    const songs = new Set<string>();
+    return (results ?? [])
       .filter((item) => usable(item) && byArtist(artist, item.video.title ?? "", item.video.channel ?? ""))
       .sort((a, b) => Number(LIVE.test(a.video.title ?? "")) - Number(LIVE.test(b.video.title ?? "")))
+      .filter((item) => {
+        const key = songKey(item.video.title ?? "");
+        if (songs.has(key)) return false;
+        songs.add(key);
+        return true;
+      })
       .slice(0, HOME_RULES.tracksPerArtist);
+  };
 
   // Seeds: three favourites, the recent artists, then the others. Only artists with a
   // MusicBrainz ID have neighbours and many niche ones have none: they are tried a few at a

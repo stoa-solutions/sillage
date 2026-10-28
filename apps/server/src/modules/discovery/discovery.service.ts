@@ -65,9 +65,12 @@ export class Discovery {
       try {
         const data = await request;
         result = { until: Date.now() + 300000, result: data };
-        if (this.cache.size >= 100)
-          this.cache.delete(this.cache.keys().next().value!);
-        this.cache.set(key, result);
+        // An empty page is often the search engine throttling a burst: never kept.
+        if (data.videos.length) {
+          if (this.cache.size >= 100)
+            this.cache.delete(this.cache.keys().next().value!);
+          this.cache.set(key, result);
+        }
       } catch (error) {
         throw providerError(error);
       } finally {

@@ -219,3 +219,20 @@ it("looks up by name a played artist MusicBrainz has not matched yet", async () 
   expect(given.similar).toHaveBeenCalledWith("nv");
   expect(required(result.sections[0]).title).toBe("Autour de Nirvana");
 });
+
+it("keeps one version of a song, the studio one first", async () => {
+  const given = sources({
+    similar: vi.fn().mockResolvedValue([neighbour("Sons of Kemet", "sk")]),
+    search: vi.fn().mockImplementation(async (_user: string, query: string) =>
+      query === "Sons of Kemet"
+        ? found(
+            { id: "sofar000001", title: "Sons of Kemet - In the castle of my skin | Sofar London" },
+            { id: "studio00001", title: "Sons Of Kemet - In The Castle Of My Skin" },
+            { id: "studio00002", title: "Sons Of Kemet - Hustle" },
+          )
+        : found(),
+    ),
+  });
+  const result = await discoveryHome(given, "alice");
+  expect(result.suggestions.map((item) => item.video.id)).toEqual(["studio00001", "studio00002"]);
+});
