@@ -76,6 +76,7 @@ shutil.copy2(project / '.build/artifacts/sparkle/Sparkle/LICENSE', contents / 'R
 info = {
     'CFBundleName': 'Sillage', 'CFBundleDisplayName': 'Sillage', 'CFBundleExecutable': 'RecallMac',
     'CFBundleIdentifier': 'solutions.stoa.playlist-recall', 'CFBundlePackageType': 'APPL',
+    'LSMultipleInstancesProhibited': True,
     'CFBundleURLTypes': [{'CFBundleURLName': 'Sillage Sign In', 'CFBundleURLSchemes': ['playlist-recall']}],
     'CFBundleShortVersionString': args.version, 'CFBundleVersion': args.build,
     'LSMinimumSystemVersion': '14.0', 'NSHighResolutionCapable': True, 'CFBundleIconFile': 'Sillage.icns',

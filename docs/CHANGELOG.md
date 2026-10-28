@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage 1.8.4 (75) : une seule fenêtre principale ; les ouvertures depuis le Dock et la barre des menus réutilisent le lecteur. Le bundle interdit le lancement simultané de plusieurs instances par macOS. Les agents de base et personnalisés de Claude sont inclus.
+
 - Agents du DJ côté serveur : profils qui changent le ton et les préférences du DJ sans toucher à ses règles. Quatre agents de base (Le DJ, Le Disquaire, L’Archiviste, Focus) et agents personnalisés par compte dans `dj_agents` (`/v1/dj/agents`), choisis par `agentId` dans `/v1/dj/chat`, suites comprises. Un agent inconnu ou supprimé repasse sur l’agent par défaut ; le journal garde l’agent utilisé. Scénarios `--suite agents` dans le banc d’évaluation. Sur Mac : pastille d’agent dans la barre de chat et page Réglages → Agents (choisir, dupliquer, créer, modifier, supprimer) ; `/règles` montre le profil de l’agent choisi. Mettre à jour le serveur avant l’app : sans agents côté serveur, la pastille reste cachée. Une réponse du DJ peut contenir jusqu’à 20 titres ou cartes (8 auparavant) : au-delà, la liste est coupée au lieu de faire échouer le tour ; « quinze titres », `/suite 20` et les listes de titres exacts suivent la même limite.
 
 - Sillage 1.8.3 (74) : nouvelle construction locale depuis main, incluant les derniers contrôles de barre des menus, la pastille d’écoute et les messages en attente. Les sauvegardes d’installation se conservent en ZIP pour ne plus apparaître comme des applications dans macOS ; le prototype d’agents reste sur sa branche de développement.

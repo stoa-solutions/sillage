@@ -287,6 +287,16 @@ Le nom technique `RecallMac`, le bundle ID `solutions.stoa.playlist-recall`, le 
 
 L’installation locale remplace l’ancien bundle par `~/Applications/Sillage.app`, après fermeture propre et sauvegarde du binaire précédent hors du dossier Applications. Les données et la session ne sont pas réimportées ni migrées. Une archive de test créée avec `--skip-update-signature` reste locale ; ne pas la publier dans le flux Sparkle.
 
+### Réouverture et instance unique
+
+La scène principale est un `Window("Sillage", id: "main")`, pas un `WindowGroup` : les demandes d’ouverture de la barre des menus réutilisent le même lecteur. Le délégué garde le processus actif lorsque sa dernière fenêtre ferme. `LSMultipleInstancesProhibited` interdit aussi à Launch Services de démarrer une seconde instance du bundle. Les réglages et la pastille restent des fenêtres secondaires normales.
+
+Les URL de retour Google arrivent directement au délégué puis à la session, sans demander à SwiftUI de créer une scène supplémentaire. Le schéma historique et le contrôle d’état à usage unique sont conservés. La réception ne dépend pas d’une fenêtre encore visible.
+
+Contrôle de régression : rouvrir depuis le Finder avec la fenêtre visible, réduite, puis fermée ; le PID doit rester identique et une seule fenêtre principale doit apparaître. Vérifier aussi l’ouverture depuis la barre des menus, la bibliothèque et le retour OAuth. La sonde de routage utilise un code synthétique ; elle ne remplace pas un parcours Google complet.
+
+Références Apple : [Window](https://developer.apple.com/documentation/swiftui/window), [openWindow](https://developer.apple.com/documentation/swiftui/environmentvalues/openwindow), [Launch Services](https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/LaunchServicesKeys.html).
+
 ## Fournisseur du DJ
 
 L’accueil et **Réglages → DJ et voix** partagent le choix Gemini/Claude et le modèle. Le serveur renvoie le catalogue et les réglages enregistrés de chaque fournisseur. Le changement devient actif après **Vérifier et enregistrer**. Une clé saisie est effacée du champ si le fournisseur change ; elle n’est jamais préremplie depuis le serveur.

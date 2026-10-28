@@ -5,6 +5,13 @@ import SwiftUI
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
   var updater: SPUStandardUpdaterController?
+  var receiveURL: ((URL) -> Void)?
+
+  func application(_ application: NSApplication, open urls: [URL]) {
+    // Route authentication to the session without asking SwiftUI to create another window.
+    for url in urls { receiveURL?(url) }
+  }
+
   func applicationDidFinishLaunching(_ notification: Notification) {
     NSApp.setActivationPolicy(.regular)
     NSApp.activate(ignoringOtherApps: true)
@@ -121,7 +128,8 @@ import SwiftUI
     if session.hasServer { library.sync() }
   }
   var body: some Scene {
-    WindowGroup("Sillage", id: Self.mainWindowID) {
+    // Reopening from the Dock, the menu bar or a URL must reuse the one player.
+    Window("Sillage", id: Self.mainWindowID) {
       MainView().environmentObject(session).environmentObject(library).environmentObject(dj)
         .environmentObject(discovery).environmentObject(listened)
         .task {
@@ -134,8 +142,10 @@ import SwiftUI
             if session.hasServer { library.sync() }
           }
         }
-        .onOpenURL { session.receiveGoogleCallback($0) }
-        .onAppear { desk.mainWindowAppeared() }
+        .onAppear {
+          delegate.receiveURL = { [weak session] url in session?.receiveGoogleCallback(url) }
+          desk.mainWindowAppeared()
+        }
         .onDisappear {
           dj.cancel()
           dj.pause()
@@ -164,7 +174,6 @@ import SwiftUI
     Settings {
       SettingsView().environmentObject(session).environmentObject(library).environmentObject(dj)
         .environmentObject(desk)
-        .onOpenURL { session.receiveGoogleCallback($0) }
         .tint(.recall)
     }
   }
