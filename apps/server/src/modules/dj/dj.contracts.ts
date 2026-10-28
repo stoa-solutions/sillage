@@ -79,7 +79,13 @@ export const selection = z.object({
   kind: absent(z.enum(["music", "information", "conversation"]), "music"),
   discoveryIds: absent(videoIds, []),
   citationIds: absent(z.array(z.number().int().min(1).max(40)).max(5), []),
-  reply: z.string().trim().min(1).max(1500),
+  // An empty reply is not an unreadable answer: a play is announced by the server anyway.
+  reply: z
+    .string()
+    .trim()
+    .max(1500)
+    .nullish()
+    .transform((value) => value || "C’est noté."),
   explanation: z
     .string()
     .trim()

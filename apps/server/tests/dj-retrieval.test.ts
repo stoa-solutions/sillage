@@ -807,3 +807,30 @@ it("keeps a turn whose model proposes more cards than before, up to the selectio
   );
   expect(capped.discoveries).toHaveLength(20);
 });
+
+it("plays a selection whose reply is empty, as a terse agent may write it", async () => {
+  // Focus in production: reply "" made the whole turn fail as unreadable.
+  provider([
+    tool,
+    {
+      content: JSON.stringify({
+        kind: "music",
+        reply: "",
+        explanation: "",
+        action: "replace",
+        trackIds: [track.id],
+        discoveryIds: [],
+      }),
+    },
+  ]);
+  const result = await djTurn(
+    db,
+    djInput.parse({ message: "Mets du Edge", scope: "all" }),
+    undefined,
+    config,
+    "alice",
+  );
+  expect(result.action).toBe("replace");
+  expect(result.tracks.map((item) => item.id)).toEqual([track.id]);
+  expect(result.reply.startsWith("C’est parti")).toBe(true);
+});
