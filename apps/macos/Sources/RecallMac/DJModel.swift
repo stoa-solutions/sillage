@@ -22,6 +22,7 @@ final class DJModel: ObservableObject {
   private var rulesTask: Task<Void, Never>?
   @Published var searchScope: DiscoveryScope = .library
   let agents: DJAgentsModel
+  let taste: TasteModel
   let player = Player()
   let microphone = Microphone()
   lazy var voice = VoiceOutput(engine: player.engine)
@@ -59,6 +60,7 @@ final class DJModel: ObservableObject {
   init(session: Session) {
     self.session = session
     agents = DJAgentsModel(session: session)
+    taste = TasteModel(session: session)
     journal.onSyncIssue = { [weak session] failed in
       let notice = "Le journal du DJ attend sa synchronisation. La lecture continue."
       if failed {
@@ -118,6 +120,7 @@ final class DJModel: ObservableObject {
     prompt = ""
     searchScope = .library
     agents.reset()
+    taste.reset()
     dispatch(.accountReady(!session.loadingCredentials && session.hasServer))
   }
   func send(_ text: String? = nil, source: DiscoveryScope? = nil) {

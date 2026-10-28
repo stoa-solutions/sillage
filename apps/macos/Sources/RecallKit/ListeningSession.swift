@@ -516,6 +516,7 @@ public struct ListeningSession: Sendable {
       guard !playbackBlocked else { return }
       self.elapsed = elapsed
       self.duration = duration
+      queue.progress(elapsed)
       if playing && elapsed > 2 { unavailableCount = 0 }
       let remaining = duration - elapsed
       guard playing, duration > 0, remaining > 0 else { return }

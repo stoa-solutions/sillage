@@ -1826,6 +1826,201 @@
       ]
     },
     {
+      "name": "Goût",
+      "item": [
+        {
+          "name": "getTrackFeedback",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/taste/feedback/:videoId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "taste",
+                "feedback",
+                ":videoId"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": "{{video_id}}"
+                }
+              ]
+            },
+            "description": "👍 (like), 👎 (dislike) ou null pour ce titre et le compte courant.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "setTrackFeedback",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/taste/feedback/:videoId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "taste",
+                "feedback",
+                ":videoId"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": "{{video_id}}"
+                }
+              ]
+            },
+            "description": "like remonte le titre dans les propositions du DJ. dislike l’écarte des propositions pendant le délai du compte (5 jours par défaut), puis son poids s’estompe ; le titre reste jouable s’il est demandé par son nom. none retire l’avis. Aucune playlist n’est modifiée.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"like\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getTasteSettings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/taste/settings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "taste",
+                "settings"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Nombre de jours pendant lesquels un 👎 écarte un titre des propositions.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "saveTasteSettings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/taste/settings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "taste",
+                "settings"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "De 1 à 60 jours. Ensuite, le poids du 👎 baisse de moitié à chaque nouveau délai.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dislikeDays\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Outils MCP",
       "item": [
         {

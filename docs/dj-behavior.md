@@ -44,6 +44,10 @@ L’utilisateur peut demander de nouvelles propositions ou exclure les cartes af
 - Demande → Pause → réponse : préparer la sélection tout en restant en pause. Une nouvelle demande explicite postérieure à cette pause peut lancer la musique.
 - Annuler → ancienne réponse : aucun changement. Deux demandes : seule la dernière réponse valide est appliquée.
 
+## Goût
+
+`music_search` rend ses candidats ordonnés par le goût de la personne (`modules/taste/taste.rules.ts`) : 👎 récents retirés, titres aimés ou souvent écoutés en tête, une place sur quatre pour la découverte. Chaque candidat peut porter `taste`. Le modèle choisit toujours lui-même ; la validation des identifiants, de la source et de la taille ne change pas.
+
 ## Agents
 
 Un agent choisi par la personne ajoute un profil après les règles du DJ et avant celles du Tour. Il règle le ton et les préférences de sélection ; l’intention, la source, la taille demandée, les exclusions et la validation des identifiants restent décidées comme sans agent. L’annonce de la file reste écrite par le serveur. Voir `apps/server/src/modules/dj-agents/` et la [visite du serveur](server-tour.md).

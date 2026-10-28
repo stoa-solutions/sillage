@@ -21,6 +21,7 @@ export async function recordEvents(
         title: e.title,
         channel: e.channel ?? null,
         outcome: e.outcome,
+        listenedMs: e.listenedMs ?? null,
         playedAt: new Date(e.playedAt),
       })),
     )

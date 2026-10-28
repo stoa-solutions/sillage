@@ -14,6 +14,8 @@ export const historyEvent = z
     title: z.string().max(300),
     channel: z.string().max(200).nullable().optional(),
     outcome: z.enum(listeningOutcomes),
+    /** How long the track played before this outcome; sent by clients since taste. */
+    listenedMs: z.number().int().min(0).max(86_400_000).optional(),
     playedAt: z.string().datetime({ offset: true }),
   })
   .openapi("HistoryEvent");

@@ -223,6 +223,7 @@ struct NowPlayingBar: View {
       } label: {
         Image(systemName: "forward.fill").frame(width: 28, height: 28).contentShape(Rectangle())
       }.buttonStyle(.plain).disabled(model.current == nil).accessibilityLabel("Morceau suivant")
+      TasteButtons(taste: model.taste, track: model.current)
       HStack(spacing: 8) {
         Text(clock(player.elapsed)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
           .frame(width: 38, alignment: .trailing)

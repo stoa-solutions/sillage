@@ -101,6 +101,7 @@ struct DeskMenu: View {
             Image(systemName: "forward.fill").frame(width: 26, height: 26)
               .contentShape(Rectangle())
           }.buttonStyle(.plain).accessibilityLabel("Morceau suivant")
+          TasteButtons(taste: dj.taste, track: dj.current, size: 26)
           VolumeControl(player: player, compact: true)
         }
       }

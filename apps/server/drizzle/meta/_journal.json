@@ -36,6 +36,13 @@
       "when": 1793141853558,
       "tag": "0004_dj_agents",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793188104011,
+      "tag": "0005_taste",
+      "breakpoints": true
     }
   ]
 }

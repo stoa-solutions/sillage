@@ -301,6 +301,7 @@ struct DJView: View {
         .contentShape(Rectangle())
     }.buttonStyle(.plain).help("Morceau suivant").accessibilityLabel("Morceau suivant")
       .disabled(model.current == nil)
+    TasteButtons(taste: model.taste, track: model.current, size: 30)
     VolumeControl(player: player)
   }
 

@@ -11,6 +11,8 @@ public struct PlaybackHistoryEntry: Identifiable, Sendable {
   public let id = UUID()
   public let track: Track
   public let outcome: PlaybackOutcome
+  /// How long the track played before this outcome: a skip after 5 s is not one after 3 min.
+  public var listenedSeconds: Double = 0
 }
 
 /// Playback decisions do not depend on a provider's wording or on UI timing.
@@ -19,6 +21,8 @@ public struct PlaybackQueue: Sendable {
   public private(set) var position = 0
   public private(set) var ended = false
   public private(set) var history: [PlaybackHistoryEntry] = []
+  /// Playback position of the current track, recorded with its outcome.
+  public private(set) var elapsed: Double = 0
   // The display history is bounded, but an automatic DJ must not replay an old ID after 200 songs.
   private var encounteredIDs: Set<String> = []
   private var encounteredSongs: Set<String> = []
@@ -69,10 +73,18 @@ public struct PlaybackQueue: Sendable {
     position = 0
     ended = false
     recorded = false
+    elapsed = 0
+  }
+  /// The player's clock for the current track; reset whenever another track becomes current.
+  public mutating func progress(_ seconds: Double) {
+    guard seconds.isFinite, seconds >= 0 else { return }
+    elapsed = seconds
   }
   private mutating func record(_ outcome: PlaybackOutcome) {
     guard tracks.indices.contains(position), !recorded else { return }
-    history.append(PlaybackHistoryEntry(track: tracks[position], outcome: outcome))
+    history.append(
+      PlaybackHistoryEntry(
+        track: tracks[position], outcome: outcome, listenedSeconds: elapsed))
     history = Array(history.suffix(200))
     recorded = true
   }
@@ -95,6 +107,7 @@ public struct PlaybackQueue: Sendable {
     encounteredSongs.formUnion(PlaybackIdentity.keys(tracks[position]))
     ended = false
     recorded = false
+    elapsed = 0
     return true
   }
   /// Only future entries can move; the current song and completed history stay fixed.

@@ -14,6 +14,7 @@ import { systemRoutes } from "./modules/system/index.ts";
 import type { ApiEnvironment } from "./shared/api-environment.ts";
 import { createDjRoutes } from "./modules/dj/index.ts";
 import { djAgentRoutes } from "./modules/dj-agents/index.ts";
+import { tasteRoutes } from "./modules/taste/index.ts";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
@@ -63,6 +64,7 @@ export function createApp(
   app.route("/v1/dj/agents", djAgentRoutes(db));
   app.route("/v1/dj", createDjRoutes(db));
   app.route("/v1/history", historyRoutes(db));
+  app.route("/v1/taste", tasteRoutes(db));
   app.route("/v1", mcpRoutes(db));
   app.route("/v1", enrichmentRoutes(db));
   app.route("/v1", libraryRoutes(db));

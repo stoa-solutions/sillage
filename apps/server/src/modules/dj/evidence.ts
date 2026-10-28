@@ -54,6 +54,7 @@ export function compactVideo(video: DjTrack) {
       220,
     ),
     addedAt: shortText((video as DjTrack & { addedAt?: string }).addedAt, 10),
+    taste: shortText((video as DjTrack & { taste?: string }).taste, 120),
   };
 }
 

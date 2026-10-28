@@ -7,6 +7,7 @@ public struct ListeningEvent: Sendable, Equatable {
   public let title: String
   public let channel: String?
   public let outcome: String
+  public let listenedMs: Int
   public let playedAt: Date
 
   init(_ entry: PlaybackHistoryEntry, at date: Date) {
@@ -21,6 +22,7 @@ public struct ListeningEvent: Sendable, Equatable {
       case .unavailable: "unavailable"
       case .replaced: "replaced"
       }
+    listenedMs = Int((max(0, min(entry.listenedSeconds, 86_400)) * 1000).rounded())
     playedAt = date
   }
 
@@ -46,7 +48,7 @@ public struct ListeningEvent: Sendable, Equatable {
   public var payload: [String: Any] {
     [
       "id": id.uuidString.lowercased(), "videoId": videoId, "title": title,
-      "channel": channel ?? NSNull(), "outcome": outcome,
+      "channel": channel ?? NSNull(), "outcome": outcome, "listenedMs": listenedMs,
       "playedAt": Self.format.string(from: playedAt),
     ]
   }

@@ -303,6 +303,10 @@ L’accueil et **Réglages → DJ et voix** partagent le choix Gemini/Claude et 
 
 La voix est indépendante du choix de raisonnement : Claude utilise directement la voix macOS. Gemini propose la voix expressive existante et son repli macOS. Les deux chemins gardent les mêmes commandes de lecture et outils musicaux. Pour tester sans la session ni la bibliothèque de Samuel, lancer une build QA avec `RECALL_DATA_DIR` dans un dossier temporaire.
 
+## Goût : 👍 / 👎
+
+Le lecteur, la barre de lecture et la barre des menus portent 👍 / 👎 pour le morceau en cours (`TasteButtons`, `TasteModel`). L’avis s’affiche aussitôt et part au serveur ; un échec rétablit l’avis précédent, et un second appui retire l’avis. Le modèle ignore les réponses arrivées après un changement de compte. Réglages → DJ et voix → Goût règle le nombre de jours pendant lesquels un 👎 écarte un titre. Chaque écoute envoie `listenedMs`, mesuré par `PlaybackQueue.progress`. Les règles de classement sont côté serveur ([server-tour.md](server-tour.md)).
+
 ## Agents du DJ
 
 Dans la barre de chat, la pastille d’agent (à côté de la source) choisit qui répond : Le DJ, Le Disquaire, L’Archiviste, Focus ou un agent personnel. Le choix reste sur ce Mac (`UserDefaults`) et part avec chaque requête au DJ, suites automatiques comprises (`DJModel.ask`). **Réglages → Agents** liste les agents de base, en lecture seule et duplicables, puis ceux du compte : nom, instructions (1 500 caractères), enregistrement et suppression, confirmation avant d’abandonner une modification. La pastille reste cachée tant que le serveur ne liste aucun agent ; un agent supprimé ou inconnu revient au DJ par défaut. `/règles` affiche le prompt avec le profil de l’agent choisi. Les profils et leurs limites sont décrits dans [server-tour.md](server-tour.md).

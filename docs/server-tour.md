@@ -115,6 +115,17 @@ Un agent est un profil ajouté aux règles du DJ, jamais un remplacement : ton e
 
 Limites : l’annonce « C’est parti : … » est écrite par le serveur, l’agent agit sur le choix, `explanation` et les réponses de conversation. Un titre exact trouvé dans le catalogue répond sans modèle, donc sans agent.
 
+### Le goût de la personne : `taste`
+
+Le DJ apprend ce que la personne aime à partir de ses 👍 / 👎 et de son historique d’écoute.
+
+1. `taste.rules.ts` : **toutes les règles**, en fonctions pures (poids des signaux, seuil d’un passage rapide, délai d’un 👎, part de découverte). `tasteOf()` calcule le score et l’étiquette d’un titre ; `rankByTaste()` ordonne les candidats : 👎 récents retirés, titres aimés en tête, une place sur quatre pour la découverte, ordre de la recherche conservé dans chaque groupe. Changer un poids se fait ici et nulle part ailleurs.
+2. `taste.repository.ts` : `track_feedback` (un avis par compte et par titre, remplacé ou retiré), `taste_settings` (délai d’un 👎 par compte, 5 jours par défaut, de 1 à 60) et les agrégats de `listening_history` (écoutes, écoutes complètes, passages avant 30 s grâce à `listened_ms`).
+3. `taste.service.ts` → `rank()` : appelé par `music_search` (module `mcp`) avant de rendre ses résultats. Chaque vidéo reçoit `taste` (« aimé · écouté 13 fois »), que `compactVideo` transmet au modèle. Si la lecture du goût échoue, l’ordre de la recherche est conservé.
+4. `taste.controller.ts` : `GET/PUT /v1/taste/feedback/{videoId}` (`like`, `dislike`, `none`) et `GET/PUT /v1/taste/settings`.
+
+Un 👎 n’est jamais définitif : il écarte le titre des propositions pendant le délai du compte, puis son poids baisse de moitié à chaque nouveau délai. Un titre demandé par son nom passe toujours (résolution exacte du catalogue, avant toute recherche). Un 👍 ne modifie aucune playlist.
+
 ## 9. Lecteur, versions Mac, santé : `player`, `releases`, `system`
 
 - `player` : page publique du lecteur YouTube (`/dj/player`, `.js`, `.css`) intégrée par le Mac, servie en HTTPS pour un référent valide. Aucun jeton dans cette page.
@@ -128,7 +139,7 @@ Ces trois modules servent des fichiers tels quels : leurs routes sont documenté
 - `src/db/schema/` : un fichier par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`, plus `columns.ts` et `legacy.ts`). Une table = un `pgTable(...)`, noms snake_case en base, camelCase en TypeScript, contraintes avec leur nom réel. Les valeurs fixes sont des enums PostgreSQL (`pgEnum`) : `job_kind`, `job_status`, `playlist_status`, `sync_run_status`, `listening_outcome`, `lyrics_status`, `ai_provider`, `user_dj_provider`, `discovery_scope`, `turn_trigger`, `turn_status`, `journal_origin`.
 - `src/db/client.ts` : `openDatabase()` crée le pool et l’objet Drizzle `orm` ; `pool` est l’instance du processus. Les dépôts reçoivent `db.orm` ou une transaction (`Executor`).
 - `src/db/migrate.ts` : prend un verrou consultatif de session (740071) sur une connexion dédiée **avant** que Drizzle lise son journal, puis applique les migrations en attente dans une transaction. Deux processus qui démarrent ensemble s’attendent.
-- `drizzle/` : `0000_baseline` (ancien schéma idempotent : une base existante l’applique sans changement), `0001` enums des tâches et playlists, `0002` enums d’écoute et de paroles, `0003` enums du DJ, `0004` table `dj_agents` (structure seule ; les agents de base sont écrits au démarrage). Seuls le déclencheur `recall_music_revision` et la configuration de recherche `recall_simple` restent en SQL écrit à la main.
+- `drizzle/` : `0000_baseline` (ancien schéma idempotent : une base existante l’applique sans changement), `0001` enums des tâches et playlists, `0002` enums d’écoute et de paroles, `0003` enums du DJ, `0004` table `dj_agents` (structure seule ; les agents de base sont écrits au démarrage), `0005` goût : `track_feedback`, `taste_settings` et `listening_history.listened_ms`. Seuls le déclencheur `recall_music_revision` et la configuration de recherche `recall_simple` restent en SQL écrit à la main.
 
 Une requête Drizzle se lit comme son SQL, et son résultat est typé depuis le schéma :
 

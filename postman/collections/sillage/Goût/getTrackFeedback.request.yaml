@@ -1,0 +1,18 @@
+$kind: http-request
+description: >-
+  👍 (like), 👎 (dislike) ou null pour ce titre et le compte courant.
+
+
+  Effet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection
+  sur son compte.
+url: "{{base_url}}/v1/taste/feedback/:videoId"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  videoId: "{{video_id}}"
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 1000

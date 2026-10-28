@@ -8,6 +8,7 @@ import type { SearchFailureReason } from "../discovery/index.ts";
 import { DiscoveryError, discoveryFor } from "../discovery/index.ts";
 import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
 import { musicMatchRank, resolveExactRequest, search } from "../search/index.ts";
+import { tasteService } from "../taste/index.ts";
 import {
   browseOwnedTracks,
   ownedPlaylists,
@@ -510,12 +511,14 @@ export function musicMcp(
             })(),
           );
         await Promise.all(jobs);
+        // The listener's taste orders the candidates and labels each one for the DJ.
+        const ranked = await tasteService(db).rank(userId, [...results.values()]);
         return {
           content: [
             {
               type: "text",
               text: JSON.stringify({
-                results: [...results.values()],
+                results: ranked,
                 sources,
                 queries,
               }),

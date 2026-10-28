@@ -3508,6 +3508,348 @@
         }
       }
     },
+    "/v1/taste/feedback/{videoId}": {
+      "get": {
+        "operationId": "getTrackFeedback",
+        "summary": "Avis sur un titre",
+        "description": "👍 (like), 👎 (dislike) ou null pour ce titre et le compte courant.",
+        "tags": [
+          "Goût"
+        ],
+        "x-sillage-effect": "read",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{11}$"
+            },
+            "required": true,
+            "name": "videoId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackFeedback"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setTrackFeedback",
+        "summary": "Donner ou retirer un avis",
+        "description": "like remonte le titre dans les propositions du DJ. dislike l’écarte des propositions pendant le délai du compte (5 jours par défaut), puis son poids s’estompe ; le titre reste jouable s’il est demandé par son nom. none retire l’avis. Aucune playlist n’est modifiée.",
+        "tags": [
+          "Goût"
+        ],
+        "x-sillage-effect": "write",
+        "x-sillage-example": {
+          "value": "like"
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{11}$"
+            },
+            "required": true,
+            "name": "videoId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "value": "like"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/TrackFeedbackInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackFeedback"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/taste/settings": {
+      "get": {
+        "operationId": "getTasteSettings",
+        "summary": "Réglages du goût",
+        "description": "Nombre de jours pendant lesquels un 👎 écarte un titre des propositions.",
+        "tags": [
+          "Goût"
+        ],
+        "x-sillage-effect": "read",
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TasteSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveTasteSettings",
+        "summary": "Régler le délai d’un 👎",
+        "description": "De 1 à 60 jours. Ensuite, le poids du 👎 baisse de moitié à chaque nouveau délai.",
+        "tags": [
+          "Goût"
+        ],
+        "x-sillage-effect": "write",
+        "x-sillage-example": {
+          "dislikeDays": 5
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "dislikeDays": 5
+              },
+              "schema": {
+                "$ref": "#/components/schemas/TasteSettingsInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TasteSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/mcp": {
       "post": {
         "operationId": "callMusicMcp",
@@ -6455,6 +6797,11 @@
               "replaced"
             ]
           },
+          "listenedMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
           "playedAt": {
             "type": "string",
             "format": "date-time"
@@ -6466,6 +6813,69 @@
           "title",
           "outcome",
           "playedAt"
+        ]
+      },
+      "TrackFeedback": {
+        "type": "object",
+        "properties": {
+          "videoId": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "like",
+              "dislike",
+              null
+            ]
+          }
+        },
+        "required": [
+          "videoId",
+          "value"
+        ]
+      },
+      "TrackFeedbackInput": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "enum": [
+              "like",
+              "dislike",
+              "none"
+            ]
+          }
+        },
+        "required": [
+          "value"
+        ]
+      },
+      "TasteSettings": {
+        "type": "object",
+        "properties": {
+          "dislikeDays": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dislikeDays"
+        ]
+      },
+      "TasteSettingsInput": {
+        "type": "object",
+        "properties": {
+          "dislikeDays": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60
+          }
+        },
+        "required": [
+          "dislikeDays"
         ]
       },
       "RpcResponse": {

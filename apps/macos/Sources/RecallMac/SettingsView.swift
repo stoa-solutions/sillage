@@ -209,6 +209,7 @@ struct SettingsView: View {
       }
       if !message.isEmpty { Text(message).font(.callout).textSelection(.enabled) }
     }
+    TasteSettingsSection(taste: dj.taste)
     Section("Voix") {
       if session.activeProvider == .anthropic {
         Label("Voix macOS", systemImage: "waveform")

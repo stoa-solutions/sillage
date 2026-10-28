@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   bigint,
+  check,
   foreignKey,
   index,
   integer,
@@ -37,6 +39,8 @@ export const listeningHistory = pgTable(
     title: text("title").notNull(),
     channel: text("channel"),
     outcome: listeningOutcome("outcome").notNull(),
+    /** How long the track played before this outcome; null for clients older than taste. */
+    listenedMs: integer("listened_ms"),
     playedAt: timestamptz("played_at").notNull(),
     receivedAt: timestamptz("received_at").notNull().defaultNow(),
   },
@@ -51,6 +55,11 @@ export const listeningHistory = pgTable(
       foreignColumns: [users.id],
     }).onDelete("cascade"),
     index("listening_history_recent").on(t.userId, t.playedAt.desc().nullsFirst()),
+    index("listening_history_video").on(t.userId, t.videoId),
+    check(
+      "listening_history_listened_ms_check",
+      sql`${t.listenedMs} IS NULL OR ${t.listenedMs} >= 0`,
+    ),
   ],
 );
 
