@@ -114,6 +114,22 @@ it("caps custom agents per account", async () => {
   expect((await req("POST", "/agents", tokenB, calm)).status).toBe(200);
 });
 
+it("keeps the cap under concurrent creations", async () => {
+  // Codex's review reproduced 22 agents from eight simultaneous POSTs at 19.
+  for (let index = 0; index < 19; index++)
+    await req("POST", "/agents", tokenA, { name: `Agent ${index}`, instructions: "x" });
+  const statuses = await Promise.all(
+    Array.from({ length: 8 }, async (_, index) =>
+      (await req("POST", "/agents", tokenA, { name: `Course ${index}`, instructions: "x" }))
+        .status,
+    ),
+  );
+  expect(statuses.filter((status) => status === 200)).toHaveLength(1);
+  expect(statuses.filter((status) => status === 409)).toHaveLength(7);
+  const { rows } = await db.query("SELECT count(*)::int AS n FROM dj_agents WHERE user_id=$1", [alice]);
+  expect(rows[0].n).toBe(20);
+});
+
 it("resolves a turn's agent, falling back to the default for unknown, foreign or deleted ones", async () => {
   const agents = djAgentsService(db);
   const bobs = await (await req("POST", "/agents", tokenB, calm)).json();

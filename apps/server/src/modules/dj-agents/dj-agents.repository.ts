@@ -9,7 +9,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import { djAgents, type Orm } from "../../db/index.ts";
+import { djAgents, users, type Orm } from "../../db/index.ts";
 
 const columns = {
   id: djAgents.id,
@@ -51,25 +51,34 @@ export async function findOwnAgent(orm: Orm, owner: string, id: string) {
   return row;
 }
 
-export async function countOwnAgents(orm: Orm, owner: string) {
-  const [row] = await orm
-    .select({ value: count() })
-    .from(djAgents)
-    .where(eq(djAgents.userId, owner));
-  return row?.value ?? 0;
-}
-
-export async function insertAgent(
+/**
+ * Inserts an agent unless the account already has `limit`. The account's row is locked first,
+ * so concurrent creations count one after another instead of all seeing the same free place.
+ */
+export async function insertAgentWithin(
   orm: Orm,
   owner: string,
   agent: { name: string; instructions: string },
-) {
-  const [row] = await orm
-    .insert(djAgents)
-    .values({ userId: owner, ...agent })
-    .returning(columns);
-  if (!row) throw new Error("Agent not inserted");
-  return row;
+  limit: number,
+): Promise<AgentRow | null> {
+  return orm.transaction(async (tx) => {
+    await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, owner))
+      .for("update");
+    const [owned] = await tx
+      .select({ value: count() })
+      .from(djAgents)
+      .where(eq(djAgents.userId, owner));
+    if ((owned?.value ?? 0) >= limit) return null;
+    const [row] = await tx
+      .insert(djAgents)
+      .values({ userId: owner, ...agent })
+      .returning(columns);
+    if (!row) throw new Error("Agent not inserted");
+    return row;
+  });
 }
 
 export async function updateOwnAgent(

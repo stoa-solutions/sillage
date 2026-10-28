@@ -2,11 +2,10 @@ import { createHash } from "node:crypto";
 import type { Database } from "../../db/index.ts";
 import { BASE_AGENTS, DEFAULT_AGENT } from "./base-agents.ts";
 import {
-  countOwnAgents,
   deleteOwnAgent,
   findBaseAgent,
   findOwnAgent,
-  insertAgent,
+  insertAgentWithin,
   listAgents,
   updateOwnAgent,
   writeBaseAgents,
@@ -63,9 +62,13 @@ export function djAgentsService(db: Database) {
       };
     },
     async create(owner: string, agent: { name: string; instructions: string }) {
-      if ((await countOwnAgents(db.orm, owner)) >= MAX_CUSTOM_AGENTS)
-        return "limit" as const;
-      return publicAgent(await insertAgent(db.orm, owner, agent));
+      const row = await insertAgentWithin(
+        db.orm,
+        owner,
+        agent,
+        MAX_CUSTOM_AGENTS,
+      );
+      return row ? publicAgent(row) : ("limit" as const);
     },
     async update(
       owner: string,

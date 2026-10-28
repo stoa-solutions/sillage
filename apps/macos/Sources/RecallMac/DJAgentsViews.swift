@@ -106,32 +106,45 @@ struct DJAgentsSettings: View {
 
   // MARK: - List
 
+  /// Scrolls past four base agents and twenty personal ones; the create button stays visible.
   private var list: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      section("De base")
-      ForEach(agents.baseAgents) { row($0) }
-      section("Les miens").padding(.top, 10)
-      if agents.customAgents.isEmpty && draft.id != nil {
-        Text("Aucun pour l’instant.").font(.caption).foregroundStyle(.secondary)
-          .padding(.horizontal, 10)
-      }
-      ForEach(agents.customAgents) { row($0) }
-      if focus == nil {
-        rowLabel(name: draft.name.isEmpty ? "Nouvel agent" : draft.name, active: false)
-          .background(Color.recall.opacity(0.16), in: RoundedRectangle(cornerRadius: 8))
+    VStack(alignment: .leading, spacing: 6) {
+      ScrollViewReader { proxy in
+        ScrollView {
+          VStack(alignment: .leading, spacing: 4) {
+            section("De base")
+            ForEach(agents.baseAgents) { row($0).id($0.id) }
+            section("Les miens").padding(.top, 10)
+            if agents.customAgents.isEmpty && draft.id != nil {
+              Text("Aucun pour l’instant.").font(.caption).foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+            }
+            ForEach(agents.customAgents) { row($0).id($0.id) }
+            if focus == nil {
+              rowLabel(name: draft.name.isEmpty ? "Nouvel agent" : draft.name, active: false)
+                .background(Color.recall.opacity(0.16), in: RoundedRectangle(cornerRadius: 8))
+                .id(Self.newRow)
+            }
+            if agents.loading && agents.agents.isEmpty {
+              ProgressView().controlSize(.small).padding(10)
+            }
+          }
+        }
+        .onChange(of: focus) { _, value in
+          withAnimation { proxy.scrollTo(value ?? Self.newRow) }
+        }
       }
       Button {
         leave(to: .new(name: "", instructions: ""))
       } label: {
         Label("Nouvel agent", systemImage: "plus").font(.callout)
           .padding(.horizontal, 10).padding(.vertical, 6)
-      }.buttonStyle(.plain).foregroundStyle(Color.recall).padding(.top, 6)
+      }.buttonStyle(.plain).foregroundStyle(Color.recall)
         .disabled(focus == nil)
-      if agents.loading && agents.agents.isEmpty {
-        ProgressView().controlSize(.small).padding(10)
-      }
     }
   }
+
+  private static let newRow = "new-agent"
 
   private func section(_ title: String) -> some View {
     Text(title.uppercased()).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)

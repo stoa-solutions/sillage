@@ -28,66 +28,86 @@ final class DJAgentsModel: ObservableObject {
     UserDefaults.standard.set(id, forKey: Self.selectionKey)
   }
 
+  /// Bumped when the account changes: an answer for the previous account must not land here.
+  private var epoch = 0
+
   func reset() {
+    epoch += 1
     agents = []
     error = ""
+    loading = false
   }
 
   func load() async {
     guard let connection = session.connection else { return }
+    let started = epoch
     loading = true
-    defer { loading = false }
-    do {
-      let list = try await HTTPClient().djAgents(connection)
+    let result = await outcome { try await HTTPClient().djAgents(connection) }
+    guard started == epoch else { return }
+    loading = false
+    switch result {
+    case .success(let list):
       agents = list.agents
       // A deleted or foreign agent goes back to the default instead of failing silently.
       let resolved = list.resolve(selectedID)
       if resolved != selectedID { select(resolved) }
       error = ""
-    } catch {
-      self.error = error.localizedDescription
+    case .failure(let failure):
+      error = failure.localizedDescription
     }
   }
 
   /// Creates the agent and returns it, so the editor can keep it selected.
   func create(name: String, instructions: String) async -> DJAgent? {
-    await perform {
-      let agent = try await HTTPClient().createDJAgent($0, name: name, instructions: instructions)
-      agents.append(agent)
-      return agent
-    }
+    guard
+      let agent = await perform({
+        try await HTTPClient().createDJAgent($0, name: name, instructions: instructions)
+      })
+    else { return nil }
+    agents.append(agent)
+    return agent
   }
 
   func update(_ id: String, name: String, instructions: String) async -> DJAgent? {
-    await perform {
-      let agent = try await HTTPClient().updateDJAgent(
-        $0, id: id, name: name, instructions: instructions)
-      if let index = agents.firstIndex(where: { $0.id == id }) { agents[index] = agent }
-      return agent
-    }
+    guard
+      let agent = await perform({
+        try await HTTPClient().updateDJAgent($0, id: id, name: name, instructions: instructions)
+      })
+    else { return nil }
+    if let index = agents.firstIndex(where: { $0.id == id }) { agents[index] = agent }
+    return agent
   }
 
   func delete(_ id: String) async -> Bool {
-    await perform {
-      try await HTTPClient().deleteDJAgent($0, id: id)
-      agents.removeAll { $0.id == id }
-      if selectedID == id { select(DJAgent.defaultID) }
-      return true
-    } ?? false
+    guard await perform({ try await HTTPClient().deleteDJAgent($0, id: id) }) != nil else {
+      return false
+    }
+    agents.removeAll { $0.id == id }
+    if selectedID == id { select(DJAgent.defaultID) }
+    return true
   }
 
+  /// Runs one server call; nil when it failed or when the account changed while it ran, so the
+  /// caller only updates the list for the account that asked.
   private func perform<T>(_ body: (Connection) async throws -> T) async -> T? {
     guard let connection = session.connection else {
       error = "Connecte ton compte pour gérer tes agents."
       return nil
     }
-    do {
-      let value = try await body(connection)
+    let started = epoch
+    let result = await outcome { try await body(connection) }
+    guard started == epoch else { return nil }
+    switch result {
+    case .success(let value):
       error = ""
       return value
-    } catch {
-      self.error = error.localizedDescription
+    case .failure(let failure):
+      error = failure.localizedDescription
       return nil
     }
   }
+}
+
+private func outcome<T>(_ body: () async throws -> T) async -> Result<T, Error> {
+  do { return .success(try await body()) } catch { return .failure(error) }
 }

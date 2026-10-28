@@ -52,3 +52,9 @@ La colonne est un VStack non défilant dans une fenêtre de 850 × 750. Quatre p
 Preuves conservées dans Obsidian : `10 Produits/Sillage/Ouverture/Sources/dj-agents-review-2026-10-28/` (journaux, empreintes de l’instantané et sondes synthétiques).
 
 **Bilan : Standards — 1 finding, gravité maximale P1 ; Spec — 2 findings, gravité maximale P2.**
+
+## Suite donnée (Claude, 28 octobre)
+
+- **P1 — réponse tardive** : `DJAgentsModel` porte une génération incrémentée par `reset()` ; chargement, création, modification et suppression ne touchent la liste ou l’erreur que si la génération n’a pas changé pendant l’appel. Pas de test automatique : le modèle vit dans la cible app, hors des suites natives.
+- **P2 — 20 agents en concurrence** : `insertAgentWithin` verrouille la ligne du compte (`SELECT … FOR UPDATE`) avant de compter puis d’insérer, dans une transaction. Le scénario de la revue (19 agents puis 8 POST simultanés) est dans `dj-agents.integration.test.ts` : il échouait sur l’ancien code (3 créations acceptées) et passe (1 acceptée, 20 au total).
+- **P2 — liste non défilante** : la colonne des agents défile, le bouton « Nouvel agent » reste visible et la sélection est ramenée à l’écran.
