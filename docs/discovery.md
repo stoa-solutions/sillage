@@ -8,7 +8,7 @@
 
 1. **Ton profil.** Le serveur relit toutes les vidéos de ta bibliothèque et de ton historique, avec leur nombre d’écoutes : artistes connus (nom et identifiant MusicBrainz), genres pondérés par les écoutes. Les points de départ sont les artistes de Mon goût, puis tes artistes les plus écoutés.
 2. **Les voisins.** Pour chaque point de départ, il demande à ListenBrainz les artistes écoutés dans les mêmes sessions, jusqu’à remplir 6 rayons. Un artiste sans identifiant MusicBrainz est cherché par son nom (6 recherches par page au plus, mises en cache 30 jours). Beaucoup d’artistes confidentiels n’ont aucun voisin : ils sont passés. Tout artiste déjà présent dans ta bibliothèque ou ton historique est écarté, par identifiant comme par nom.
-3. **Les titres.** Chaque voisin est cherché sur YouTube (SearXNG) ; seuls les titres crédités à cet artiste sont gardés (une chaîne « X - Topic » d’un autre artiste ou un simple titre homonyme ne comptent pas), sans mix ni compilation, une version par chanson, la version studio avant les lives. Deux artistes par rayon, deux titres par artiste ; un voisin sans titre utilisable est remplacé.
+3. **Les titres.** Chaque voisin est cherché sur YouTube (SearXNG) ; seuls les titres crédités à cet artiste sont gardés (une chaîne « X - Topic » d’un autre artiste ou un simple titre homonyme ne comptent pas), sans mix ni compilation, une version par chanson, la version studio avant les lives. Deux artistes par rayon, trois titres par artiste ; un voisin sans titre utilisable est remplacé.
 4. **Plus loin.** Les voisins des premières découvertes, pour sortir encore un peu de tes habitudes.
 5. **Tes artistes.** Un dernier rayon propose des titres de tes artistes récents absents de ta bibliothèque.
 

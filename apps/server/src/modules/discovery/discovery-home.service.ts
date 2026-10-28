@@ -27,7 +27,8 @@ export const HOME_RULES = {
   spareNeighbours: 2,
   /** A refresh draws them from this many closest neighbours instead. */
   neighbourPool: 10,
-  tracksPerArtist: 2,
+  /** One search per artist: three of its songs cost nothing more. */
+  tracksPerArtist: 3,
   /** « Plus loin »: neighbours of the first new artists found. */
   furtherArtists: 3,
   /** Searches not already kept, per page: YouTube throttles a burst for minutes. */
