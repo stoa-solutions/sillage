@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { migrate, openDatabase } from "../src/db/index.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
+import { prefetchLyrics } from "../src/modules/lyrics/index.ts";
 import {
   Lrclib,
   LyricsSourceBusy,
@@ -177,13 +178,71 @@ it("keeps each account's timing correction to itself", async () => {
   ).toBe(400);
 });
 
-it("refuses videos outside the account's library", async () => {
-  expect((await lyrics("alicesolo12", tokenB)).status).toBe(404);
+it("serves the public lyrics of any known video, but keeps corrections to the library", async () => {
+  // Lyrics are the song's, not the account's: Bob hears Alice's video, he sees its lyrics.
+  const shared = await lyrics("alicesolo12", tokenB);
+  expect(shared.status).toBe(200);
+  expect(shared.body.status).toBe("synced");
   expect(
     (await req("/v1/lyrics/alicesolo12/offset", tokenB, { offsetMs: 500 }))
       .status,
   ).toBe(404);
+  // A video the server never saw, without a way to name it, cannot be matched.
+  expect((await lyrics("unknown0001")).status).toBe(404);
   expect((await req("/v1/lyrics/not-an-id")).status).toBe(400);
+});
+
+const music = { lyrics: vi.fn() };
+const ovh = { lyrics: vi.fn() };
+const describe = vi.fn();
+const everySource = createApp(db, undefined, { lrclib: source, music, ovh, describe });
+const lyricsFrom = async (id: string) => {
+  const response = await everySource.request(`/v1/lyrics/${id}`, {
+    headers: { Authorization: "Bearer " + tokenA },
+  });
+  return { status: response.status, body: await response.json() };
+};
+
+it("falls back on YouTube Music for this video, then lyrics.ovh, naming the source", async () => {
+  music.lyrics.mockReset().mockImplementation(async (id: string) =>
+    id === "sameroom123" ? { text: "same room, same light", provider: "Musixmatch" } : null,
+  );
+  ovh.lyrics.mockReset().mockResolvedValue("a discovery, word for word");
+  describe.mockReset().mockImplementation(async (id: string) =>
+    id === "discovery01" ? { title: "Pahua - Gritar", channel: "Pahua", durationSeconds: 180 } : null,
+  );
+  expect((await lyricsFrom("sameroom123")).body).toMatchObject({
+    status: "plain",
+    text: "same room, same light",
+    source: { name: "YouTube Music · Musixmatch", id: null },
+  });
+  // A YouTube result outside any library: named by YouTube, then found on lyrics.ovh.
+  const discovery = await lyricsFrom("discovery01");
+  expect(discovery.body).toMatchObject({ status: "plain", source: { name: "lyrics.ovh" } });
+  expect(ovh.lyrics).toHaveBeenCalledWith("Pahua", "Gritar");
+  // Kept for everyone: the next play asks no source.
+  ovh.lyrics.mockClear();
+  await lyricsFrom("discovery01");
+  expect(ovh.lyrics).not.toHaveBeenCalled();
+  // Synchronised LRCLIB lyrics are never replaced by plain ones.
+  expect((await lyricsFrom("SsKT0s5J8ko")).body.status).toBe("synced");
+});
+
+it("fetches the library's lyrics ahead, once", async () => {
+  music.lyrics.mockReset().mockResolvedValue(null);
+  ovh.lyrics.mockReset().mockResolvedValue(null);
+  await prefetchLyrics(db, { lrclib: source, music, ovh });
+  const { rows } = await db.query("SELECT video_id FROM lyrics");
+  expect(rows.map((row: { video_id: string }) => row.video_id).sort()).toEqual([
+    "J6Pmz4vVWsM",
+    "SsKT0s5J8ko",
+    "alicesolo12",
+    "sameroom123",
+    "ylangylang1",
+  ]);
+  queries.length = 0;
+  await prefetchLyrics(db, { lrclib: source, music, ovh });
+  expect(queries).toEqual([]);
 });
 
 it("identifies itself to LRCLIB and honours Retry-After before calling again", async () => {

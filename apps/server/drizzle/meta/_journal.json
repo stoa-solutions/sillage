@@ -43,6 +43,13 @@
       "when": 1793188104011,
       "tag": "0005_taste",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793217942249,
+      "tag": "0006_lyrics_sources",
+      "breakpoints": true
     }
   ]
 }

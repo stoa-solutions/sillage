@@ -12,11 +12,13 @@ import {
   enrichMusic,
   scheduleMusicEnrichment,
 } from "./modules/enrichment/index.ts";
+import { defaultLyricsSources, prefetchLyrics } from "./modules/lyrics/index.ts";
 
 // The worker process: each module registers the job kinds it owns.
 checkEnvironment("worker");
 const key = process.env["YOUTUBE_API_KEY"] ?? "";
 const youtube = new YouTube(key, pool);
+const lyrics = defaultLyricsSources(pool);
 const stop = new AbortController();
 process.on("SIGTERM", () => stop.abort());
 process.on("SIGINT", () => stop.abort());
@@ -27,7 +29,12 @@ await runWorker({
     ...indexingJobHandlers(pool),
     musicbrainz: (job) => enrichMusic(pool, job),
   },
-  schedulers: [() => scheduleSync(pool.orm), () => scheduleMusicEnrichment(pool)],
+  schedulers: [
+    () => scheduleSync(pool.orm),
+    () => scheduleMusicEnrichment(pool),
+    // Lyrics of the library ahead of time, a few a minute.
+    () => prefetchLyrics(pool, lyrics),
+  ],
   exclude: key ? [] : YOUTUBE_JOB_KINDS,
   signal: stop.signal,
 });

@@ -5355,7 +5355,7 @@
       "get": {
         "operationId": "getLyrics",
         "summary": "Paroles du morceau",
-        "description": "Réservé aux vidéos présentes dans les playlists du compte. Cherche/cache LRCLIB et applique la correction personnelle. missing et unavailable sont des états métier en HTTP 200. Le clic temporel et le rendu restent gérés par le lecteur Mac.",
+        "description": "Toute vidéo YouTube, dans la bibliothèque ou non. Sources dans l’ordre : LRCLIB (synchronisées), YouTube Music pour cette vidéo, lyrics.ovh ; résultat gardé pour tous les comptes (30 jours, 7 pour une absence). Le worker cherche à l’avance celles de la bibliothèque. Applique la correction personnelle. missing et unavailable sont des états métier en HTTP 200. 404 si le serveur ne sait pas quelle vidéo c’est.",
         "tags": [
           "Paroles"
         ],
@@ -5365,10 +5365,10 @@
             "schema": {
               "type": "string",
               "pattern": "^[A-Za-z0-9_-]{11}$",
-              "description": "Vidéo appartenant à la bibliothèque du compte"
+              "description": "Vidéo YouTube, dans la bibliothèque ou non"
             },
             "required": true,
-            "description": "Vidéo appartenant à la bibliothèque du compte",
+            "description": "Vidéo YouTube, dans la bibliothèque ou non",
             "name": "videoId",
             "in": "path"
           }
@@ -5405,7 +5405,7 @@
             }
           },
           "404": {
-            "description": "Vidéo absente de la bibliothèque",
+            "description": "Vidéo inconnue",
             "content": {
               "application/json": {
                 "schema": {
@@ -5464,10 +5464,10 @@
             "schema": {
               "type": "string",
               "pattern": "^[A-Za-z0-9_-]{11}$",
-              "description": "Vidéo appartenant à la bibliothèque du compte"
+              "description": "Vidéo YouTube, dans la bibliothèque ou non"
             },
             "required": true,
-            "description": "Vidéo appartenant à la bibliothèque du compte",
+            "description": "Vidéo YouTube, dans la bibliothèque ou non",
             "name": "videoId",
             "in": "path"
           }
@@ -8149,12 +8149,14 @@
             "properties": {
               "name": {
                 "type": "string",
-                "enum": [
-                  "LRCLIB"
-                ]
+                "description": "LRCLIB, « YouTube Music · fournisseur » ou lyrics.ovh"
               },
               "id": {
-                "type": "integer"
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Identifiant LRCLIB ; null pour les autres sources"
               }
             },
             "required": [

@@ -23,13 +23,14 @@ import type { Database } from "./db/index.ts";
 import { jobRoutes } from "./modules/jobs/index.ts";
 import { libraryRoutes } from "./modules/library/index.ts";
 import { searchRoutes } from "./modules/search/index.ts";
-import { lyricsRoutes } from "./modules/lyrics/index.ts";
-import { Lrclib, type LyricsSource } from "./integrations/lrclib/index.ts";
+import { defaultLyricsSources, lyricsRoutes, type LyricsSources } from "./modules/lyrics/index.ts";
+import type { LyricsSource } from "./integrations/lrclib/index.ts";
 import { mcpRoutes } from "./modules/mcp/index.ts";
 export function createApp(
   db: Database,
   identityProvider?: IdentityProvider,
-  lyricsSource: LyricsSource = new Lrclib(),
+  /** LRCLIB alone (tests) or every source; production builds them all. */
+  lyricsSource?: LyricsSource | LyricsSources,
 ) {
   // OpenAPIHono collects the documented routes of the features mounted below.
   const app = new OpenAPIHono<ApiEnvironment>();
@@ -70,7 +71,7 @@ export function createApp(
   app.route("/v1", libraryRoutes(db));
   app.route("/v1", jobRoutes(db));
   app.route("/v1", searchRoutes(db));
-  app.route("/v1/lyrics", lyricsRoutes(db, lyricsSource));
+  app.route("/v1/lyrics", lyricsRoutes(db, defaultLyricsSources(db, lyricsSource)));
   app.onError((error, c) => {
     // Malformed JSON or a body without its JSON content type, rejected by the route validator.
     if (

@@ -1,8 +1,9 @@
 $kind: http-request
 description: >-
-  Réservé aux vidéos présentes dans les playlists du compte. Cherche/cache LRCLIB et applique la correction personnelle.
-  missing et unavailable sont des états métier en HTTP 200. Le clic temporel et le rendu restent gérés par le lecteur
-  Mac.
+  Toute vidéo YouTube, dans la bibliothèque ou non. Sources dans l’ordre : LRCLIB (synchronisées), YouTube Music pour
+  cette vidéo, lyrics.ovh ; résultat gardé pour tous les comptes (30 jours, 7 pour une absence). Le worker cherche à
+  l’avance celles de la bibliothèque. Applique la correction personnelle. missing et unavailable sont des états métier
+  en HTTP 200. 404 si le serveur ne sait pas quelle vidéo c’est.
 
 
   Effet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la

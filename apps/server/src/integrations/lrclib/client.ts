@@ -35,7 +35,8 @@ export interface Lyrics {
   offsetMs: number;
   /** Video length minus lyrics length; a large gap usually means a clip intro or outro. */
   durationDeltaMs: number | null;
-  source: { name: "LRCLIB"; id: number } | null;
+  /** Where they come from (LRCLIB, YouTube Music and its provider, lyrics.ovh); LRCLIB's id. */
+  source: { name: string; id: number | null } | null;
 }
 
 export class LyricsSourceBusy extends Error {

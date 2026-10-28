@@ -68,19 +68,17 @@ export const lyrics = pgTable(
   {
     videoId: text("video_id").primaryKey(),
     status: lyricsStatus("status").notNull(),
+    /** LRCLIB's record ID; other sources have none. */
     sourceId: bigint("source_id", { mode: "number" }),
+    /** Where the lyrics come from, as shown to the listener (null: LRCLIB, before 0006). */
+    sourceName: text("source_name"),
     lines: jsonb("lines").notNull().default([]),
     plainText: text("plain_text"),
     durationDeltaMs: integer("duration_delta_ms"),
     fetchedAt: timestamptz("fetched_at").notNull().defaultNow(),
   },
-  (t) => [
-    foreignKey({
-      name: "lyrics_video_id_fkey",
-      columns: [t.videoId],
-      foreignColumns: [videos.id],
-    }).onDelete("cascade"),
-  ],
+  // Public lyrics of any YouTube video, in a library or not: a played discovery has its own.
+  (t) => [check("lyrics_video_id_check", sql`${t.videoId} ~ '^[A-Za-z0-9_-]{11}$'`)],
 );
 
 export const lyricsOffsets = pgTable(

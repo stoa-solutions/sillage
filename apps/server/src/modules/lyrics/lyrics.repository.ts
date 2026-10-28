@@ -1,7 +1,8 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, exists, isNull, lt, or, sql } from "drizzle-orm";
 import {
   lyrics,
   lyricsOffsets,
+  memberships,
   videos,
   type Executor,
 } from "../../db/index.ts";
@@ -19,6 +20,56 @@ export async function ownedVideo(db: Executor, userId: string, videoId: string) 
     .from(videos)
     .where(and(eq(videos.id, videoId), inLibraryOf(db, userId, videos.id)));
   return video ?? null;
+}
+
+/** What the server knows of any video, in a library or not; null when it never saw it. */
+export async function videoFacts(db: Executor, videoId: string) {
+  const [video] = await db
+    .select({
+      title: videos.title,
+      channel: videos.channel,
+      durationSeconds: videos.durationSeconds,
+      musicMetadata: videos.musicMetadata,
+    })
+    .from(videos)
+    .where(eq(videos.id, videoId));
+  return video ?? null;
+}
+
+/**
+ * Library videos whose lyrics were never looked for, then misses older than `missingDays`:
+ * the worker fetches them ahead, so a song opens with its lyrics.
+ */
+export async function lyricsBacklog(db: Executor, limit: number, missingDays: number) {
+  return db
+    .select({
+      id: videos.id,
+      title: videos.title,
+      channel: videos.channel,
+      durationSeconds: videos.durationSeconds,
+      musicMetadata: videos.musicMetadata,
+    })
+    .from(videos)
+    .leftJoin(lyrics, eq(lyrics.videoId, videos.id))
+    .where(
+      and(
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(memberships)
+            .where(and(eq(memberships.videoId, videos.id), eq(memberships.active, true))),
+        ),
+        or(
+          isNull(lyrics.videoId),
+          and(
+            eq(lyrics.status, "missing"),
+            lt(lyrics.fetchedAt, sql`now() - make_interval(days => ${missingDays}::int)`),
+          ),
+        ),
+      ),
+    )
+    .orderBy(sql`${lyrics.videoId} IS NOT NULL`, videos.id)
+    .limit(limit);
 }
 
 export async function lyricsOffset(db: Executor, userId: string, videoId: string) {
@@ -41,6 +92,7 @@ export async function cachedLyrics(
     .select({
       status: lyrics.status,
       sourceId: lyrics.sourceId,
+      sourceName: lyrics.sourceName,
       lines: lyrics.lines,
       plainText: lyrics.plainText,
       durationDeltaMs: lyrics.durationDeltaMs,
@@ -57,6 +109,7 @@ export async function saveLyrics(
     videoId: string;
     status: (typeof lyrics.$inferInsert)["status"];
     sourceId: number | null;
+    sourceName: string | null;
     lines: LyricsLine[];
     plainText: string | null;
     durationDeltaMs: number | null;

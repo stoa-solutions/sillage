@@ -36,9 +36,19 @@ const channelArtist = (channel: string | null) =>
 export function lyricsQueries(
   title: string,
   channel: string | null,
+  /** The artist MusicBrainz credits, more reliable than the YouTube channel or title. */
+  credited?: string,
 ): LyricsQuery[] {
   const cleaned = cleanTitle(title);
   const queries: LyricsQuery[] = [];
+  if (credited) {
+    const parts = cleaned.split(/\s[-–—|]\s/);
+    const song =
+      parts.length >= 2 && normalize(parts[0] ?? "").includes(normalize(credited).split(" ")[0] ?? "")
+        ? parts.slice(1).join(" ").trim()
+        : cleaned;
+    queries.push({ artist: credited, track: song });
+  }
   if (channel?.endsWith(" - Topic"))
     queries.push({ artist: channelArtist(channel), track: cleaned });
   const split = cleaned.split(/\s[-–—|]\s/);
@@ -50,7 +60,13 @@ export function lyricsQueries(
   else if (channel && !channel.endsWith(" - Topic"))
     queries.push({ artist: channelArtist(channel), track: cleaned });
   queries.push({ q: cleaned });
-  return queries.slice(0, 3);
+  const seen = new Set<string>();
+  return queries
+    .filter((query) => {
+      const key = JSON.stringify([query.artist && normalize(query.artist), query.track && normalize(query.track), query.q]);
+      return !seen.has(key) && seen.add(key);
+    })
+    .slice(0, 3);
 }
 
 /** Line-synced LRC to lines; blank timed lines end the previous line. */

@@ -28,9 +28,9 @@ export class YouTubeMusic {
   /** Without a fetcher, the global one at call time. */
   constructor(private fetcher?: typeof fetch) {}
 
-  async songs(query: string): Promise<MusicSong[]> {
+  private async call(path: string, body: object): Promise<unknown> {
     const response = await (this.fetcher ?? fetch)(
-      "https://music.youtube.com/youtubei/v1/search?prettyPrint=false",
+      `https://music.youtube.com/youtubei/v1/${path}?prettyPrint=false`,
       {
         method: "POST",
         headers: {
@@ -38,13 +38,55 @@ export class YouTubeMusic {
           Origin: "https://music.youtube.com",
           "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Sillage/2.2",
         },
-        body: JSON.stringify({ context: { client: CLIENT }, query, params: decodeURIComponent(SONGS) }),
+        body: JSON.stringify({ context: { client: CLIENT }, ...body }),
         signal: AbortSignal.timeout(10_000),
       },
     );
     if (!response.ok) throw new Error(`YouTube Music indisponible (HTTP ${response.status}).`);
-    return parseSongs(await response.json());
+    return response.json();
   }
+
+  async songs(query: string): Promise<MusicSong[]> {
+    return parseSongs(await this.call("search", { query, params: decodeURIComponent(SONGS) }));
+  }
+
+  /**
+   * The lyrics YouTube Music shows for a video (plain text, licensed from the provider it
+   * names, e.g. Musixmatch), or null when it shows none.
+   */
+  async lyrics(videoId: string): Promise<{ text: string; provider: string | null } | null> {
+    const next = await this.call("next", { videoId });
+    const browseId = find(next, (node) => {
+      const id = (node as { browseEndpoint?: { browseId?: unknown } }).browseEndpoint?.browseId;
+      return typeof id === "string" && id.startsWith("MPLY") ? id : undefined;
+    });
+    if (!browseId) return null;
+    const page = await this.call("browse", { browseId });
+    const shelf = find(page, (node) => (node as Record<string, any>)["musicDescriptionShelfRenderer"]);
+    const text = (shelf?.description?.runs ?? []).map((run: Run) => run.text ?? "").join("").trim();
+    if (!text) return null;
+    const footer = (shelf?.footer?.runs ?? []).map((run: Run) => run.text ?? "").join("");
+    return { text, provider: /:\s*(.+)$/.exec(footer)?.[1]?.trim() ?? null };
+  }
+}
+
+/** The first value `pick` returns while walking an answer, depth first. */
+function find<T>(node: unknown, pick: (node: object) => T | undefined): T | undefined {
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const found = find(child, pick);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  }
+  if (!node || typeof node !== "object") return undefined;
+  const here = pick(node);
+  if (here !== undefined) return here;
+  for (const child of Object.values(node)) {
+    const found = find(child, pick);
+    if (found !== undefined) return found;
+  }
+  return undefined;
 }
 
 /** The song rows of a search answer, whatever shelves surround them. */

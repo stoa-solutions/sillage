@@ -81,7 +81,7 @@ Puis `jobs.worker.ts` (boucle, registre `{ type → traitement }`, battement qui
 ## 6. Écoute et métadonnées : `history`, `lyrics`, `enrichment`, `discovery`
 
 - `history` : écoutes par lots ; l’identifiant d’événement fourni par le Mac rend un renvoi sans effet (`ON CONFLICT DO NOTHING`). Pagination par curseur `(playedAt, id)`.
-- `lyrics` : `lyrics.service.ts` décide (cache encore frais ? sinon LRCLIB ; en cas d’échec, l’ancien résultat reste) ; `lyrics.matching.ts` choisit l’enregistrement LRCLIB sans réseau. Seules les vidéos de la bibliothèque du compte ont des paroles.
+- `lyrics` : `lyrics.service.ts` décide (cache encore frais ? sinon LRCLIB, synchronisées ; à défaut les paroles que YouTube Music affiche pour cette vidéo, puis lyrics.ovh ; en cas d’échec, l’ancien résultat reste) ; `lyrics.matching.ts` choisit l’enregistrement LRCLIB sans réseau, en cherchant d’abord l’artiste crédité par MusicBrainz. Toute vidéo a des paroles, dans la bibliothèque ou non (le serveur la nomme via l’API YouTube s’il ne la connaît pas) ; la correction de calage reste réservée à la bibliothèque. `prefetchLyrics` tourne dans le worker : dix vidéos de bibliothèque par minute, jamais cherchées puis absences de plus de 7 jours. `lyrics.sources.ts` assemble les sources de production.
 - `enrichment` : MusicBrainz par lots bornés, seulement pour les comptes inscrits (`MUSICBRAINZ_ACCOUNT_IDS`) ou le pilote. Le résultat n’est publié que si la tâche tient toujours son bail et que la vidéo n’a pas changé. Correspondances pures dans `enrichment.matching.ts`.
 - `discovery` : recherche YouTube (ou SearXNG), « Mes découvertes » et l’accueil Découvrir. `discovery-home.service.ts` reçoit une fonction qui charge l’historique, ce qui le rend testable sans base.
 

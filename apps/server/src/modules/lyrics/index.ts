@@ -1,5 +1,12 @@
 export { lyricsRoutes } from "./lyrics.controller.ts";
-export { lyricsFor, setLyricsOffset } from "./lyrics.service.ts";
+export {
+  lyricsFor,
+  prefetchLyrics,
+  setLyricsOffset,
+  type LyricsSources,
+  type VideoFacts,
+} from "./lyrics.service.ts";
+export { defaultLyricsSources } from "./lyrics.sources.ts";
 export {
   chooseRecord,
   cleanTitle,

@@ -6,7 +6,7 @@ export const lyricsVideoParam = z.object({
     .regex(/^[A-Za-z0-9_-]{11}$/)
     .openapi({
       param: { name: "videoId", in: "path" },
-      description: "Vidéo appartenant à la bibliothèque du compte",
+      description: "Vidéo YouTube, dans la bibliothèque ou non",
     }),
 });
 export const lyricsOffsetInput = z.object({
@@ -26,7 +26,10 @@ export const lyricsBody = z
     offsetMs: z.number().int(),
     durationDeltaMs: z.number().int().nullable(),
     source: z
-      .object({ name: z.literal("LRCLIB"), id: z.number().int() })
+      .object({
+        name: z.string().openapi({ description: "LRCLIB, « YouTube Music · fournisseur » ou lyrics.ovh" }),
+        id: z.number().int().nullable().openapi({ description: "Identifiant LRCLIB ; null pour les autres sources" }),
+      })
       .nullable(),
   })
   .openapi("Lyrics");
