@@ -204,7 +204,7 @@ function musicBrainzLinks(musicBrainz: Pick<MusicBrainzClient, "get" | "cached">
     tagged: async (genre: string) => {
       const found = await ask<{ artists?: { id: string; name: string; score?: number }[] }>("artist", {
         query: `tag:"${genre.replace(/["\\]/g, " ")}"`,
-        limit: "25",
+        limit: "100",
       });
       return (found?.artists ?? []).map((artist) => ({
         mbid: artist.id,

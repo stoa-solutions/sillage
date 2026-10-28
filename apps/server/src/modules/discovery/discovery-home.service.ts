@@ -551,9 +551,17 @@ export async function discoveryScene(
   options: { rotate?: boolean; random?: () => number } = {},
 ) {
   const page = await explorer(sources, user, options);
-  const artists = await page.run([() => sources.tagged(genre)]);
+  const [tagged] = await page.run([() => sources.tagged(genre)]);
+  // MusicBrainz lists the best-known artists of a genre first: the whole list is drawn from,
+  // so a scene brings out more than its stars.
+  const random = options.random ?? Math.random;
+  const artists = (tagged ?? []).filter(page.unknown);
+  for (let i = artists.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [artists[i], artists[j]] = [artists[j]!, artists[i]!];
+  }
   const { shelf, why } = sceneShelf(genre);
-  const planned = page.plan({ name: genre, mbid: "" }, artists[0] ?? [], shelf, why, HOME_RULES.sceneArtists);
+  const planned = page.plan({ name: genre, mbid: "" }, artists, shelf, why, HOME_RULES.sceneArtists);
   const sections = await page.fill(planned ? [planned] : [], { further: false });
   return page.page(
     sections,
