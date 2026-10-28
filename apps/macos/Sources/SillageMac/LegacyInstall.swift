@@ -32,7 +32,12 @@ enum LegacyInstall {
         ? FormerIdentity.bundleID + ".savedState" : FormerIdentity.bundleID
       try? files.removeItem(at: library.appendingPathComponent(folder).appendingPathComponent(name))
     }
-    try? files.removeItem(
-      at: library.appendingPathComponent("Preferences/\(FormerIdentity.bundleID).plist"))
+    for leftover in [
+      "Preferences/\(FormerIdentity.bundleID).plist",
+      "HTTPStorages/\(FormerIdentity.bundleID).binarycookies",
+      "Caches/\(FormerIdentity.supportFolder)",
+    ] {
+      try? files.removeItem(at: library.appendingPathComponent(leftover))
+    }
   }
 }
