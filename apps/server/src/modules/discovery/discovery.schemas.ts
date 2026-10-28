@@ -44,6 +44,8 @@ export const discoveryHomeBody = z
     suggestions: z.array(homeItemBody),
     basedOn: z.array(z.string()),
     ideas: z.array(z.string()),
+    scenes: z.array(z.string()).openapi({ description: "Genres précis les plus écoutés : les scènes à explorer" }),
+    artists: z.array(z.string()).openapi({ description: "Artistes préférés puis les plus écoutés : points de départ" }),
     notice: z.string().nullable(),
     emptyReason: z.string().nullable(),
   })

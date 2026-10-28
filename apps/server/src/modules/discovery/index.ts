@@ -6,8 +6,11 @@ export {
   type DiscoverySource,
 } from "./discovery.service.ts";
 export {
+  discoveryArtist,
   discoveryHome,
+  discoveryScene,
   discoverySeeds,
+  listenerScenes,
   HOME_RULES,
   sceneOf,
   listenerProfile,

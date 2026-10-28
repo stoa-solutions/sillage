@@ -23,8 +23,14 @@ import {
 } from "./discovery.schemas.ts";
 import { listenBrainz, type ListenBrainz } from "../../integrations/listenbrainz/index.ts";
 import { tasteService } from "../taste/index.ts";
-import { discoveryHome, listenerProfile } from "./discovery-home.service.ts";
+import {
+  discoveryArtist,
+  discoveryHome,
+  discoveryScene,
+  listenerProfile,
+} from "./discovery-home.service.ts";
 import { historySize, knownVideos, recentListening } from "./discovery.repository.ts";
+import type { HomeSources } from "./discovery-home.service.ts";
 import { Discovery, DiscoveryError, discoveryFor } from "./discovery.service.ts";
 
 const TAG = "Découvrir";
@@ -40,10 +46,58 @@ const homeRoute = createRoute({
     tag: TAG,
     summary: "Suggestions selon le goût et l’historique",
     description:
-      "Rayons « Pour toi » : voisins d’écoute ListenBrainz des artistes préférés (Mon goût) et récents, hors de tout artiste de la bibliothèque et des écoutes ; genres de la bibliothèque sans les artistes habituels ; nouveaux titres des artistes récents. Écarte les vidéos possédées ou écoutées. Sans appel IA. Gardé 20 minutes par compte ; refresh=true tire d’autres voisins. ideas : genres de la bibliothèque, pour les envies.",
+      "Rayons « Pour toi » : voisins d’écoute ListenBrainz des artistes préférés (Mon goût) et les plus écoutés, hors de tout artiste de la bibliothèque et des écoutes ; pour un artiste confidentiel, ses collaborations puis sa scène (MusicBrainz) ; un pas plus loin ; nouveaux titres des artistes récents. Écarte les vidéos possédées ou écoutées. Sans appel IA. Gardé 20 minutes par compte ; refresh=true tire d’autres voisins. scenes et artists : ce que la personne peut explorer ensuite.",
     effect: "provider",
   }),
   request: { query: z.object({ refresh: z.enum(["true", "false"]).optional() }) },
+  responses: {
+    ...commonErrors(),
+    200: jsonResponse(discoveryHomeBody, "Réponse réussie"),
+    ...unavailable,
+  },
+});
+const sceneRoute = createRoute({
+  method: "get",
+  path: "/scene",
+  ...operation({
+    operationId: "getDiscoveryScene",
+    tag: TAG,
+    summary: "Explorer une scène",
+    description:
+      "Artistes que MusicBrainz range dans ce genre et que la personne n’a pas encore, avec leurs titres. Mêmes exclusions et même budget de recherche que « Pour toi ». Gardé 20 minutes par compte et par scène ; refresh=true tire d’autres artistes.",
+    effect: "provider",
+    example: { genre: "digital cumbia" },
+  }),
+  request: {
+    query: z.object({
+      genre: z.string().trim().min(2).max(80),
+      refresh: z.enum(["true", "false"]).optional(),
+    }),
+  },
+  responses: {
+    ...commonErrors(),
+    200: jsonResponse(discoveryHomeBody, "Réponse réussie"),
+    ...unavailable,
+  },
+});
+const artistRoute = createRoute({
+  method: "get",
+  path: "/artist",
+  ...operation({
+    operationId: "getDiscoveryArtist",
+    tag: TAG,
+    summary: "Explorer autour d’un artiste",
+    description:
+      "Ses titres absents de la bibliothèque, ses voisins d’écoute ListenBrainz, les artistes avec qui il a enregistré (MusicBrainz), puis un pas plus loin. Gardé 20 minutes par compte et par artiste ; refresh=true tire d’autres artistes.",
+    effect: "provider",
+    example: { name: "Acid Coco" },
+  }),
+  request: {
+    query: z.object({
+      name: z.string().trim().min(1).max(120),
+      refresh: z.enum(["true", "false"]).optional(),
+    }),
+  },
   responses: {
     ...commonErrors(),
     200: jsonResponse(discoveryHomeBody, "Réponse réussie"),
@@ -174,41 +228,64 @@ export function discoveryRoutes(
   musicBrainz: Pick<MusicBrainzClient, "get" | "cached"> = new MusicBrainzClient(db),
 ) {
   const app = featureRouter<ApiEnvironment>("Recherche ou vidéo invalide.");
-  // One page per account, kept briefly: a home costs a few dozen catalog searches.
-  const homes = new Map<string, { until: number; plays: number; body: unknown }>();
+  // One page per account and place, kept briefly: a page costs a few dozen catalog searches.
+  const pages = new Map<string, { until: number; plays: number; body: unknown }>();
+  const sources = {
+    history: (owner: string) => recentListening(db.orm, owner),
+    profile: async (owner: string) =>
+      listenerProfile(await knownVideos(db.orm, owner), (await tasteService(db).overview(owner)).artists),
+    similar: (mbid: string) => neighbours.similar(mbid),
+    search: (owner: string, query: string) => service.search(owner, query, "", ARTIST_PAGE_TTL),
+    cached: (query: string) => service.cached(query),
+  };
+  const track = <T extends { video: Video }>(item: T) => ({ ...item, video: asTrack(item.video) });
+  /** Serves a kept page, or builds it; a deleted history makes a kept page stale. */
+  const kept = async (
+    user: string,
+    place: string,
+    refresh: boolean,
+    build: (given: HomeSources) => Promise<Awaited<ReturnType<typeof discoveryHome>>>,
+  ) => {
+    const key = `${user}\n${place}`;
+    const plays = await historySize(db.orm, user);
+    const page = pages.get(key);
+    if (!refresh && page && page.until > Date.now() && plays >= page.plays) return page.body as never;
+    const result = await build({ ...sources, ...musicBrainzLinks(musicBrainz) });
+    const body = {
+      ...result,
+      sections: result.sections.map((section) => ({ ...section, items: section.items.map(track) })),
+      suggestions: result.suggestions.map(track),
+    };
+    if (pages.size >= 500) pages.delete(pages.keys().next().value!);
+    pages.set(key, { until: Date.now() + HOME_TTL, plays, body });
+    return body;
+  };
   app.openapi(homeRoute, async (c) => {
     const user = c.get("userId");
-    const refresh = c.req.valid("query").refresh === "true";
-    // A deleted history makes a kept page stale; new plays wait for the next one.
-    const plays = await historySize(db.orm, user);
-    const kept = homes.get(user);
-    if (!refresh && kept && kept.until > Date.now() && plays >= kept.plays)
-      return c.json(kept.body as never, 200);
-    const home = await discoveryHome(
-      {
-        history: (owner) => recentListening(db.orm, owner),
-        profile: async (owner) =>
-          listenerProfile(
-            await knownVideos(db.orm, owner),
-            (await tasteService(db).overview(owner)).artists,
-          ),
-        similar: (mbid) => neighbours.similar(mbid),
-        ...musicBrainzLinks(musicBrainz),
-        search: (owner, query) => service.search(owner, query, "", ARTIST_PAGE_TTL),
-        cached: (query) => service.cached(query),
-      },
-      user,
-      { rotate: refresh },
+    const rotate = c.req.valid("query").refresh === "true";
+    return c.json(await kept(user, "home", rotate, (given) => discoveryHome(given, user, { rotate })), 200);
+  });
+  app.openapi(sceneRoute, async (c) => {
+    const user = c.get("userId");
+    const { genre, refresh } = c.req.valid("query");
+    const rotate = refresh === "true";
+    return c.json(
+      await kept(user, "scene:" + genre.toLowerCase(), rotate, (given) =>
+        discoveryScene(given, user, genre, { rotate }),
+      ),
+      200,
     );
-    const track = <T extends { video: Video }>(item: T) => ({ ...item, video: asTrack(item.video) });
-    const body = {
-      ...home,
-      sections: home.sections.map((section) => ({ ...section, items: section.items.map(track) })),
-      suggestions: home.suggestions.map(track),
-    };
-    if (homes.size >= 200) homes.delete(homes.keys().next().value!);
-    homes.set(user, { until: Date.now() + HOME_TTL, plays, body });
-    return c.json(body, 200);
+  });
+  app.openapi(artistRoute, async (c) => {
+    const user = c.get("userId");
+    const { name, refresh } = c.req.valid("query");
+    const rotate = refresh === "true";
+    return c.json(
+      await kept(user, "artist:" + name.toLowerCase(), rotate, (given) =>
+        discoveryArtist(given, user, name, { rotate }),
+      ),
+      200,
+    );
   });
   app.openapi(searchRoute, async (c) => {
     const input = c.req.valid("json");

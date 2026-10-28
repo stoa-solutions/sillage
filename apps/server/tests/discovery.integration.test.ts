@@ -494,6 +494,9 @@ it("personalizes Discover only from this account's history and respects history 
   await db.query(`INSERT INTO listening_history(user_id,event_id,video_id,title,channel,outcome,played_at)
     VALUES($1,$2,'played00001','Previous song','Real artist','finished',now())`, [alice,randomUUID()]);
   expect((await req('/v1/discover/home','bad')).status).toBe(401);
+  expect((await req('/v1/discover/scene?genre=cumbia','bad')).status).toBe(401);
+  expect((await req('/v1/discover/scene?genre=x')).status).toBe(400);
+  expect((await req('/v1/discover/artist')).status).toBe(400);
   const personal = await (await req('/v1/discover/home')).json();
   expect(personal.basedOn).toEqual(['Real artist']);
   expect(personal.suggestions).toHaveLength(2);

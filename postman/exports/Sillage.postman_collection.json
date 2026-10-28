@@ -708,7 +708,109 @@
               ],
               "variable": []
             },
-            "description": "Rayons « Pour toi » : voisins d’écoute ListenBrainz des artistes préférés (Mon goût) et récents, hors de tout artiste de la bibliothèque et des écoutes ; genres de la bibliothèque sans les artistes habituels ; nouveaux titres des artistes récents. Écarte les vidéos possédées ou écoutées. Sans appel IA. Gardé 20 minutes par compte ; refresh=true tire d’autres voisins. ideas : genres de la bibliothèque, pour les envies.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+            "description": "Rayons « Pour toi » : voisins d’écoute ListenBrainz des artistes préférés (Mon goût) et les plus écoutés, hors de tout artiste de la bibliothèque et des écoutes ; pour un artiste confidentiel, ses collaborations puis sa scène (MusicBrainz) ; un pas plus loin ; nouveaux titres des artistes récents. Écarte les vidéos possédées ou écoutées. Sans appel IA. Gardé 20 minutes par compte ; refresh=true tire d’autres voisins. scenes et artists : ce que la personne peut explorer ensuite.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getDiscoveryScene",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/discover/scene?genre={{genre}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "discover",
+                "scene"
+              ],
+              "query": [
+                {
+                  "key": "genre",
+                  "value": "{{genre}}",
+                  "disabled": false,
+                  "description": ""
+                },
+                {
+                  "key": "refresh",
+                  "value": "{{refresh}}",
+                  "disabled": true,
+                  "description": ""
+                }
+              ],
+              "variable": []
+            },
+            "description": "Artistes que MusicBrainz range dans ce genre et que la personne n’a pas encore, avec leurs titres. Mêmes exclusions et même budget de recherche que « Pour toi ». Gardé 20 minutes par compte et par scène ; refresh=true tire d’autres artistes.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getDiscoveryArtist",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/discover/artist?name={{name}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "discover",
+                "artist"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "{{name}}",
+                  "disabled": false,
+                  "description": ""
+                },
+                {
+                  "key": "refresh",
+                  "value": "{{refresh}}",
+                  "disabled": true,
+                  "description": ""
+                }
+              ],
+              "variable": []
+            },
+            "description": "Ses titres absents de la bibliothèque, ses voisins d’écoute ListenBrainz, les artistes avec qui il a enregistré (MusicBrainz), puis un pas plus loin. Gardé 20 minutes par compte et par artiste ; refresh=true tire d’autres artistes.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
           },
           "response": [],
           "event": [

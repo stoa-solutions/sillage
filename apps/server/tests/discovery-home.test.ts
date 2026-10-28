@@ -1,7 +1,9 @@
 import { expect, it, vi } from "vitest";
 import {
   sceneOf,
+  discoveryArtist,
   discoveryHome,
+  discoveryScene,
   discoverySeeds,
   listenerProfile,
 } from "../src/modules/discovery/index.ts";
@@ -287,4 +289,34 @@ it("then on its scene, from its most precise genre", async () => {
   const shelf = required(result.sections[0]);
   expect(shelf).toMatchObject({ kind: "scene", title: "Scène digital cumbia" });
   expect(required(shelf.items[0]).reason).toBe("Chancha Vía Circuito, digital cumbia comme Acid Coco");
+});
+
+it("explores a scene with the artists of the genre the listener does not have", async () => {
+  const given = {
+    ...niche([]),
+    tagged: vi.fn().mockResolvedValue([neighbour("Maribou State", "ms"), neighbour("Chancha Vía Circuito", "cv")]),
+  };
+  const result = await discoveryScene(given, "alice", "digital cumbia");
+  expect(given.tagged).toHaveBeenCalledWith("digital cumbia");
+  expect(result.sections.map((section) => section.title)).toEqual(["Scène digital cumbia"]);
+  expect(result.suggestions.map((item) => item.artist)).toEqual(["Chancha Vía Circuito"]);
+  // Electronic and hip hop are too wide to be scenes of their own.
+  expect(result.scenes).toEqual([]);
+});
+
+it("explores around an artist: their songs, their neighbours, never themselves", async () => {
+  const given = sources({ artistId: vi.fn().mockResolvedValue("ki") });
+  const result = await discoveryArtist(given, "alice", "Kiasmos");
+  expect(given.similar).toHaveBeenCalledWith("ki");
+  expect(result.sections.map((section) => section.title)).toEqual(["Écouter Kiasmos", "Proches de Kiasmos"]);
+  expect(result.sections.map((section) => section.items.map((item) => item.video.id))).toEqual([
+    ["kiasmos0001"],
+    ["khruang0001"],
+  ]);
+  expect(result.artists).toEqual(["Maribou State", "Rapper"]);
+});
+
+it("says so when MusicBrainz does not know an artist", async () => {
+  const result = await discoveryArtist(sources(), "alice", "Inconnu");
+  expect(result.emptyReason).toContain("MusicBrainz ne connaît pas Inconnu");
 });
