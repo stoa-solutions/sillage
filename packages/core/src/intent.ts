@@ -39,6 +39,26 @@ function isNegatedOperation(clause: string): boolean {
  * "sans live" must not cancel "joue maintenant", nor "ne mets pas en file"
  * override the affirmative correction that follows it.
  */
+/**
+ * The message explicitly asks for music to play or queue (« mets », « joue », « lance »,
+ * « ajoute », « une playlist », « du rap »…), outside a prohibition. A thank-you or a question
+ * does not.
+ */
+export function asksForMusic(message: string): boolean {
+  return normalizeIntent(message)
+    .split(/[,;:.!?]+|\bmais\b/)
+    .map((part) => part.trim())
+    .filter((part) => part && !isNegatedOperation(part))
+    .some(
+      (part) =>
+        playbackVerb.test(part) ||
+        appendVerb.test(part) ||
+        /\b(playlist|carte blanche|surprends moi|fais moi (ecouter|decouvrir|redecouvrir))\b/.test(part) ||
+        // « Du rap », « de l’énergie », « un peu de jazz »: a wish phrased as a partitive.
+        /^(?:un peu de|du|de la|de l|des(?! infos?\b| informations?\b)|quelque chose)\s/.test(part),
+    );
+}
+
 export function parseDJIntent(message: string): ParsedDJIntent {
   const text = normalizeIntent(message);
   const clauses = text.split(/[,;:.!?]+|\bmais\b|\bet (?=(?:ne |n |joue|mets|met |lance|ajoute|rajoute|cherche|prepare))/)

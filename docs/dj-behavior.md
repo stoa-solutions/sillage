@@ -46,6 +46,8 @@ L’utilisateur peut demander de nouvelles propositions ou exclure les cartes af
 
 ## Goût
 
+Quand le modèle conclut « music » sans choisir aucun titre sur une vraie demande de lecture (`asksForMusic` : « mets », « joue », « du rap », « une playlist », carte blanche, suites), `Composition.fallback()` joue jusqu’à cinq titres trouvés pendant le tour : n’importe quel candidat pour une carte blanche, sinon uniquement les favoris listés par `library_browse order=taste`. Une recherche d’artiste nommé qui ne trouve que d’autres titres reste un « rien trouvé » honnête. La décision porte la raison `fallback` dans le journal. L’annonce du serveur varie entre quelques ouvertures fixes, choisies par le premier titre.
+
 `music_search` rend ses candidats ordonnés par le goût de la personne (`modules/taste/taste.rules.ts`) : 👎 récents retirés, titres aimés ou souvent écoutés en tête, une place sur quatre pour la découverte. Chaque candidat peut porter `taste`. Le modèle choisit toujours lui-même ; la validation des identifiants, de la source et de la taille ne change pas.
 
 ## Agents

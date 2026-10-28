@@ -607,7 +607,7 @@ it("preserves a separate musical explanation while announcing the validated queu
   responses.push(searchCall(),{content:JSON.stringify({reply:"Je lance immédiatement !",explanation:"Une couleur électronique et atmosphérique pour prolonger le morceau actuel.",trackIds:[required(library[0]).id],action:"append"})});
   const result=await run({message:"Ajoute un morceau dans cette ambiance",scope:"library",playbackContext:{current,direction:"cumbia électronique"}});
   expect(result.action).toBe("append");
-  expect(result.reply).toContain("J’ajoute à la suite");
+  expect(result.reply).toMatch(/^(J’ajoute à la suite : |À suivre : |Je glisse ensuite )/);
   expect(result.reply).toContain("électronique et atmosphérique");
   expect(result.reply).not.toContain("Je lance");
 });

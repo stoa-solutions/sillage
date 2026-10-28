@@ -112,7 +112,7 @@ export function tasteService(db: Database) {
         const metadata = track.music_metadata as Parameters<typeof artistName>[0]["musicMetadata"];
         return {
           track,
-          artist: artistName({ channel: track.channel, musicMetadata: metadata }),
+          artist: artistName({ title: track.title, channel: track.channel, musicMetadata: metadata }),
           signals: trackSignals,
           taste: tasteOf(trackSignals, now, days),
         };

@@ -27,7 +27,8 @@ export type Decision =
     }
   | {
       kind: "play";
-      reason: "selection";
+      /** fallback: the model chose nothing; the server plays what the turn found. */
+      reason: "selection" | "fallback";
       action: "replace" | "append";
       ids: string[];
       explanation?: string | undefined;
@@ -49,6 +50,8 @@ export interface DecisionState {
   used: ReadonlySet<Retry>;
   /** Validate the provider's IDs against this turn's evidence. */
   select: (output: Selection) => ComposedSelection;
+  /** What a playback request plays when the model chose nothing (see Composition.fallback). */
+  fallback?: () => ComposedSelection | undefined;
 }
 
 const prompts = {
@@ -163,6 +166,13 @@ export function decide(output: Selection, state: DecisionState): Decision {
   // An announced operation without tracks still reaches the renderer, which
   // refuses to announce a start it cannot execute.
   const composed = state.select(output);
+  // A playback request answered with music but no choice at all (keep, or an action without
+  // tracks): play what the turn found rather than leave the listener with nothing.
+  if (output.kind === "music" && !hasIds(output)) {
+    const found = state.fallback?.();
+    if (found && found.action !== "keep" && found.ids.length)
+      return { kind: "play", reason: "fallback", action: found.action, ids: found.ids };
+  }
   if (composed.action === "keep") return { kind: "nothing", reason: "no-match" };
   const target = plan.targetCount;
   if (

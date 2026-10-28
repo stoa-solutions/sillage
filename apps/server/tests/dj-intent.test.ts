@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { djIntent, playbackAction, parseDJIntent, followsCurrent } from "@playlist-recall/core/intent";
+import { asksForMusic, djIntent, playbackAction, parseDJIntent, followsCurrent } from "@playlist-recall/core/intent";
 it.each([
   ["Non je t'ai dit ajoute du Omer Adam et mets-la directement et fais passe les musiques", "replace"],
   ["ajoute Omer Adam et joue-le maintenant", "replace"],
@@ -93,4 +93,17 @@ it.each([
 
 it("ignores a count above the selection limit instead of misreading it", () => {
   expect(parseDJIntent("Ajoute 25 titres").count).toBeUndefined();
+});
+
+it.each([
+  ["Mets-moi quelque chose que j'aime", true],
+  ["Du rap s'il te plaît", true],
+  ["un peu de jazz", true],
+  ["Une playlist pour bosser", true],
+  ["Carte blanche, surprends-moi", true],
+  ["merci", false],
+  ["des infos sur Damso ?", false],
+  ["ne mets rien", false],
+])("tells whether %s asks for music", (message, expected) => {
+  expect(asksForMusic(message)).toBe(expected);
 });

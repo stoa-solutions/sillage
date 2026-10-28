@@ -4,6 +4,8 @@ import type { DjTrack } from "../mcp/index.ts";
 export interface DiscoveryEvidence {
   video: DjTrack;
   inLibrary: boolean;
+  /** Listed by library_browse order=taste: one of the listener's favourites. */
+  favourite?: boolean;
 }
 
 const TOOL_CONTEXT_LIMIT = 20_000;
@@ -172,7 +174,10 @@ export function readToolEvidence(
     const owned = name === "library_search" || name === "library_browse";
     const values = owned ? data.tracks : data.results;
     if (!Array.isArray(values)) throw new Error("invalid tool result");
-    items = owned ? values.map((video) => ({ video, inLibrary: true })) : values;
+    const favourite = name === "library_browse" && data.order === "taste";
+    items = owned
+      ? values.map((video) => ({ video, inLibrary: true, ...(favourite ? { favourite } : {}) }))
+      : values;
     if (
       items.some(
         (item) =>

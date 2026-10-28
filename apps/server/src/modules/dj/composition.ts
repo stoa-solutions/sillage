@@ -2,7 +2,7 @@ import type { DjInput, Selection } from "./dj.contracts.ts";
 import type { TurnPlan } from "./plan.ts";
 import { compactVideo, type DiscoveryEvidence } from "./evidence.ts";
 import { DJ_SELECTION_LIMIT } from "@playlist-recall/core/dj";
-import { playbackAction } from "@playlist-recall/core/intent";
+import { asksForMusic, playbackAction } from "@playlist-recall/core/intent";
 import { DjUnavailable } from "./errors.ts";
 import type { InformationSource } from "../../integrations/searxng/index.ts";
 import type { ChatMessage } from "./provider.ts";
@@ -16,6 +16,9 @@ export interface ComposedSelection {
 }
 
 /** Owns accumulated evidence, validated choices and recovery independently of the provider loop. */
+/** How many found tracks a playback request gets when the model chose none. */
+const FALLBACK_TRACKS = 5;
+
 export class Composition {
   private readonly candidates = new Map<string, DiscoveryEvidence>();
   private checkpoint?: ComposedSelection;
@@ -76,6 +79,31 @@ export class Composition {
     )
       this.checkpoint = value;
     return value;
+  }
+
+  /**
+   * A playback request whose model chose nothing although this turn found music. A carte
+   * blanche takes the first admissible candidates; any other request only the listener's
+   * favourites this turn listed (library_browse order=taste): a search for a named artist that
+   * found something else must stay an honest « nothing found ». Never for a browse request.
+   */
+  fallback(): ComposedSelection | undefined {
+    if (this.plan.intent === "browse") return undefined;
+    // A refill, a carte blanche or an explicit « mets / joue / lance »: never a thank-you.
+    if (!this.input.continuation && !this.plan.openChoice && !asksForMusic(this.input.message))
+      return undefined;
+    const action = playbackAction(this.plan.intent, "replace");
+    if (action === "keep") return undefined;
+    const ids = [...this.candidates.values()]
+      .filter(
+        (item) =>
+          (this.plan.openChoice || item.favourite === true) &&
+          !this.input.rejectedIds.includes(item.video.id) &&
+          !this.input.excludeIds.includes(item.video.id),
+      )
+      .slice(0, Math.min(FALLBACK_TRACKS, this.plan.selectionLimit))
+      .map((item) => item.video.id);
+    return ids.length ? { action, ids, cards: [] } : undefined;
   }
 
   /** If no musical choice was made, show evidence as choices instead of playing a random result. */

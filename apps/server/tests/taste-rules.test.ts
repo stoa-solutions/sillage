@@ -99,16 +99,25 @@ it("keeps a targeted search in its own order, hidden tracks included", () => {
   ]);
 });
 
-it("names artists by their MusicBrainz credit, else the cleaned channel", () => {
+it("names artists by their MusicBrainz credit, the Topic channel, the title, then the channel", () => {
   expect(
     artistName({
+      title: "Mr. Rager",
       channel: "KidCudiVEVO",
       musicMetadata: { status: "matched", artists: [{ name: "Kid Cudi", role: "primary" }] },
     }),
   ).toBe("Kid Cudi");
-  expect(artistName({ channel: "Flume - Topic" })).toBe("Flume");
-  expect(artistName({ channel: "MidnightOilVEVO" })).toBe("MidnightOil");
-  expect(artistName({ channel: null })).toBeUndefined();
+  expect(artistName({ title: "Never Be Like You", channel: "Flume - Topic" })).toBe("Flume");
+  // Channels that are not the artist: the title says who sings.
+  expect(
+    artistName({ title: "Elvis Presley - In The Ghetto (Music Video) (1969)", channel: "gaaronpresley" }),
+  ).toBe("Elvis Presley");
+  expect(
+    artistName({ title: "Jewel Usain feat. Béesau & Hedges - Incapable (Clip officiel)", channel: "Jewel Usain" }),
+  ).toBe("Jewel Usain");
+  expect(artistName({ title: "Полина Гагарина - Кукушка", channel: "StarPro" })).toBe("Полина Гагарина");
+  expect(artistName({ title: "Beds Are Burning", channel: "MidnightOilVEVO" })).toBe("MidnightOil");
+  expect(artistName({ title: "Sans tiret", channel: null })).toBeUndefined();
 });
 
 it("does not crown an artist for a single liked track", () => {

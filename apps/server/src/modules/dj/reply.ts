@@ -10,6 +10,24 @@ const quoted = (titles: string[]) => titles.map((title) => `« ${title} »`);
 const withExplanation = (text: string, explanation?: string) =>
   explanation?.trim() ? `${text} ${explanation.trim()}` : text;
 
+/**
+ * A few openings, so successive answers do not all start alike. The choice depends only on
+ * the tracks, so the same selection is always announced the same way.
+ */
+const OPENINGS = {
+  replace: ["C’est parti : ", "On lance ", "Place à ", "Je te mets "],
+  append: ["J’ajoute à la suite : ", "À suivre : ", "Je glisse ensuite "],
+} as const;
+
+function opening(action: "replace" | "append", tracks: DjTrack[]) {
+  const seed = [...(tracks[0]?.id ?? "")].reduce(
+    (sum, character) => (sum * 31 + character.charCodeAt(0)) >>> 0,
+    0,
+  );
+  const choices = OPENINGS[action];
+  return choices[seed % choices.length]!;
+}
+
 export function playReply(
   action: "replace" | "append",
   tracks: DjTrack[],
@@ -28,10 +46,7 @@ export function playReply(
     targetCount && tracks.length < targetCount
       ? ` Je n’ai trouvé que ${tracks.length} nouveau${tracks.length === 1 ? " titre compatible" : "x titres compatibles"} sur les ${targetCount} demandés.`
       : "";
-  const operation =
-    action === "append"
-      ? `J’ajoute à la suite : ${titles}${rest}.${partial}`
-      : `C’est parti : ${titles}${rest}.`;
+  const operation = `${opening(action, tracks)}${titles}${rest}.${action === "append" ? partial : ""}`;
   return withExplanation(operation, explanation);
 }
 

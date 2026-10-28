@@ -858,3 +858,82 @@ it("ignores citation IDs a model wrote as words instead of failing the turn", as
   );
   expect(result.action).toBe("replace");
 });
+
+const emptyMusic = {
+  content: JSON.stringify({
+    kind: "music",
+    reply: "C’est bien noté, je tiens compte de tes habitudes.",
+    action: "keep",
+    trackIds: [],
+    discoveryIds: [],
+  }),
+};
+
+it("plays the listed favourites when the model concludes with music but chooses nothing", async () => {
+  // Seen in production with « Mets-moi quelque chose que j'aime »: favourites listed, keep, no IDs.
+  mocks.toolNames = ["library_browse"];
+  mocks.call.mockResolvedValue({
+    content: [
+      { type: "text", text: JSON.stringify({ order: "taste", playlists: [], tracks: [track] }) },
+    ],
+  });
+  mocks.tracks.mockResolvedValue([track]);
+  const browse = {
+    tool_calls: [
+      {
+        id: "b",
+        type: "function",
+        function: { name: "library_browse", arguments: JSON.stringify({ order: "taste" }) },
+      },
+    ],
+  };
+  provider([browse, emptyMusic]);
+  const played = await djTurn(
+    db,
+    djInput.parse({ message: "Mets-moi quelque chose que j'aime" }),
+    undefined,
+    config,
+    "alice",
+  );
+  expect(played.action).toBe("replace");
+  expect(played.tracks.map((item) => item.id)).toEqual([track.id]);
+
+  // A thank-you after the same listing never starts music.
+  provider([browse, emptyMusic]);
+  const thanked = await djTurn(db, djInput.parse({ message: "merci" }), undefined, config, "alice");
+  expect(thanked.action).toBe("keep");
+  expect(thanked.tracks).toEqual([]);
+});
+
+it("plays found candidates for a carte blanche, but never a mismatch for a named artist", async () => {
+  provider([tool, emptyMusic]);
+  const open = await djTurn(
+    db,
+    djInput.parse({ message: "Carte blanche, surprends-moi", scope: "all" }),
+    undefined,
+    config,
+    "alice",
+  );
+  expect(open.tracks.map((item) => item.id)).toEqual([track.id]);
+  provider([tool, emptyMusic]);
+  const named = await djTurn(
+    db,
+    djInput.parse({ message: "Mets du Omer Adam", scope: "all" }),
+    undefined,
+    config,
+    "alice",
+  );
+  expect(named.tracks).toEqual([]);
+});
+
+it("varies the opening of an announcement, the same way for the same selection", async () => {
+  const { playReply } = await import("../src/modules/dj/reply.ts");
+  const openings = new Set(
+    ["aaaaaaaaaa1", "bbbbbbbbbb2", "cccccccccc3", "dddddddddd4", "eeeeeeeeee5", "ffffffffff6"].map(
+      (id) => playReply("replace", [{ id, title: "Titre", url: "" } as never]).split(" Titre")[0],
+    ),
+  );
+  expect(openings.size).toBeGreaterThan(1);
+  const once = playReply("append", [{ id: "aaaaaaaaaa1", title: "Titre", url: "" } as never]);
+  expect(playReply("append", [{ id: "aaaaaaaaaa1", title: "Titre", url: "" } as never])).toBe(once);
+});

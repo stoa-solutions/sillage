@@ -185,8 +185,13 @@ export function rankByTaste<T>(
   return ranked;
 }
 
-/** One name per artist: the MusicBrainz primary credit, else the channel without its suffixes. */
+/**
+ * One name per artist, as the Mac's TrackTitle reads it: the MusicBrainz primary credit, else
+ * a « X - Topic » channel, else the « Artist - Song » title (main artist only, before feat.,
+ * &, x or a comma), else the channel without its VEVO or Official suffix.
+ */
 export function artistName(track: {
+  title?: string | null | undefined;
   channel?: string | null | undefined;
   musicMetadata?:
     | { status?: string; artists?: { name: string; role: string }[] }
@@ -197,11 +202,14 @@ export function artistName(track: {
     track.musicMetadata?.status === "matched"
       ? track.musicMetadata.artists?.find((artist) => artist.role === "primary")?.name
       : undefined;
-  const name = (credited ?? track.channel ?? "")
-    .replace(/\s*-\s*Topic$/i, "")
-    .replace(/\s*(VEVO|Official|Officiel)$/i, "")
-    .trim();
-  return name || undefined;
+  if (credited) return credited;
+  const channel = track.channel?.trim() ?? "";
+  if (/\s-\s*Topic$/i.test(channel)) return channel.replace(/\s*-\s*Topic$/i, "").trim() || undefined;
+  const titled = /^(.+?)\s+[-–—]\s+\S/.exec(track.title ?? "")?.[1]
+    ?.split(/\s+(?:feat\.?|ft\.?|featuring|x|&)\s+|,\s*/i)[0]
+    ?.trim();
+  if (titled) return titled;
+  return channel.replace(/\s*(VEVO|Official|Officiel)$/i, "").trim() || undefined;
 }
 
 export interface ArtistTaste {

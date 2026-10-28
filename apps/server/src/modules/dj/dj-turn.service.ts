@@ -177,6 +177,7 @@ export async function djTurn(
         finalRound,
         used,
         select: (output) => composition.select(output),
+        fallback: () => composition.fallback(),
       });
       observe?.({
         kind: "policy",
