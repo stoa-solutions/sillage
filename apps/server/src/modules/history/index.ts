@@ -5,3 +5,4 @@ export {
   historyUpload,
   listeningOutcomes,
 } from "./history.schemas.ts";
+export { recentlyHeard } from "./history.repository.ts";

@@ -1,5 +1,9 @@
 import { DJ_SELECTION_LIMIT } from "@playlist-recall/core/dj";
-import { parseDJIntent, type DJIntent } from "@playlist-recall/core/intent";
+import {
+  parseDJIntent,
+  recentlyHeardExclusion,
+  type DJIntent,
+} from "@playlist-recall/core/intent";
 import type { DjInput } from "./dj.contracts.ts";
 
 export interface TurnPlan {
@@ -19,6 +23,8 @@ export interface TurnPlan {
   grounded: boolean;
   externalSearch: boolean;
   scope: "library" | "youtube" | "all";
+  /** « pas les deux dernières que j’ai écoutées »: the latest listens become rejected tracks. */
+  skipRecent?: number | undefined;
 }
 
 const openChoicePattern =
@@ -85,5 +91,6 @@ export function planTurn(input: DjInput): TurnPlan {
     broaden: false,
     playback,
     grounded: relative && Boolean(playback?.current),
+    skipRecent: recentlyHeardExclusion(input.message),
   };
 }

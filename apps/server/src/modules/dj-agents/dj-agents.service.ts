@@ -19,9 +19,9 @@ const baseOrder = new Map<string, number>(
   BASE_AGENTS.map((agent, index) => [agent.key, index]),
 );
 
-/** The profile a DJ turn adds to its rules; the default agent adds none. */
+/** The profile a DJ turn adds to its rules; an agent without text adds none. */
 export interface ResolvedAgent {
-  profile?: { name: string; instructions: string };
+  profile?: { name: string; instructions: string; brief?: true };
   /** What the journal keeps: the text may change later, its hash tells which one was used. */
   trace: {
     id: string;
@@ -87,27 +87,33 @@ export function djAgentsService(db: Database) {
      * one instead of failing: a refill sent with a stale selection must still play.
      */
     async resolve(owner: string, requested?: string): Promise<ResolvedAgent> {
-      if (!requested || requested === DEFAULT_AGENT)
-        return { trace: { id: DEFAULT_AGENT } };
+      const find = (key: string) =>
+        UUID.test(key) ? findOwnAgent(db.orm, owner, key) : findBaseAgent(db.orm, key);
+      const key = requested ?? DEFAULT_AGENT;
       let row: AgentRow | undefined;
+      let fallback = false;
       try {
-        row = UUID.test(requested)
-          ? await findOwnAgent(db.orm, owner, requested)
-          : await findBaseAgent(db.orm, requested);
+        row = await find(key);
+        // An unknown, foreign or deleted agent speaks with the default one's voice.
+        if (!row && key !== DEFAULT_AGENT) {
+          fallback = true;
+          row = await find(DEFAULT_AGENT);
+        }
       } catch {
-        console.warn("DJ agent unavailable, default agent used");
+        console.warn("DJ agent unavailable, default rules used");
       }
-      if (!row) return { trace: { id: requested, fallback: true } };
-      const trace = {
-        id: row.baseKey ?? row.id,
-        name: row.name,
-        instructionsHash: createHash("sha256")
-          .update(row.instructions)
-          .digest("hex"),
-      };
+      if (!row) return { trace: { id: key, ...(key === DEFAULT_AGENT ? {} : { fallback: true as const }) } };
+      const trace = fallback
+        ? { id: key, fallback: true as const }
+        : {
+            id: row.baseKey ?? row.id,
+            name: row.name,
+            instructionsHash: createHash("sha256").update(row.instructions).digest("hex"),
+          };
+      const brief = BASE_AGENTS.find((agent) => agent.key === row.baseKey)?.brief;
       return row.instructions
         ? {
-            profile: { name: row.name, instructions: row.instructions },
+            profile: { name: row.name, instructions: row.instructions, ...(brief ? { brief } : {}) },
             trace,
           }
         : { trace };

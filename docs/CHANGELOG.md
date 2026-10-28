@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- DJ, des agents qu’on reconnaît : Le DJ a enfin une voix (un set qui progresse, 5 à 8 titres sur une demande ouverte) ; l’Archiviste pioche des ajouts anciens peu écoutés, différents à chaque fois, au lieu des cinq mêmes premiers ; Focus vise 8 à 10 titres sobres et s’annonce en quelques mots ; le Disquaire glisse une trouvaille hors bibliothèque et change de formule. Titres annoncés sans « Official Video » ni « CLIP », phrases au vouvoiement ou parlant de « l’utilisateur » retirées. « Pas les deux dernières que j’ai écoutées » est respecté.
+
 - DJ : quand le modèle trouve tes favoris ou part en carte blanche mais ne choisit rien, le serveur lance ce qui a été trouvé au lieu de « rien trouvé » (jamais sur un artiste nommé introuvable). Mon goût nomme les artistes par le titre quand la chaîne n’est pas l’artiste (Elvis Presley plutôt que gaaronpresley). Annonces variées (« On lance… », « Place à… », « À suivre… »).
 
 - Sillage 1.8.7 (78) : Bibliothèque → Mon goût, Réglages refaits sur le verre Sillage (apparence du système, page Goût, aucun emoji), boutons J’aime / Je n’aime pas.

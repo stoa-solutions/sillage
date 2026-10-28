@@ -1,5 +1,6 @@
 import { djConfig, type DjConfig } from "./dj.config.ts";
 import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
+import { recentlyHeard } from "../history/index.ts";
 import { connectMusicMcp, musicTracks } from "../mcp/index.ts";
 import type { DjTrack } from "@playlist-recall/core/dj";
 import { catalogSelection } from "./catalog.ts";
@@ -67,6 +68,7 @@ export async function djTurn(
   profile?: DjProfile,
 ): Promise<TurnResult> {
   const plan = planTurn(input);
+  if (plan.skipRecent) input = await withoutRecentlyHeard(db, input, plan.skipRecent, userId);
   const started = Date.now();
   const requested = await catalogSelection(db, input, userId, plan);
   observe?.({
@@ -191,15 +193,15 @@ export async function djTurn(
         messages.push({ role: "user", content: decision.prompt });
         continue;
       }
-      return await render(decision, plan, research, tracksOf);
+      return await render(decision, plan, research, tracksOf, profile);
     }
     // The provider kept searching: conclude from what was verified so far.
-    return await recover(composition, plan, research, tracksOf);
+    return await recover(composition, plan, research, tracksOf, profile);
   } catch (error) {
     // A provider outage while expanding cannot erase a verified partial queue.
     // Cancellation, including the deadline, always wins over that recovery.
     if (composition.hasSelection && !signal.aborted) {
-      const partial = await recover(composition, plan, research, tracksOf);
+      const partial = await recover(composition, plan, research, tracksOf, profile);
       if (partial.tracks.length) return partial;
     }
     if (error instanceof DjUnavailable) throw error;
@@ -210,6 +212,23 @@ export async function djTurn(
   } finally {
     await mcp.close();
   }
+}
+
+/**
+ * What the listener just heard is refused like a rejected card: the playing track first,
+ * then the latest listens, so « pas les deux dernières » holds in every source and fallback.
+ */
+async function withoutRecentlyHeard(
+  db: Database,
+  input: DjInput,
+  count: number,
+  userId: string,
+): Promise<DjInput> {
+  const current = input.playbackContext?.current?.id;
+  const heard = [
+    ...new Set([...(current ? [current] : []), ...(await recentlyHeard(db.orm, userId, count))]),
+  ].slice(0, count);
+  return { ...input, rejectedIds: [...new Set([...input.rejectedIds, ...heard])] };
 }
 
 /** Cards and the playing track can be referred to; hydrate their owned metadata. */
@@ -247,6 +266,7 @@ async function render(
   plan: TurnPlan,
   research: Research,
   tracksOf: (ids: string[]) => Promise<DjTrack[]>,
+  profile?: DjProfile,
 ): Promise<TurnResult> {
   const note = research.sourceNote();
   switch (decision.kind) {
@@ -300,6 +320,7 @@ async function render(
             tracks,
             plan.targetCount,
             decision.explanation,
+            { brief: profile?.brief },
           ),
           note,
         ),
@@ -315,6 +336,7 @@ async function recover(
   plan: TurnPlan,
   research: Research | undefined,
   tracksOf: (ids: string[]) => Promise<DjTrack[]>,
+  profile?: DjProfile,
 ): Promise<TurnResult> {
   const chosen = composition.recover();
   const tracks = await tracksOf(chosen.ids);
@@ -324,7 +346,9 @@ async function recover(
       action: chosen.action,
       tracks,
       reply: withSourceNote(
-        playReply(chosen.action, tracks, plan.targetCount, chosen.explanation),
+        playReply(chosen.action, tracks, plan.targetCount, chosen.explanation, {
+          brief: profile?.brief,
+        }),
         note,
       ),
       source: "mcp",

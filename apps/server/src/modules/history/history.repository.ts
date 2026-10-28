@@ -65,3 +65,15 @@ export async function clearHistory(db: Executor, userId: string) {
     .returning({ id: listeningHistory.eventId });
   return deleted.length;
 }
+
+/** The latest distinct tracks the account heard, newest first. */
+export async function recentlyHeard(db: Executor, userId: string, limit: number) {
+  const rows = await db
+    .select({ videoId: listeningHistory.videoId })
+    .from(listeningHistory)
+    .where(eq(listeningHistory.userId, userId))
+    .groupBy(listeningHistory.videoId)
+    .orderBy(desc(sql`max(${listeningHistory.playedAt})`))
+    .limit(limit);
+  return rows.map((row) => row.videoId);
+}

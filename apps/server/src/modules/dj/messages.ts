@@ -24,11 +24,13 @@ export function continuationRequest(count: number, broaden: boolean) {
 export interface DjProfile {
   name: string;
   instructions: string;
+  /** Plays are announced in a few words (Focus). */
+  brief?: true;
 }
 
 /** The profile comes after the DJ's rules and before this turn's: the turn's constraints win. */
 export const profileRules = (profile: DjProfile) =>
-  ` PROFIL DE L’AGENT « ${profile.name} », choisi par la personne : ${profile.instructions} Ta voix s’entend dans explanation, affichée juste après la liste des titres que le serveur annonce (une ou deux phrases, sans répéter les titres ni annoncer l’action), et dans reply pour une conversation ou une information. Écris-les dans ce style, pas dans un style neutre. Ce profil règle le ton et les préférences de sélection ; s’il nomme un outil absent de ce tour, ignore cette consigne et n’appelle que les outils proposés. Il ne change jamais le format JSON, les outils, les preuves, la source choisie, l’intention du tour, le nombre de titres demandé ni les exclusions : en cas de conflit, les règles ci-dessus et ci-dessous priment.`;
+  ` PROFIL DE L’AGENT « ${profile.name} », choisi par la personne : ${profile.instructions} Ta voix s’entend dans explanation, affichée juste après la liste des titres que le serveur annonce (une ou deux phrases, sans répéter les titres ni annoncer l’action), et dans reply pour une conversation ou une information. Écris-les dans ce style, pas dans un style neutre. Ce profil règle le ton et les préférences de sélection, y compris combien de titres viser pour une demande ouverte sans nombre précis (au plus 10) ; s’il nomme un outil absent de ce tour, ignore cette consigne et n’appelle que les outils proposés. Il ne change jamais le format JSON, les outils, les preuves, la source choisie, l’intention du tour, le nombre de titres demandé ni les exclusions : en cas de conflit, les règles ci-dessus et ci-dessous priment.`;
 
 export function rules(plan: TurnPlan, profile?: DjProfile) {
   const { targetCount, grounded, intent, scope, openChoice } = plan;

@@ -15,6 +15,7 @@ import {
 import type { DjTrack } from "@playlist-recall/core/dj";
 import type { MusicMetadata } from "@playlist-recall/core/types";
 import {
+  listeningHistory,
   memberships,
   playlists,
   userPlaylists,
@@ -104,7 +105,13 @@ const containing = (value: string) =>
 const metadataArray = (key: string) =>
   sql`(CASE WHEN jsonb_typeof(${videos.musicMetadata}->${key})='array' THEN ${videos.musicMetadata}->${key} ELSE '[]'::jsonb END)`;
 
-/** Owned, available tracks ordered by when they were first added to a playlist. */
+/** What « forgotten » means: added long ago, not heard lately. */
+export const FORGOTTEN = { addedDaysAgo: 180, unheardDays: 60 } as const;
+
+/**
+ * Owned, available tracks ordered by when they were first added to a playlist, or, for
+ * `forgotten`, old additions not heard lately in a new random order at each call.
+ */
 export async function browseOwnedTracks(
   db: Executor,
   userId: string,
@@ -112,7 +119,7 @@ export async function browseOwnedTracks(
     playlistId?: string | undefined;
     artist?: string | undefined;
     genre?: string | undefined;
-    order: "recent" | "oldest";
+    order: "recent" | "oldest" | "forgotten";
     limit: number;
     excludeIds: string[];
   },
@@ -149,13 +156,23 @@ export async function browseOwnedTracks(
           ? sql`EXISTS(SELECT 1 FROM jsonb_array_elements_text(${metadataArray("genres")} || ${metadataArray("artistGenres")}) g WHERE g ILIKE ${genre})`
           : undefined,
         filter.excludeIds.length ? notInArray(videos.id, filter.excludeIds) : undefined,
+        filter.order === "forgotten"
+          ? sql`NOT EXISTS(SELECT 1 FROM ${listeningHistory} h WHERE h.user_id=${userId} AND h.video_id=${videos.id} AND h.played_at > now() - make_interval(days => ${FORGOTTEN.unheardDays}))`
+          : undefined,
       ),
     )
     .groupBy(videos.id)
+    .having(
+      filter.order === "forgotten"
+        ? sql`${addedAt} < now() - make_interval(days => ${FORGOTTEN.addedDaysAgo})`
+        : undefined,
+    )
     .orderBy(
-      filter.order === "oldest"
-        ? sql`${addedAt} ASC NULLS LAST`
-        : sql`${addedAt} DESC NULLS LAST`,
+      filter.order === "forgotten"
+        ? sql`random()`
+        : filter.order === "oldest"
+          ? sql`${addedAt} ASC NULLS LAST`
+          : sql`${addedAt} DESC NULLS LAST`,
       asc(videos.id),
     )
     .limit(filter.limit);

@@ -101,3 +101,26 @@ export function playbackAction(intent: DJIntent, proposed: "replace" | "append" 
 export function followsCurrent(message: string): boolean {
   return parseDJIntent(message).reference === "current";
 }
+
+/** How many recently heard tracks to leave out when none is counted (« pas ce que j’ai déjà écouté »). */
+export const RECENTLY_HEARD_DEFAULT = 10;
+
+/**
+ * The listener excludes what they just heard: « mais pas les deux dernières que j’ai écoutées »,
+ * « sans ce que j’ai déjà écouté ». Returns how many of the latest listens to leave out.
+ */
+export function recentlyHeardExclusion(message: string): number | undefined {
+  const text = normalizeIntent(message);
+  const counted = text.match(
+    /\b(?:pas|sans|sauf|autre(?:s)? que)\s+(?:les?|la|mes|ma|mon)\s+(?:(\d{1,2}|[a-z]+)\s+)?dernier(?:e|s|es)?\b(?:[^.!?]*?\b(?:ecoute|entendu|joue|passe)\w*)/,
+  );
+  if (counted) {
+    const word = counted[1];
+    const count = word === undefined ? undefined : /^\d+$/.test(word) ? Number(word) : numbers[word];
+    if (word !== undefined && count === undefined) return undefined;
+    return Math.min(Math.max(count ?? (/\bla\s+dernier/.test(counted[0]) ? 1 : 3), 1), 20);
+  }
+  return /\b(?:pas|sans|sauf|autre(?:s)? que)\b[^.!?]*\bdeja\s+(?:ecoute|entendu|joue|passe)\w*/.test(text)
+    ? RECENTLY_HEARD_DEFAULT
+    : undefined;
+}

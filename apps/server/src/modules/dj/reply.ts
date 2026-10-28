@@ -7,8 +7,42 @@ import type { DiscoveryEvidence } from "./evidence.ts";
  */
 
 const quoted = (titles: string[]) => titles.map((title) => `« ${title} »`);
-const withExplanation = (text: string, explanation?: string) =>
-  explanation?.trim() ? `${text} ${explanation.trim()}` : text;
+
+/** A sentence that addresses the listener formally or in the third person is not the DJ's voice. */
+const OFF_VOICE = /\b(?:vous|votre|vos)\b|l[’']utilisat(?:eur|rice)/i;
+
+/** The agent's own words, without the sentences a small model writes in the wrong register. */
+export function ownVoice(explanation?: string) {
+  const kept = (explanation ?? "")
+    .trim()
+    .split(/(?<=[.!?…])\s+/)
+    .filter((sentence) => sentence && !OFF_VOICE.test(sentence));
+  return kept.length ? kept.join(" ") : undefined;
+}
+
+const withExplanation = (text: string, explanation?: string) => {
+  const voice = ownVoice(explanation);
+  return voice ? `${text} ${voice}` : text;
+};
+
+/** YouTube packaging that says nothing about the music: « (Official Video) », « [CLIP OFFICIEL] »… */
+const PACKAGING =
+  /\s*[(\[][^()\[\]]*?\b(?:official|officiel(?:le)?|clip|video|vidéo|audio|lyrics?|paroles|visuali[sz]er|hd|hq|4k)\b[^()\[\]]*[)\]]/gi;
+const ANNOUNCED_LENGTH = 70;
+
+/** A title as a person would say it: packaging dropped, very long names cut at a word. */
+export function spokenTitle(title: string) {
+  const plain = title
+    .replace(PACKAGING, "")
+    .replace(/\s*\|\s*(?:hd|hq|4k)\s*\|/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/[\s\-–—|:]+$/, "")
+    .trim();
+  const spoken = plain || title.trim();
+  if (spoken.length <= ANNOUNCED_LENGTH) return spoken;
+  const cut = spoken.slice(0, ANNOUNCED_LENGTH);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 40)).trim()}…`;
+}
 
 /**
  * A few openings, so successive answers do not all start alike. The choice depends only on
@@ -33,19 +67,24 @@ export function playReply(
   tracks: DjTrack[],
   targetCount?: number,
   explanation?: string,
+  { brief = false }: { brief?: boolean | undefined } = {},
 ): string {
   const titles = tracks
-    .slice(0, 3)
-    .map((t) => t.title)
+    .slice(0, brief ? 1 : 3)
+    .map((t) => spokenTitle(t.title))
     .join(", puis ");
+  const shown = brief ? 1 : 3;
   const rest =
-    tracks.length > 3
-      ? ` et ${tracks.length - 3} autre${tracks.length === 4 ? " titre" : "s titres"}`
+    tracks.length > shown
+      ? ` et ${tracks.length - shown} autre${tracks.length === shown + 1 ? " titre" : "s titres"}`
       : "";
   const partial =
     targetCount && tracks.length < targetCount
       ? ` Je n’ai trouvé que ${tracks.length} nouveau${tracks.length === 1 ? " titre compatible" : "x titres compatibles"} sur les ${targetCount} demandés.`
       : "";
+  // A brief agent (Focus) is announced in a few words, without its own sentence.
+  if (brief)
+    return `${action === "append" ? "À suivre : " : "Lecture : "}${titles}${rest}.${action === "append" ? partial : ""}`;
   const operation = `${opening(action, tracks)}${titles}${rest}.${action === "append" ? partial : ""}`;
   return withExplanation(operation, explanation);
 }
@@ -55,7 +94,7 @@ export function proposalReply(
   cards: DiscoveryEvidence[],
   explanation?: string,
 ): string {
-  const titles = quoted(cards.map(({ video }) => video.title));
+  const titles = quoted(cards.map(({ video }) => spokenTitle(video.title)));
   const list =
     titles.length > 1
       ? `${titles.slice(0, -1).join(", ")} et ${titles.at(-1)}`

@@ -52,7 +52,7 @@ Quand le modèle conclut « music » sans choisir aucun titre sur une vraie dema
 
 ## Agents
 
-Un agent choisi par la personne ajoute un profil après les règles du DJ et avant celles du Tour. Il règle le ton et les préférences de sélection ; l’intention, la source, la taille demandée, les exclusions et la validation des identifiants restent décidées comme sans agent. L’annonce de la file reste écrite par le serveur. Voir `apps/server/src/modules/dj-agents/` et la [visite du serveur](server-tour.md).
+Un agent choisi par la personne ajoute un profil après les règles du DJ et avant celles du Tour. Il règle le ton et les préférences de sélection ; l’intention, la source, la taille demandée, les exclusions et la validation des identifiants restent décidées comme sans agent. Le DJ par défaut a lui aussi un profil (animateur qui construit un set) ; chaque agent de base choisit différemment, pas seulement sur le ton : l’Archiviste pioche avec `library_browse order=forgotten` (ajouts anciens peu écoutés, ordre différent à chaque appel), Focus vise 8 à 10 titres continus et sobres, le Disquaire glisse une trouvaille hors bibliothèque quand YouTube est permis. L’annonce de la file reste écrite par le serveur, avec des titres dits comme une personne les dirait (sans « Official Video » ni « CLIP »), et en quelques mots pour Focus (`brief`). Les phrases du modèle qui vouvoient ou parlent de « l’utilisateur » sont retirées. « Pas les deux dernières que j’ai écoutées » rejette le morceau en cours puis les dernières écoutes. Voir `apps/server/src/modules/dj-agents/` et la [visite du serveur](server-tour.md).
 
 ## Sources manquantes ou indisponibles
 

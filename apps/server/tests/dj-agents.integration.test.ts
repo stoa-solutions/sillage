@@ -61,7 +61,7 @@ it("writes base agents from code at each start: same text keeps its date, edits 
 
   const created = await (await req("POST", "/agents", tokenA, calm)).json();
   await writeBaseAgents(db.orm, [
-    { key: "dj", name: "Le DJ", instructions: "" },
+    BASE_AGENTS[0]!,
     { key: "focus", name: "Focus", instructions: "Texte retouché." },
   ]);
   const after = await (await req("GET", "/agents")).json();
@@ -137,17 +137,23 @@ it("resolves a turn's agent, falling back to the default for unknown, foreign or
   expect(focus.profile?.name).toBe("Focus");
   expect(focus.trace).toMatchObject({ id: "focus", name: "Focus" });
   expect(focus.trace.instructionsHash).toMatch(/^[a-f0-9]{64}$/);
-  expect(await agents.resolve(alice, "dj")).toEqual({ trace: { id: "dj" } });
-  expect(await agents.resolve(alice)).toEqual({ trace: { id: "dj" } });
+  expect(focus.profile?.brief).toBe(true);
+  const dj = await agents.resolve(alice, "dj");
+  expect(dj.profile?.name).toBe("Le DJ");
+  expect(dj.profile?.brief).toBeUndefined();
+  expect(await agents.resolve(alice)).toEqual(dj);
+  // An unknown, foreign or deleted agent speaks with the default voice, and the journal says so.
   for (const id of [bobs.id, randomUUID(), "inconnu"])
-    expect(await agents.resolve(alice, id)).toEqual({ trace: { id, fallback: true } });
+    expect(await agents.resolve(alice, id)).toEqual({ profile: dj.profile, trace: { id, fallback: true } });
 });
 
 it("shows the rules as the DJ receives them, with the chosen agent's profile", async () => {
   const plain = await (await req("GET", "/rules")).json();
-  expect(plain.prompt).not.toContain("PROFIL DE L’AGENT");
+  // Without a choice, the default agent's profile is the one the DJ receives.
+  expect(plain.prompt).toContain("PROFIL DE L’AGENT « Le DJ »");
   const focus = await (await req("GET", "/rules?agentId=focus")).json();
-  expect(focus.prompt.startsWith(plain.prompt)).toBe(true);
+  expect(focus.prompt.slice(0, 200)).toBe(plain.prompt.slice(0, 200));
+  expect(focus.prompt).not.toContain("« Le DJ »");
   expect(focus.prompt).toContain("PROFIL DE L’AGENT « Focus »");
   const stale = await (await req("GET", "/rules?agentId=" + randomUUID())).json();
   expect(stale.prompt).toBe(plain.prompt);

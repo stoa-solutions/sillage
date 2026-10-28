@@ -12,6 +12,7 @@ import { personalDjConfig, openSecret } from "../src/modules/dj/dj-settings.serv
 import { musicTracks, connectMusicMcp } from "../src/modules/mcp/index.ts";
 import { TEXT_KEY, VISION_KEY } from "../src/modules/indexing/index.ts";
 import { reserveDj } from "../src/modules/dj/index.ts";
+import { recentlyHeard } from "../src/modules/history/index.ts";
 vi.mock("../src/integrations/inference/client.ts", () => ({
   infer: vi.fn().mockImplementation(async (kind: string) => ({
     vector: Array(kind === "visual-query" ? 768 : 384).fill(0.01),
@@ -174,6 +175,20 @@ it("browses one account's library by date added, by playlist name, artist or gen
     expect((await browse({ artist: "badu" })).tracks.map((t: { id: string }) => t.id)).toEqual(["shared12345"]);
     expect((await browse({ genre: "soul" })).tracks.map((t: { id: string }) => t.id)).toEqual(["shared12345"]);
     expect((await browse({ genre: "100%" })).tracks).toEqual([]);
+    // Forgotten: added long ago and not heard lately; a recent listen takes a track out.
+    const forgotten = async () =>
+      (await browse({ order: "forgotten" })).tracks.map((t: { id: string }) => t.id).sort();
+    expect(await forgotten()).toEqual(["alicevideo1", "shared12345"]);
+    await db.query(
+      `INSERT INTO listening_history(user_id,event_id,video_id,title,outcome,played_at) VALUES
+       ($1,$2,'shared12345','Shared','finished',now() - interval '1 day'),
+       ($1,$3,'alicevideo1','Alice','finished',now() - interval '2 days'),
+       ($1,$4,'shared12345','Shared','finished',now() - interval '3 days')`,
+      [alice, randomUUID(), randomUUID(), randomUUID()],
+    );
+    expect(await forgotten()).toEqual([]);
+    expect(await recentlyHeard(db.orm, alice, 5)).toEqual(["shared12345", "alicevideo1"]);
+    expect(await recentlyHeard(db.orm, bob, 5)).toEqual([]);
   } finally {
     await mcp.close();
   }
