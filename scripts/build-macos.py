@@ -51,7 +51,8 @@ architectures = ['arm64', 'x86_64'] if args.universal else [platform.machine()]
 label = 'universal' if args.universal else architectures[0]
 archive_name, disk_name = release_names(args.version, label)
 for arch in architectures:
-    subprocess.run(['swift', 'build', '--package-path', str(project), '-c', 'release', '--arch', arch], check=True)
+    # Keep the tested SwiftPM artifact layout used by the bundle assembly below.
+    subprocess.run(['swift', 'build', '--build-system', 'native', '--package-path', str(project), '-c', 'release', '--arch', arch], check=True)
 bundle = output / 'Sillage.app'
 if bundle.exists():
     shutil.rmtree(bundle)

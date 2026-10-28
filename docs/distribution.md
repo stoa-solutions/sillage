@@ -41,6 +41,25 @@ Au 27 octobre 2026 : inscription de Stoa en cours de traitement, mais aucune adh
 
 Désactivées par défaut. Pour activer Sparkle, fournir explicitement `MAC_UPDATE_FEED_URL` (HTTPS) et `MAC_UPDATE_PUBLIC_KEY` (publique), puis autoriser la signature Ed25519 de l’archive. `--skip-update-signature` désactive toujours les mises à jour. Aucun flux privé Stoa n’est repris automatiquement par une construction publique.
 
+## Installation locale de développement
+
+Les commandes de validation et d’assemblage sélectionnent explicitement le moteur SwiftPM `native` : Swift 6.4 change le moteur par défaut et l’emplacement des produits. L’assemblage utilise encore les chemins du moteur natif. Ne retirer ce choix qu’en adaptant et validant ensemble les chemins du binaire, des ressources et des tests.
+
+Sur ce Mac, les Command Line Tools Swift 6.4 avec le SDK 27 échouent sur `SwiftUIMacros.StateMacro` (plugin absent). Le SDK 26.5 installé reste utilisable sans modifier l’app ni `xcode-select`. Pour la validation et la construction locales, sélectionner explicitement ce SDK dans chaque commande :
+
+```sh
+SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk npm run verify:macos
+SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk python3 scripts/build-macos.py --skip-update-signature
+```
+
+Cette configuration locale ne valide ni une distribution Apple ni le prototype d’agents. Une installation Xcode complète et sa chaîne de signature restent à vérifier pour la sortie publique.
+
+Conserver une seule app habituelle dans `~/Applications/Sillage.app`. Construire depuis le `main` du dépôt de développement après validation, puis fermer les anciennes copies avant de remplacer le bundle. Conserver l’identité de signature locale, le bundle ID et les données existantes. Les branches de prototype doivent utiliser un dossier `RECALL_DATA_DIR` temporaire ; elles ne remplacent pas cette installation.
+
+Sauvegarder les anciens bundles en **ZIP vérifié**, jamais en `.app` décompressée dans un dossier d’archives : macOS peut indexer ces sauvegardes et les proposer comme des apps homonymes. Contrôler l’intégrité du ZIP avant de retirer le bundle archivé. Si nécessaire, désenregistrer seulement le chemin exact de l’ancienne copie avec `lsregister -u`, puis enregistrer le chemin canonique ; ne pas réinitialiser le registre global des applications.
+
+Vérifier après installation le chemin du processus réellement lancé, la version/build, la signature et la bibliothèque dans l’app. Conserver le `sourceCommit` du manifeste avec les preuves d’installation. Un commit GitHub, un manifeste d’aperçu et une app installée sont trois états distincts ; vérifier chacun avant d’affirmer qu’ils sont à jour.
+
 ## Auto-hébergement
 
 Le DMG hébergé Stoa ne nécessite pas de serveur à installer chez l’utilisateur. Compiler une version pour son propre serveur reste un autre parcours : PostgreSQL, OAuth Google/YouTube, chiffrement des réglages, origines du lecteur WebKit et adresse de connexion doivent être configurés. Les origines ne sont pas encore centralisées dans une interface de configuration. Le serveur privé et ses secrets ne font pas partie du dépôt public.

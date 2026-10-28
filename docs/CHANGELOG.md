@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage 1.8.3 (74) : nouvelle construction locale depuis main, incluant les derniers contrôles de barre des menus, la pastille d’écoute et les messages en attente. Les sauvegardes d’installation se conservent en ZIP pour ne plus apparaître comme des applications dans macOS ; le prototype d’agents reste sur sa branche de développement.
+
 - Extension Chrome retirée du dépôt : le produit se compose du serveur et de l’app Mac. Les jetons personnels existants restent valides pour les scripts et le MCP.
 
 - Serveur refondu, sans changement de données pour une base existante : schéma PostgreSQL décrit avec Drizzle et migrations versionnées appliquées au démarrage de l’API sous verrou ; valeurs fixes (tâches, playlists, écoutes, paroles, DJ) en enums PostgreSQL ; code rangé en modules (contrôleur, service, dépôt, schémas, `index.ts`), clients externes dans `integrations/` ; TypeScript très strict ; image Docker qui exécute un bundle esbuild ; documentation OpenAPI générée entièrement depuis les routes ; configuration vérifiée au démarrage de chaque processus, avec le nom des variables invalides ; image démarrée sur une base vide en CI ; contrainte d’une seule API documentée. Un JSON mal formé répond désormais 400 au lieu de 500.
