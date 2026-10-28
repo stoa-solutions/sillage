@@ -3,6 +3,8 @@ import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import type { Video } from "@sillage/core/types";
 import type { Database } from "../../db/index.ts";
+import { MusicBrainzClient } from "../../integrations/musicbrainz/index.ts";
+import { normalizeMusic } from "../search/index.ts";
 import type { ApiEnvironment } from "../../shared/api-environment.ts";
 import {
   commonErrors,
@@ -106,7 +108,19 @@ export function discoveryRoutes(
   db: Database,
   service: Discovery = discoveryFor(db),
   neighbours: Pick<ListenBrainz, "similar"> = listenBrainz,
+  musicBrainz: Pick<MusicBrainzClient, "get"> = new MusicBrainzClient(db),
 ) {
+  /** An artist known only by name: MusicBrainz's best match, when its name is the same. */
+  const artistId = async (name: string) => {
+    const found = await musicBrainz.get<{ artists?: { id: string; name: string; score?: number }[] }>(
+      "artist",
+      { query: `artist:"${name.replace(/["\\]/g, " ")}"`, limit: "1" },
+    );
+    const best = found.artists?.[0];
+    return best && (best.score ?? 0) >= 95 && normalizeMusic(best.name) === normalizeMusic(name)
+      ? best.id
+      : undefined;
+  };
   const app = featureRouter<ApiEnvironment>("Recherche ou vidéo invalide.");
   // One page per account, kept briefly: a home costs a few dozen catalog searches.
   const homes = new Map<string, { until: number; plays: number; body: unknown }>();
@@ -127,6 +141,7 @@ export function discoveryRoutes(
             (await tasteService(db).overview(owner)).artists,
           ),
         similar: (mbid) => neighbours.similar(mbid),
+        artistId: (name) => artistId(name),
         search: (owner, query) => service.search(owner, query),
       },
       user,

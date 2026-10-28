@@ -52,6 +52,7 @@ const profile = listenerProfile(
 const sources = (overrides: Partial<Parameters<typeof discoveryHome>[0]> = {}) => ({
   history: vi.fn().mockResolvedValue([]),
   profile: vi.fn().mockResolvedValue(profile),
+  artistId: vi.fn().mockResolvedValue(undefined),
   similar: vi.fn().mockResolvedValue([
     neighbour("Bonobo", "bo"),
     neighbour("Kiasmos", "ki"),
@@ -68,7 +69,10 @@ const sources = (overrides: Partial<Parameters<typeof discoveryHome>[0]> = {}) =
 });
 
 it("reads the listener's artists, IDs and genres weighted by plays", () => {
-  expect(profile.artists).toEqual([{ name: "Maribou State", mbid: "ms" }]);
+  expect(profile.artists).toEqual([
+    { name: "Maribou State", mbid: "ms" },
+    { name: "Rapper", mbid: "ra" },
+  ]);
   expect(profile.knownMbids).toEqual(new Set(["ms", "bo", "ra"]));
   expect(profile.genres).toEqual(["electronic", "hip hop"]);
 });
@@ -138,7 +142,11 @@ it("keeps what was found when a neighbour source or a search fails", async () =>
 it("draws other neighbours on refresh", async () => {
   const many = Array.from({ length: 8 }, (_, index) => neighbour(`New ${index}`, `n${index}`));
   const search = vi.fn().mockResolvedValue(found());
-  const given = sources({ similar: vi.fn().mockResolvedValue(many), search });
+  const given = sources({
+    profile: vi.fn().mockResolvedValue({ ...profile, artists: profile.artists.slice(0, 1) }),
+    similar: vi.fn().mockResolvedValue(many),
+    search,
+  });
   await discoveryHome(given, "alice", { rotate: true, random: () => 0 });
   const queried: string[] = search.mock.calls.map((call) => call[1]);
   // Two neighbours, then two spares since neither had a track: never the first closest one.
@@ -199,4 +207,15 @@ it("goes one step further, from the neighbours of a new artist", async () => {
   expect(required(further.items[0]).reason).toBe(
     "Ólafur Arnalds, proche de Kiasmos, lui-même proche de Maribou State",
   );
+});
+
+it("looks up by name a played artist MusicBrainz has not matched yet", async () => {
+  const given = sources({
+    profile: vi.fn().mockResolvedValue({ ...profile, artists: [{ name: "Nirvana" }] }),
+    artistId: vi.fn().mockResolvedValue("nv"),
+  });
+  const result = await discoveryHome(given, "alice");
+  expect(given.artistId).toHaveBeenCalledWith("Nirvana");
+  expect(given.similar).toHaveBeenCalledWith("nv");
+  expect(required(result.sections[0]).title).toBe("Autour de Nirvana");
 });

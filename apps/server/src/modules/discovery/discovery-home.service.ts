@@ -12,8 +12,11 @@ export interface DiscoverySeed {
 
 /** How much « Pour toi » proposes; every number of the page lives here. */
 export const HOME_RULES = {
-  /** Favourite artists asked for neighbours; niche ones often have none. */
-  tasteSeeds: 12,
+  /** Artists tried as starting points, favourites then the most played: niche ones often
+   * have no neighbours. */
+  tasteSeeds: 30,
+  /** Artists without a MusicBrainz ID looked up by name per page (one request per second). */
+  nameLookups: 6,
   /** Recently heard artists, placed after the three favourites. */
   recentSeeds: 2,
   /** « Autour de X » shelves at most. */
@@ -36,7 +39,8 @@ export const HOME_RULES = {
 
 /** What the server knows of a listener before proposing anything. */
 export interface ListenerProfile {
-  /** Favourite artists first (taste ranking), with their MusicBrainz ID when known. */
+  /** Favourite artists first (taste ranking), then the most played ones, with their
+   * MusicBrainz ID when known. */
   artists: { name: string; mbid?: string | undefined }[];
   knownNames: Set<string>;
   knownMbids: Set<string>;
@@ -48,6 +52,8 @@ export interface HomeSources {
   history(user: string): Promise<HistoryRow[]>;
   profile(user: string): Promise<ListenerProfile>;
   similar(mbid: string): Promise<SimilarArtist[]>;
+  /** The MusicBrainz ID of an artist known only by name, when it is unambiguous. */
+  artistId(name: string): Promise<string | undefined>;
   search: Discovery["search"];
 }
 
@@ -89,9 +95,15 @@ export function listenerProfile(
   const knownMbids = new Set<string>();
   const mbidByName = new Map<string, string>();
   const genres = new Map<string, { name: string; weight: number }>();
+  const played = new Map<string, { name: string; plays: number }>();
   for (const video of videos) {
     const name = artistName(video);
-    if (name) knownNames.add(nameKey(name));
+    if (name) {
+      knownNames.add(nameKey(name));
+      const entry = played.get(nameKey(name)) ?? { name, plays: 0 };
+      entry.plays += video.plays;
+      played.set(nameKey(name), entry);
+    }
     const metadata = video.musicMetadata?.status === "matched" ? video.musicMetadata : undefined;
     for (const artist of metadata?.artists ?? []) {
       knownNames.add(nameKey(artist.name));
@@ -106,8 +118,12 @@ export function listenerProfile(
       genres.set(key, entry);
     }
   }
+  const listened = [...played.values()]
+    .filter((artist) => artist.plays > 0)
+    .sort((a, b) => b.plays - a.plays);
+  const names = [...new Map([...favourites, ...listened].map(({ name }) => [nameKey(name), name])).values()];
   return {
-    artists: favourites.map(({ name }) => ({ name, mbid: mbidByName.get(nameKey(name)) })),
+    artists: names.map((name) => ({ name, mbid: mbidByName.get(nameKey(name)) })),
     knownNames,
     knownMbids,
     genres: [...genres.values()].sort((a, b) => b.weight - a.weight).map((genre) => genre.name),
@@ -152,7 +168,7 @@ function byArtist(artist: string, title: string, channel: string) {
   const topic = /^(.*?)\s*-\s*Topic$/i.exec(channel)?.[1];
   if (topic !== undefined) return contains(topic);
   if (contains(channel.replace(/VEVO$/i, ""))) return true;
-  const parts = title.split(/\s+[-–—|]\s+|:\s+/);
+  const parts = title.split(/\s+(?:[-–—|]|\/\/)\s+|:\s+/);
   if (parts.length > 1 && contains(parts[0]!)) return true;
   return ["feat ", "ft ", "featuring ", "avec "].some((marker) =>
     normalizeMusic(title).includes(marker + name),
@@ -223,12 +239,13 @@ export async function discoveryHome(
       .sort((a, b) => Number(LIVE.test(a.video.title ?? "")) - Number(LIVE.test(b.video.title ?? "")))
       .slice(0, HOME_RULES.tracksPerArtist);
 
-  // Seeds: three favourites, the recent artists, then the other favourites. Only artists with a
-  // MusicBrainz ID have neighbours; many niche ones have none, hence the long list.
-  const candidates: { name: string; mbid: string }[] = [];
+  // Seeds: three favourites, the recent artists, then the others. Only artists with a
+  // MusicBrainz ID have neighbours and many niche ones have none: they are tried a few at a
+  // time until the shelves are full.
+  const candidates: { name: string; mbid?: string | undefined }[] = [];
   const seedNames = new Set<string>();
   const addSeed = (name: string, mbid: string | undefined) => {
-    if (!mbid || seedNames.has(nameKey(name))) return;
+    if (seedNames.has(nameKey(name))) return;
     seedNames.add(nameKey(name));
     candidates.push({ name, mbid });
   };
@@ -241,32 +258,54 @@ export async function discoveryHome(
   }
   favourites.slice(3).forEach((artist) => addSeed(artist.name, artist.mbid));
 
-  const neighbourLists = await limited(
-    candidates.map((seed) => () => sources.similar(seed.mbid)),
-    HOME_RULES.concurrency,
-  );
   const chosen = new Set<string>();
   const unknown = (artist: SimilarArtist) =>
     !profile.knownMbids.has(artist.mbid) &&
     !profile.knownNames.has(nameKey(artist.name)) &&
     !seedNames.has(nameKey(artist.name)) &&
     !chosen.has(artist.mbid);
-  const plans: { seed: { name: string; mbid: string }; pool: SimilarArtist[]; found: { artist: SimilarArtist; items: SearchItem[] }[] }[] = [];
-  candidates.forEach((seed, index) => {
-    if (plans.length >= HOME_RULES.neighbourSections) return;
-    const pool = (neighbourLists.results[index] ?? [])
-      .filter(unknown)
-      .slice(0, rotate ? HOME_RULES.neighbourPool : HOME_RULES.neighboursPerSeed + HOME_RULES.spareNeighbours);
-    if (!pool.length) return;
-    if (rotate)
-      for (let i = pool.length - 1; i > 0; i--) {
-        const j = Math.floor(random() * (i + 1));
-        [pool[i], pool[j]] = [pool[j]!, pool[i]!];
-      }
-    const kept = pool.slice(0, HOME_RULES.neighboursPerSeed + HOME_RULES.spareNeighbours);
-    kept.forEach((artist) => chosen.add(artist.mbid));
-    plans.push({ seed, pool: kept, found: [] });
-  });
+  const plans: {
+    seed: { name: string; mbid: string };
+    pool: SimilarArtist[];
+    found: { artist: SimilarArtist; items: SearchItem[] }[];
+  }[] = [];
+  let lookups = 0;
+  let neighbourFailures = 0;
+  for (
+    let at = 0;
+    at < candidates.length && plans.length < HOME_RULES.neighbourSections;
+    at += HOME_RULES.concurrency
+  ) {
+    const batch = await limited(
+      candidates.slice(at, at + HOME_RULES.concurrency).map((candidate) => async () => {
+        let mbid = candidate.mbid;
+        if (!mbid && lookups < HOME_RULES.nameLookups) {
+          lookups++;
+          mbid = await sources.artistId(candidate.name);
+        }
+        return mbid
+          ? { seed: { name: candidate.name, mbid }, neighbours: await sources.similar(mbid) }
+          : undefined;
+      }),
+      HOME_RULES.concurrency,
+    );
+    neighbourFailures += batch.failures;
+    for (const entry of batch.results) {
+      if (!entry || plans.length >= HOME_RULES.neighbourSections) continue;
+      const pool = entry.neighbours
+        .filter(unknown)
+        .slice(0, rotate ? HOME_RULES.neighbourPool : HOME_RULES.neighboursPerSeed + HOME_RULES.spareNeighbours);
+      if (!pool.length) continue;
+      if (rotate)
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(random() * (i + 1));
+          [pool[i], pool[j]] = [pool[j]!, pool[i]!];
+        }
+      const kept = pool.slice(0, HOME_RULES.neighboursPerSeed + HOME_RULES.spareNeighbours);
+      kept.forEach((artist) => chosen.add(artist.mbid));
+      plans.push({ seed: entry.seed, pool: kept, found: [] });
+    }
+  }
 
   // First pass: two neighbours per shelf, the genres and the listener's own artists.
   const first = plans.flatMap((plan) =>
@@ -382,7 +421,7 @@ export async function discoveryHome(
 
   const suggestions = sections.flatMap((section) => section.items);
   const failed =
-    firstSearches.failures + secondSearches.failures + neighbourLists.failures + furtherLists.failures;
+    firstSearches.failures + secondSearches.failures + neighbourFailures + furtherLists.failures;
   return {
     sections,
     suggestions,
