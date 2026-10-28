@@ -101,6 +101,67 @@ const asTrack = <T extends Video>(video: T) => ({
   title: video.title ?? "",
 });
 
+type Credit = { artist: { id: string; name: string } };
+/**
+ * What « Pour toi » asks MusicBrainz, a few new requests per page: the gate allows one per
+ * second for every worker, while a cached answer is free. A failed or skipped request only
+ * leaves an artist out, without warning.
+ */
+function musicBrainzLinks(musicBrainz: Pick<MusicBrainzClient, "get" | "cached">) {
+  let left = MUSICBRAINZ_REQUESTS;
+  const ask = async <T>(path: string, params: Record<string, string>) => {
+    try {
+      if (!(await musicBrainz.cached(path, params))) {
+        if (left <= 0) return undefined;
+        left--;
+      }
+      return await musicBrainz.get<T>(path, params);
+    } catch {
+      return undefined;
+    }
+  };
+  return {
+    /** An artist known only by name: MusicBrainz's best match, when its name is the same. */
+    artistId: async (name: string) => {
+      const found = await ask<{ artists?: { id: string; name: string; score?: number }[] }>("artist", {
+        query: `artist:"${name.replace(/["\\]/g, " ")}"`,
+        limit: "1",
+      });
+      const best = found?.artists?.[0];
+      return best && (best.score ?? 0) >= 95 && normalizeMusic(best.name) === normalizeMusic(name)
+        ? best.id
+        : undefined;
+    },
+    collaborators: async (mbid: string) => {
+      const found = await ask<{ recordings?: { "artist-credit"?: Credit[] }[] }>("recording", {
+        query: `arid:${mbid}`,
+        limit: "100",
+      });
+      const counts = new Map<string, { mbid: string; name: string; score: number }>();
+      for (const recording of found?.recordings ?? [])
+        for (const { artist } of recording["artist-credit"] ?? []) {
+          if (artist.id === mbid) continue;
+          const entry = counts.get(artist.id) ?? { mbid: artist.id, name: artist.name, score: 0 };
+          entry.score++;
+          counts.set(artist.id, entry);
+        }
+      return [...counts.values()].sort((a, b) => b.score - a.score);
+    },
+    tagged: async (genre: string) => {
+      const found = await ask<{ artists?: { id: string; name: string; score?: number }[] }>("artist", {
+        query: `tag:"${genre.replace(/["\\]/g, " ")}"`,
+        limit: "25",
+      });
+      return (found?.artists ?? []).map((artist) => ({
+        mbid: artist.id,
+        name: artist.name,
+        score: artist.score ?? 0,
+      }));
+    },
+  };
+}
+const MUSICBRAINZ_REQUESTS = 8;
+
 /** Search and save YouTube music outside the library, under /v1/discover. */
 const HOME_TTL = 20 * 60 * 1000;
 /** An artist's catalog barely moves in a day, and YouTube throttles bursts of searches. */
@@ -110,19 +171,8 @@ export function discoveryRoutes(
   db: Database,
   service: Discovery = discoveryFor(db),
   neighbours: Pick<ListenBrainz, "similar"> = listenBrainz,
-  musicBrainz: Pick<MusicBrainzClient, "get"> = new MusicBrainzClient(db),
+  musicBrainz: Pick<MusicBrainzClient, "get" | "cached"> = new MusicBrainzClient(db),
 ) {
-  /** An artist known only by name: MusicBrainz's best match, when its name is the same. */
-  const artistId = async (name: string) => {
-    const found = await musicBrainz.get<{ artists?: { id: string; name: string; score?: number }[] }>(
-      "artist",
-      { query: `artist:"${name.replace(/["\\]/g, " ")}"`, limit: "1" },
-    );
-    const best = found.artists?.[0];
-    return best && (best.score ?? 0) >= 95 && normalizeMusic(best.name) === normalizeMusic(name)
-      ? best.id
-      : undefined;
-  };
   const app = featureRouter<ApiEnvironment>("Recherche ou vidéo invalide.");
   // One page per account, kept briefly: a home costs a few dozen catalog searches.
   const homes = new Map<string, { until: number; plays: number; body: unknown }>();
@@ -143,8 +193,7 @@ export function discoveryRoutes(
             (await tasteService(db).overview(owner)).artists,
           ),
         similar: (mbid) => neighbours.similar(mbid),
-        // A name lookup that fails only leaves this artist out: no warning for it.
-        artistId: (name) => artistId(name).catch(() => undefined),
+        ...musicBrainzLinks(musicBrainz),
         search: (owner, query) => service.search(owner, query, "", ARTIST_PAGE_TTL),
         cached: (query) => service.cached(query),
       },

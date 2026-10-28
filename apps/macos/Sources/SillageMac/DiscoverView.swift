@@ -595,7 +595,8 @@ private struct DiscoveryShelf: View {
   private var source: String {
     switch section.kind {
     case "neighbours": "Voisins d’écoute · ListenBrainz"
-    case "genre": "Genre de ta bibliothèque"
+    case "collaborations": "Collaborations · MusicBrainz"
+    case "scene": "Scène · MusicBrainz"
     default: "Tes artistes"
     }
   }

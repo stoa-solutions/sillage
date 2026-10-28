@@ -5533,7 +5533,8 @@
             "type": "string",
             "enum": [
               "neighbours",
-              "genre",
+              "collaborations",
+              "scene",
               "artists"
             ]
           },

@@ -9,6 +9,7 @@ export {
   discoveryHome,
   discoverySeeds,
   HOME_RULES,
+  sceneOf,
   listenerProfile,
 } from "./discovery-home.service.ts";
 export {

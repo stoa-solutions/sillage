@@ -8,9 +8,26 @@ export class MusicBrainzClient {
     private db: Database,
     private fetcher: typeof fetch = fetch,
   ) {}
-  async get<T>(path: string, params: Record<string, string> = {}): Promise<T> {
+  private url(path: string, params: Record<string, string>) {
     const url = new URL(`https://musicbrainz.org/ws/2/${path}`);
     url.search = new URLSearchParams({ ...params, fmt: "json" }).toString();
+    return url;
+  }
+  /** Whether this request is answered from the cache, without waiting for the rate gate. */
+  async cached(path: string, params: Record<string, string> = {}) {
+    const [row] = await this.db.orm
+      .select({ url: musicbrainzCache.url })
+      .from(musicbrainzCache)
+      .where(
+        and(
+          eq(musicbrainzCache.url, this.url(path, params).href),
+          gt(musicbrainzCache.fetchedAt, sql`now() - interval '30 days'`),
+        ),
+      );
+    return !!row;
+  }
+  async get<T>(path: string, params: Record<string, string> = {}): Promise<T> {
+    const url = this.url(path, params);
     return this.db.orm.transaction(async (tx) => {
       // One request at a time across every worker: the lock is held until the cache write.
       await tx.execute(sql`SELECT pg_advisory_xact_lock(740073)`);

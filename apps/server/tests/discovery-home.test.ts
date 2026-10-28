@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import {
+  sceneOf,
   discoveryHome,
   discoverySeeds,
   listenerProfile,
@@ -54,6 +55,8 @@ const sources = (overrides: Partial<Parameters<typeof discoveryHome>[0]> = {}) =
   profile: vi.fn().mockResolvedValue(profile),
   artistId: vi.fn().mockResolvedValue(undefined),
   cached: vi.fn().mockReturnValue(false),
+  collaborators: vi.fn().mockResolvedValue([]),
+  tagged: vi.fn().mockResolvedValue([]),
   similar: vi.fn().mockResolvedValue([
     neighbour("Bonobo", "bo"),
     neighbour("Kiasmos", "ki"),
@@ -190,7 +193,7 @@ it("goes one step further, from the neighbours of a new artist", async () => {
   const result = await discoveryHome(given, "alice");
   const further = required(result.sections.find((section) => section.id === "further"));
   expect(required(further.items[0]).reason).toBe(
-    "Ólafur Arnalds, proche de Kiasmos, lui-même proche de Maribou State",
+    "Ólafur Arnalds, proche de Kiasmos, découvert grâce à Maribou State",
   );
 });
 
@@ -244,4 +247,44 @@ it("uses kept artist pages beyond the fresh search budget", async () => {
   const given = sources({ cached: vi.fn().mockReturnValue(true) });
   const result = await discoveryHome(given, "alice");
   expect(result.suggestions.map((item) => item.video.id)).toEqual(["kiasmos0001", "khruang0001"]);
+});
+
+it("keeps the most precise genre of an artist for its scene", () => {
+  expect(sceneOf(["champeta", "cumbia", "digital cumbia", "latin", "pop"])).toBe("digital cumbia");
+  expect(sceneOf(["hip hop", "pop"])).toBeUndefined();
+});
+
+/** A favourite too confidential for ListenBrainz: Squidji, then Acid Coco. */
+const niche = (artists: { name: string; mbid: string; genres?: string[] }[]) =>
+  sources({
+    profile: vi.fn().mockResolvedValue({ ...profile, artists }),
+    similar: vi.fn().mockResolvedValue([]),
+    search: vi.fn().mockImplementation(async (_user: string, query: string) =>
+      found({ id: query.slice(0, 6).padEnd(11, "0"), title: `${query} - Song` }),
+    ),
+  });
+
+it("falls back on the artists a confidential favourite recorded with", async () => {
+  const given = {
+    ...niche([{ name: "Squidji", mbid: "sq" }]),
+    collaborators: vi.fn().mockResolvedValue([neighbour("Jäde", "jd"), neighbour("Maribou State", "ms")]),
+  };
+  const result = await discoveryHome(given, "alice");
+  const shelf = required(result.sections[0]);
+  expect(shelf).toMatchObject({ kind: "collaborations", title: "Avec Squidji" });
+  // A known artist is never proposed, even as a collaborator.
+  expect(shelf.items.map((item) => item.artist)).toEqual(["Jäde"]);
+  expect(required(shelf.items[0]).reason).toBe("Jäde a enregistré avec Squidji");
+});
+
+it("then on its scene, from its most precise genre", async () => {
+  const given = {
+    ...niche([{ name: "Acid Coco", mbid: "ac", genres: ["cumbia", "digital cumbia"] }]),
+    tagged: vi.fn().mockResolvedValue([neighbour("Chancha Vía Circuito", "cv")]),
+  };
+  const result = await discoveryHome(given, "alice");
+  expect(given.tagged).toHaveBeenCalledWith("digital cumbia");
+  const shelf = required(result.sections[0]);
+  expect(shelf).toMatchObject({ kind: "scene", title: "Scène digital cumbia" });
+  expect(required(shelf.items[0]).reason).toBe("Chancha Vía Circuito, digital cumbia comme Acid Coco");
 });

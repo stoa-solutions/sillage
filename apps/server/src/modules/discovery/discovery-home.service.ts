@@ -15,11 +15,9 @@ export const HOME_RULES = {
   /** Artists tried as starting points, favourites then the most played: niche ones often
    * have no neighbours. */
   tasteSeeds: 30,
-  /** Artists without a MusicBrainz ID looked up by name per page (one request per second). */
-  nameLookups: 6,
   /** Recently heard artists, placed after the three favourites. */
   recentSeeds: 2,
-  /** « Autour de X » shelves at most. */
+  /** Shelves of new artists at most (« Autour de X », « Avec X », « Scène … »). */
   neighbourSections: 6,
   /** New artists kept per shelf, among the closest unknown neighbours. */
   neighboursPerSeed: 2,
@@ -42,7 +40,7 @@ export const HOME_RULES = {
 export interface ListenerProfile {
   /** Favourite artists first (taste ranking), then the most played ones, with their
    * MusicBrainz ID when known. */
-  artists: { name: string; mbid?: string | undefined }[];
+  artists: { name: string; mbid?: string | undefined; genres?: string[] | undefined }[];
   knownNames: Set<string>;
   knownMbids: Set<string>;
   /** Genres of the library weighted by plays, most present first. */
@@ -55,6 +53,10 @@ export interface HomeSources {
   similar(mbid: string): Promise<SimilarArtist[]>;
   /** The MusicBrainz ID of an artist known only by name, when it is unambiguous. */
   artistId(name: string): Promise<string | undefined>;
+  /** Artists credited on the same recordings (MusicBrainz), most frequent first. */
+  collaborators(mbid: string): Promise<SimilarArtist[]>;
+  /** Artists MusicBrainz files under this genre. */
+  tagged(genre: string): Promise<SimilarArtist[]>;
   search: Discovery["search"];
   /** Whether a search page is already kept, so free. */
   cached(query: string): boolean;
@@ -67,7 +69,7 @@ export interface HomeItem extends SearchItem {
 }
 export interface HomeSection {
   id: string;
-  kind: "neighbours" | "genre" | "artists";
+  kind: "neighbours" | "collaborations" | "scene" | "artists";
   title: string;
   reason: string;
   items: HomeItem[];
@@ -97,6 +99,7 @@ export function listenerProfile(
   const knownNames = new Set<string>();
   const knownMbids = new Set<string>();
   const mbidByName = new Map<string, string>();
+  const genresByName = new Map<string, string[]>();
   const genres = new Map<string, { name: string; weight: number }>();
   const played = new Map<string, { name: string; plays: number }>();
   for (const video of videos) {
@@ -113,6 +116,9 @@ export function listenerProfile(
       knownMbids.add(artist.id);
       if (!mbidByName.has(nameKey(artist.name))) mbidByName.set(nameKey(artist.name), artist.id);
     }
+    const primary = metadata?.artists?.[0]?.name;
+    if (primary && metadata?.artistGenres?.length && !genresByName.has(nameKey(primary)))
+      genresByName.set(nameKey(primary), metadata.artistGenres);
     const tags = metadata?.genres?.length ? metadata.genres : (metadata?.artistGenres ?? []);
     for (const genre of tags.slice(0, 3)) {
       const key = genre.toLowerCase();
@@ -126,7 +132,11 @@ export function listenerProfile(
     .sort((a, b) => b.plays - a.plays);
   const names = [...new Map([...favourites, ...listened].map(({ name }) => [nameKey(name), name])).values()];
   return {
-    artists: names.map((name) => ({ name, mbid: mbidByName.get(nameKey(name)) })),
+    artists: names.map((name) => ({
+      name,
+      mbid: mbidByName.get(nameKey(name)),
+      genres: genresByName.get(nameKey(name)),
+    })),
     knownNames,
     knownMbids,
     genres: [...genres.values()].sort((a, b) => b.weight - a.weight).map((genre) => genre.name),
@@ -176,6 +186,19 @@ function byArtist(artist: string, title: string, channel: string) {
   return ["feat ", "ft ", "featuring ", "avec "].some((marker) =>
     normalizeMusic(title).includes(marker + name),
   );
+}
+
+/** Genres too wide to make a scene: they bring the hits of the genre, not neighbours. */
+const BROAD = new Set(
+  "pop rock hip hop rap electronic latin reggaeton r&b rnb soul jazz dance indie alternative folk world metal funk blues classical country electronic dance music"
+    .split(" ")
+    .concat(["hip hop", "r&b", "electronic dance music", "alternative rock", "indie pop", "pop rap"]),
+);
+/** The most precise genre of an artist (« digital cumbia » rather than « cumbia »). */
+export function sceneOf(genres: string[] = []) {
+  return genres
+    .filter((genre) => !BROAD.has(genre.toLowerCase()))
+    .sort((a, b) => b.split(/\s+/).length - a.split(/\s+/).length)[0];
 }
 
 /** Runs the tasks a few at a time, in order; a failed task yields undefined. */
@@ -248,21 +271,20 @@ export async function discoveryHome(
   // Seeds: three favourites, the recent artists, then the others. Only artists with a
   // MusicBrainz ID have neighbours and many niche ones have none: they are tried a few at a
   // time until the shelves are full.
-  const candidates: { name: string; mbid?: string | undefined }[] = [];
+  type Candidate = (typeof profile.artists)[number];
+  const candidates: Candidate[] = [];
   const seedNames = new Set<string>();
-  const addSeed = (name: string, mbid: string | undefined) => {
-    if (seedNames.has(nameKey(name))) return;
-    seedNames.add(nameKey(name));
-    candidates.push({ name, mbid });
+  const addSeed = (artist: Candidate) => {
+    if (seedNames.has(nameKey(artist.name))) return;
+    seedNames.add(nameKey(artist.name));
+    candidates.push(artist);
   };
   const favourites = profile.artists.slice(0, HOME_RULES.tasteSeeds);
   const recentArtists = recent.filter((seed) => seed.kind === "artist");
-  favourites.slice(0, 3).forEach((artist) => addSeed(artist.name, artist.mbid));
-  for (const seed of recentArtists.slice(0, HOME_RULES.recentSeeds)) {
-    const known = profile.artists.find((artist) => nameKey(artist.name) === nameKey(seed.query));
-    addSeed(known?.name ?? seed.query, known?.mbid);
-  }
-  favourites.slice(3).forEach((artist) => addSeed(artist.name, artist.mbid));
+  favourites.slice(0, 3).forEach(addSeed);
+  for (const seed of recentArtists.slice(0, HOME_RULES.recentSeeds))
+    addSeed(profile.artists.find((artist) => nameKey(artist.name) === nameKey(seed.query)) ?? { name: seed.query });
+  favourites.slice(3).forEach(addSeed);
 
   const chosen = new Set<string>();
   const unknown = (artist: SimilarArtist) =>
@@ -270,12 +292,16 @@ export async function discoveryHome(
     !profile.knownNames.has(nameKey(artist.name)) &&
     !seedNames.has(nameKey(artist.name)) &&
     !chosen.has(artist.mbid);
-  const plans: {
+  interface Plan {
     seed: { name: string; mbid: string };
+    shelf: Omit<HomeSection, "items">;
+    /** Why one of its artists is proposed. */
+    why: (artist: string) => string;
     pool: SimilarArtist[];
     found: { artist: SimilarArtist; items: SearchItem[] }[];
-  }[] = [];
-  let lookups = 0;
+  }
+  const plans: Plan[] = [];
+  const scenes = new Set<string>();
   let neighbourFailures = 0;
   for (
     let at = 0;
@@ -284,13 +310,54 @@ export async function discoveryHome(
   ) {
     const batch = await limited(
       candidates.slice(at, at + HOME_RULES.concurrency).map((candidate) => async () => {
-        let mbid = candidate.mbid;
-        if (!mbid && lookups < HOME_RULES.nameLookups) {
-          lookups++;
-          mbid = await sources.artistId(candidate.name);
-        }
-        return mbid
-          ? { seed: { name: candidate.name, mbid }, neighbours: await sources.similar(mbid) }
+        const mbid = candidate.mbid ?? (await sources.artistId(candidate.name));
+        if (!mbid) return undefined;
+        const seed = { name: candidate.name, mbid };
+        const name = seed.name;
+        // Listening neighbours first; for an artist too confidential for them, the artists it
+        // recorded with, then its scene: real links from MusicBrainz, never a guess.
+        const neighbours = await sources.similar(mbid);
+        if (neighbours.some(unknown))
+          return {
+            seed,
+            artists: neighbours,
+            shelf: {
+              id: `neighbours:${mbid}`,
+              kind: "neighbours" as const,
+              title: `Autour de ${name}`,
+              reason: `Des artistes que tu n’as pas encore, écoutés par les mêmes personnes que ${name}`,
+            },
+            why: (artist: string) => `${artist}, proche de ${name}`,
+          };
+        const together = await sources.collaborators(mbid);
+        if (together.some(unknown))
+          return {
+            seed,
+            artists: together,
+            shelf: {
+              id: `collaborations:${mbid}`,
+              kind: "collaborations" as const,
+              title: `Avec ${name}`,
+              reason: `Des artistes qui ont enregistré avec ${name}, d’après MusicBrainz`,
+              },
+            why: (artist: string) => `${artist} a enregistré avec ${name}`,
+          };
+        const genre = sceneOf(candidate.genres);
+        if (!genre || scenes.has(genre.toLowerCase())) return undefined;
+        scenes.add(genre.toLowerCase());
+        const scene = await sources.tagged(genre);
+        return scene.some(unknown)
+          ? {
+              seed,
+              artists: scene,
+              shelf: {
+                id: `scene:${genre.toLowerCase()}`,
+                kind: "scene" as const,
+                title: `Scène ${genre}`,
+                reason: `D’autres artistes ${genre}, comme ${name}, d’après MusicBrainz`,
+              },
+              why: (artist: string) => `${artist}, ${genre} comme ${name}`,
+            }
           : undefined;
       }),
       HOME_RULES.concurrency,
@@ -298,7 +365,7 @@ export async function discoveryHome(
     neighbourFailures += batch.failures;
     for (const entry of batch.results) {
       if (!entry || plans.length >= HOME_RULES.neighbourSections) continue;
-      const pool = entry.neighbours
+      const pool = entry.artists
         .filter(unknown)
         .slice(0, rotate ? HOME_RULES.neighbourPool : HOME_RULES.neighboursPerSeed + HOME_RULES.spareNeighbours);
       if (!pool.length) continue;
@@ -309,7 +376,7 @@ export async function discoveryHome(
         }
       const kept = pool.slice(0, HOME_RULES.neighboursPerSeed + HOME_RULES.spareNeighbours);
       kept.forEach((artist) => chosen.add(artist.mbid));
-      plans.push({ seed: entry.seed, pool: kept, found: [] });
+      plans.push({ seed: entry.seed, shelf: entry.shelf, why: entry.why, pool: kept, found: [] });
     }
   }
 
@@ -375,22 +442,15 @@ export async function discoveryHome(
   });
 
   const sections: HomeSection[] = [];
-  for (const { seed, found } of plans) {
+  for (const { shelf, why, found } of plans) {
     const items = found.flatMap(({ artist, items }) =>
-      items.map((item) => take(item, `${artist.name}, proche de ${seed.name}`, artist.name)),
+      items.map((item) => take(item, why(artist.name), artist.name)),
     );
-    if (items.length)
-      sections.push({
-        id: `neighbours:${seed.mbid}`,
-        kind: "neighbours",
-        title: `Autour de ${seed.name}`,
-        reason: `Des artistes que tu n’as pas encore, écoutés par les mêmes personnes que ${seed.name}`,
-        items,
-      });
+    if (items.length) sections.push({ ...shelf, items });
   }
   const far = further.flatMap(({ seed, via, artist }, index) =>
     tracksOf(artist.name, secondSearches.results[second.length + index]?.results).map((item) =>
-      take(item, `${artist.name}, proche de ${via.name}, lui-même proche de ${seed.name}`, artist.name),
+      take(item, `${artist.name}, proche de ${via.name}, découvert grâce à ${seed.name}`, artist.name),
     ),
   );
   if (far.length)

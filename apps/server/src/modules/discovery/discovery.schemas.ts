@@ -34,7 +34,7 @@ export const discoveryHomeBody = z
       z
         .object({
           id: z.string(),
-          kind: z.enum(["neighbours", "genre", "artists"]),
+          kind: z.enum(["neighbours", "collaborations", "scene", "artists"]),
           title: z.string(),
           reason: z.string(),
           items: z.array(homeItemBody),
