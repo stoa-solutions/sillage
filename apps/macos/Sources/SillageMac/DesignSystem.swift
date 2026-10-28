@@ -179,8 +179,11 @@ struct TrackRow<Actions: View>: View {
         Text(name.title).fontWeight(.medium).lineLimit(2)
         HStack(spacing: 6) {
           ChannelAvatar(name: name.artist ?? track.channel ?? "?", photo: track.channelAvatarURL)
-          Text(name.artist ?? track.channel ?? "YouTube").font(.callout)
-            .foregroundStyle(.secondary).lineLimit(1)
+          if let artist = name.artist {
+            ArtistLink(text: artist, font: .callout)
+          } else {
+            Text(track.channel ?? "YouTube").font(.callout).foregroundStyle(.secondary).lineLimit(1)
+          }
         }
         if let metadata = track.musicMetadata { MusicMetadataView(metadata: metadata) }
         if let detail, !detail.isEmpty {
@@ -196,6 +199,7 @@ struct TrackRow<Actions: View>: View {
     .accessibilityElement(children: .contain)
     .accessibilityLabel(name.artist.map { "\(name.title), \($0)" } ?? name.title)
     .accessibilityAction(named: "Lire") { onPlay?() }
+    .artistAction(name.artist)
   }
 }
 extension TrackRow where Actions == EmptyView {

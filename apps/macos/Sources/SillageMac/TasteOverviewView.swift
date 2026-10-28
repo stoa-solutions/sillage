@@ -264,13 +264,14 @@ private struct TasteFeaturedArtist: View {
       .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
       .accessibilityHidden(true)
       .padding(.bottom, 13)
-      Text(artist.name).font(.system(size: 22, weight: .semibold)).tracking(-0.65).lineLimit(1)
-        .padding(.bottom, 5)
+      ArtistLink(
+        text: artist.name, font: .system(size: 22, weight: .semibold), color: .primary
+      ).tracking(-0.65).padding(.bottom, 5)
       Text(detail(artist)).font(.system(size: 11)).foregroundStyle(.secondary)
         .padding(.bottom, 12)
       AffinityMeter(value: artist.affinity)
     }
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .contain)
   }
 }
 
@@ -289,12 +290,12 @@ private struct TasteArtistRow: View {
       .frame(width: 45, height: 45).clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
       .accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 3) {
-        Text(artist.name).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+        ArtistLink(text: artist.name, font: .system(size: 13, weight: .semibold), color: .primary)
         Text(detail(artist)).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
         AffinityMeter(value: artist.affinity).padding(.top, 3)
       }
     }
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .contain)
   }
 }
 

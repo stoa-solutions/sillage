@@ -226,8 +226,12 @@ struct HistoryRow: View {
       VStack(alignment: .leading, spacing: 2) {
         Text(name.title).fontWeight(.medium).lineLimit(1)
           .foregroundStyle(playing ? Color.sillage(.playingText) : Color.primary)
-        Text(name.artist ?? listened.track.channel ?? "YouTube").font(.callout)
-          .foregroundStyle(.secondary).lineLimit(1)
+        if let artist = name.artist {
+          ArtistLink(text: artist, font: .callout)
+        } else {
+          Text(listened.track.channel ?? "YouTube").font(.callout)
+            .foregroundStyle(.secondary).lineLimit(1)
+        }
         if compact {
           Text(
             "\(outcome) à " + listened.playedAt.formatted(date: .omitted, time: .shortened)
@@ -259,6 +263,7 @@ struct HistoryRow: View {
     )
     .accessibilityAction(named: "Lire", onPlay)
     .accessibilityAction(named: "Lire ensuite", onEnqueue)
+    .artistAction(name.artist)
   }
   private var outcome: String {
     switch listened.outcome {

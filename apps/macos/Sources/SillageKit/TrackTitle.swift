@@ -33,9 +33,12 @@ public struct TrackTitle: Equatable, Sendable {
 
   /// The first credited artist: « Kaytranada, H.E.R. » and « Pahua feat. Barzo » lead with
   /// one name. « & » stays, since « Simon & Garfunkel » is one act.
-  public var leadArtist: String? {
-    guard let artist else { return nil }
-    let first = artist.components(separatedBy: ", ")[0]
+  public var leadArtist: String? { artist.flatMap(Self.lead) }
+
+  /// The first act named in a credit line, or nil when there is none. A detail after « · »
+  /// (« X · souvent passé vite ») is not part of the name.
+  public static func lead(of credit: String) -> String? {
+    let first = credit.components(separatedBy: " · ")[0].components(separatedBy: ", ")[0]
     let cut = first.range(
       of: #"\s+(feat\.?|ft\.?|featuring|x|avec)\s+"#, options: [.regularExpression, .caseInsensitive])
     let lead = (cut.map { String(first[..<$0.lowerBound]) } ?? first)

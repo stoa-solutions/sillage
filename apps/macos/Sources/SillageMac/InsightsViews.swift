@@ -16,6 +16,48 @@ extension EnvironmentValues {
   }
 }
 
+/// An artist's name that opens its page: secondary text, ink and underline on hover. Without
+/// a way to open pages (Réglages, the menu bar), it stays plain text.
+struct ArtistLink: View {
+  /// What is shown: a credit line such as « Kaytranada, H.E.R. ».
+  let text: String
+  var font: Font = .system(size: 12)
+  var color: Color = .secondary
+  @Environment(\.openArtist) private var openArtist
+  @State private var hovering = false
+  var body: some View {
+    if let openArtist, let lead = TrackTitle.lead(of: text) {
+      Button {
+        openArtist(lead)
+      } label: {
+        Text(text).font(font).lineLimit(1)
+          .foregroundStyle(hovering ? Color.primary : color)
+          .underline(hovering, color: .secondary)
+      }
+      .buttonStyle(.plain).onHover { hovering = $0 }
+      .help("Découvrir \(lead)").accessibilityHint("Ouvre la page de l’artiste")
+    } else {
+      Text(text).font(font).foregroundStyle(color).lineLimit(1)
+    }
+  }
+}
+
+/// VoiceOver reaches the same page from a whole row: « Voir l’artiste ».
+private struct ArtistAction: ViewModifier {
+  let credit: String?
+  @Environment(\.openArtist) private var openArtist
+  func body(content: Content) -> some View {
+    if let openArtist, let lead = credit.flatMap(TrackTitle.lead) {
+      content.accessibilityAction(named: "Voir l’artiste") { openArtist(lead) }
+    } else {
+      content
+    }
+  }
+}
+extension View {
+  func artistAction(_ credit: String?) -> some View { modifier(ArtistAction(credit: credit)) }
+}
+
 /// Elements of a block arrive one after the other: a short rise out of a blur, in order.
 private struct Reveal: ViewModifier {
   let order: Int
@@ -141,10 +183,18 @@ struct ArtistHero: View {
     Group {
       if let profile = insights.artist(name), profile.found {
         content(profile)
-      } else if insights.loading(artist: name) {
-        RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.sillageHover)
-          .frame(height: 150).overlay { ProgressView().controlSize(.small) }
-          .transition(.opacity)
+      } else {
+        // Loading, or a name no source knows: the page still says whose it is.
+        VStack(alignment: .leading, spacing: 8) {
+          Text(name).font(.system(size: 32, weight: .semibold)).tracking(-1).lineLimit(1)
+          if insights.loading(artist: name) {
+            RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.sillageHover)
+              .frame(height: 150).overlay { ProgressView().controlSize(.small) }
+          } else {
+            Text("Ses titres, ses voisins d’écoute et ses collaborations.")
+              .font(.system(size: 12)).foregroundStyle(.secondary)
+          }
+        }.transition(.opacity)
       }
     }
     .task(id: name) { insights.loadArtist(name, connection: session.connection) }
@@ -208,7 +258,7 @@ struct ArtistHero: View {
           RemotePicture(url: profile.portrait ?? profile.photo).blur(radius: 40).opacity(0.7)
         }
       }
-      .frame(height: 190).frame(maxWidth: .infinity).clipped()
+      .frame(height: 220).frame(maxWidth: .infinity).clipped()
       LinearGradient(
         colors: [.black.opacity(0), .black.opacity(0.65)], startPoint: .center, endPoint: .bottom)
       HStack(alignment: .bottom, spacing: 14) {
@@ -217,6 +267,8 @@ struct ArtistHero: View {
           .overlay(Circle().strokeBorder(.white.opacity(0.35), lineWidth: 1))
           .shadow(color: .black.opacity(0.3), radius: 8, y: 3)
         VStack(alignment: .leading, spacing: 4) {
+          Text(profile.name).font(.system(size: 30, weight: .bold)).tracking(-0.8)
+            .minimumScaleFactor(0.7).accessibilityAddTraits(.isHeader)
           if let description = profile.description {
             Text(capitalized(description)).font(.system(size: 13, weight: .medium))
           }
@@ -239,7 +291,7 @@ struct ArtistHero: View {
         Spacer(minLength: 0)
       }.padding(16)
     }
-    .frame(height: 190)
+    .frame(height: 220)
     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     .overlay(
       RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.sillage(.separator))

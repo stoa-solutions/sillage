@@ -135,7 +135,12 @@ struct DiscoverView: View {
   private func main(wide: Bool) -> some View {
     let rows = self.rows
     return VStack(alignment: .leading, spacing: 0) {
-      head(rows).padding(.bottom, 20)
+      // An artist's page is headed by its own banner; only the way back stays above it.
+      if case .artist = discovery.place, !discovery.searched {
+        artistBar.padding(.bottom, 14)
+      } else {
+        head(rows).padding(.bottom, 20)
+      }
       HStack(spacing: 8) {
         SearchField(
           prompt: "Un artiste, un titre que tu n’as pas encore…", text: $discovery.query,
@@ -203,6 +208,17 @@ struct DiscoverView: View {
             .help("Tire d’autres artistes")
         }
       }
+    }
+  }
+
+  private var artistBar: some View {
+    HStack(spacing: 12) {
+      if !discovery.trail.isEmpty {
+        LibraryLinkButton(title: "Retour", symbol: "chevron.left") { discovery.back() }
+      }
+      MonoLabel("Découvrir / Artiste")
+      Spacer(minLength: 0)
+      if loading { ProgressView().controlSize(.small) }
     }
   }
 
@@ -419,8 +435,12 @@ private struct ResultPreview: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .accessibilityHidden(true)
       Text(name.title).font(.system(size: 20, weight: .semibold)).lineLimit(3)
-      Text(name.artist ?? row.track.channel ?? "YouTube").font(.system(size: 15))
-        .foregroundStyle(.secondary).lineLimit(1)
+      if let artist = name.artist {
+        ArtistLink(text: artist, font: .system(size: 15))
+      } else {
+        Text(row.track.channel ?? "YouTube").font(.system(size: 15))
+          .foregroundStyle(.secondary).lineLimit(1)
+      }
       HStack(spacing: 10) {
         Button {
           dj.play(row.track, source: source)

@@ -185,6 +185,7 @@ struct TableRowFrame: ViewModifier {
       .accessibilityAction(named: "Lire", onPlay)
       .accessibilityAction(named: "Lire ensuite", onEnqueue)
       .accessibilityAction(named: "Ouvrir sur YouTube") { NSWorkspace.shared.open(track.url) }
+      .artistAction(name.artist)
       .contextMenu {
         Button("Lire maintenant", systemImage: "play.fill", action: onPlay)
         Button("Lire ensuite", systemImage: "text.badge.plus", action: onEnqueue)
@@ -213,9 +214,7 @@ struct TableSongCell: View {
             .underline(hovering).foregroundStyle(
               playing ? Color.sillage(.playingText) : Color.primary)
         }.buttonStyle(.plain).onHover { hovering = $0 }.help("Lire \(name.title)")
-        if let subtitle {
-          Text(subtitle).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
-        }
+        if let subtitle { ArtistLink(text: subtitle, font: .system(size: 11)) }
       }
     }.frame(maxWidth: .infinity, alignment: .leading)
   }
@@ -249,9 +248,14 @@ struct LibraryTableRow: View {
         track: track, name: name, subtitle: compact ? name.artist : nil, playing: playing,
         onPlay: onPlay)
       if !compact {
-        Text(name.artist ?? track.channel ?? "").font(.system(size: 12))
-          .foregroundStyle(.secondary).lineLimit(1)
-          .frame(width: LibraryColumns.artist, alignment: .leading)
+        Group {
+          if let artist = name.artist {
+            ArtistLink(text: artist)
+          } else {
+            Text(track.channel ?? "").font(.system(size: 12)).foregroundStyle(.secondary)
+              .lineLimit(1)
+          }
+        }.frame(width: LibraryColumns.artist, alignment: .leading)
       }
       Text(track.durationSeconds.map(clock) ?? "").font(.system(size: 11, design: .monospaced))
         .foregroundStyle(.secondary).frame(width: LibraryColumns.duration, alignment: .trailing)

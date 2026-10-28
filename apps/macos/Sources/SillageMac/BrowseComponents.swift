@@ -44,8 +44,12 @@ struct SongRow: View {
       VStack(alignment: .leading, spacing: 2) {
         Text(name.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
           .foregroundStyle(playing ? Color.sillage(.playingText) : Color.primary)
-        Text(name.artist ?? track.channel ?? "YouTube").font(.system(size: 12))
-          .foregroundStyle(.secondary).lineLimit(1)
+        if let artist = name.artist {
+          ArtistLink(text: artist)
+        } else {
+          Text(track.channel ?? "YouTube").font(.system(size: 12))
+            .foregroundStyle(.secondary).lineLimit(1)
+        }
       }.frame(maxWidth: .infinity, alignment: .leading)
       // Hover actions leave the view when hidden, so keyboard focus never lands on them;
       // the row's accessibility actions offer the same choices.
@@ -110,6 +114,7 @@ struct SongRow: View {
     )
     .accessibilityAddTraits(playing || selected ? .isSelected : [])
     .accessibilityAction(named: "Lire", onPlay)
+    .artistAction(name.artist)
     .accessibilityAction(named: "Lire ensuite", onEnqueue)
     .accessibilityAction(named: "Ouvrir sur YouTube") { NSWorkspace.shared.open(track.url) }
     .accessibilityActions {
