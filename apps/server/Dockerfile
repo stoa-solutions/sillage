@@ -6,15 +6,15 @@ COPY packages/core/package.json packages/core/package.json
 
 # Bundles the TypeScript sources with esbuild; this stage keeps the development tools.
 FROM base AS build
-RUN npm ci --workspace=@playlist-recall/server --workspace=@playlist-recall/core --include-workspace-root=false --legacy-peer-deps
+RUN npm ci --workspace=@sillage/server --workspace=@sillage/core --include-workspace-root=false --legacy-peer-deps
 COPY packages/core packages/core
 COPY apps/server/build.mjs apps/server/build.mjs
 COPY apps/server/src apps/server/src
-RUN npm run build -w @playlist-recall/server
+RUN npm run build -w @sillage/server
 
 # Runs the bundle with production dependencies only.
 FROM base
-RUN npm ci --omit=dev --workspace=@playlist-recall/server --workspace=@playlist-recall/core --include-workspace-root=false --legacy-peer-deps && npm cache clean --force
+RUN npm ci --omit=dev --workspace=@sillage/server --workspace=@sillage/core --include-workspace-root=false --legacy-peer-deps && npm cache clean --force
 COPY --from=build /app/apps/server/dist apps/server/dist
 COPY apps/server/drizzle apps/server/drizzle
 USER node

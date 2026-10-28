@@ -16,7 +16,7 @@ import {
   type SQL,
   type SQLWrapper,
 } from "drizzle-orm";
-import type { LibraryImport, Video } from "@playlist-recall/core/types";
+import type { LibraryImport, Video } from "@sillage/core/types";
 import { documentText, hash } from "../../content.ts";
 import {
   LEGACY_USER_ID,
@@ -108,7 +108,7 @@ export async function followsPlaylist(db: Executor, userId: string, id: string) 
 }
 
 /** The private "Mes découvertes" playlist of an account. */
-export const discoveriesId = (userId: string) => `recall-discoveries:${userId}`;
+export const discoveriesId = (userId: string) => `sillage-discoveries:${userId}`;
 
 /**
  * Removes the playlist from this account only: YouTube and other accounts keep it, and its

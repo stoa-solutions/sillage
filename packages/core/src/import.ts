@@ -4,7 +4,7 @@ import { sha256Hex } from "./hash";
 const MAX_ENTRIES = 50_000;
 const MAX_PLAYLISTS = 100;
 /** Export bucket for videos outside every playlist. Its videos import; the bucket does not. */
-export const UNASSIGNED_ID = "_recall_unassigned";
+export const UNASSIGNED_ID = "_sillage_unassigned";
 const object = (value: unknown): Record<string, unknown> => {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("Le fichier ne contient pas une playlist JSON valide.");
@@ -16,7 +16,7 @@ const text = (value: unknown, limit = 1000): string | null =>
     : null;
 
 /**
- * Reads a Recall export, a single normalized playlist or a yt-dlp flat playlist.
+ * Reads a Sillage export, a single normalized playlist or a yt-dlp flat playlist.
  * Reference cases, with their expected result, live in packages/core/fixtures/format.
  */
 export function parseImport(
@@ -194,7 +194,7 @@ export function exportLibrary(library: LibraryImport): unknown {
   const assigned = new Set(library.memberships.map((m) => m.videoId));
   const unassigned = library.videos.filter((v) => !assigned.has(v.id));
   return {
-    format: "playlist-recall",
+    format: "sillage",
     version: 1,
     collections: [
       ...library.playlists.map((playlist) => ({

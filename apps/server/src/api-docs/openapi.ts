@@ -45,7 +45,7 @@ export const openapi = {
       description: "API locale de développement",
     },
     {
-      url: "https://recall.stoa.solutions",
+      url: "https://sillage.stoa.solutions",
       description: "Serveur privé Sillage — opérations authentifiées",
     },
   ],
@@ -77,7 +77,7 @@ export const openapi = {
       googleFlowCookie: {
         type: "apiKey",
         in: "cookie",
-        name: "__Host-recall-auth",
+        name: "__Host-sillage-auth",
         description:
           "Cookie du flux navigateur, valable 10 minutes, à usage unique avec state.",
       },

@@ -22,7 +22,7 @@ import { googleReturnPage } from "./return-page.ts";
 import { FLOW_MINUTES } from "./auth.repository.ts";
 import { authService } from "./auth.service.ts";
 
-const COOKIE = "__Host-recall-auth";
+const COOKIE = "__Host-sillage-auth";
 const STARTS_PER_MINUTE = 60;
 const TAG = "Connexion Google";
 
@@ -64,7 +64,7 @@ const startRoute = createRoute({
         "Set-Cookie": {
           schema: { type: "string" },
           description:
-            "__Host-recall-auth ; Secure ; HttpOnly ; SameSite=Lax ; Path=/",
+            "__Host-sillage-auth ; Secure ; HttpOnly ; SameSite=Lax ; Path=/",
         },
       },
     },
@@ -82,7 +82,7 @@ const callbackRoute = createRoute({
     summary: "Retour du navigateur Google",
     effect: "browser",
     description:
-      "Google fournit code et state ; le cookie du démarrage est obligatoire. Vérification de l’identité et du nonce, puis retour HTML vers playlist-recall://auth?code=…&state=…. Le code de retour Sillage est à usage unique, valable 90 secondes et lié au challenge PKCE. Il ne s’agit ni d’une clé Google ni du jeton API. Ne pas rejouer manuellement le callback hors du flux navigateur.",
+      "Google fournit code et state ; le cookie du démarrage est obligatoire. Vérification de l’identité et du nonce, puis retour HTML vers sillage://auth?code=…&state=…. Le code de retour Sillage est à usage unique, valable 90 secondes et lié au challenge PKCE. Il ne s’agit ni d’une clé Google ni du jeton API. Ne pas rejouer manuellement le callback hors du flux navigateur.",
     public: true,
   }),
   security: [{ googleFlowCookie: [] }],

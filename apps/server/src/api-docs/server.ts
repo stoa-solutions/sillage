@@ -6,16 +6,16 @@ import {
 } from "./developer-access.ts";
 import { rm } from "node:fs/promises";
 
-const port = Number(process.env["RECALL_DOCS_PORT"] ?? 3030);
+const port = Number(process.env["SILLAGE_DOCS_PORT"] ?? 3030);
 if (!Number.isInteger(port) || port < 1024 || port > 65535)
   throw new Error("Port local invalide.");
 serve(
   {
-    fetch: createDocsApp(process.env["RECALL_DOCS_API_URL"], fetch, {
+    fetch: createDocsApp(process.env["SILLAGE_DOCS_API_URL"], fetch, {
       read: () =>
         activeDeveloperConnection(
           new URL(
-            process.env["RECALL_DOCS_API_URL"] ?? "https://recall.stoa.solutions",
+            process.env["SILLAGE_DOCS_API_URL"] ?? "https://sillage.stoa.solutions",
           ).origin,
         ),
       clear: () => rm(developerFile(), { force: true }),

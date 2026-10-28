@@ -11,7 +11,7 @@ npm run dev:server        # tsx watch src/boot.ts : migre la base, puis API sur 
 curl http://127.0.0.1:3001/health
 ```
 
-`npm run dev:server` applique les migrations en attente au démarrage : pas d’étape séparée. `npm run migrate -w @playlist-recall/server` fait la même chose sans démarrer l’API. Le worker et l’inférence se lancent avec `npm run dev:worker -w @playlist-recall/server` et `npm run dev:inference -w @playlist-recall/server`.
+`npm run dev:server` applique les migrations en attente au démarrage : pas d’étape séparée. `npm run migrate -w @sillage/server` fait la même chose sans démarrer l’API. Le worker et l’inférence se lancent avec `npm run dev:worker -w @sillage/server` et `npm run dev:inference -w @sillage/server`.
 
 La connexion Google demande `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` et `PUBLIC_URL` ; sans eux, `/auth/status` répond `{"google":false}`. Pour appeler `/v1/*` sans Google, créer un jeton personnel : `npx tsx apps/server/src/modules/auth/token.cli.ts create /tmp/connexion.json` (le fichier contient le jeton, ne pas le committer). `npm run docs:serve` ouvre la documentation OpenAPI locale.
 
@@ -97,7 +97,7 @@ Ouvrir dans cet ordre :
 
 1. `dj.controller.ts` : `/v1/dj/chat`, `/speech`, `/check`, `/settings`, `/settings/reset`, `/status`, `/rules` ; prend le bail du Tour (`dj-lease.ts`, un Tour par compte et un plafond sur l’instance, en mémoire) et monte `journal/`.
 2. `dj-turn.service.ts` : un Tour = plan → catalogue exact → recherche MCP → décision → réponse.
-3. Les règles pures, sans réseau ni base (vérifiées par `check:architecture`) : `dj.contracts.ts`, `plan.ts` (l’intention vient de `@playlist-recall/core/intent`), `prompt.ts`, `messages.ts`, `memory.ts`, `decision.ts`, `reply.ts`, `errors.ts`, `evidence.ts`, `composition.ts`.
+3. Les règles pures, sans réseau ni base (vérifiées par `check:architecture`) : `dj.contracts.ts`, `plan.ts` (l’intention vient de `@sillage/core/intent`), `prompt.ts`, `messages.ts`, `memory.ts`, `decision.ts`, `reply.ts`, `errors.ts`, `evidence.ts`, `composition.ts`.
 4. Les adaptateurs : `research.ts` (exécution des outils), `provider.ts` et `ai-model.ts` (AI SDK : Gemini, Claude, transport compatible), `catalog.ts` (titres exacts, ordre et propriété), `dj-quota.service.ts` + `dj-quota.repository.ts` (budget quotidien), `dj-settings.service.ts` + `dj-settings.repository.ts` (clés chiffrées par compte), `dj-voice.service.ts`, `dj-check.service.ts`, `dj.config.ts`.
 5. `journal/` : sous-module avec la même anatomie (`journal.controller.ts`, `.service.ts`, `.repository.ts`, `.schemas.ts`), plus `journal.contracts.ts` et `journal.payload.ts`. Voir [dj-journal.md](dj-journal.md).
 
@@ -139,7 +139,7 @@ Ces trois modules servent des fichiers tels quels : leurs routes sont documenté
 - `src/db/schema/` : un fichier par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`, plus `columns.ts` et `legacy.ts`). Une table = un `pgTable(...)`, noms snake_case en base, camelCase en TypeScript, contraintes avec leur nom réel. Les valeurs fixes sont des enums PostgreSQL (`pgEnum`) : `job_kind`, `job_status`, `playlist_status`, `sync_run_status`, `listening_outcome`, `lyrics_status`, `ai_provider`, `user_dj_provider`, `discovery_scope`, `turn_trigger`, `turn_status`, `journal_origin`.
 - `src/db/client.ts` : `openDatabase()` crée le pool et l’objet Drizzle `orm` ; `pool` est l’instance du processus. Les dépôts reçoivent `db.orm` ou une transaction (`Executor`).
 - `src/db/migrate.ts` : prend un verrou consultatif de session (740071) sur une connexion dédiée **avant** que Drizzle lise son journal, puis applique les migrations en attente dans une transaction. Deux processus qui démarrent ensemble s’attendent.
-- `drizzle/` : `0000_baseline` (ancien schéma idempotent : une base existante l’applique sans changement), `0001` enums des tâches et playlists, `0002` enums d’écoute et de paroles, `0003` enums du DJ, `0004` table `dj_agents` (structure seule ; les agents de base sont écrits au démarrage), `0005` goût : `track_feedback`, `taste_settings` et `listening_history.listened_ms`. Seuls le déclencheur `recall_music_revision` et la configuration de recherche `recall_simple` restent en SQL écrit à la main.
+- `drizzle/` : `0000_baseline` (ancien schéma idempotent : une base existante l’applique sans changement), `0001` enums des tâches et playlists, `0002` enums d’écoute et de paroles, `0003` enums du DJ, `0004` table `dj_agents` (structure seule ; les agents de base sont écrits au démarrage), `0005` goût : `track_feedback`, `taste_settings` et `listening_history.listened_ms`. Seuls le déclencheur `sillage_music_revision` et la configuration de recherche `sillage_simple` restent en SQL écrit à la main.
 
 Une requête Drizzle se lit comme son SQL, et son résultat est typé depuis le schéma :
 
@@ -154,9 +154,9 @@ const [session] = await orm
 Ajouter une migration :
 
 1. Modifier `src/db/schema/<domaine>.ts`.
-2. `npm run db:generate -w @playlist-recall/server -- --name <sujet>` (aucune base nécessaire : drizzle-kit compare au dernier instantané de `drizzle/meta/`).
+2. `npm run db:generate -w @sillage/server -- --name <sujet>` (aucune base nécessaire : drizzle-kit compare au dernier instantané de `drizzle/meta/`).
 3. Relire le SQL : retirer la qualification `"public"` des types enum (chaque suite de test a son schéma), recréer valeurs par défaut et index partiels autour d’un changement de type, garder `IF EXISTS` sur les suppressions.
-4. Vérifier l’équivalence : le `pg_dump --schema-only` d’une base créée par toutes les migrations et celui d’une base créée par drizzle-kit depuis le schéma seul ne diffèrent que par le déclencheur `recall_music_revision`.
+4. Vérifier l’équivalence : le `pg_dump --schema-only` d’une base créée par toutes les migrations et celui d’une base créée par drizzle-kit depuis le schéma seul ne diffèrent que par le déclencheur `sillage_music_revision`.
 5. `npm run test:integration` sur une base jetable `*_test`.
 
 ## 11. La documentation OpenAPI

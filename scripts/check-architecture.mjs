@@ -69,7 +69,7 @@ export function violations(file, source) {
       pure &&
       !typeOnly &&
       !pureDjImports.has(specifier) &&
-      !specifier.startsWith("@playlist-recall/core/")
+      !specifier.startsWith("@sillage/core/")
     )
       report(node, "pure DJ policy must not import an effect adapter");
   };

@@ -5,7 +5,7 @@ import { build } from "esbuild";
 // Dependencies stay in node_modules, except the workspace's own TypeScript package.
 const manifest = JSON.parse(await readFile("package.json", "utf8"));
 const external = Object.keys(manifest.dependencies).filter(
-  (name) => !name.startsWith("@playlist-recall/"),
+  (name) => !name.startsWith("@sillage/"),
 );
 
 await rm("dist", { recursive: true, force: true });

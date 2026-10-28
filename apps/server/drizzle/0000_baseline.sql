@@ -7,9 +7,9 @@ SELECT pg_advisory_xact_lock(740071);
 CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
 DO $$ BEGIN
-  IF NOT EXISTS(SELECT 1 FROM pg_ts_config WHERE cfgname='recall_simple' AND pg_ts_config_is_visible(oid)) THEN
-    CREATE TEXT SEARCH CONFIGURATION recall_simple (COPY = pg_catalog.simple);
-    ALTER TEXT SEARCH CONFIGURATION recall_simple ALTER MAPPING FOR hword, hword_part, word WITH unaccent, simple;
+  IF NOT EXISTS(SELECT 1 FROM pg_ts_config WHERE cfgname='sillage_simple' AND pg_ts_config_is_visible(oid)) THEN
+    CREATE TEXT SEARCH CONFIGURATION sillage_simple (COPY = pg_catalog.simple);
+    ALTER TEXT SEARCH CONFIGURATION sillage_simple ALTER MAPPING FOR hword, hword_part, word WITH unaccent, simple;
   END IF;
 END $$;
 CREATE TABLE IF NOT EXISTS schema_migrations (version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now());
@@ -27,10 +27,10 @@ CREATE TABLE IF NOT EXISTS videos (
   enriched_at timestamptz, available boolean NOT NULL DEFAULT true,
   image_hash text, image_checked_at timestamptz, image_error text,
   search_document tsvector GENERATED ALWAYS AS (
-    setweight(to_tsvector('recall_simple', coalesce(title,'')), 'A') ||
-    setweight(to_tsvector('recall_simple', coalesce(channel,'')), 'A') ||
-    setweight(to_tsvector('recall_simple', tags::text), 'B') ||
-    setweight(to_tsvector('recall_simple', description), 'C')
+    setweight(to_tsvector('sillage_simple', coalesce(title,'')), 'A') ||
+    setweight(to_tsvector('sillage_simple', coalesce(channel,'')), 'A') ||
+    setweight(to_tsvector('sillage_simple', tags::text), 'B') ||
+    setweight(to_tsvector('sillage_simple', description), 'C')
   ) STORED
 );
 CREATE INDEX IF NOT EXISTS videos_lexical ON videos USING gin(search_document);
@@ -167,11 +167,11 @@ CREATE TABLE IF NOT EXISTS lyrics_offsets (
 -- Additive catalog enrichment. Original YouTube fields remain unchanged.
 ALTER TABLE videos ADD COLUMN IF NOT EXISTS music_metadata jsonb;
 ALTER TABLE videos ADD COLUMN IF NOT EXISTS music_search_document tsvector GENERATED ALWAYS AS
-  (to_tsvector('recall_simple',coalesce(music_metadata->>'searchText',''))) STORED;
+  (to_tsvector('sillage_simple',coalesce(music_metadata->>'searchText',''))) STORED;
 CREATE INDEX IF NOT EXISTS videos_music_lexical ON videos USING gin(music_search_document);
 CREATE TABLE IF NOT EXISTS musicbrainz_cache (url text PRIMARY KEY, response jsonb NOT NULL, fetched_at timestamptz NOT NULL DEFAULT now());
 -- Every writer shares the same index revision; YouTube refreshes retain current enrichment.
-CREATE OR REPLACE FUNCTION recall_music_revision() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE OR REPLACE FUNCTION sillage_music_revision() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF TG_OP='UPDATE' AND (NEW.title,NEW.channel,NEW.duration_seconds) IS DISTINCT FROM (OLD.title,OLD.channel,OLD.duration_seconds) THEN
     NEW.music_metadata := NULL;
@@ -179,7 +179,7 @@ BEGIN
   NEW.content_hash := split_part(NEW.content_hash,':',1) || CASE WHEN NEW.music_metadata->>'status'='matched' THEN ':' || md5(NEW.music_metadata::text) ELSE '' END;
   RETURN NEW;
 END $$;
-CREATE OR REPLACE TRIGGER videos_music_revision BEFORE INSERT OR UPDATE ON videos FOR EACH ROW EXECUTE FUNCTION recall_music_revision();
+CREATE OR REPLACE TRIGGER videos_music_revision BEFORE INSERT OR UPDATE ON videos FOR EACH ROW EXECUTE FUNCTION sillage_music_revision();
 -- Listening history per account; see history.ts.
 CREATE TABLE IF NOT EXISTS listening_history (
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,

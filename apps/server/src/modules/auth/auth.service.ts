@@ -51,7 +51,7 @@ export function authService(db: Database, provider: IdentityProvider) {
         return {
           outcome: "signed-in" as const,
           appUrl:
-            "playlist-recall://auth?" +
+            "sillage://auth?" +
             new URLSearchParams({ code: grant, state: flow.appState }),
         };
       } catch {

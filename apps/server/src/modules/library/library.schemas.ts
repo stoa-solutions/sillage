@@ -76,19 +76,19 @@ const exportCollection = z
   .openapi("ExportCollection");
 export const libraryExportBody = z
   .object({
-    format: z.literal("playlist-recall"),
+    format: z.literal("sillage"),
     version: z.literal(1),
     collections: z.array(exportCollection),
   })
   .openapi("LibraryExport", {
     description:
-      "Export Recall normalisé ; aucune clé ni session n’est exportée.",
+      "Export Sillage normalisé ; aucune clé ni session n’est exportée.",
   });
 
 /** Validated by parseImport from the shared core, which accepts three historical formats. */
 export const libraryImportInput = z.unknown().openapi("LibraryImport", {
   description:
-    "Export Recall, playlist normalisée ou playlist plate yt-dlp. Au plus 100 playlists et 50 000 entrées au total ; max. 30 Mio. Réservé à la maintenance historique.",
+    "Export Sillage, playlist normalisée ou playlist plate yt-dlp. Au plus 100 playlists et 50 000 entrées au total ; max. 30 Mio. Réservé à la maintenance historique.",
   anyOf: [
     {
       type: "object",

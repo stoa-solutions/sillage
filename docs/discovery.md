@@ -50,8 +50,8 @@ Ces évolutions doivent conserver l’isolation des comptes et le design actuel.
 
 | Fichier | Responsabilité |
 | --- | --- |
-| `apps/macos/Sources/RecallMac/DiscoverView.swift` | Écran, sections et actions de carte. |
-| `apps/macos/Sources/RecallMac/DiscoveryModel.swift` | Requêtes, annulation, pagination YouTube et cache d’accueil. |
+| `apps/macos/Sources/SillageMac/DiscoverView.swift` | Écran, sections et actions de carte. |
+| `apps/macos/Sources/SillageMac/DiscoveryModel.swift` | Requêtes, annulation, pagination YouTube et cache d’accueil. |
 | `apps/server/src/discovery.ts` | Routes, cache public de recherche, vérification et ajout par compte. |
 | `apps/server/src/discovery-home.ts` | Historique, pistes de recherche et sélection de suggestions. |
 | `apps/server/src/searxng.ts` | Recherche externe ; fichiers associés pour la vérification des vidéos. |

@@ -1,9 +1,9 @@
-import { DJ_SELECTION_LIMIT } from "@playlist-recall/core/dj";
+import { DJ_SELECTION_LIMIT } from "@sillage/core/dj";
 import {
   parseDJIntent,
   recentlyHeardExclusion,
   type DJIntent,
-} from "@playlist-recall/core/intent";
+} from "@sillage/core/intent";
 import type { DjInput } from "./dj.contracts.ts";
 
 export interface TurnPlan {

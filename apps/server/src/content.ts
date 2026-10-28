@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { Video } from "@playlist-recall/core/types";
+import type { Video } from "@sillage/core/types";
 export const hash = (text: string | Uint8Array) =>
   createHash("sha256").update(text).digest("hex");
 export function documentText(

@@ -1,8 +1,8 @@
 import AppKit
-import RecallKit
+import SillageKit
 import SwiftUI
 
-@testable import RecallMac
+@testable import SillageMac
 
 @main struct RenderChecks {
   @MainActor static func main() async throws {

@@ -1,7 +1,7 @@
 $kind: http-request
 description: >-
   Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les
-  exports Recall, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.
+  exports Sillage, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.
 
 
   Effet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
@@ -15,7 +15,7 @@ body:
   type: json
   content: |-
     {
-      "format": "playlist-recall",
+      "format": "sillage",
       "version": 1,
       "collections": [
         {

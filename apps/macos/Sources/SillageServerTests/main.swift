@@ -1,0 +1,167 @@
+import Foundation
+import SillageKit
+
+func check(_ condition: Bool, _ message: String) throws {
+  if !condition { throw SillageError.message(message) }
+}
+func rejects(_ body: () throws -> Void) throws {
+  do { try body() } catch { return }
+  throw SillageError.message("Expected failure")
+}
+
+func sillageServiceChecks() throws {
+  let token = "test-session-not-a-real-token"
+  let former = FormerIdentity.host
+  for origin in [
+    "https://\(former)", "https://\(former)/",
+    "https://\(former.uppercased()):443",
+  ] {
+    let connection = try SillageService.connection(url: origin, token: token)
+    try check(
+      connection.url == SillageService.origin && connection.token == token,
+      "Hosted session did not retain its token on the Sillage origin")
+  }
+  for origin in [
+    SillageService.origin, "https://music.example.com", "http://localhost:8080",
+    "https://\(former):8443", "https://\(former).example.com",
+  ] {
+    let connection = try SillageService.connection(url: origin, token: token)
+    try check(
+      connection.url == origin && connection.token == token,
+      "Domain migration changed an unrelated server or current session")
+  }
+  for origin in [
+    "https://\(former)/private", "https://user@\(former)",
+    "http://\(former)", "https://\(former)?token=private",
+  ] {
+    try rejects { _ = try SillageService.connection(url: origin, token: token) }
+  }
+  try rejects { _ = try SillageService.connection(url: SillageService.origin, token: "short") }
+  for origin in [SillageService.origin, SillageService.origin + ":443/dj/player?native=1"] {
+    try check(SillageService.isPlayerOrigin(URL(string: origin)), "Trusted player frame rejected")
+  }
+  for origin in [
+    "https://\(former)/dj/player", "http://sillage.stoa.solutions/dj/player",
+    "https://sillage.stoa.solutions:8443/dj/player",
+    "https://sillage.stoa.solutions.example.com/dj/player",
+    "https://user@sillage.stoa.solutions/dj/player",
+  ] {
+    try check(!SillageService.isPlayerOrigin(URL(string: origin)), "Foreign player frame accepted")
+  }
+  try check(!SillageService.isPlayerOrigin(nil), "Missing player frame origin accepted")
+  print("Sillage domain checks passed: session continuity, self-hosted isolation, player origin.")
+}
+
+/// A private server that confirms a fresh sync on the third poll.
+actor ServerFixture {
+  var polls = 0
+  var posted = false
+  var exports = 0
+  func call(_ path: String, _ body: [String: String]?) throws -> [String: Any] {
+    if path == "status" { return ["youtubeConfigured": true] }
+    if path == "playlists", body != nil {
+      posted = true
+      return ["id": "PL1234567890"]
+    }
+    if path == "playlists" {
+      polls += 1
+      let fresh = posted && polls > 2
+      return [
+        "playlists": [
+          [
+            "id": "PL1234567890", "status": fresh ? "ready" : "syncing",
+            "last_sync_at": fresh ? "new" : "old",
+          ]
+        ]
+      ]
+    }
+    if path == "export" { exports += 1 }
+    throw SillageError.message("Unexpected server request")
+  }
+}
+
+@main struct ServerTests {
+  static func main() async {
+    do {
+      try sillageServiceChecks()
+      for link in [
+        "http://youtube.com/playlist?list=PL1234567890",
+        "https://evil.com/playlist?list=PL1234567890",
+        "https://youtube.com.evil.com/playlist?list=PL1234567890",
+        "https://user@youtube.com/playlist?list=PL1234567890",
+      ] {
+        try rejects { _ = try YouTubePlaylistLink.id(from: link) }
+      }
+      let link = "https://www.youtube.com/playlist?list=PL1234567890"
+      try check(
+        try YouTubePlaylistLink.id(from: link) == "PL1234567890", "Valid YouTube URL rejected")
+
+      let fixture = ServerFixture()
+      let synchronized = try await ServerPlaylistImporter(
+        call: { path, body in try await fixture.call(path, body) }, pause: {}
+      ).synchronize(link: link)
+      let exports = await fixture.exports
+      try check(
+        synchronized == "PL1234567890" && exports == 0,
+        "Server import downloaded the library instead of waiting for the server")
+      let stopped = Task {
+        try await ServerPlaylistImporter(
+          call: { path, body in try await ServerFixture().call(path, body) },
+          pause: { try Task.checkCancellation() }
+        ).synchronize(link: link)
+      }
+      stopped.cancel()
+      do {
+        _ = try await stopped.value
+        throw SillageError.message("Cancelled server import completed")
+      } catch is CancellationError {}
+
+      let overview = try ServerLibraryOverview(
+        status: ["counts": ["videos": 15]],
+        collections: [
+          "playlists": [
+            ["id": "one", "title": "One", "entries": 13],
+            ["id": "two", "title": "Two", "entries": 5],
+          ]
+        ])
+      try check(
+        overview.videoCount == 15 && overview.playlists.map(\.entries) == [13, 5],
+        "Server summary lost distinct total or playlist counts")
+      try rejects { _ = try ServerLibraryOverview(status: [:], collections: [:]) }
+      let discoveryData = Data(
+        #"{"reply":"Voici un résultat","action":"keep","tracks":[],"discoveries":[{"video":{"id":"newtrack001","title":"New track"},"inLibrary":false}]}"#
+          .utf8)
+      let discoveryReply = try JSONDecoder().decode(DJResponse.self, from: discoveryData)
+      try check(discoveryReply.discoveries?.first?.id == "newtrack001", "DJ discovery cards lost")
+      var playback = PlaybackQueue()
+      playback.replace([Track(id: "oldtrack001", title: "Current")])
+      try check(
+        !playback.apply(discoveryReply) && playback.tracks.first?.id == "oldtrack001",
+        "Discovery replaced playback")
+      try rejects {
+        _ = try JSONDecoder().decode(
+          DiscoveryItem.self,
+          from: Data(#"{"video":{"id":"../unsafe","title":"Bad"},"inLibrary":false}"#.utf8))
+      }
+      let personalCollection = try ServerLibraryOverview(
+        status: ["counts": ["videos": 1]],
+        collections: [
+          "playlists": [
+            [
+              "id": "sillage-discoveries:user", "title": "Mes découvertes", "entries": 1,
+              "sync_enabled": false,
+            ]
+          ]
+        ])
+      try check(
+        personalCollection.playlists.first?.syncEnabled == false,
+        "Private collection would be synced as YouTube playlist")
+      print(
+        "Server client checks passed: YouTube links, server import freshness and cancellation, library summary."
+      )
+    } catch {
+      fputs("Server tests failed: \(error.localizedDescription)\n", stderr)
+      exit(1)
+    }
+  }
+}

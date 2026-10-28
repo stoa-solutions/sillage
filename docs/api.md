@@ -39,10 +39,10 @@ La révocation est confirmée par le serveur avant la suppression du fichier pri
 Par défaut, les essais appellent le serveur Sillage. Pour cibler une API de développement :
 
 ```sh
-RECALL_DOCS_API_URL=http://127.0.0.1:3001 npm run docs:serve
+SILLAGE_DOCS_API_URL=http://127.0.0.1:3001 npm run docs:serve
 ```
 
-`RECALL_DOCS_PORT` permet de changer le port de documentation. La cible est fixée au lancement ; aucune URL arbitraire n’est acceptée depuis une requête. Le relais local évite de modifier les règles CORS de production. Il transmet uniquement les routes documentées, ne transmet pas les cookies et ne suit pas les redirections. Le flux Google et les ressources du lecteur se consultent directement sur le serveur, pas à travers ce relais.
+`SILLAGE_DOCS_PORT` permet de changer le port de documentation. La cible est fixée au lancement ; aucune URL arbitraire n’est acceptée depuis une requête. Le relais local évite de modifier les règles CORS de production. Il transmet uniquement les routes documentées, ne transmet pas les cookies et ne suit pas les redirections. Le flux Google et les ressources du lecteur se consultent directement sur le serveur, pas à travers ce relais.
 
 ## Postman sur le Mac
 

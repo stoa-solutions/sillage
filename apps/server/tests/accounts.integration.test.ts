@@ -329,9 +329,9 @@ it("raises only the configured account's limit and keeps its usage history", asy
     await reserveDj(db, alice);
     await reserveDj(db, alice);
     await reserveDj(db, alice);
-    await expect(reserveDj(db, alice)).rejects.toThrow("Recall (3");
+    await expect(reserveDj(db, alice)).rejects.toThrow("Sillage (3");
     await reserveDj(db, bob);
-    await expect(reserveDj(db, bob)).rejects.toThrow("Recall (1");
+    await expect(reserveDj(db, bob)).rejects.toThrow("Sillage (1");
     expect(
       (
         await db.query(

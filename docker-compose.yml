@@ -2,7 +2,7 @@ x-service: &service
   build:
     context: .
     dockerfile: apps/server/Dockerfile
-  image: playlist-recall:${RELEASE_SHA:-local}
+  image: sillage:${RELEASE_SHA:-local}
   restart: unless-stopped
   read_only: true
   tmpfs:
@@ -42,9 +42,9 @@ services:
       DJ_DAILY_REQUEST_LIMIT: ${DJ_DAILY_REQUEST_LIMIT:-100}
       DJ_ACCOUNT_DAILY_LIMITS: ${DJ_ACCOUNT_DAILY_LIMITS:-}
       MAC_RELEASES_DIR: /releases
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://sillage.stoa.solutions,https://recall.stoa.solutions}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://sillage.stoa.solutions}
     volumes:
-      - /srv/playlist-recall/releases:/releases:ro
+      - /srv/sillage/releases:/releases:ro
     mem_limit: 192m
     cpus: 0.5
     networks: [dokploy-network, data, inference, search]
@@ -62,7 +62,7 @@ services:
       start_period: 30s
   searxng:
     labels:
-      recall.release: ${RELEASE_SHA:-local}
+      sillage.release: ${RELEASE_SHA:-local}
     image: searxng/searxng@sha256:23482d8ecf7ddf66029479468ea04c1bb11d2b65785a17a7e629e2ffd13296ca
     restart: unless-stopped
     environment:
@@ -109,7 +109,7 @@ services:
       MODEL_PATH: /models/
       PORT: 3002
     volumes:
-      - /srv/playlist-recall/models:/models:ro
+      - /srv/sillage/models:/models:ro
     mem_limit: 1408m
     cpus: 1.5
     networks: [inference]
@@ -132,6 +132,6 @@ networks:
     external: true
   data:
     external: true
-    name: playlist-recall-data
+    name: sillage-data
   inference:
     internal: true

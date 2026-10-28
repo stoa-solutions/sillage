@@ -189,7 +189,7 @@ it("refuses videos outside the account's library", async () => {
 it("identifies itself to LRCLIB and honours Retry-After before calling again", async () => {
   const request = vi.fn(async (_url: unknown, init?: RequestInit) => {
     expect((init?.headers as Record<string, string>)["User-Agent"]).toMatch(
-      /^PlaylistRecall\//,
+      /^Sillage\//,
     );
     return new Response("{}", {
       status: 429,

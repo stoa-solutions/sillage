@@ -79,7 +79,7 @@ export const videos = pgTable(
     tags: jsonb("tags").$type<string[]>().notNull().default([]),
     publishedAt: text("published_at"),
     thumbnailUrl: text("thumbnail_url").notNull(),
-    /** Hash of the indexed text; ":<metadata hash>" is appended by recall_music_revision(). */
+    /** Hash of the indexed text; ":<metadata hash>" is appended by sillage_music_revision(). */
     contentHash: text("content_hash").notNull(),
     indexHash: text("index_hash"),
     enrichedAt: timestamptz("enriched_at"),
@@ -88,15 +88,15 @@ export const videos = pgTable(
     imageCheckedAt: timestamptz("image_checked_at"),
     imageError: text("image_error"),
     searchDocument: tsvector("search_document").generatedAlwaysAs(
-      sql`setweight(to_tsvector('recall_simple', coalesce(title,'')), 'A') ||
-    setweight(to_tsvector('recall_simple', coalesce(channel,'')), 'A') ||
-    setweight(to_tsvector('recall_simple', tags::text), 'B') ||
-    setweight(to_tsvector('recall_simple', description), 'C')`,
+      sql`setweight(to_tsvector('sillage_simple', coalesce(title,'')), 'A') ||
+    setweight(to_tsvector('sillage_simple', coalesce(channel,'')), 'A') ||
+    setweight(to_tsvector('sillage_simple', tags::text), 'B') ||
+    setweight(to_tsvector('sillage_simple', description), 'C')`,
     ),
     channelId: text("channel_id"),
     musicMetadata: jsonb("music_metadata"),
     musicSearchDocument: tsvector("music_search_document").generatedAlwaysAs(
-      sql`to_tsvector('recall_simple',coalesce(music_metadata->>'searchText',''))`,
+      sql`to_tsvector('sillage_simple',coalesce(music_metadata->>'searchText',''))`,
     ),
   },
   (t) => [

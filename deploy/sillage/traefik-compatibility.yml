@@ -1,15 +1,6 @@
 # File-provider routes, installed beside Dokploy's managed domain routes.
-# Keep API/player requests on the legacy origin for installed clients.
 http:
   routers:
-    sillage-legacy-signin:
-      rule: Host(`recall.stoa.solutions`) && Path(`/auth/google/start`) && Method(`GET`)
-      entryPoints: [websecure]
-      priority: 200
-      middlewares: [sillage-signin-origin]
-      service: noop@internal
-      tls:
-        certResolver: letsencrypt
     sillage-homepage:
       rule: Host(`sillage.stoa.solutions`) && Path(`/`) && (Method(`GET`) || Method(`HEAD`))
       entryPoints: [websecure]
@@ -19,11 +10,6 @@ http:
       tls:
         certResolver: letsencrypt
   middlewares:
-    sillage-signin-origin:
-      redirectRegex:
-        regex: '^https://recall\.stoa\.solutions/(.*)$'
-        replacement: 'https://sillage.stoa.solutions/${1}'
-        permanent: false
     sillage-presentation:
       redirectRegex:
         regex: '^https://sillage\.stoa\.solutions/([?].*)?$'

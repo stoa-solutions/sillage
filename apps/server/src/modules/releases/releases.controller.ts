@@ -36,7 +36,7 @@ const archiveRoute = createRoute({
     tag: TAG,
     summary: "Télécharger une archive publiée",
     description:
-      "Uniquement les archives ZIP nommées Playlist-Recall-version-architecture.zip présentes dans le répertoire de publication. Le nom technique historique reste stable malgré la marque Sillage.",
+      "Uniquement les archives ZIP nommées Sillage-version-architecture.zip présentes dans le répertoire de publication. Le nom technique historique reste stable malgré la marque Sillage.",
     public: true,
   }),
   request: {
@@ -44,7 +44,7 @@ const archiveRoute = createRoute({
       archive: z
         .string()
         .regex(
-          /^Playlist-Recall-[0-9]+\.[0-9]+\.[0-9]+-(arm64|x86_64|universal)\.zip$/,
+          /^Sillage-[0-9]+\.[0-9]+\.[0-9]+-(arm64|x86_64|universal)\.zip$/,
         )
         .openapi({
           param: { name: "archive", in: "path" },
@@ -87,14 +87,14 @@ export function releaseRoutes() {
         return c.text("Update feed unavailable", 503);
       // Empty feed until a signed release has been deliberately published.
       return c.body(
-        '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><title>Playlist Recall pour Mac</title></channel></rss>',
+        '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><title>Sillage pour Mac</title></channel></rss>',
       );
     }
   });
   app.get("/:archive", async (c) => {
     const name = c.req.param("archive");
     if (
-      !/^Playlist-Recall-[0-9]+\.[0-9]+\.[0-9]+-(arm64|x86_64|universal)\.zip$/.test(
+      !/^Sillage-[0-9]+\.[0-9]+\.[0-9]+-(arm64|x86_64|universal)\.zip$/.test(
         name,
       )
     )

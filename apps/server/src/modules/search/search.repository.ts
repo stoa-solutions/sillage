@@ -112,7 +112,7 @@ export async function albumTracks(db: Executor, filter: SQL, text: string) {
       .where(
         and(
           filter,
-          sql`(${videos.musicSearchDocument} @@ phraseto_tsquery('recall_simple', ${text})
+          sql`(${videos.musicSearchDocument} @@ phraseto_tsquery('sillage_simple', ${text})
             OR unaccent(lower(${videos.description})) LIKE unaccent(lower(${"%" + escapeLike(text) + "%"})))`,
         ),
       )
@@ -130,7 +130,7 @@ export async function preciseLookup(db: Executor, filter: SQL, tokens: string[])
       .where(
         and(
           filter,
-          sql`to_tsvector('recall_simple', ${nameLookupDocument}) @@ plainto_tsquery('recall_simple', ${tokens.join(" ")})`,
+          sql`to_tsvector('sillage_simple', ${nameLookupDocument}) @@ plainto_tsquery('sillage_simple', ${tokens.join(" ")})`,
         ),
       )
       .orderBy(asc(videos.id))
@@ -174,7 +174,7 @@ export async function titleMatches(db: Executor, filter: SQL, text: string) {
 
 /** Full-text ranking over YouTube metadata and MusicBrainz credits. */
 export async function lexicalRanking(db: Executor, filter: SQL, query: string) {
-  const tsquery = sql`websearch_to_tsquery('recall_simple', ${query})`;
+  const tsquery = sql`websearch_to_tsquery('sillage_simple', ${query})`;
   const score = sql`ts_rank_cd(${videos.searchDocument} || ${videos.musicSearchDocument}, ${tsquery})`;
   return db
     .select({

@@ -37,7 +37,7 @@ export function createApp(
     "*",
     cors({
       origin: (origin) =>
-        (process.env["ALLOWED_ORIGINS"] ?? "https://recall.stoa.solutions")
+        (process.env["ALLOWED_ORIGINS"] ?? "https://sillage.stoa.solutions")
           .split(",")
           .includes(origin)
           ? origin

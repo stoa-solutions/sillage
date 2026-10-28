@@ -1,14 +1,14 @@
 # Jev et enrichissement musical — 25 octobre 2026
 
-Recherche Exa : produit Jev identifié chez TypeSafe, documentation officielle vérifiée. Aucune intégration payante ni mesure de performance Recall réalisée.
+Recherche Exa : produit Jev identifié chez TypeSafe, documentation officielle vérifiée. Aucune intégration payante ni mesure de performance Sillage réalisée.
 
 ## Jev : usage ciblé, après mesure
 
 Jev renvoie des choix, scores et probabilités sur du texte. Il ne génère ni dialogue, ni code, ni voix ; il ne lit pas les images/audio/vidéos. Sa calibration ne garantit pas une réponse correcte. Source : https://docs.typesafe.ai/concepts/system-one et https://docs.typesafe.ai/api
 
-Utilité possible pour Recall : classer une intention ambiguë (jouer maintenant / ajouter / proposer), ordonner un petit lot de candidats, décider s’il faut élargir une recherche. Les commandes exactes pause/next restent déterministes et locales. Gemini conserve la conversation et la composition ; SigLIP conserve la recherche visuelle. Ne pas ajouter un appel réseau aux commandes de lecture.
+Utilité possible pour Sillage : classer une intention ambiguë (jouer maintenant / ajouter / proposer), ordonner un petit lot de candidats, décider s’il faut élargir une recherche. Les commandes exactes pause/next restent déterministes et locales. Gemini conserve la conversation et la composition ; SigLIP conserve la recherche visuelle. Ne pas ajouter un appel réseau aux commandes de lecture.
 
-Évaluer Jev derrière une interface de classement, avec délai borné et repli vers le classement existant. Comparer un corpus annoté de demandes Recall (dont Edge/HEDGES, fragments de titres, souvenirs visuels, exclusions et demandes ordonnées) : précision top-5, fausses lectures automatiques, p50/p95 et coût. Ne l’activer que si le gain est mesuré. Besoin d’une clé TypeSafe distincte ; aucune clé recherchée ou configurée pour cette étude.
+Évaluer Jev derrière une interface de classement, avec délai borné et repli vers le classement existant. Comparer un corpus annoté de demandes Sillage (dont Edge/HEDGES, fragments de titres, souvenirs visuels, exclusions et demandes ordonnées) : précision top-5, fausses lectures automatiques, p50/p95 et coût. Ne l’activer que si le gain est mesuré. Besoin d’une clé TypeSafe distincte ; aucune clé recherchée ou configurée pour cette étude.
 
 La documentation annonce jev-1.14.0 et 0,042 $/million de tokens entrants, sorties gratuites, limites par organisation. Ce prix et ces limites sont à revalider avant activation : https://docs.typesafe.ai/models. Les gains de vitesse marketing ne sont pas un benchmark de notre application.
 

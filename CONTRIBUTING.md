@@ -1,7 +1,7 @@
 # Contribuer
 
 Ouvrez une issue décrivant un cas reproductible, puis une pull request ciblée.
-Utilisez des données fictives, une base de test jetable et un dossier `RECALL_DATA_DIR` temporaire.
+Utilisez des données fictives, une base de test jetable et un dossier `SILLAGE_DATA_DIR` temporaire.
 Ne joignez pas de clés, sessions, cookies ou exports de bibliothèque privée.
 
 Les contrôles Node sont `npm run verify:node`. Pour une modification native, lancez `npm run test:macos`

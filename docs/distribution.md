@@ -54,7 +54,7 @@ SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk python3 scripts/
 
 Cette configuration locale ne valide ni une distribution Apple ni le prototype d’agents. Une installation Xcode complète et sa chaîne de signature restent à vérifier pour la sortie publique.
 
-Conserver une seule app habituelle dans `~/Applications/Sillage.app`. Construire depuis le `main` du dépôt de développement après validation, puis fermer les anciennes copies avant de remplacer le bundle. Conserver l’identité de signature locale, le bundle ID et les données existantes. Les branches de prototype doivent utiliser un dossier `RECALL_DATA_DIR` temporaire ; elles ne remplacent pas cette installation.
+Conserver une seule app habituelle dans `~/Applications/Sillage.app`. Construire depuis le `main` du dépôt de développement après validation, puis fermer les anciennes copies avant de remplacer le bundle. Conserver l’identité de signature locale, le bundle ID et les données existantes. Les branches de prototype doivent utiliser un dossier `SILLAGE_DATA_DIR` temporaire ; elles ne remplacent pas cette installation.
 
 Sauvegarder les anciens bundles en **ZIP vérifié**, jamais en `.app` décompressée dans un dossier d’archives : macOS peut indexer ces sauvegardes et les proposer comme des apps homonymes. Contrôler l’intégrité du ZIP avant de retirer le bundle archivé. Si nécessaire, désenregistrer seulement le chemin exact de l’ancienne copie avec `lsregister -u`, puis enregistrer le chemin canonique ; ne pas réinitialiser le registre global des applications.
 

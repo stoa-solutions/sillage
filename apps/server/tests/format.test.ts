@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { exportLibrary, parseImport } from "@playlist-recall/core/import";
-import type { LibraryImport } from "@playlist-recall/core/types";
+import { exportLibrary, parseImport } from "@sillage/core/import";
+import type { LibraryImport } from "@sillage/core/types";
 
 // Each case pairs an input file with the library it must produce.
 const directory = new URL("../../../packages/core/fixtures/format/", import.meta.url);
@@ -35,7 +35,7 @@ function canonical(library: LibraryImport) {
 const read = (name: string) =>
   JSON.parse(readFileSync(new URL(name, directory), "utf8"));
 
-describe("shared Recall format fixtures", () => {
+describe("shared Sillage format fixtures", () => {
   it.each(cases)("%s", (name) => {
     const input = read(`${name}.input.json`);
     const expected = read(`${name}.expected.json`);

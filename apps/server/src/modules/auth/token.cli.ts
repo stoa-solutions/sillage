@@ -22,7 +22,7 @@ try {
       argument,
       JSON.stringify(
         {
-          url: process.env["PUBLIC_URL"] ?? "https://recall.stoa.solutions",
+          url: process.env["PUBLIC_URL"] ?? "https://sillage.stoa.solutions",
           token,
         },
         null,

@@ -1,4 +1,4 @@
-simulation: recall-dj
+simulation: sillage-dj
 routing: path
 mocks:
   - name: model

@@ -1,5 +1,5 @@
-import { parseQuery, tokenize } from "@playlist-recall/core/search";
-import type { MusicMetadata, SearchResult } from "@playlist-recall/core/types";
+import { parseQuery, tokenize } from "@sillage/core/search";
+import type { MusicMetadata, SearchResult } from "@sillage/core/types";
 import { LEGACY_USER_ID, type Database, type videos } from "../../db/index.ts";
 import { infer } from "../../integrations/inference/index.ts";
 import { TEXT_KEY, VISION_KEY } from "../indexing/index.ts";
@@ -138,7 +138,7 @@ export async function search(
         exact.add(id);
         lexical.push(id);
       }
-      // Optional recall expansion: a heard name may omit a short prefix/suffix
+      // Optional match expansion: a heard name may omit a short prefix/suffix
       // (Edge / Hedges). Keep exact hits first; do not broaden ordinary lookups.
       if (input.fuzzy && !descriptive) {
         const tokens = lookupTokens(parsed.text);

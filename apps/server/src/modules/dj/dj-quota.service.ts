@@ -34,7 +34,7 @@ export async function reserveDj(db: Database, userId = LEGACY_USER_ID) {
   const budget = djDailyBudget(userId);
   if (!(await takeDailyUnit(db.orm, userId, budget)))
     throw new DjUnavailable(
-      `Le plafond quotidien de Recall (${budget} demandes et réponses vocales) est atteint. Ce plafond est distinct du quota Google ; la lecture de ta file reste disponible.`,
+      `Le plafond quotidien de Sillage (${budget} demandes et réponses vocales) est atteint. Ce plafond est distinct du quota Google ; la lecture de ta file reste disponible.`,
       429,
     );
 }

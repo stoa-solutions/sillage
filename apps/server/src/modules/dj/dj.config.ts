@@ -1,4 +1,4 @@
-import type { AiProvider } from "@playlist-recall/core/dj";
+import type { AiProvider } from "@sillage/core/dj";
 
 export interface DjConfig {
   provider?: AiProvider | "compatible";

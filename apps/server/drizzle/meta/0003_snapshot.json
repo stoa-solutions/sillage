@@ -1054,7 +1054,7 @@
           "primaryKey": false,
           "notNull": false,
           "generated": {
-            "as": "setweight(to_tsvector('recall_simple', coalesce(title,'')), 'A') ||\n    setweight(to_tsvector('recall_simple', coalesce(channel,'')), 'A') ||\n    setweight(to_tsvector('recall_simple', tags::text), 'B') ||\n    setweight(to_tsvector('recall_simple', description), 'C')",
+            "as": "setweight(to_tsvector('sillage_simple', coalesce(title,'')), 'A') ||\n    setweight(to_tsvector('sillage_simple', coalesce(channel,'')), 'A') ||\n    setweight(to_tsvector('sillage_simple', tags::text), 'B') ||\n    setweight(to_tsvector('sillage_simple', description), 'C')",
             "type": "stored"
           }
         },
@@ -1076,7 +1076,7 @@
           "primaryKey": false,
           "notNull": false,
           "generated": {
-            "as": "to_tsvector('recall_simple',coalesce(music_metadata->>'searchText',''))",
+            "as": "to_tsvector('sillage_simple',coalesce(music_metadata->>'searchText',''))",
             "type": "stored"
           }
         }

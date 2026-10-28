@@ -74,7 +74,7 @@ test("checks bare Node/workspace imports and permits type-only re-exports", () =
   const core = "packages/core/src/leak.ts";
   assert.equal(violations(core, 'import fs from "fs"').length, 1);
   assert.equal(
-    violations(core, 'import "@playlist-recall/server"').length,
+    violations(core, 'import "@sillage/server"').length,
     1,
   );
   assert.equal(

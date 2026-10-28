@@ -23,8 +23,8 @@ Sans --live : affiche uniquement les cas, sans lire les identifiants ni appeler 
 --suite smoke|external|journal-regressions|agents|all  --case ID  --max-requests 3
 --scenarios fichier.json  --out dossier
 --live --connection-file fichier-privé.json
-Alternative : RECALL_API_URL et RECALL_API_TOKEN dans l’environnement.
-La connexion peut être un export {url,token} ou le fichier Session/session.json de Recall.
+Alternative : SILLAGE_API_URL et SILLAGE_API_TOKEN dans l’environnement.
+La connexion peut être un export {url,token} ou le fichier Session/session.json de Sillage.
 Les requêtes réelles consomment des quotas ; aucune requête vocale ni modification de bibliothèque.`);
     return;
   }
@@ -54,7 +54,7 @@ Les requêtes réelles consomment des quotas ; aucune requête vocale ni modific
     const stored = JSON.parse(await readFile(path, "utf8"));
     connection = typeof stored.server === "string"
       ? JSON.parse(Buffer.from(stored.server, "base64").toString("utf8")) : stored;
-  } else connection = { url: process.env.RECALL_API_URL, token: process.env.RECALL_API_TOKEN };
+  } else connection = { url: process.env.SILLAGE_API_URL, token: process.env.SILLAGE_API_TOKEN };
   if (typeof connection?.token !== "string" || connection.token.length < 16) throw new Error("Connexion privée absente ou invalide.");
   const base = new URL(connection.url);
   if (base.username || base.password || base.search || base.hash

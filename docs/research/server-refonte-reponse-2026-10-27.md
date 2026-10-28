@@ -12,7 +12,7 @@ La cible est reprise telle quelle : monolithe modulaire (API, worker, inférence
 | --- | --- | --- |
 | 1. Tours DJ et débit propres au processus | Une seule API, explicitement. Baux DJ en PostgreSQL avant toute duplication. | Contrainte documentée dans `architecture.md` et `operations.md` (arrêter l’ancienne API avant la nouvelle). Baux partagés : lot D, avec le test deux instances / perte de bail / retour tardif. |
 | 2. Verrou de migration trop tard | Corrigé maintenant : la migration `0001` (`CREATE TYPE`) n’est pas idempotente. | `src/db/migrate.ts` prend `pg_advisory_lock(740071)` sur une connexion dédiée **avant** que Drizzle crée ou lise son journal, fait migrer Drizzle sur cette même connexion et relâche dans `finally` (connexion détruite si le déverrouillage échoue). |
-| 3. La CI ne compile pas le serveur livré | Build serveur ajouté à `verify:node` maintenant ; contrôle de l’image au lot B. | `verify:node` lance `npm run build -w @playlist-recall/server`. |
+| 3. La CI ne compile pas le serveur livré | Build serveur ajouté à `verify:node` maintenant ; contrôle de l’image au lot B. | `verify:node` lance `npm run build -w @sillage/server`. |
 | 4. Première installation reproductible | Lot B. | Scripts dev/prod distincts (`start` sur `dist/`), configuration validée par Zod au démarrage, `.env.example` sans secret, procédure Docker sur base vide. Les identifiants de compatibilité (cookie, schéma d’URL, volumes, paquets) ne sont pas renommés. |
 
 ### Preuve du point 2

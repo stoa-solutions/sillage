@@ -34,8 +34,8 @@ apps/macos/.swiftpm/
 
 __pycache__/
 
-# Server bundle built by `npm run build -w @playlist-recall/server`.
+# Server bundle built by `npm run build -w @sillage/server`.
 apps/server/dist/
 
-# Server bundle built by `npm run build -w @playlist-recall/server`.
+# Server bundle built by `npm run build -w @sillage/server`.
 apps/server/dist/

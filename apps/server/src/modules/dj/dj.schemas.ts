@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import { AI_PROVIDER_IDS } from "@playlist-recall/core/dj";
+import { AI_PROVIDER_IDS } from "@sillage/core/dj";
 import { discoveryItemBody } from "../discovery/index.ts";
 import { trackBody } from "../library/index.ts";
 import { djInput } from "./dj.contracts.ts";

@@ -25,9 +25,9 @@ export function searchFailureMessage(
     return "L’outil de recherche n’a pas répondu correctement. Réessaie dans un instant.";
   switch (failure.reason) {
     case "search_blocked":
-      return "Le moteur de recherche YouTube de Recall est temporairement bloqué (limitation ou vérification anti-robot). Réessaie plus tard ; ta clé Gemini n’est pas en cause.";
+      return "Le moteur de recherche YouTube de Sillage est temporairement bloqué (limitation ou vérification anti-robot). Réessaie plus tard ; ta clé Gemini n’est pas en cause.";
     case "search_unavailable":
-      return "Le moteur de recherche YouTube de Recall ne répond pas correctement. Réessaie dans un instant ; aucun quota Google épuisé n’a été confirmé.";
+      return "Le moteur de recherche YouTube de Sillage ne répond pas correctement. Réessaie dans un instant ; aucun quota Google épuisé n’a été confirmé.";
     case "daily_quota": {
       const reset = new Intl.DateTimeFormat("fr-FR", {
         timeZone: "Europe/Paris",
@@ -46,7 +46,7 @@ export function searchFailureMessage(
     case "access_denied":
       return "YouTube refuse l’accès au serveur. L’administrateur doit vérifier sa clé YouTube, ses restrictions et l’activation de l’API.";
     case "local_budget":
-      return "Le budget quotidien YouTube configuré dans Recall est atteint. L’administrateur peut ajuster ce budget ; cela n’augmente pas le quota Google.";
+      return "Le budget quotidien YouTube configuré dans Sillage est atteint. L’administrateur peut ajuster ce budget ; cela n’augmente pas le quota Google.";
     default:
       return "La recherche YouTube est momentanément indisponible. Réessaie dans un instant ; aucun épuisement de quota n’a été confirmé.";
   }

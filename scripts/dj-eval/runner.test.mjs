@@ -12,7 +12,7 @@ const exec = promisify(execFile);
 const cli = fileURLToPath(new URL("./run.mjs", import.meta.url));
 const secret = "test-private-token-not-for-reports";
 async function runFixture(t, replies, options = []) {
-  const directory = await mkdtemp(join(tmpdir(), "recall-eval-test-"));
+  const directory = await mkdtemp(join(tmpdir(), "sillage-eval-test-"));
   let chats = 0;
   let requests = 0;
   const server = createServer(async (req, res) => {
@@ -44,7 +44,7 @@ async function runFixture(t, replies, options = []) {
   try {
     result = { code: 0, ...await exec(process.execPath, [cli, "--scenarios", scenarioFile, "--out", join(directory, "report"), ...options], {
       timeout: 10000,
-      env: { ...process.env, RECALL_API_TOKEN: secret, RECALL_API_URL: `http://127.0.0.1:${server.address().port}` },
+      env: { ...process.env, SILLAGE_API_TOKEN: secret, SILLAGE_API_URL: `http://127.0.0.1:${server.address().port}` },
     }) };
   } catch (error) { result = error; }
   assert.ok(!`${result.stdout}${result.stderr}`.includes(secret));

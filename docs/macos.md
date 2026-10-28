@@ -17,11 +17,11 @@ App native SwiftUI pour macOS 14 ou plus récent, compilable pour Apple Silicon 
 - Synthèse vocale Gemini, lecture WAV par AVAudioPlayer, voix macOS en secours. Baisse puis restauration du volume musical.
 - Lecteur YouTube, pause, suivant, enchaînement, gestion des intégrations interdites et lien externe.
 - Serveur privé facultatif : bibliothèque synchronisée et recherche hybride via `/v1/search` pour le DJ, avec exclusion des titres en file.
-- Mode local : import JSON Recall/yt-dlp et liens YouTube publics ou non répertoriés, playlists ordonnées et recherche FTS5. Réimporter un lien actualise la playlist. L’inférence vectorielle et la synchronisation périodique restent celles du serveur facultatif.
-- Cache serveur et bibliothèque locale séparés dans SQLite, dans `~/Library/Application Support/Playlist Recall/`. Les anciens JSON sont conservés et migrés sans suppression.
+- Mode local : import JSON Sillage/yt-dlp et liens YouTube publics ou non répertoriés, playlists ordonnées et recherche FTS5. Réimporter un lien actualise la playlist. L’inférence vectorielle et la synchronisation périodique restent celles du serveur facultatif.
+- Cache serveur et bibliothèque locale séparés dans SQLite, dans `~/Library/Application Support/Sillage/`. Les anciens JSON sont conservés et migrés sans suppression.
 - Exports limités aux vidéos : aucune clé ni connexion privée. L’app redistribuée ne contient ni catalogue personnel, ni clé, ni jeton.
 
-Les appels Gemini directs sont facturés au projet de la clé de l’utilisateur ; ils ne passent pas par le plafond quotidien du VPS. Les conversations et métadonnées utiles sont transmises à Google. YouTube reçoit les identifiants lus, et ceux des miniatures affichées dans la bibliothèque (i.ytimg.com) ; les photos de chaîne viennent de yt3.ggpht.com. Le lecteur public est hébergé sur Recall Stoa et ne reçoit pas le jeton ou la clé Gemini. Aucun identifiant personnel n’est préconfiguré dans le paquet public.
+Les appels Gemini directs sont facturés au projet de la clé de l’utilisateur ; ils ne passent pas par le plafond quotidien du VPS. Les conversations et métadonnées utiles sont transmises à Google. YouTube reçoit les identifiants lus, et ceux des miniatures affichées dans la bibliothèque (i.ytimg.com) ; les photos de chaîne viennent de yt3.ggpht.com. Le lecteur public est hébergé sur Sillage Stoa et ne reçoit pas le jeton ou la clé Gemini. Aucun identifiant personnel n’est préconfiguré dans le paquet public.
 
 Chaque serveur garde une bibliothèque commune à ses jetons, pas un compte isolé par personne. Ne pas distribuer le jeton personnel de Samuel avec l’app. Pour partager l’app, envoyer uniquement l’archive générée.
 
@@ -29,24 +29,24 @@ Chaque serveur garde une bibliothèque commune à ses jetons, pas un compte isol
 
 | Module | Rôle |
 | --- | --- |
-| `RecallKit/HTTPClient.swift` | API privée authentifiée, pages de recherche et résumé de la bibliothèque. |
-| `RecallKit/DJ.swift` | Tour de DJ : `DJRequest` et `ServerDJ`, qui délègue le tour au serveur. |
-| `RecallKit/ServerPlaylistImporter.swift` | Liens YouTube validés, import par le serveur et attente d’une synchronisation fraîche. |
-| `RecallKit/ServerLibraryOverview.swift` | Nombre de vidéos et playlists du serveur. |
-| `RecallKit/ListeningSession.swift` | Session d’écoute : événements (clics, chat, signaux du lecteur, réponses du DJ) → effets (lire, préparer, demander, annoncer). File, direction musicale, suite automatique, numéro de demande. Aucune lecture, voix ni réseau : testée par scénarios. |
-| `RecallKit/PlaybackEngine.swift` | Module de lecture : démarrage immédiat sur YouTube, bascule fondue vers le clip téléchargé au même instant, replis, préparation des titres suivants, volume et voix. Deux lecteurs interchangeables derrière une même interface. |
-| `RecallKit/PlaybackQueue.swift` | File de lecture : remplacement, ajout, fin de morceau, continuation. |
-| `RecallKit/CredentialFile.swift` / `GoogleCallback.swift` | Session privée hors Trousseau ; retour de connexion Google à usage unique. |
-| `RecallKit/Models.swift` | Contrats et décodage des vidéos renvoyées par le serveur. |
-| `RecallAudio/Microphone.swift` | Autorisation, capture, dictée et arrêt. |
-| `RecallMac/Session.swift` / `SessionStore.swift` / `GoogleSignIn.swift` | Compte, connexion serveur et session. |
-| `RecallMac/LibraryModel.swift` | Pages de la bibliothèque serveur, recherche et import par lien. |
-| `RecallMac/DJModel.swift` / `VoiceOutput.swift` | Exécute la session d’écoute : chaque geste devient un événement, chaque effet une action (lecteur, demande serveur, voix, bannière). Micro ; voix du serveur ou voix macOS de secours. |
-| `RecallMac/Player.swift` | Les deux lecteurs (YouTube dans WebKit, clip dans AVPlayer), le cache Studio comme source de clips, et la surface vidéo où le clip apparaît en fondu par-dessus YouTube. |
-| `RecallKit/Lyrics.swift` / `LyricsModel.swift` | Validation des paroles, chronologie et calage ; état isolé par compte, requêtes partagées et cache mémoire borné. |
-| `RecallMac/LyricsView.swift` | Un même panneau latéral en Studio et Compact ; texte simple ou suivi par ligne, défilement manuel et retour d’enregistrement du calage. |
-| `RecallKit/RecallWindowLayout.swift` | Largeurs minimales du contenu, appliquées par SwiftUI ; aucune règle de redimensionnement AppKit concurrente. |
-| `RecallMac/RecallApp.swift` | Cycle de vie, fenêtres et Sparkle. |
+| `SillageKit/HTTPClient.swift` | API privée authentifiée, pages de recherche et résumé de la bibliothèque. |
+| `SillageKit/DJ.swift` | Tour de DJ : `DJRequest` et `ServerDJ`, qui délègue le tour au serveur. |
+| `SillageKit/ServerPlaylistImporter.swift` | Liens YouTube validés, import par le serveur et attente d’une synchronisation fraîche. |
+| `SillageKit/ServerLibraryOverview.swift` | Nombre de vidéos et playlists du serveur. |
+| `SillageKit/ListeningSession.swift` | Session d’écoute : événements (clics, chat, signaux du lecteur, réponses du DJ) → effets (lire, préparer, demander, annoncer). File, direction musicale, suite automatique, numéro de demande. Aucune lecture, voix ni réseau : testée par scénarios. |
+| `SillageKit/PlaybackEngine.swift` | Module de lecture : démarrage immédiat sur YouTube, bascule fondue vers le clip téléchargé au même instant, replis, préparation des titres suivants, volume et voix. Deux lecteurs interchangeables derrière une même interface. |
+| `SillageKit/PlaybackQueue.swift` | File de lecture : remplacement, ajout, fin de morceau, continuation. |
+| `SillageKit/CredentialFile.swift` / `GoogleCallback.swift` | Session privée hors Trousseau ; retour de connexion Google à usage unique. |
+| `SillageKit/Models.swift` | Contrats et décodage des vidéos renvoyées par le serveur. |
+| `SillageAudio/Microphone.swift` | Autorisation, capture, dictée et arrêt. |
+| `SillageMac/Session.swift` / `SessionStore.swift` / `GoogleSignIn.swift` | Compte, connexion serveur et session. |
+| `SillageMac/LibraryModel.swift` | Pages de la bibliothèque serveur, recherche et import par lien. |
+| `SillageMac/DJModel.swift` / `VoiceOutput.swift` | Exécute la session d’écoute : chaque geste devient un événement, chaque effet une action (lecteur, demande serveur, voix, bannière). Micro ; voix du serveur ou voix macOS de secours. |
+| `SillageMac/Player.swift` | Les deux lecteurs (YouTube dans WebKit, clip dans AVPlayer), le cache Studio comme source de clips, et la surface vidéo où le clip apparaît en fondu par-dessus YouTube. |
+| `SillageKit/Lyrics.swift` / `LyricsModel.swift` | Validation des paroles, chronologie et calage ; état isolé par compte, requêtes partagées et cache mémoire borné. |
+| `SillageMac/LyricsView.swift` | Un même panneau latéral en Studio et Compact ; texte simple ou suivi par ligne, défilement manuel et retour d’enregistrement du calage. |
+| `SillageKit/SillageWindowLayout.swift` | Largeurs minimales du contenu, appliquées par SwiftUI ; aucune règle de redimensionnement AppKit concurrente. |
+| `SillageMac/SillageApp.swift` | Cycle de vie, fenêtres et Sparkle. |
 
 La bibliothèque réside uniquement sur le serveur (décision [0002](adr/0002-server-only-mac-library.md)). Les lignes de résultats et de file sont identifiées par position, car une playlist ou la file peut répéter une vidéo.
 
@@ -56,7 +56,7 @@ Les accès au Trousseau sont lancés hors du thread de l’interface, afin qu’
 
 Prérequis : macOS, outils de ligne de commande Apple avec Swift 5.10 ou ultérieur, Node.js pour les tests de l’API. Sparkle 2.10.0 est épinglé via Swift Package Manager.
 
-Les builds de développement partagent sinon la bibliothèque réelle : lancer les essais avec `RECALL_DATA_DIR=<dossier temporaire>`.
+Les builds de développement partagent sinon la bibliothèque réelle : lancer les essais avec `SILLAGE_DATA_DIR=<dossier temporaire>`.
 
 ```sh
 npm run verify:macos
@@ -72,7 +72,7 @@ La compilation produit `.output/macos/Sillage.app`, une archive ZIP et `release.
 
 ## Mises à jour
 
-Sparkle vérifie automatiquement `https://recall.stoa.solutions/macos/appcast.xml`. Sa clé publique Ed25519 est incluse dans le paquet ; la clé privée de signature est stockée dans le Trousseau, compte `recall-macos-updates`. Ne jamais inclure la clé privée dans Git ou le paquet.
+Sparkle vérifie automatiquement `https://sillage.stoa.solutions/macos/appcast.xml`. Sa clé publique Ed25519 est incluse dans le paquet ; la clé privée de signature est stockée dans le Trousseau, compte `sillage-macos-updates`. Ne jamais inclure la clé privée dans Git ou le paquet.
 
 Le serveur retourne un flux vide tant qu’aucune version signée n’a été publiée : aucun faux succès de téléchargement ou d’installation n’est affirmé. Le menu « Rechercher des mises à jour… » utilise Sparkle. La validation d’une mise à jour exige aussi un essai réel avec une version ultérieure.
 
@@ -82,7 +82,7 @@ Pour une future version :
 2. Compiler, autoriser `sign_update` à accéder à sa clé si macOS le demande, puis vérifier la signature.
 3. Pour une publication publique, définir `MAC_SIGNING_IDENTITY` et un `MAC_NOTARY_PROFILE` déjà configuré dans le Trousseau. Le script soumet à Apple, vérifie le statut Accepted, agrafe puis valide le ticket avant de créer l’archive finale. Aucun compte ou certificat Apple Developer n’est actuellement configuré sur ce Mac.
 4. Générer le flux depuis l’archive signée : `python3 scripts/prepare-macos-update.py`. L’option `--allow-local-beta` est réservée aux essais explicitement acceptés sans notarisation.
-5. Copier l’archive puis le flux dans `/srv/playlist-recall/releases/` sur Stoa. Le flux doit être publié en dernier, de façon atomique. Le conteneur API ne dispose que d’un montage en lecture seule.
+5. Copier l’archive puis le flux dans `/srv/sillage/releases/` sur Stoa. Le flux doit être publié en dernier, de façon atomique. Le conteneur API ne dispose que d’un montage en lecture seule.
 6. Vérifier depuis une ancienne version de l’app : détection, signature, téléchargement, remplacement, relancement et conservation du Trousseau et de la bibliothèque.
 
 La configuration Sparkle n’est pas la preuve d’une mise à jour effectivement installée. La première version locale conserve les éventuelles confirmations de sécurité de macOS ; ne pas désactiver Gatekeeper.
@@ -106,9 +106,9 @@ L’ancienne app a reproduit « La dictée s’est interrompue » ; le chat et l
 - Reconnaissance locale Apple non forcée : la disponibilité déclarée ne garantit pas que les ressources françaises locales sont opérationnelles. Le service Apple peut traiter l’audio en ligne.
 - États visibles : préparation, écoute avec texte partiel, finalisation ; bouton Annuler. Limite de 55 secondes et fin après trois secondes sans changement de transcription (heuristique de texte, pas un détecteur de silence audio).
 
-`RecallAudio` isole la dictée de l’interface. `npm run test:macos` inclut cinq régressions de permissions/annulation, en plus des quatorze contrôles métier. Ces tests n’enregistrent pas de son et ne remplacent pas une validation matérielle.
+`SillageAudio` isole la dictée de l’interface. `npm run test:macos` inclut cinq régressions de permissions/annulation, en plus des quatorze contrôles métier. Ces tests n’enregistrent pas de son et ne remplacent pas une validation matérielle.
 
-La version universelle a été compilée, vérifiée et installée. Lors du test de la version corrigée, macOS attendait encore la permission ; aucune transcription humaine réussie n’a donc été constatée à ce stade. Essai restant : autoriser Microphone et Reconnaissance vocale pour Recall, dire une demande, vérifier les mots finaux et un seul envoi au DJ, puis répéter après annulation et changement d’entrée audio.
+La version universelle a été compilée, vérifiée et installée. Lors du test de la version corrigée, macOS attendait encore la permission ; aucune transcription humaine réussie n’a donc été constatée à ce stade. Essai restant : autoriser Microphone et Reconnaissance vocale pour Sillage, dire une demande, vérifier les mots finaux et un seul envoi au DJ, puis répéter après annulation et changement d’entrée audio.
 
 Références Apple :
 - https://developer.apple.com/documentation/speech/sfspeechrecognitiontask
@@ -121,7 +121,7 @@ Le lecteur active désormais `WKPreferences.isElementFullscreenEnabled`. Il est 
 
 L’entrée en plein écran de la fenêtre a été observée dans l’app. Le cycle vidéo plein écran puis retour reste à vérifier après installation de la version finale.
 
-La signature ad hoc identifie une compilation par son hash : un changement de code peut donc redemander l’accès au Trousseau et au micro. Pour les essais sur ce Mac, une identité locale persistante est conservée dans le Trousseau ; seul son identifiant public est enregistré dans `~/.config/playlist-recall/local-signing.json`. Le script de compilation réutilise cette identité lorsque `MAC_SIGNING_IDENTITY` n’est pas fourni. Aucune clé privée n’est incluse dans le dépôt ou le ZIP et aucune confiance racine système n’est ajoutée. La signature locale ne remplace pas Developer ID ni la notarisation pour une distribution publique.
+La signature ad hoc identifie une compilation par son hash : un changement de code peut donc redemander l’accès au Trousseau et au micro. Pour les essais sur ce Mac, une identité locale persistante est conservée dans le Trousseau ; seul son identifiant public est enregistré dans `~/.config/sillage/local-signing.json`. Le script de compilation réutilise cette identité lorsque `MAC_SIGNING_IDENTITY` n’est pas fourni. Aucune clé privée n’est incluse dans le dépôt ou le ZIP et aucune confiance racine système n’est ajoutée. La signature locale ne remplace pas Developer ID ni la notarisation pour une distribution publique.
 
 Une autorisation initiale peut rester nécessaire après le changement d’identité. Le choix « Toujours autoriser » dans la fenêtre du Trousseau permet de retenir l’accès à cette identité, sans donner l’accès aux autres apps. Le comportement entre deux versions effectivement signées reste à valider.
 
@@ -138,17 +138,17 @@ Dans Bibliothèque, choisir « Sur ce Mac ». Pour récupérer les données déj
 3. Choisir la playlist dans le filtre pour retrouver son ordre. Les vidéos privées/supprimées sont ignorées et leur nombre est indiqué. Les playlists privées nécessiteraient OAuth et ne sont pas prises en charge.
 4. En cas de quota, panne ou annulation, réutiliser le même lien pour reprendre. La playlist n’est enregistrée qu’une fois la récupération terminée. Réimporter un lien terminé actualise son contenu sans multiplier les fiches vidéo.
 
-Le stockage est `library.sqlite` dans Application Support/Playlist Recall, avec tables de sources, vidéos, playlists, positions et index FTS5. Les anciens JSON restent présents pour récupération. Les points de reprise se trouvent dans `imports/` et ne contiennent aucune clé. Au-delà de 24 h, l’import repart de la première page : les jetons de page YouTube décrivent la playlist à un instant donné. Le groupe « Autres vidéos » d’un export redevient des vidéos sans playlist à l’import. Les exports conservent les collections et leur ordre, dans le format Recall.
+Le stockage est `library.sqlite` dans Application Support/Sillage, avec tables de sources, vidéos, playlists, positions et index FTS5. Les anciens JSON restent présents pour récupération. Les points de reprise se trouvent dans `imports/` et ne contiennent aucune clé. Au-delà de 24 h, l’import repart de la première page : les jetons de page YouTube décrivent la playlist à un instant donné. Le groupe « Autres vidéos » d’un export redevient des vidéos sans playlist à l’import. Les exports conservent les collections et leur ordre, dans le format Sillage.
 
 L’écran et le DJ lisent les résultats locaux indexés, avec des pages de 100 résultats pour l’écran. Le compteur total est distinct de la page affichée. Aucun catalogue personnel n’est embarqué dans l’archive universelle. SQLite est celui de macOS : pas d’installation supplémentaire.
 
-Validation : les contrôles métier/audio existants et `RecallLibraryTests` couvrent migration répétée, originaux préservés, appartenance multiple, ordre et répétitions, pagination, recherche accentuée/exclusions, rollback sur playlist invalide, isolation local/serveur, format export serveur, URL YouTube, absence de clé en query, quota/reprise et annulation/reprise. Un import synthétique de 10 000 vidéos a pris environ 0,3 s sur ce Mac ; ce n’est pas un benchmark réseau ni une garantie de volume. L’import réseau utilise un transport injecté dans ces tests ; un essai réel requiert une clé YouTube valide depuis le Mac.
+Validation : les contrôles métier/audio existants et `SillageLibraryTests` couvrent migration répétée, originaux préservés, appartenance multiple, ordre et répétitions, pagination, recherche accentuée/exclusions, rollback sur playlist invalide, isolation local/serveur, format export serveur, URL YouTube, absence de clé en query, quota/reprise et annulation/reprise. Un import synthétique de 10 000 vidéos a pris environ 0,3 s sur ce Mac ; ce n’est pas un benchmark réseau ni une garantie de volume. L’import réseau utilise un transport injecté dans ces tests ; un essai réel requiert une clé YouTube valide depuis le Mac.
 
 Sources : https://developers.google.com/youtube/data/reference/rest/v3/playlistItems/list ; https://developers.google.com/youtube/registering_an_application ; https://www.sqlite.org/fts5.html
 
 ### Connexion privée consolidée (1.1.1)
 
-Les trois anciennes entrées Trousseau (Gemini, serveur, YouTube) sont regroupées dans une seule entrée `credentials-v2`, appartenant à l’identité signée de Recall. Les accès et migrations sont sérialisés et le contenu reste en mémoire pendant la session. Les anciennes entrées sont conservées pour retour arrière, mais ne sont plus relues à chaque lancement après la migration. Une suppression explicite d’une clé retire également sa copie historique.
+Les trois anciennes entrées Trousseau (Gemini, serveur, YouTube) sont regroupées dans une seule entrée `credentials-v2`, appartenant à l’identité signée de Sillage. Les accès et migrations sont sérialisés et le contenu reste en mémoire pendant la session. Les anciennes entrées sont conservées pour retour arrière, mais ne sont plus relues à chaque lancement après la migration. Une suppression explicite d’une clé retire également sa copie historique.
 
 Sur ce Mac, la connexion connue a été installée dans cette entrée par un tube mémoire privé, sans fichier de clé ni secret dans l’archive. Un relancement normal de 1.1.1 a retrouvé la clé Gemini et l’adresse du serveur dans les réglages sans nouvelle étape de réimportation ni demande de mot de passe rencontrée pendant l’essai. Cela ne déverrouille pas le Trousseau global et ne dispense pas macOS de demander le mot de passe si la session/le Trousseau sont verrouillés.
 
@@ -194,28 +194,28 @@ Validation : tests SQLite de pages disjointes, dernière page, page vide, filtre
 
 ## Bibliothèque exclusivement sur serveur (1.3.0)
 
-L’app Mac n’utilise plus LibraryStore/SQLite. Elle ne lit et n’écrit aucune bibliothèque locale : les compteurs et listes viennent de status/playlists, les pages et recherches de search, et l’import attend la confirmation serveur sans télécharger l’export. La page consultée et la file sont conservées seulement en mémoire. HTTP utilise une session éphémère et le lecteur un stockage WebKit non persistant. Les clés restent au Trousseau et les préférences d’interface restent dans UserDefaults. Les anciens outils de migration locaux sont conservés dans RecallKit pour les tests et diagnostics historiques ; ils ne sont plus appelés par l’application.
+L’app Mac n’utilise plus LibraryStore/SQLite. Elle ne lit et n’écrit aucune bibliothèque locale : les compteurs et listes viennent de status/playlists, les pages et recherches de search, et l’import attend la confirmation serveur sans télécharger l’export. La page consultée et la file sont conservées seulement en mémoire. HTTP utilise une session éphémère et le lecteur un stockage WebKit non persistant. Les clés restent au Trousseau et les préférences d’interface restent dans UserDefaults. Les anciens outils de migration locaux sont conservés dans SillageKit pour les tests et diagnostics historiques ; ils ne sont plus appelés par l’application.
 
 L’interface retire le choix de source, la copie locale, l’import/export de fichiers musicaux et le DJ Apple. Gemini et sa voix sont conservés. Le DJ utilise le MCP et un complément de recherche paginée sur le serveur pour exclure les titres déjà en file. Un changement de connexion efface résultats, conversation et file en mémoire, et annule les requêtes précédentes. Cela prépare le client aux futurs comptes, sans prétendre que l’isolation multi-utilisateur du serveur existe déjà : les jetons du serveur actuel partagent toujours la bibliothèque.
 
 Test réel : ajout depuis l’app de l’album Swimming, lien officiel YouTube obtenu via macmiller.lnk.to/swimming (OLAK5uy_m4OxKJ2yP_WXvaCsS29oby4It_AG7hm34). Le serveur confirme 13 entrées, et l’app montre les deux playlists. La playlist d’origine conserve exactement ses 2839 positions dans le même ordre. Total : 2823 vidéos distinctes (10 nouvelles, 3 déjà présentes). Le client natif sans SQLite a ensuite vérifié les deux playlists, deux pages disjointes, 80 candidats DJ et l’exclusion des titres précédents.
 
-Sur le Mac de développement, les 2813 vidéos des anciennes copies locales et les anciens JSON ont été comparés au serveur : aucune vidéo exclusivement locale. Le dossier actif Application Support/Playlist Recall a été déplacé dans la Corbeille, de façon récupérable, avant l’ouverture de 1.3.0. La version ne doit pas le recréer. L’import et l’utilisation nécessitent une connexion Internet. Signature locale seulement ; notarisation et publication Sparkle restent distinctes.
+Sur le Mac de développement, les 2813 vidéos des anciennes copies locales et les anciens JSON ont été comparés au serveur : aucune vidéo exclusivement locale. Le dossier actif Application Support/Sillage a été déplacé dans la Corbeille, de façon récupérable, avant l’ouverture de 1.3.0. La version ne doit pas le recréer. L’import et l’utilisation nécessitent une connexion Internet. Signature locale seulement ; notarisation et publication Sparkle restent distinctes.
 
 
-Vérification après installation de 1.3.0 : l’interface affiche 2823 vidéos depuis le serveur et n’affiche plus le choix « Sur ce Mac ». Le dossier de bibliothèque locale n’est pas recréé après le chargement. Les réglages existants Gemini/voix sont conservés. La commande `RecallDiagnostics --server-sync <connexion privée> <lien>` permet de retester un import en production sans produire d’export ni de SQLite local.
+Vérification après installation de 1.3.0 : l’interface affiche 2823 vidéos depuis le serveur et n’affiche plus le choix « Sur ce Mac ». Le dossier de bibliothèque locale n’est pas recréé après le chargement. Les réglages existants Gemini/voix sont conservés. La commande `SillageDiagnostics --server-sync <connexion privée> <lien>` permet de retester un import en production sans produire d’export ni de SQLite local.
 
 
 ## Connexion sans Trousseau (1.4.1)
 
-Recall ne lit, ne migre et ne supprime plus aucun élément du Trousseau. Les anciennes entrées restent intactes. Seuls les jetons de session Recall révocables sont conservés dans `~/Library/Application Support/Playlist Recall/Session/session.json` (dossier 0700, fichier 0600, écriture atomique et verrou interprocessus, exclusion de sauvegarde). Ce fichier n’est pas chiffré et reste lisible par les applications de la même session macOS ; ce choix explicite privilégie l’absence de demandes de mot de passe. Aucune clé Gemini ou YouTube n’y est enregistrée. Bibliothèque, sélection et voix Gemini passent exclusivement par le serveur ; chaque compte Google utilise sa propre clé chiffrée côté serveur.
+Sillage ne lit, ne migre et ne supprime plus aucun élément du Trousseau. Les anciennes entrées restent intactes. Seuls les jetons de session Sillage révocables sont conservés dans `~/Library/Application Support/Sillage/Session/session.json` (dossier 0700, fichier 0600, écriture atomique et verrou interprocessus, exclusion de sauvegarde). Ce fichier n’est pas chiffré et reste lisible par les applications de la même session macOS ; ce choix explicite privilégie l’absence de demandes de mot de passe. Aucune clé Gemini ou YouTube n’y est enregistrée. Bibliothèque, sélection et voix Gemini passent exclusivement par le serveur ; chaque compte Google utilise sa propre clé chiffrée côté serveur.
 
-Aucune récupération automatique depuis le Trousseau : l’ancienne connexion peut être réimportée depuis son fichier privé existant, ou remplacée par la connexion Google. Une déconnexion retire le jeton local et révoque la session serveur. Google peut demander sa propre authentification lors d’une nouvelle connexion ; Recall ne peut pas supprimer les contrôles de Google. `RECALL_DATA_DIR` isole aussi le fichier de session pendant les tests. Le paquet distribué ne contient aucune session.
+Aucune récupération automatique depuis le Trousseau : l’ancienne connexion peut être réimportée depuis son fichier privé existant, ou remplacée par la connexion Google. Une déconnexion retire le jeton local et révoque la session serveur. Google peut demander sa propre authentification lors d’une nouvelle connexion ; Sillage ne peut pas supprimer les contrôles de Google. `SILLAGE_DATA_DIR` isole aussi le fichier de session pendant les tests. Le paquet distribué ne contient aucune session.
 
 
 ### Retour Google (1.4.2)
 
-Le navigateur par défaut s’ouvre directement. Le lien `playlist-recall://auth` ne transporte qu’un code valable 90 secondes ; l’app ne l’échange qu’avec son vérificateur PKCE privé en mémoire. État aléatoire, validation stricte de l’URL, refus des doublons, consommation unique et expiration après 10 minutes protègent le retour. Aucun mot de passe Google n’est reçu par Recall. Cette voie remplace ASWebAuthenticationSession dont aucune fenêtre n’apparaissait sur le Mac de test.
+Le navigateur par défaut s’ouvre directement. Le lien `sillage://auth` ne transporte qu’un code valable 90 secondes ; l’app ne l’échange qu’avec son vérificateur PKCE privé en mémoire. État aléatoire, validation stricte de l’URL, refus des doublons, consommation unique et expiration après 10 minutes protègent le retour. Aucun mot de passe Google n’est reçu par Sillage. Cette voie remplace ASWebAuthenticationSession dont aucune fenêtre n’apparaissait sur le Mac de test.
 
 ## Studio personnel (optionnel)
 
@@ -232,7 +232,7 @@ Le téléchargement utilise l’installation Homebrew de yt-dlp et ffmpeg ; aucu
 Google, fichier de connexion ou paramètre du shell utilisateur n’est transmis.
 Clips limités à 20 minutes, 720p H.264/AAC et 200 Mio après assemblage ; nettoyage
 du cache vers 800 Mio en conservant les deux clips en usage. Le cache se trouve dans
-`~/Library/Caches/Playlist Recall/Studio`, ou sous `RECALL_DATA_DIR` pour les essais.
+`~/Library/Caches/Sillage/Studio`, ou sous `SILLAGE_DATA_DIR` pour les essais.
 Cette option crée seulement un cache vidéo : les playlists et clés restent côté serveur.
 La distribution publique et les mises à jour automatiques ne sont pas publiées.
 
@@ -260,7 +260,7 @@ L’horloge du lecteur reçoit chaque échantillon natif ; les contrôles ordina
 
 Le lecteur YouTube charge sa page au premier titre. Son gestionnaire de messages est un relais faible ; les observateurs AVPlayer sont retirés à la destruction. Les tests couvrent précision de seek, limitation des notifications, conservation des signaux et libération répétée du lecteur natif.
 
-Une copie d’aperçu utilise un identifiant distinct et RECALL_DATA_DIR, **sans CFBundleURLTypes** : elle ne doit jamais enregistrer le schéma playlist-recall ni lancer une vraie connexion. GoogleSignIn refuse une connexion depuis un autre identifiant. La vraie app rattache le schéma de retour à son propre bundle au début d’une connexion. Réglages → Compte → Reconnecter Google conserve l’ancienne session tant que la nouvelle n’est pas validée. Le navigateur affiche une page de retour avec bouton explicite ; le code reste à usage unique et protégé par PKCE.
+Une copie d’aperçu utilise un identifiant distinct et SILLAGE_DATA_DIR, **sans CFBundleURLTypes** : elle ne doit jamais enregistrer le schéma sillage ni lancer une vraie connexion. GoogleSignIn refuse une connexion depuis un autre identifiant. La vraie app rattache le schéma de retour à son propre bundle au début d’une connexion. Réglages → Compte → Reconnecter Google conserve l’ancienne session tant que la nouvelle n’est pas validée. Le navigateur affiche une page de retour avec bouton explicite ; le code reste à usage unique et protégé par PKCE.
 
 ## Paroles et contraintes de fenêtre (1.7.3)
 
@@ -274,7 +274,7 @@ Vérifications sans interrompre une app en cours d’utilisation :
 
 ```sh
 npm run verify:macos
-python3 apps/macos/Checks/render-lyrics.py /tmp/recall-lyrics-ui
+python3 apps/macos/Checks/render-lyrics.py /tmp/sillage-lyrics-ui
 ```
 
 Le second contrôle lie les composants SwiftUI de la build de développement, sans le point d’entrée de l’app. Il génère six rendus (synchronisé, texte simple, manquant ; panneaux de 320 et 380 points) dans des fenêtres hors écran, sans activation, connexion ni capture micro. Les résultats sont des exemples synthétiques ; ils ne prouvent pas la couverture du catalogue LRCLIB ni le comportement des commandes de fenêtre pendant une vraie lecture. Ces derniers restent à vérifier sur la version installée lors d’un prochain essai interactif.
@@ -283,7 +283,7 @@ Le second contrôle lie les composants SwiftUI de la build de développement, sa
 
 L’application affichée devient **Sillage**, avec l’icône sculpturale orange approuvée et la signature de présentation **by Stoa**. L’ICNS haute résolution provient de `apps/macos/Resources/Sillage.icns` ; le script officiel le copie dans le bundle.
 
-Le nom technique `RecallMac`, le bundle ID `solutions.stoa.playlist-recall`, le schéma `playlist-recall`, les chemins privés et le flux Sparkle restent inchangés. Les archives conservent leur préfixe `Playlist-Recall-…` pour rester compatibles avec les contrôles existants. Les mentions historiques ci-dessus gardent leurs noms d’époque.
+Le nom technique `SillageMac`, le bundle ID `solutions.stoa.sillage`, le schéma `sillage`, les chemins privés et le flux Sparkle restent inchangés. Les archives conservent leur préfixe `Sillage-…` pour rester compatibles avec les contrôles existants. Les mentions historiques ci-dessus gardent leurs noms d’époque.
 
 L’installation locale remplace l’ancien bundle par `~/Applications/Sillage.app`, après fermeture propre et sauvegarde du binaire précédent hors du dossier Applications. Les données et la session ne sont pas réimportées ni migrées. Une archive de test créée avec `--skip-update-signature` reste locale ; ne pas la publier dans le flux Sparkle.
 
@@ -301,7 +301,7 @@ Références Apple : [Window](https://developer.apple.com/documentation/swiftui/
 
 L’accueil et **Réglages → DJ et voix** partagent le choix Gemini/Claude et le modèle. Le serveur renvoie le catalogue et les réglages enregistrés de chaque fournisseur. Le changement devient actif après **Vérifier et enregistrer**. Une clé saisie est effacée du champ si le fournisseur change ; elle n’est jamais préremplie depuis le serveur.
 
-La voix est indépendante du choix de raisonnement : Claude utilise directement la voix macOS. Gemini propose la voix expressive existante et son repli macOS. Les deux chemins gardent les mêmes commandes de lecture et outils musicaux. Pour tester sans la session ni la bibliothèque de Samuel, lancer une build QA avec `RECALL_DATA_DIR` dans un dossier temporaire.
+La voix est indépendante du choix de raisonnement : Claude utilise directement la voix macOS. Gemini propose la voix expressive existante et son repli macOS. Les deux chemins gardent les mêmes commandes de lecture et outils musicaux. Pour tester sans la session ni la bibliothèque de Samuel, lancer une build QA avec `SILLAGE_DATA_DIR` dans un dossier temporaire.
 
 ## Goût : J’aime / Je n’aime pas, Mon goût
 
@@ -331,4 +331,4 @@ Fermer la fenêtre met toujours la musique en pause : le lecteur vit dans la fen
 
 Compact : la hauteur minimale suit le contenu mesuré, poche et bandeaux compris, plus 260 points quand le panneau est ouvert. Le redimensionnement ne coupe plus le lecteur ni le champ du DJ.
 
-Recette visuelle sans micro ni serveur : `SILLAGE_QA_PILL=demo|listening|thinking|reply|problem` (avec `SILLAGE_QA_PILL_SCREEN=<index>` pour choisir l’écran) et `SILLAGE_QA_MENU=1` (contenu du menu dans une fenêtre), toujours avec `RECALL_DATA_DIR` temporaire.
+Recette visuelle sans micro ni serveur : `SILLAGE_QA_PILL=demo|listening|thinking|reply|problem` (avec `SILLAGE_QA_PILL_SCREEN=<index>` pour choisir l’écran) et `SILLAGE_QA_MENU=1` (contenu du menu dans une fenêtre), toujours avec `SILLAGE_DATA_DIR` temporaire.

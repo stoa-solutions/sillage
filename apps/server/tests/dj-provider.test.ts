@@ -107,7 +107,7 @@ it("passes cancellation to the transport without starting a second request", asy
   expect(fetcher).toHaveBeenCalledOnce();
 });
 
-it("identifies provider throttling or quota separately from the Recall budget", async () => {
+it("identifies provider throttling or quota separately from the Sillage budget", async () => {
   vi.stubGlobal(
     "fetch",
     vi.fn(

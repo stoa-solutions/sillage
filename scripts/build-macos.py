@@ -28,7 +28,7 @@ if not re.fullmatch(r'\d+\.\d+\.\d+', args.version) or not args.build.isdigit():
 output = root / '.output/macos'
 output.mkdir(parents=True, exist_ok=True)
 (output / 'release.json').unlink(missing_ok=True)
-local_config = Path.home() / '.config/playlist-recall/local-signing.json'
+local_config = Path.home() / '.config/sillage/local-signing.json'
 local_identity = json.loads(local_config.read_text()).get('identity') if local_config.exists() else None
 identity = os.environ.get('MAC_SIGNING_IDENTITY') or local_identity or '-'
 profile = os.environ.get('MAC_NOTARY_PROFILE') if args.public_release else None
@@ -59,8 +59,8 @@ if bundle.exists():
 contents = bundle / 'Contents'
 for name in ['MacOS', 'Frameworks', 'Resources']:
     (contents / name).mkdir(parents=True)
-binaries = [project / f'.build/{arch}-apple-macosx/release/RecallMac' for arch in architectures]
-executable = contents / 'MacOS/RecallMac'
+binaries = [project / f'.build/{arch}-apple-macosx/release/SillageMac' for arch in architectures]
+executable = contents / 'MacOS/SillageMac'
 if len(binaries) == 1:
     shutil.copy2(binaries[0], executable)
 else:
@@ -68,16 +68,16 @@ else:
 executable.chmod(0o755)
 framework = next((project / '.build/artifacts/sparkle').rglob('macos-arm64_x86_64/Sparkle.framework'))
 shutil.copytree(framework, contents / 'Frameworks/Sparkle.framework', symlinks=True)
-resources = project / f'.build/{architectures[0]}-apple-macosx/release/PlaylistRecallMac_RecallMac.bundle'
+resources = project / f'.build/{architectures[0]}-apple-macosx/release/SillageMac_SillageMac.bundle'
 shutil.copytree(resources, contents / 'Resources' / resources.name)
 for name in ['Sillage.icns', 'Installation.txt']:
     shutil.copy2(project / 'Resources' / name, contents / 'Resources' / name)
 shutil.copy2(project / '.build/artifacts/sparkle/Sparkle/LICENSE', contents / 'Resources/Sparkle-LICENSE.txt')
 info = {
-    'CFBundleName': 'Sillage', 'CFBundleDisplayName': 'Sillage', 'CFBundleExecutable': 'RecallMac',
-    'CFBundleIdentifier': 'solutions.stoa.playlist-recall', 'CFBundlePackageType': 'APPL',
+    'CFBundleName': 'Sillage', 'CFBundleDisplayName': 'Sillage', 'CFBundleExecutable': 'SillageMac',
+    'CFBundleIdentifier': 'solutions.stoa.sillage', 'CFBundlePackageType': 'APPL',
     'LSMultipleInstancesProhibited': True,
-    'CFBundleURLTypes': [{'CFBundleURLName': 'Sillage Sign In', 'CFBundleURLSchemes': ['playlist-recall']}],
+    'CFBundleURLTypes': [{'CFBundleURLName': 'Sillage Sign In', 'CFBundleURLSchemes': ['sillage']}],
     'CFBundleShortVersionString': args.version, 'CFBundleVersion': args.build,
     'LSMinimumSystemVersion': '14.0', 'NSHighResolutionCapable': True, 'CFBundleIconFile': 'Sillage.icns',
     'NSMicrophoneUsageDescription': 'Sillage écoute ton envie musicale seulement quand tu actives le micro.',
@@ -129,8 +129,8 @@ if updates:
     with tempfile.TemporaryDirectory(prefix='sillage-sign-') as temp:
         signing_copy = Path(temp) / archive.name
         shutil.copy2(archive, signing_copy)
-        signature = subprocess.check_output([str(tools / 'sign_update'), '--account', 'recall-macos-updates', '-p', str(signing_copy)], text=True, timeout=120).strip()
-        subprocess.run([str(tools / 'sign_update'), '--account', 'recall-macos-updates', '--verify', str(signing_copy), signature], check=True, timeout=120)
+        signature = subprocess.check_output([str(tools / 'sign_update'), '--account', 'sillage-macos-updates', '-p', str(signing_copy)], text=True, timeout=120).strip()
+        subprocess.run([str(tools / 'sign_update'), '--account', 'sillage-macos-updates', '--verify', str(signing_copy), signature], check=True, timeout=120)
 manifest = {
     'version': args.version, 'build': args.build, 'architecture': label,
     'minimumSystemVersion': '14.0', 'file': archive.name, 'size': archive.stat().st_size,
@@ -151,7 +151,7 @@ if args.dmg or args.public_release:
             (stage / 'Aperçu non notarisé.txt').write_text('Version de préparation. Cette app ne dispose pas encore de validation Apple.\nElle ne doit pas être présentée comme une version publique sans avertissement.\n')
         subprocess.run(['hdiutil', 'create', '-volname', 'Sillage', '-srcfolder', str(stage), '-ov', '-format', 'UDZO', str(disk)], check=True)
     if args.public_release:
-        subprocess.run(['codesign', '--sign', identity, '--timestamp', '--identifier', 'solutions.stoa.playlist-recall.installer', str(disk)], check=True)
+        subprocess.run(['codesign', '--sign', identity, '--timestamp', '--identifier', 'solutions.stoa.sillage.installer', str(disk)], check=True)
         notarization['dmgSubmission'] = notarize(disk)
         subprocess.run(['xcrun', 'stapler', 'staple', str(disk)], check=True)
         subprocess.run(['xcrun', 'stapler', 'validate', str(disk)], check=True)

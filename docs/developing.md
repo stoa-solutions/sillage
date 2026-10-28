@@ -1,4 +1,4 @@
-# Développer Recall
+# Développer Sillage
 
 ## Démarrer sans toucher aux données personnelles
 
@@ -10,9 +10,9 @@ npm run verify:node
 npm run verify:macos
 ```
 
-Serveur local : un PostgreSQL jetable avec pgvector, `DATABASE_URL` vers lui, puis `npm run dev:server` (API sur le port 3001, migrations appliquées au démarrage). Worker et inférence : `npm run dev:worker -w @playlist-recall/server` et `npm run dev:inference -w @playlist-recall/server`. Le pas-à-pas et l’ordre de lecture du code sont dans [server-tour.md](server-tour.md).
+Serveur local : un PostgreSQL jetable avec pgvector, `DATABASE_URL` vers lui, puis `npm run dev:server` (API sur le port 3001, migrations appliquées au démarrage). Worker et inférence : `npm run dev:worker -w @sillage/server` et `npm run dev:inference -w @sillage/server`. Le pas-à-pas et l’ordre de lecture du code sont dans [server-tour.md](server-tour.md).
 
-`verify:macos` compile et lance les contrôles sans capture micro réelle. Les tests ne prouvent pas le fonctionnement audio ou Google dans l’app. Pour une app de développement, définir `RECALL_DATA_DIR` vers un dossier temporaire avant `swift run --package-path apps/macos RecallMac` ; ne pas ouvrir un deuxième client sur les données personnelles par défaut.
+`verify:macos` compile et lance les contrôles sans capture micro réelle. Les tests ne prouvent pas le fonctionnement audio ou Google dans l’app. Pour une app de développement, définir `SILLAGE_DATA_DIR` vers un dossier temporaire avant `swift run --package-path apps/macos SillageMac` ; ne pas ouvrir un deuxième client sur les données personnelles par défaut.
 
 Pour les tests SQL, créer un PostgreSQL jetable avec pgvector, définir `TEST_DATABASE_URL` vers une base terminant par `_test`, puis `npm run test:integration` : chaque suite `*.integration.test.ts` migre et utilise son propre schéma PostgreSQL. Les tests sans base (`*.test.ts`) passent par `npm test`. Ne jamais utiliser la base de production. Voir `.env.example` pour les variables serveur disponibles ; les modèles d’inférence ne sont pas requis par les tests simulés.
 
@@ -28,7 +28,7 @@ Pour les tests SQL, créer un PostgreSQL jetable avec pgvector, définir `TEST_D
 | Vidéo et paroles | `Player`, `LyricsPanel` | `PlaybackClock`, `Lyrics`, `LyricsModel`, `modules/player`, `modules/lyrics` |
 | Apparence | vues de feature | `DesignSystem`, `Surfaces`, composants communs ; garder les paroles latérales |
 
-Les noms Swift correspondent aux fichiers de `apps/macos/Sources/RecallKit` (règles testables) ou `RecallMac` (intégration/UI). Les modules TypeScript sont dans `apps/server/src/modules/<module>/` (contrôleur, service, dépôt, schémas, `index.ts`).
+Les noms Swift correspondent aux fichiers de `apps/macos/Sources/SillageKit` (règles testables) ou `SillageMac` (intégration/UI). Les modules TypeScript sont dans `apps/server/src/modules/<module>/` (contrôleur, service, dépôt, schémas, `index.ts`).
 
 ## Une fonctionnalité de bout en bout
 
@@ -41,11 +41,11 @@ Les noms Swift correspondent aux fichiers de `apps/macos/Sources/RecallKit` (rè
 
 ## Base de données (Drizzle)
 
-- Modifier une table dans `apps/server/src/db/schema/<domaine>.ts`, puis générer la migration : `npm run db:generate -w @playlist-recall/server -- --name <sujet>`. Pas besoin de base : drizzle-kit compare le schéma au dernier instantané de `apps/server/drizzle/meta/`. Relire le SQL produit et le committer avec l’instantané.
-- Ce que Drizzle ne décrit pas (déclencheur `recall_music_revision`, configuration `recall_simple`) s’écrit à la main dans une migration créée par `npm run db:generate -w @playlist-recall/server -- --custom --name <sujet>`.
-- Le serveur applique les migrations au démarrage ; `npm run migrate -w @playlist-recall/server` le fait à la main. Les suites d’intégration migrent leur propre schéma PostgreSQL de la même façon.
+- Modifier une table dans `apps/server/src/db/schema/<domaine>.ts`, puis générer la migration : `npm run db:generate -w @sillage/server -- --name <sujet>`. Pas besoin de base : drizzle-kit compare le schéma au dernier instantané de `apps/server/drizzle/meta/`. Relire le SQL produit et le committer avec l’instantané.
+- Ce que Drizzle ne décrit pas (déclencheur `sillage_music_revision`, configuration `sillage_simple`) s’écrit à la main dans une migration créée par `npm run db:generate -w @sillage/server -- --custom --name <sujet>`.
+- Le serveur applique les migrations au démarrage ; `npm run migrate -w @sillage/server` le fait à la main. Les suites d’intégration migrent leur propre schéma PostgreSQL de la même façon.
 - Un module passe par `db.orm` dans son `<module>.repository.ts`, avec le constructeur SQL de Drizzle ; jamais de SQL concaténé. Le gabarit `sql\`…\`` sert uniquement aux expressions PostgreSQL que le constructeur n’exprime pas (`now()`, intervalles, `FILTER`, `CASE`, `->>`), avec des colonnes typées et des valeurs passées en paramètres.
-- Les valeurs fixes sont des enums PostgreSQL (`pgEnum` dans le schéma). Relire chaque migration générée : drizzle-kit qualifie les types enum par `"public"` (à retirer, car les suites de test ont chacune leur schéma), ne reconstruit ni les valeurs par défaut ni les index partiels lors d’un changement de type, et les suppressions gardent `IF EXISTS`. Vérifier ensuite l’équivalence : une base créée par toutes les migrations et une base créée par `drizzle-kit generate` depuis le schéma seul doivent avoir le même `pg_dump --schema-only`, au déclencheur `recall_music_revision` près.
+- Les valeurs fixes sont des enums PostgreSQL (`pgEnum` dans le schéma). Relire chaque migration générée : drizzle-kit qualifie les types enum par `"public"` (à retirer, car les suites de test ont chacune leur schéma), ne reconstruit ni les valeurs par défaut ni les index partiels lors d’un changement de type, et les suppressions gardent `IF EXISTS`. Vérifier ensuite l’équivalence : une base créée par toutes les migrations et une base créée par `drizzle-kit generate` depuis le schéma seul doivent avoir le même `pg_dump --schema-only`, au déclencheur `sillage_music_revision` près.
 - `npm run build` produit le bundle de production dans `apps/server/dist/` (esbuild, `apps/server/build.mjs`) ; `npm run verify:node` le construit. Le développement reste en TypeScript direct (`tsx`).
 - Le serveur compile en TypeScript très strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, accès `process.env["X"]`, etc.) : traiter le cas absent plutôt que forcer le type.
 

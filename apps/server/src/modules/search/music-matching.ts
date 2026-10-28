@@ -1,5 +1,5 @@
-import { DJ_SELECTION_LIMIT } from "@playlist-recall/core/dj";
-import { parseDJIntent } from "@playlist-recall/core/intent";
+import { DJ_SELECTION_LIMIT } from "@sillage/core/dj";
+import { parseDJIntent } from "@sillage/core/intent";
 
 /** Matching uses catalog metadata, never inferred audio characteristics. */
 export function normalizeMusic(value: string): string {

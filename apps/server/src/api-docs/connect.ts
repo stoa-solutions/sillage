@@ -52,7 +52,7 @@ async function main() {
     id: randomUUID(),
     token: "sillage_dev_" + randomBytes(32).toString("base64url"),
     email,
-    url: "https://recall.stoa.solutions",
+    url: "https://sillage.stoa.solutions",
     provisioned: false,
   };
   // Persist the draft first: an interrupted SSH response can be retried with the same ID.
@@ -60,7 +60,7 @@ async function main() {
   const host = process.env["SILLAGE_DEV_SSH_HOST"] ?? "root@109.199.114.247";
   const port = process.env["SILLAGE_DEV_SSH_PORT"] ?? "7544";
   const container =
-    process.env["SILLAGE_DEV_CONTAINER"] ?? "playlist-recall-app-wvpmwu-api-1";
+    process.env["SILLAGE_DEV_CONTAINER"] ?? "sillage-app-api-1";
   const command = [
     "docker",
     "exec",

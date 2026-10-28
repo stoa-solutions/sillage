@@ -1,4 +1,4 @@
-# Jev : décision pour Recall
+# Jev : décision pour Sillage
 
 Documentation officielle relue via Exa le 25 octobre 2026 (trois résultats, une page complète). Aucun appel d'inférence Jev, aucun ajout de dépendance ni clé configurée.
 
@@ -6,4 +6,4 @@ Documentation officielle relue via Exa le 25 octobre 2026 (trois résultats, une
 
 Si les erreurs persistent après enrichissement et amélioration des requêtes, comparer hors production un corpus annoté (Edge/HEDGES, couleur de pochette, titre incomplet, jouer maintenant/ajouter) : précision top-5, erreurs de lecture immédiate, latence p50/p95, coût et repli réseau. Les commandes pause/next restent locales. Le score de confiance n'est pas une garantie de vérité.
 
-Sources : [System One](https://docs.typesafe.ai/concepts/system-one), [API](https://docs.typesafe.ai/api), [exemple de classification et limites empiriques](https://docs.typesafe.ai/cookbooks/classification_using_confidence). Les chiffres publiés du fournisseur ne sont pas un benchmark Recall.
+Sources : [System One](https://docs.typesafe.ai/concepts/system-one), [API](https://docs.typesafe.ai/api), [exemple de classification et limites empiriques](https://docs.typesafe.ai/cookbooks/classification_using_confidence). Les chiffres publiés du fournisseur ne sont pas un benchmark Sillage.

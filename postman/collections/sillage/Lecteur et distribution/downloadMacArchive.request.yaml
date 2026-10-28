@@ -1,7 +1,7 @@
 $kind: http-request
 description: >-
-  Uniquement les archives ZIP nommées Playlist-Recall-version-architecture.zip présentes dans le répertoire de
-  publication. Le nom technique historique reste stable malgré la marque Sillage.
+  Uniquement les archives ZIP nommées Sillage-version-architecture.zip présentes dans le répertoire de publication. Le
+  nom technique historique reste stable malgré la marque Sillage.
 
 
   Effet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection

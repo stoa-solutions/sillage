@@ -1,4 +1,4 @@
-import { MODEL_KEY } from "@playlist-recall/core/model";
+import { MODEL_KEY } from "@sillage/core/model";
 
 /** Text passages: E5 multilingual, chunked with context. A new key re-indexes everything. */
 export const TEXT_KEY = `${MODEL_KEY}:chunks-v2`;

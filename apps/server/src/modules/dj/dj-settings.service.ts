@@ -4,7 +4,7 @@ import {
   AI_PROVIDERS,
   AI_PROVIDER_IDS,
   type AiProvider,
-} from "@playlist-recall/core/dj";
+} from "@sillage/core/dj";
 import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
 import {
   deleteCredentials,

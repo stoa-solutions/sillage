@@ -2,9 +2,9 @@
 
 ## Production
 
-API : `https://sillage.stoa.solutions`. L’ancienne origine `https://recall.stoa.solutions` reste compatible avec les apps installées. Voir [le renommage et les invariants](sillage-infrastructure.md). Projet Dokploy autonome, PostgreSQL 17/pgvector 0.8.7 dans une ressource séparée. Aucune publication du port PostgreSQL. Réseau `playlist-recall-data` géré par Dokploy ; inférence sur un réseau Compose interne. Seule l’API rejoint aussi le proxy Dokploy.
+API : `https://sillage.stoa.solutions`. L’ancienne origine `https://sillage.stoa.solutions` reste compatible avec les apps installées. Voir [le renommage et les invariants](sillage-infrastructure.md). Projet Dokploy autonome, PostgreSQL 17/pgvector 0.8.7 dans une ressource séparée. Aucune publication du port PostgreSQL. Réseau `sillage-data` géré par Dokploy ; inférence sur un réseau Compose interne. Seule l’API rejoint aussi le proxy Dokploy.
 
-Les modèles sont préparés avec `python3 scripts/prepare-server-models.py` puis copiés et vérifiés dans `/srv/playlist-recall/models`. Ils ne sont ni versionnés ni téléchargés à chaque redémarrage. Le script vérifie les empreintes des poids SigLIP et réutilise les ressources E5 épinglées. Les images téléchargées sont bornées à 2 Mio et restent uniquement en mémoire ; seules leurs empreintes et vecteurs persistent.
+Les modèles sont préparés avec `python3 scripts/prepare-server-models.py` puis copiés et vérifiés dans `/srv/sillage/models`. Ils ne sont ni versionnés ni téléchargés à chaque redémarrage. Le script vérifie les empreintes des poids SigLIP et réutilise les ressources E5 épinglées. Les images téléchargées sont bornées à 2 Mio et restent uniquement en mémoire ; seules leurs empreintes et vecteurs persistent.
 
 Plafonds : API 192 Mio/0,5 CPU, worker 192 Mio/0,5 CPU, inférence 1 408 Mio/1,5 CPU, PostgreSQL 384 Mio/0,5 CPU. SearXNG : 384 Mio/0,5 CPU. Total maximal déclaré : 2 560 Mio. L’inférence charge un seul encodeur à la fois dans un processus enfant et le libère après 60 secondes d’inactivité. Ce plafond remplace l’estimation initiale de la spécification après qualification locale. Vérifier aussi les mesures Linux avant activation.
 
@@ -34,8 +34,8 @@ Pour un retour arrière, arrêter le worker via Dokploy, redéployer le commit p
 ## Première installation
 
 1. Copier `.env.example` dans l’environnement privé de Dokploy et compléter au minimum `DATABASE_URL` et `PUBLIC_URL`, ajouter `SEARXNG_SECRET` (exigé par le Compose, absent de `.env.example` ; voir « Recherche SearXNG privée ») et, selon les fonctions voulues, `YOUTUBE_API_KEY`, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (les deux ou aucun) et `DJ_SETTINGS_ENCRYPTION_KEY`. Garder `SYNC_ENABLED=false` au départ.
-2. Créer une base PostgreSQL 17 vide sur une image qui fournit pgvector (`pgvector/pgvector:0.8.7-pg17`), joignable par le réseau `playlist-recall-data`. La première migration crée les extensions `vector` et `unaccent` : l’utilisateur de `DATABASE_URL` doit en avoir le droit. Ne pas publier son port.
-3. Préparer les modèles d’inférence dans `/srv/playlist-recall/models` (voir « Production »).
+2. Créer une base PostgreSQL 17 vide sur une image qui fournit pgvector (`pgvector/pgvector:0.8.7-pg17`), joignable par le réseau `sillage-data`. La première migration crée les extensions `vector` et `unaccent` : l’utilisateur de `DATABASE_URL` doit en avoir le droit. Ne pas publier son port.
+3. Préparer les modèles d’inférence dans `/srv/sillage/models` (voir « Production »).
 4. Démarrer le Compose (`api`, `worker`, `inference`, `searxng`). L’API crée tout le schéma au premier démarrage, par les migrations ; aucune commande SQL manuelle.
 5. Contrôler `/health` (`ok`, `release` égal à `RELEASE_SHA`) et `/v1/me` sans jeton, qui doit répondre 401. Vérifier ensuite que le conteneur worker tourne.
 
@@ -55,13 +55,13 @@ Le jeton serveur n’expire pas automatiquement ; il reste révocable. Une coupu
 
 Les playlists sont actualisées toutes les six heures lorsque `SYNC_ENABLED=true` et la clé est configurée.
 
-YouTube Data API v3 est activée dans le projet personnel `secure-path-512617-s5` (Sillage). La clé « Sillage - serveur Stoa » est limitée à cette API et à l’IPv4 sortante `109.199.114.247`, vérifiée depuis le conteneur API. La valeur reste dans l’environnement privé Dokploy et `/root/playlist-recall/application.env` ; `SYNC_ENABLED=true`. Ne pas copier la clé dans un client. Si l’adresse du VPS change, adapter sa restriction IP dans Google Cloud.
+YouTube Data API v3 est activée dans le projet personnel `secure-path-512617-s5` (Sillage). La clé « Sillage - serveur Stoa » est limitée à cette API et à l’IPv4 sortante `109.199.114.247`, vérifiée depuis le conteneur API. La valeur reste dans l’environnement privé Dokploy et `/root/sillage/application.env` ; `SYNC_ENABLED=true`. Ne pas copier la clé dans un client. Si l’adresse du VPS change, adapter sa restriction IP dans Google Cloud.
 
 ## Mode DJ — 2.1
 
 **Réglages** permet de gérer la clé Gemini personnelle. Le mode DJ ajoute un chat, une dictée au clic et des réponses vocales optionnelles. La clé IA reste dans Dokploy : `DJ_API_KEY`, `DJ_BASE_URL`, `DJ_MODEL`, `DJ_DAILY_REQUEST_LIMIT` (100 tours ou réponses vocales par jour par défaut). Le chat utilise le point d’entrée compatible Chat Completions de Gemini, avec le modèle `gemini-3.5-flash-lite` pour la réactivité et la clé Gemini CAEX, réutilisée sur demande du propriétaire (Argon et 3.8 Flash restent sélectionnables ; leur raisonnement est réglé sur faible). La voix utilise `gemini-3.8-flash-lite-tts`. Le serveur ne conserve pas les échanges en base.
 
-L’agent utilise un vrai client MCP relié au serveur `recall-music-library` : `library_search` (recherche hybride existante) et `library_browse` (playlists et titres par date d’ajout, filtrables par playlist nommée, artiste ou genre). Les outils sont en lecture seule. Le point d’entrée HTTP `/v1/mcp` est protégé par le même jeton que l’API. Aucun outil SQL libre, écriture ou accès réseau arbitraire n’est exposé. Les identifiants proposés par l’IA sont vérifiés contre les candidats effectivement renvoyés par MCP pendant le tour, puis relus dans la bibliothèque active avant lecture. Une réponse inventée est rejetée.
+L’agent utilise un vrai client MCP relié au serveur `sillage-music-library` : `library_search` (recherche hybride existante) et `library_browse` (playlists et titres par date d’ajout, filtrables par playlist nommée, artiste ou genre). Les outils sont en lecture seule. Le point d’entrée HTTP `/v1/mcp` est protégé par le même jeton que l’API. Aucun outil SQL libre, écriture ou accès réseau arbitraire n’est exposé. Les identifiants proposés par l’IA sont vérifiés contre les candidats effectivement renvoyés par MCP pendant le tour, puis relus dans la bibliothèque active avant lecture. Une réponse inventée est rejetée.
 
 La file et le chat restent dans la mémoire de l’interface. La lecture utilise le lecteur officiel YouTube, chargé dans `/dj/player` sur l’origine HTTPS pour transmettre un référent valide. Les messages du lecteur vérifient l’origine et la fenêtre parente. Les titres interdits en intégration sont sautés lorsqu’un suivant existe ; le dernier échec conserve le lien YouTube. Ce mode ne réalise ni extraction audio, ni analyse sonore du tempo, ni transitions de mixage. Quitter le mode DJ ferme son lecteur.
 
@@ -78,9 +78,9 @@ Le modèle d’accès reste celui d’un serveur privé : tous ses jetons peuven
 
 `DJ_ACCOUNT_DAILY_LIMITS` accepte un objet JSON associant un identifiant utilisateur à un plafond journalier de 1 à 1000 requêtes (chat et voix). Les autres comptes conservent `DJ_DAILY_REQUEST_LIMIT` (100 par défaut). Une configuration invalide conserve ce défaut. Modifier un plafond ne réinitialise pas la consommation et ne modifie aucun quota Google. Les demandes de titres résolues directement dans le catalogue ne consomment pas de génération de sélection ; leur annonce vocale reste comptée.
 
-Un compte peut aussi avoir `{ "limit": 1000, "unlimitedUntil": "2026-10-25T23:00:00Z" }` : aucun plafond Recall avant cette échéance UTC explicite, puis retour au plafond indiqué. La consommation reste comptée. Cette dérogation est réservée à la configuration administrateur ; elle ne change pas les limites du fournisseur.
+Un compte peut aussi avoir `{ "limit": 1000, "unlimitedUntil": "2026-10-25T23:00:00Z" }` : aucun plafond Sillage avant cette échéance UTC explicite, puis retour au plafond indiqué. La consommation reste comptée. Cette dérogation est réservée à la configuration administrateur ; elle ne change pas les limites du fournisseur.
 
-Pour supprimer définitivement le plafond Recall d’un seul compte, utiliser `{ "unlimited": true }`. Seul le booléen strict `true` active cette exception administrateur, sans date d’expiration. Le compteur de consommation reste conservé et les limites Google continuent de s’appliquer ; les autres comptes ne changent pas.
+Pour supprimer définitivement le plafond Sillage d’un seul compte, utiliser `{ "unlimited": true }`. Seul le booléen strict `true` active cette exception administrateur, sans date d’expiration. Le compteur de consommation reste conservé et les limites Google continuent de s’appliquer ; les autres comptes ne changent pas.
 
 ## Découvrir et test Gemini — 1.5
 
@@ -103,13 +103,13 @@ Le contrat de `music_search` et les trois sources restent inchangés. L’adapta
 
 Un CAPTCHA, une limitation ou une panne du moteur est transmis comme `search_blocked` ou `search_unavailable`, jamais comme une recherche vide ni comme un quota Gemini. Partout conserve les résultats des playlists si la source externe échoue. Aucun repli caché vers `search.list` : pour revenir au fournisseur officiel, vider `SEARXNG_URL` dans Dokploy et redéployer (ses quotas restent applicables).
 
-Validation après déploiement : contrôler `/health` et les SHA API/worker, la santé de SearXNG, l’absence de port publié, une recherche exacte et une vague via l’API authentifiée, l’ajout privé et la progression du worker. Vérifier ensuite les cartes et la lecture dans Recall. Lors d’une mise à jour courante, ne pas restaurer une sauvegarde dans la base de production ; l’étape de restauration ci-dessus ne concerne que l’installation initiale ou une reprise explicite.
+Validation après déploiement : contrôler `/health` et les SHA API/worker, la santé de SearXNG, l’absence de port publié, une recherche exacte et une vague via l’API authentifiée, l’ajout privé et la progression du worker. Vérifier ensuite les cartes et la lecture dans Sillage. Lors d’une mise à jour courante, ne pas restaurer une sauvegarde dans la base de production ; l’étape de restauration ci-dessus ne concerne que l’installation initiale ou une reprise explicite.
 
 
 ## Informations musicales et accueil Découvrir — 1.7
 
 `seekInformation(query)` est un outil MCP de lecture seule disponible dans les trois modes du DJ. Il consulte Google et DuckDuckGo par SearXNG, sans clé ni proxy supplémentaire. Le sélecteur de catalogue reste réservé aux morceaux. Les requêtes ne contiennent qu’un sujet public ; aucun compte, clé ou historique entier n’est envoyé au moteur. Les extraits sont bornés à cinq sources/700 caractères et ne sont pas des articles lus en entier. L’agent renvoie des `citationIds` ; les liens publics validés proviennent des résultats de ce tour, jamais d’URL inventées. Une réponse informative garde `action=keep` et la file intacte. Le recours à DuckDuckGo si Google refuse la requête est annoncé.
 
-Le moteur YouTube utilise le raccourci `!yt`, le Web `!go !ddg` : le paramètre `engines` seul n’est pas un sélecteur exclusif dans cette version de SearXNG. Les directives `!` venant de la requête sont retirées avant d’ajouter celles du serveur. La configuration épinglée active uniquement ces trois moteurs. `WEBSHARE_API_KEY` n’est pas configuré dans Recall : l’accès direct est conservé selon la préférence du propriétaire.
+Le moteur YouTube utilise le raccourci `!yt`, le Web `!go !ddg` : le paramètre `engines` seul n’est pas un sélecteur exclusif dans cette version de SearXNG. Les directives `!` venant de la requête sont retirées avant d’ajouter celles du serveur. La configuration épinglée active uniquement ces trois moteurs. `WEBSHARE_API_KEY` n’est pas configuré dans Sillage : l’accès direct est conservé selon la préférence du propriétaire.
 
 `GET /v1/discover/home` relit les 80 dernières écoutes du compte authentifié. Les 20 écoutes terminées/remplacées les plus récentes fournissent au plus trois artistes ou genres acceptés MusicBrainz ; les titres passés ne sont pas des signaux positifs. Trois recherches publiques maximum produisent jusqu’à douze découvertes, entrelacées, avec une raison explicite. Les IDs déjà écoutés, variantes de titre normalisées et vidéos déjà dans la bibliothèque sont exclus. Le premier compte ne peut pas fournir les goûts ou les appartenances du second. Aucun profil supplémentaire ni migration : l’effacement de l’historique retire ces signaux au prochain chargement. Seul le cache public du catalogue est partagé. L’app conserve les cartes au plus cinq minutes, les annule à un changement de compte et permet Actualiser. Un nouveau compte est invité à écouter quelques morceaux ; aucune personnalisation n’est inventée.

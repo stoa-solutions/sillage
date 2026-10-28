@@ -8,7 +8,7 @@ App native installée : **1.5.1, build 28, c51e665**. Design de Claude intégré
 
 Source visuelle : `/Users/samuel/.codex/generated_images/01a16ef6-6a8f-70d3-8b00-09d81055be3d/exec-b9b91710-81b2-4c22-b2ea-3641680b4140.png` (maquette 3, 1484 × 1060 pixels, densité non spécifiée).
 
-Capture finale : `/Users/samuel/.codex/visualizations/2026/10/24/01a16ef6-6a8f-70d3-8b00-09d81055be3d/recall-discover-qa/discover-build28.jpg` (2668 × 1620 pixels Retina, fenêtre native 1334 × 810 points). Pas de viewport CSS. Les deux images ont été ouvertes dans le même appel de comparaison ; lecture à échelle d'affichage comparable, sans mesure pixel à pixel. Leur rapport largeur/hauteur diffère : la capture réelle affiche moins de résultats YouTube au-dessus du défilement. Cette limite est explicitement distinguée d'un débordement.
+Capture finale : `/Users/samuel/.codex/visualizations/2026/10/24/01a16ef6-6a8f-70d3-8b00-09d81055be3d/sillage-discover-qa/discover-build28.jpg` (2668 × 1620 pixels Retina, fenêtre native 1334 × 810 points). Pas de viewport CSS. Les deux images ont été ouvertes dans le même appel de comparaison ; lecture à échelle d'affichage comparable, sans mesure pixel à pixel. Leur rapport largeur/hauteur diffère : la capture réelle affiche moins de résultats YouTube au-dessus du défilement. Cette limite est explicitement distinguée d'un débordement.
 
 État : compte connecté, Studio actif, recherche Masego dans les deux sources, chat avec deux propositions réelles, Tadow en lecture. Les vidéos, miniatures et textes sont les données réelles, pas les images illustratives de la maquette.
 
@@ -22,8 +22,8 @@ Capture finale : `/Users/samuel/.codex/visualizations/2026/10/24/01a16ef6-6a8f-7
 
 ## Historique des corrections
 
-1. Première implémentation : panneau gauche trop étroit, cartes trop verticales, faible ressemblance avec la maquette. Capture `recall-discover-qa/discover-mixed.png`. Résultat bloqué.
-2. Intégration du design de Claude, largeur initiale Découvrir 1180 points et minimum 900, titre 42, miniatures 140 ; capture `recall-discover-qa/discover-1.5.1.png`. Structure rétablie. Restent actions cachées au survol, préparation invisible dans le mini-lecteur et mauvais découpage de certains titres.
+1. Première implémentation : panneau gauche trop étroit, cartes trop verticales, faible ressemblance avec la maquette. Capture `sillage-discover-qa/discover-mixed.png`. Résultat bloqué.
+2. Intégration du design de Claude, largeur initiale Découvrir 1180 points et minimum 900, titre 42, miniatures 140 ; capture `sillage-discover-qa/discover-1.5.1.png`. Structure rétablie. Restent actions cachées au survol, préparation invisible dans le mini-lecteur et mauvais découpage de certains titres.
 3. c51e665 : actions persistantes, état de préparation/erreur dans le mini-lecteur, statut enregistré vert, découpage corrigé et fond vidéo explicitement étendu. Capture finale build28 ci-dessus. Aucun écart P0/P1/P2 restant dans le périmètre comparé au design commun actualisé.
 
 ## Vérifications réelles
@@ -36,7 +36,7 @@ Capture finale : `/Users/samuel/.codex/visualizations/2026/10/24/01a16ef6-6a8f-7
 - Recherche mixte Masego : huit correspondances de bibliothèque et résultats YouTube. Demande de deux propositions dans le chat : deux cartes, Tadow continue (position 0:22 puis 0:31).
 - Ajout réel depuis Découvrir et le chat, puis réajout : appartenance privée et déduplication vérifiées. Filtre Mes découvertes et pagination YouTube vérifiés.
 - Build28 : déconnexion puis reconnexion Google sur le compte existant ; bibliothèque et clé conservées, aucune nouvelle saisie de clé.
-- Build28 : Réglages → Tester le DJ et la voix : « Le DJ et la voix Gemini répondent avec cette clé. » Capture `recall-discover-qa/gemini-build28.jpg`.
+- Build28 : Réglages → Tester le DJ et la voix : « Le DJ et la voix Gemini répondent avec cette clé. » Capture `sillage-discover-qa/gemini-build28.jpg`.
 - Mauvaise clé de test refusée sans remplacer la clé enregistrée. Le nouvel onboarding conserve sa troisième étape après validation de la clé.
 - Karaoké de Claude conservé ; paroles réelles Billie Jean vérifiées sur le parcours précédent.
 

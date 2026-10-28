@@ -30,7 +30,7 @@ Suite à l’audit d’ouverture du 26 octobre, remplacer le transport IA artisa
 
 ## Recette et revue du 26 octobre
 
-Instance native QA distincte (`solutions.stoa.sillage.ai-qa`), données jetables via RECALL_DATA_DIR : activation Claude depuis l’accueil, ajout Gemini, retour Claude avec clé conservée, affichage Voix macOS, retrait de la clé factice Claude, redémarrage et réactivation Gemini depuis l’accueil sans nouvelle saisie. Aucun accès à la bibliothèque ou aux clés de Samuel pendant cette recette.
+Instance native QA distincte (`solutions.stoa.sillage.ai-qa`), données jetables via SILLAGE_DATA_DIR : activation Claude depuis l’accueil, ajout Gemini, retour Claude avec clé conservée, affichage Voix macOS, retrait de la clé factice Claude, redémarrage et réactivation Gemini depuis l’accueil sans nouvelle saisie. Aucun accès à la bibliothèque ou aux clés de Samuel pendant cette recette.
 
 Revue Standards et Spec indépendantes : la réactivation du secret global du compte historique après suppression, le contrôle de son ancien transport et la reprise de clé conservée à l’accueil ont été corrigés. L’état historique est désormais explicite ; enregistrer une configuration personnelle le quitte et aucune suppression ne le réactive. Régressions HTTP sur transport Google natif et compatible historique. Les relectures ciblées ne signalent plus de point ouvert.
 

@@ -21,8 +21,8 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
 
-import type { DjTrack } from "@playlist-recall/core/dj";
-export type { DjTrack } from "@playlist-recall/core/dj";
+import type { DjTrack } from "@sillage/core/dj";
+export type { DjTrack } from "@sillage/core/dj";
 /** Titles the listener named exactly, resolved without the model; null for large libraries. */
 export async function requestedTracks(
   db: Database,
@@ -60,7 +60,7 @@ export function musicMcp(
   ranking: CandidateRanking = "taste",
 ) {
   const server = new McpServer({
-    name: "recall-music-library",
+    name: "sillage-music-library",
     version: "1.0.0",
   });
   server.registerTool(
@@ -590,7 +590,7 @@ export async function connectMusicMcp(
   ranking: CandidateRanking = "taste",
 ) {
   const server = musicMcp(db, excludeIds, userId, discover, scope, rejectedIds, ranking);
-  const client = new Client({ name: "recall-dj", version: "1.0.0" });
+  const client = new Client({ name: "sillage-dj", version: "1.0.0" });
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair();
   await Promise.all([

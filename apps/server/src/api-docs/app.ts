@@ -22,7 +22,7 @@ const assetTypes: Record<string, string> = {
 
 /** This app is deliberately separate from createApp: no public docs routes ship. */
 export function createDocsApp(
-  target = "https://recall.stoa.solutions",
+  target = "https://sillage.stoa.solutions",
   request: typeof fetch = fetch,
   developer?: DeveloperAccess,
 ) {
@@ -40,7 +40,7 @@ export function createDocsApp(
     )
   )
     throw new Error(
-      "RECALL_DOCS_API_URL doit être une origine HTTPS ou une API locale, sans identifiant.",
+      "SILLAGE_DOCS_API_URL doit être une origine HTTPS ou une API locale, sans identifiant.",
     );
   const app = new Hono();
   app.use("*", async (c, next) => {

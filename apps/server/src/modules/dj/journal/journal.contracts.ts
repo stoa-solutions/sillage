@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DJ_SELECTION_LIMIT } from "@playlist-recall/core/dj";
+import { DJ_SELECTION_LIMIT } from "@sillage/core/dj";
 
 export const journalScope = z.enum(["library", "youtube", "all"]);
 export const journalPage = z.object({

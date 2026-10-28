@@ -77,7 +77,7 @@ it.each([false, true])("accepts native=%s player commands only from its trusted 
   const context: any = {
     parent,
     setInterval: (callback: () => void) => { tick = callback; },
-    location: { origin: "https://recall.stoa.solutions", search: native ? "?native=1" : "" },
+    location: { origin: "https://sillage.stoa.solutions", search: native ? "?native=1" : "" },
     window: {
       addEventListener: (_name: string, callback: any) => {
         listener = callback;
@@ -120,7 +120,7 @@ it.each([false, true])("accepts native=%s player commands only from its trusted 
     listener({
       source: parent,
       origin: foreign,
-      data: { source: "recall-dj", command: "hello" },
+      data: { source: "sillage-dj", command: "hello" },
     });
   events.onReady();
   expect(posted).toEqual([]);
@@ -128,26 +128,26 @@ it.each([false, true])("accepts native=%s player commands only from its trusted 
   listener({
     source: parent,
     origin,
-    data: { source: "recall-dj", command: "hello" },
+    data: { source: "sillage-dj", command: "hello" },
   });
   expect(posted[0][1]).toBe(origin);
   listener({
     source: {},
     origin,
-    data: { source: "recall-dj", command: "duck" },
+    data: { source: "sillage-dj", command: "duck" },
   });
   expect(volumes).toEqual([]);
   for (const command of ["duck", "restore"])
     listener({
       source: parent,
       origin,
-      data: { source: "recall-dj", command },
+      data: { source: "sillage-dj", command },
     });
   expect(volumes).toEqual([25, 63]);
-  listener({ source: parent, origin, data: {source: "recall-dj", command: "cue", id: "abcdefghijk", autoplay: true, start: 37} });
+  listener({ source: parent, origin, data: {source: "sillage-dj", command: "cue", id: "abcdefghijk", autoplay: true, start: 37} });
   expect(cues).toEqual([{videoId: "abcdefghijk", startSeconds: 37}]);
   for (const [id, seconds] of [["abcdefghijk", 12.65], ["othertrack1", 8], ["abcdefghijk", NaN]]) {
-    listener({ source: parent, origin, data: {source: "recall-dj", command: "seek", id, seconds} });
+    listener({ source: parent, origin, data: {source: "sillage-dj", command: "seek", id, seconds} });
   }
   expect(seeks).toEqual([[12.65, true]]);
   expect(cues).toHaveLength(1); // Seeking must not reload the video.

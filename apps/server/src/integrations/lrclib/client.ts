@@ -70,7 +70,7 @@ export class Lrclib implements LyricsSource {
     if (query.track) url.searchParams.set("track_name", query.track);
     if (query.artist) url.searchParams.set("artist_name", query.artist);
     const headers: Record<string, string> = {
-      "User-Agent": "PlaylistRecall/2.2.0 (https://recall.stoa.solutions)",
+      "User-Agent": "Sillage/2.2.0 (https://sillage.stoa.solutions)",
     };
     if (this.apiKey) headers["Lrclib-Api-Key"] = this.apiKey;
     try {

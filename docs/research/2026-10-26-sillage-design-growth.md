@@ -88,7 +88,7 @@ Ordre conseillé : promesse courte et vraie → scène montrant Compact et Studi
 
 Le visiteur doit comprendre l’expérience **avant** de créer un compte et d’obtenir une clé. Un film réel suffit pour découvrir sans clé ; ne pas présenter une vidéo comme une démo IA interactive gratuite. Expliquer clairement Google pour la connexion, Gemini ou Claude pour le DJ, clé personnelle et facturation du fournisseur. Ne pas annoncer un abonnement fournisseur comme donnant accès à son API.
 
-État vérifié le 26 octobre : manifeste local Sillage 1.8.0/71, `notarized=false`, signature locale ; flux public `/macos/appcast.xml` HTTP200 mais sans élément de release ; archive `/macos/Playlist-Recall-1.8.0-universal.zip` HTTP404. Tant que ce parcours public n’est pas prêt, CTA **demander l’accès à la bêta**, pas un bouton Télécharger vers une archive absente. La distribution privée actuelle et la publication publique restent deux étapes distinctes.
+État vérifié le 26 octobre : manifeste local Sillage 1.8.0/71, `notarized=false`, signature locale ; flux public `/macos/appcast.xml` HTTP200 mais sans élément de release ; archive `/macos/Sillage-1.8.0-universal.zip` HTTP404. Tant que ce parcours public n’est pas prêt, CTA **demander l’accès à la bêta**, pas un bouton Télécharger vers une archive absente. La distribution privée actuelle et la publication publique restent deux étapes distinctes.
 
 ### Canaux ordonnés par intérêt
 

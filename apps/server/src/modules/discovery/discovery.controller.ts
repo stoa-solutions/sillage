@@ -1,7 +1,7 @@
 import { createRoute } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
-import type { Video } from "@playlist-recall/core/types";
+import type { Video } from "@sillage/core/types";
 import type { Database } from "../../db/index.ts";
 import type { ApiEnvironment } from "../../shared/api-environment.ts";
 import {

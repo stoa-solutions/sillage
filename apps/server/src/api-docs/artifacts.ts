@@ -230,7 +230,7 @@ export function postmanNativeFiles(): Record<string, unknown> {
   });
   for (const [name, baseUrl] of [
     ["Local", "http://127.0.0.1:3001"],
-    ["Serveur privé", "https://recall.stoa.solutions"],
+    ["Serveur privé", "https://sillage.stoa.solutions"],
   ] as const) {
     files[`postman/environments/${name}.environment.yaml`] = {
       name: `Sillage — ${name}`,
@@ -249,7 +249,7 @@ export const artifacts = () => ({
   ),
   "postman/exports/Serveur.postman_environment.json": postmanEnvironment(
     "Sillage — Serveur privé",
-    "https://recall.stoa.solutions",
+    "https://sillage.stoa.solutions",
   ),
   ...postmanNativeFiles(),
 });

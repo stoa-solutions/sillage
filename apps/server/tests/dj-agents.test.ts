@@ -78,7 +78,7 @@ it("announces titles as a person says them, in the agent's register", async () =
 });
 
 it("leaves out what the listener just heard when asked", async () => {
-  const { recentlyHeardExclusion } = await import("@playlist-recall/core/intent");
+  const { recentlyHeardExclusion } = await import("@sillage/core/intent");
   expect(
     planTurn(
       djInput.parse({

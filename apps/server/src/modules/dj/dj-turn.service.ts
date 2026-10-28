@@ -2,7 +2,7 @@ import { djConfig, type DjConfig } from "./dj.config.ts";
 import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
 import { recentlyHeard } from "../history/index.ts";
 import { connectMusicMcp, musicTracks } from "../mcp/index.ts";
-import type { DjTrack } from "@playlist-recall/core/dj";
+import type { DjTrack } from "@sillage/core/dj";
 import { catalogSelection } from "./catalog.ts";
 import { Composition, type ComposedSelection } from "./composition.ts";
 import { selection, type DjInput, type Selection } from "./dj.contracts.ts";

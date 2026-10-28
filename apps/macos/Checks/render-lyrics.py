@@ -1,4 +1,4 @@
-"""Render production SwiftUI lyrics views offscreen, without launching Recall or loading a session."""
+"""Render production SwiftUI lyrics views offscreen, without launching Sillage or loading a session."""
 from pathlib import Path
 import argparse
 import os
@@ -16,10 +16,10 @@ build = Path(subprocess.check_output(
 ).strip())
 # Link the actual UI and models, replacing only the application's entry point.
 # This avoids bootstrapping accounts, audio capture, Sparkle or a foreground window.
-objects = [path for path in (build / "RecallMac.product/Objects.LinkFileList").read_text().splitlines()
-           if not path.endswith("/RecallApp.swift.o")]
+objects = [path for path in (build / "SillageMac.product/Objects.LinkFileList").read_text().splitlines()
+           if not path.endswith("/SillageApp.swift.o")]
 framework = project / ".build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64"
-with tempfile.TemporaryDirectory(prefix="recall-lyrics-ui-") as temporary:
+with tempfile.TemporaryDirectory(prefix="sillage-lyrics-ui-") as temporary:
     root = Path(temporary)
     binary = root / "LyricsRenderChecks"
     subprocess.run([
@@ -28,5 +28,5 @@ with tempfile.TemporaryDirectory(prefix="recall-lyrics-ui-") as temporary:
         *objects, "-o", str(binary),
     ], check=True)
     subprocess.run([str(binary), str(args.output.resolve())],
-                   env=dict(os.environ, RECALL_DATA_DIR=str(root / "data")), check=True, timeout=30)
+                   env=dict(os.environ, SILLAGE_DATA_DIR=str(root / "data")), check=True, timeout=30)
 print(f"Rendered production panels: {args.output.resolve()}")

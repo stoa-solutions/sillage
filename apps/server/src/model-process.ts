@@ -11,7 +11,7 @@ import {
   MODEL_ID,
   MODEL_REVISION,
   validateEmbeddingMatrix,
-} from "@playlist-recall/core/model";
+} from "@sillage/core/model";
 import { VISION_ID, VISION_REVISION } from "./modules/indexing/index.ts";
 
 env.allowRemoteModels = false;

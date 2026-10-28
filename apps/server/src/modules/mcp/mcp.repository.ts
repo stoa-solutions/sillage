@@ -12,8 +12,8 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { DjTrack } from "@playlist-recall/core/dj";
-import type { MusicMetadata } from "@playlist-recall/core/types";
+import type { DjTrack } from "@sillage/core/dj";
+import type { MusicMetadata } from "@sillage/core/types";
 import {
   listeningHistory,
   memberships,

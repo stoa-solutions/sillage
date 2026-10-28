@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 
 root = Path(__file__).resolve().parent.parent
 parser = argparse.ArgumentParser()
-parser.add_argument("--base-url", default="https://recall.stoa.solutions/macos")
+parser.add_argument("--base-url", default="https://sillage.stoa.solutions/macos")
 parser.add_argument("--allow-local-beta", action="store_true")
 args = parser.parse_args()
 folder = root / ".output/macos"
@@ -21,7 +21,7 @@ if not release.get("notarized") and not args.allow_local_beta:
 parsed = urllib.parse.urlparse(args.base_url)
 if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment:
     raise SystemExit("An HTTPS update origin without credentials is required")
-if not re.fullmatch(r"(?:Playlist-Recall|Sillage)-\d+\.\d+\.\d+-(arm64|x86_64|universal)\.zip", release["file"]):
+if not re.fullmatch(r"(?:Sillage|Sillage)-\d+\.\d+\.\d+-(arm64|x86_64|universal)\.zip", release["file"]):
     raise SystemExit("Invalid release filename")
 archive = folder / release["file"]
 if archive.stat().st_size != release["size"] or hashlib.sha256(archive.read_bytes()).hexdigest() != release.get("sha256"):

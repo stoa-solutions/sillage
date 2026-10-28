@@ -210,7 +210,7 @@
               ],
               "variable": []
             },
-            "description": "Google fournit code et state ; le cookie du démarrage est obligatoire. Vérification de l’identité et du nonce, puis retour HTML vers playlist-recall://auth?code=…&state=…. Le code de retour Sillage est à usage unique, valable 90 secondes et lié au challenge PKCE. Il ne s’agit ni d’une clé Google ni du jeton API. Ne pas rejouer manuellement le callback hors du flux navigateur.\n\nEffet : browser. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "description": "Google fournit code et state ; le cookie du démarrage est obligatoire. Vérification de l’identité et du nonce, puis retour HTML vers sillage://auth?code=…&state=…. Le code de retour Sillage est à usage unique, valable 90 secondes et lié au challenge PKCE. Il ne s’agit ni d’une clé Google ni du jeton API. Ne pas rejouer manuellement le callback hors du flux navigateur.\n\nEffet : browser. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
             "auth": {
               "type": "noauth"
             }
@@ -525,7 +525,7 @@
                 }
               ]
             },
-            "description": "Uniquement les archives ZIP nommées Playlist-Recall-version-architecture.zip présentes dans le répertoire de publication. Le nom technique historique reste stable malgré la marque Sillage.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "description": "Uniquement les archives ZIP nommées Sillage-version-architecture.zip présentes dans le répertoire de publication. Le nom technique historique reste stable malgré la marque Sillage.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
             "auth": {
               "type": "noauth"
             }
@@ -2461,7 +2461,7 @@
               "query": [],
               "variable": []
             },
-            "description": "Export Recall JSON version 1 au format collections/playlist/videos, limité au compte. Aucun jeton ni clé Gemini n’est inclus.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+            "description": "Export Sillage JSON version 1 au format collections/playlist/videos, limité au compte. Aucun jeton ni clé Gemini n’est inclus.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
           },
           "response": [],
           "event": [
@@ -2507,10 +2507,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les exports Recall, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
+            "description": "Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les exports Sillage, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"format\": \"playlist-recall\",\n  \"version\": 1,\n  \"collections\": [\n    {\n      \"playlist\": {\n        \"id\": \"playlist_example\",\n        \"title\": \"Exemple\"\n      },\n      \"videos\": []\n    }\n  ]\n}",
+              "raw": "{\n  \"format\": \"sillage\",\n  \"version\": 1,\n  \"collections\": [\n    {\n      \"playlist\": {\n        \"id\": \"playlist_example\",\n        \"title\": \"Exemple\"\n      },\n      \"videos\": []\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"

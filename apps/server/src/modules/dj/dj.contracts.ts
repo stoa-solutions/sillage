@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DJ_SELECTION_LIMIT } from "@playlist-recall/core/dj";
+import { DJ_SELECTION_LIMIT } from "@sillage/core/dj";
 
 /** Validated HTTP input and structured provider output. No effects in this module. */
 export const djInput = z.object({

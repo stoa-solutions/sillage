@@ -11,7 +11,7 @@
       "description": "API locale de développement"
     },
     {
-      "url": "https://recall.stoa.solutions",
+      "url": "https://sillage.stoa.solutions",
       "description": "Serveur privé Sillage — opérations authentifiées"
     }
   ],
@@ -180,7 +180,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "__Host-recall-auth ; Secure ; HttpOnly ; SameSite=Lax ; Path=/"
+                "description": "__Host-sillage-auth ; Secure ; HttpOnly ; SameSite=Lax ; Path=/"
               }
             }
           },
@@ -241,7 +241,7 @@
       "get": {
         "operationId": "completeGoogleSignIn",
         "summary": "Retour du navigateur Google",
-        "description": "Google fournit code et state ; le cookie du démarrage est obligatoire. Vérification de l’identité et du nonce, puis retour HTML vers playlist-recall://auth?code=…&state=…. Le code de retour Sillage est à usage unique, valable 90 secondes et lié au challenge PKCE. Il ne s’agit ni d’une clé Google ni du jeton API. Ne pas rejouer manuellement le callback hors du flux navigateur.",
+        "description": "Google fournit code et state ; le cookie du démarrage est obligatoire. Vérification de l’identité et du nonce, puis retour HTML vers sillage://auth?code=…&state=…. Le code de retour Sillage est à usage unique, valable 90 secondes et lié au challenge PKCE. Il ne s’agit ni d’une clé Google ni du jeton API. Ne pas rejouer manuellement le callback hors du flux navigateur.",
         "tags": [
           "Connexion Google"
         ],
@@ -724,7 +724,7 @@
       "get": {
         "operationId": "downloadMacArchive",
         "summary": "Télécharger une archive publiée",
-        "description": "Uniquement les archives ZIP nommées Playlist-Recall-version-architecture.zip présentes dans le répertoire de publication. Le nom technique historique reste stable malgré la marque Sillage.",
+        "description": "Uniquement les archives ZIP nommées Sillage-version-architecture.zip présentes dans le répertoire de publication. Le nom technique historique reste stable malgré la marque Sillage.",
         "tags": [
           "Lecteur et distribution"
         ],
@@ -734,7 +734,7 @@
           {
             "schema": {
               "type": "string",
-              "pattern": "^Playlist-Recall-[0-9]+\\.[0-9]+\\.[0-9]+-(arm64|x86_64|universal)\\.zip$",
+              "pattern": "^Sillage-[0-9]+\\.[0-9]+\\.[0-9]+-(arm64|x86_64|universal)\\.zip$",
               "description": "Nom exact de l’archive publiée"
             },
             "required": true,
@@ -4709,7 +4709,7 @@
       "get": {
         "operationId": "exportLibrary",
         "summary": "Exporter la bibliothèque",
-        "description": "Export Recall JSON version 1 au format collections/playlist/videos, limité au compte. Aucun jeton ni clé Gemini n’est inclus.",
+        "description": "Export Sillage JSON version 1 au format collections/playlist/videos, limité au compte. Aucun jeton ni clé Gemini n’est inclus.",
         "tags": [
           "Bibliothèque"
         ],
@@ -4782,13 +4782,13 @@
       "post": {
         "operationId": "importLegacyBackup",
         "summary": "Importer une sauvegarde JSON",
-        "description": "Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les exports Recall, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.",
+        "description": "Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les exports Sillage, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.",
         "tags": [
           "Maintenance"
         ],
         "x-sillage-effect": "write",
         "x-sillage-example": {
-          "format": "playlist-recall",
+          "format": "sillage",
           "version": 1,
           "collections": [
             {
@@ -4805,7 +4805,7 @@
           "content": {
             "application/json": {
               "example": {
-                "format": "playlist-recall",
+                "format": "sillage",
                 "version": 1,
                 "collections": [
                   {
@@ -5336,7 +5336,7 @@
       "googleFlowCookie": {
         "type": "apiKey",
         "in": "cookie",
-        "name": "__Host-recall-auth",
+        "name": "__Host-sillage-auth",
         "description": "Cookie du flux navigateur, valable 10 minutes, à usage unique avec state."
       }
     },
@@ -7421,7 +7421,7 @@
           "format": {
             "type": "string",
             "enum": [
-              "playlist-recall"
+              "sillage"
             ]
           },
           "version": {
@@ -7442,7 +7442,7 @@
           "version",
           "collections"
         ],
-        "description": "Export Recall normalisé ; aucune clé ni session n’est exportée."
+        "description": "Export Sillage normalisé ; aucune clé ni session n’est exportée."
       },
       "ExportCollection": {
         "type": "object",
@@ -7523,7 +7523,7 @@
         ]
       },
       "LibraryImport": {
-        "description": "Export Recall, playlist normalisée ou playlist plate yt-dlp. Au plus 100 playlists et 50 000 entrées au total ; max. 30 Mio. Réservé à la maintenance historique.",
+        "description": "Export Sillage, playlist normalisée ou playlist plate yt-dlp. Au plus 100 playlists et 50 000 entrées au total ; max. 30 Mio. Réservé à la maintenance historique.",
         "anyOf": [
           {
             "type": "object",

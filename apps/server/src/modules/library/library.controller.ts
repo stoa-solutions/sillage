@@ -130,7 +130,7 @@ const exportRoute = createRoute({
     tag: TAG,
     summary: "Exporter la bibliothèque",
     description:
-      "Export Recall JSON version 1 au format collections/playlist/videos, limité au compte. Aucun jeton ni clé Gemini n’est inclus.",
+      "Export Sillage JSON version 1 au format collections/playlist/videos, limité au compte. Aucun jeton ni clé Gemini n’est inclus.",
   }),
   responses: {
     ...commonErrors(),
@@ -138,7 +138,7 @@ const exportRoute = createRoute({
   },
 });
 const importExample = {
-  format: "playlist-recall",
+  format: "sillage",
   version: 1,
   collections: [
     { playlist: { id: "playlist_example", title: "Exemple" }, videos: [] },
@@ -152,7 +152,7 @@ const importRoute = createRoute({
     tag: "Maintenance",
     summary: "Importer une sauvegarde JSON",
     description:
-      "Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les exports Recall, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.",
+      "Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les exports Sillage, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.",
     effect: "write",
     example: importExample,
   }),

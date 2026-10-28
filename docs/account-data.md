@@ -4,7 +4,7 @@
 
 ## Une identité, plusieurs appareils
 
-Google fournit uniquement l'identité (openid, e-mail vérifié, profil), pas un accès aux playlists privées YouTube. `users.google_sub` identifie le compte durablement, indépendamment d'un changement d'e-mail. Le serveur vérifie audience, nonce et e-mail ; le retour à l'app utilise un code à usage unique (90 secondes) et PKCE. Le jeton Recall délivré expire après 90 jours. Déconnexion et révocation sont distinctes de la clé Gemini.
+Google fournit uniquement l'identité (openid, e-mail vérifié, profil), pas un accès aux playlists privées YouTube. `users.google_sub` identifie le compte durablement, indépendamment d'un changement d'e-mail. Le serveur vérifie audience, nonce et e-mail ; le retour à l'app utilise un code à usage unique (90 secondes) et PKCE. Le jeton Sillage délivré expire après 90 jours. Déconnexion et révocation sont distinctes de la clé Gemini.
 
 Chaque appel authentifié résout le jeton en `user_id`. Le serveur ne prend pas un propriétaire arbitraire envoyé par l'app. La recherche, les playlists, exports et outils du DJ filtrent par les appartenances `user_playlists`.
 
@@ -19,9 +19,9 @@ Chaque appel authentifié résout le jeton en `user_id`. Le serveur ne prend pas
 
 Ce n'est **pas du chiffrement de bout en bout** : le serveur peut lire la clé, et Google reçoit le chat, les titres/candidats nécessaires et les textes à prononcer. Un accès simultané à la base et à la clé maître permettrait de déchiffrer. Sauvegarde et rotation de cette clé maître doivent donc être gérées séparément avant une ouverture large du service.
 
-La clé YouTube est une configuration commune du serveur. Elle sert aux playlists accessibles par lien ; la connexion Google Recall n'accorde aucun droit de lecture des playlists YouTube privées.
+La clé YouTube est une configuration commune du serveur. Elle sert aux playlists accessibles par lien ; la connexion Google Sillage n'accorde aucun droit de lecture des playlists YouTube privées.
 
-Sur le Mac, seul le **jeton révocable Recall** est conservé dans `session.json`, dossier 0700 et fichier 0600, exclu des sauvegardes par l'app. Il n'est pas chiffré par Recall : les applications exécutées sous le même utilisateur macOS peuvent le lire. C'est le compromis choisi pour ne plus demander le Trousseau. Les clips en cache et réglages visuels sont aussi locaux ; la bibliothèque de référence et les clés Gemini restent sur le serveur.
+Sur le Mac, seul le **jeton révocable Sillage** est conservé dans `session.json`, dossier 0700 et fichier 0600, exclu des sauvegardes par l'app. Il n'est pas chiffré par Sillage : les applications exécutées sous le même utilisateur macOS peuvent le lire. C'est le compromis choisi pour ne plus demander le Trousseau. Les clips en cache et réglages visuels sont aussi locaux ; la bibliothèque de référence et les clés Gemini restent sur le serveur.
 
 ## Schéma relationnel
 

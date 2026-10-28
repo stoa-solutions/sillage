@@ -1,4 +1,4 @@
-# Playlist Recall
+# Sillage
 
 Serveur personnel et app Mac pour retrouver une vidéo à partir d'un souvenir, de mots-clés ou de sa durée, et écouter sa bibliothèque avec un DJ conversationnel. Interface en français. Le serveur assure la synchronisation YouTube, les descriptions complètes, une recherche hybride PostgreSQL/pgvector et une recherche visuelle des miniatures.
 
@@ -42,7 +42,7 @@ npm run verify:node    # contrôles, tests et build du serveur
 npm run verify:macos   # app Mac
 ```
 
-Pour lancer une app Mac de développement sans toucher aux données personnelles : `RECALL_DATA_DIR=<dossier temporaire> swift run --package-path apps/macos RecallMac`. Le parcours du serveur est décrit dans [docs/server-tour.md](docs/server-tour.md).
+Pour lancer une app Mac de développement sans toucher aux données personnelles : `SILLAGE_DATA_DIR=<dossier temporaire> swift run --package-path apps/macos SillageMac`. Le parcours du serveur est décrit dans [docs/server-tour.md](docs/server-tour.md).
 
 ## Données et confidentialité
 
@@ -60,5 +60,5 @@ Les dates d'écoute ne sont pas disponibles. La synchronisation du serveur utili
 Voir [le guide d’exploitation](docs/operations.md). Les tests de base utilisent exclusivement une base jetable dont le nom finit par `_test` :
 
 ```sh
-TEST_DATABASE_URL=postgresql://postgres:password@127.0.0.1:5432/playlist_recall_test npm run test:integration
+TEST_DATABASE_URL=postgresql://postgres:password@127.0.0.1:5432/sillage_test npm run test:integration
 ```

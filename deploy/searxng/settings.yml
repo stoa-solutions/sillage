@@ -1,4 +1,4 @@
-# Private catalog lookup only; Recall handles authentication, caching and ownership.
+# Private catalog lookup only; Sillage handles authentication, caching and ownership.
 # SEARXNG_SECRET is injected by Dokploy, never committed.
 use_default_settings:
   engines:

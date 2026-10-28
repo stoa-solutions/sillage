@@ -1,6 +1,6 @@
 version: 1
-name: recall-dj-model
-slug: recall-dj-model
+name: sillage-dj-model
+slug: sillage-dj-model
 protocol: http
 interceptRequests: true
 scenarios:

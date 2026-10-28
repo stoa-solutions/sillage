@@ -1,6 +1,6 @@
 $kind: http-request
 description: >-
-  Export Recall JSON version 1 au format collections/playlist/videos, limité au compte. Aucun jeton ni clé Gemini n’est
+  Export Sillage JSON version 1 au format collections/playlist/videos, limité au compte. Aucun jeton ni clé Gemini n’est
   inclus.
 
 

@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage 1.9.0 (80) : un seul nom partout. Dépôt `stoa-solutions/sillage`, paquets `@sillage/*`, modules SillageKit, SillageAudio et SillageMac, identifiant `solutions.stoa.sillage`, schéma `sillage://`, variables `SILLAGE_*`. Au premier lancement, l’app reprend l’installation précédente (session, réglages, apparence, cache Studio). Serveur : base, rôle, réseau, dossiers et application Dokploy renommés ; l’ancien domaine de compatibilité est retiré.
+
 - Sillage 1.8.8 (79) : Bibliothèque et Mon goût redessinés d’après la maquette du 28 octobre (Codex) : barre latérale Bibliothèque / Tes playlists, en-tête avec surtitre, « Tout lire » et « Aléatoire », vraie table (numéro, miniature, titre, artiste, durée) ; Mon goût avec quatre chiffres, filtres comptés, ton artiste n° 1 en grand, table des titres (affinité, écoutes, ton avis), lien vers Réglages → Goût et page d’accueil quand rien n’est encore écouté.
 
 - DJ, des agents qu’on reconnaît : Le DJ a enfin une voix (un set qui progresse, 5 à 8 titres sur une demande ouverte) ; l’Archiviste pioche des ajouts anciens peu écoutés, différents à chaque fois, au lieu des cinq mêmes premiers ; Focus vise 8 à 10 titres sobres et s’annonce en quelques mots ; le Disquaire glisse une trouvaille hors bibliothèque et change de formule. Titres annoncés sans « Official Video » ni « CLIP », phrases au vouvoiement ou parlant de « l’utilisateur » retirées. « Pas les deux dernières que j’ai écoutées » est respecté.
@@ -82,7 +84,7 @@
 - Studio : efface aussi les fonds de verre partagés de la barre d’outils macOS pendant le fondu, sans déplacer le clip.
 
 - Studio : commandes, titre, navigation et boutons de fenêtre s’effacent en douceur après trois secondes sans interaction, puis reviennent à la souris ou au clavier ; pause, chargement et pages de lecture gardent les commandes. Le chat ouvert reste visible, le dégradé du clip s’atténue et les animations respectent Réduire les animations.
-- Lecteur YouTube natif : mode discret avec commandes et sous-titres non forcés, annotations désactivées et survol du lecteur évité ; les commandes Recall et le plein écran de la fenêtre restent disponibles. Certains éléments YouTube imposés à la pause restent possibles.
+- Lecteur YouTube natif : mode discret avec commandes et sous-titres non forcés, annotations désactivées et survol du lecteur évité ; les commandes Sillage et le plein écran de la fenêtre restent disponibles. Certains éléments YouTube imposés à la pause restent possibles.
 - Chat : rendu Markdown natif (titres, listes, citations, code, gras et liens sélectionnables) et suppression du message technique Google/DuckDuckGo en cas de repli réussi. App Mac 1.7.1.
 
 - DJ : outil `seekInformation` pour les questions sur les artistes, morceaux et albums, avec recherche Web SearXNG, sources numérotées cliquables et lecture conservée. Google et DuckDuckGo restent accessibles sans proxy ; les pannes ou le recours à DuckDuckGo sont signalés.
@@ -182,13 +184,13 @@
 
 - App Mac 1.4.5 (17) : installation locale du design actuel de main (Compact/Studio, volume, Voix du DJ, Enchaîner et photos de chaîne).
 
-- DJ : possibilité administrateur de retirer durablement le plafond Recall pour un compte, sans modifier les limites des autres comptes ni celles du fournisseur IA.
+- DJ : possibilité administrateur de retirer durablement le plafond Sillage pour un compte, sans modifier les limites des autres comptes ni celles du fournisseur IA.
 
 ### Correctif recherche et demandes DJ précises
 
 - Les correspondances artiste + titre et les morceaux de l’artiste passent avant les type beats, mixes, reprises et versions alternatives non demandées.
 - Les titres explicitement identifiés sont joués seuls, dans l’ordre demandé, sans compléter la file avec des suggestions ; une référence manquante conserve la file et demande une précision.
-- Le plafond quotidien Recall est distingué du quota Google ; un plafond par compte et une dérogation temporaire avec expiration peuvent être définis sans modifier les autres comptes.
+- Le plafond quotidien Sillage est distingué du quota Google ; un plafond par compte et une dérogation temporaire avec expiration peuvent être définis sans modifier les autres comptes.
 
 ### App Mac : affichages Compact et Studio
 
@@ -198,7 +200,7 @@
 
 ### Antérieur
 
-- Import Recall : une playlist sans identifiant reçoit un identifiant stable ; les vidéos hors playlist sont exportées dans « Autres vidéos » et réimportées sans créer de playlist ; une entrée sans titre ne remplace plus une entrée titrée. Cas de référence dans `packages/core/fixtures/format`.
+- Import Sillage : une playlist sans identifiant reçoit un identifiant stable ; les vidéos hors playlist sont exportées dans « Autres vidéos » et réimportées sans créer de playlist ; une entrée sans titre ne remplace plus une entrée titrée. Cas de référence dans `packages/core/fixtures/format`.
 - Mode Studio personnel sur Mac : cache vidéo opt-in, lecture native en fond, préchargement du morceau suivant et retour au lecteur YouTube si le téléchargement échoue. Distribution et page de téléchargement mises en attente à la demande de Samuel.
 
 - App Mac : code de bibliothèque locale retiré (SQLite, import par clé YouTube, DJ exécuté sur le Mac) ; décision 0002.
@@ -208,7 +210,7 @@
 
 - Accueil Mac : confirmation visible de la clé Gemini enregistrée, récupération des playlists avec état de progression et fermeture de l’accueil lorsque le compte est prêt.
 
-- Connexion Google : ouverture directe du navigateur et retour dans Recall, protégé par état aléatoire et échange PKCE à usage unique ; suppression de la fenêtre système invisible.
+- Connexion Google : ouverture directe du navigateur et retour dans Sillage, protégé par état aléatoire et échange PKCE à usage unique ; suppression de la fenêtre système invisible.
 
 - App Mac : suppression complète des accès au Trousseau ; session serveur mémorisée dans un fichier privé, clés Gemini et voix utilisées exclusivement côté serveur.
 
@@ -226,5 +228,5 @@
 - App Mac : le DJ trouve des titres pour une ambiance décrite en plusieurs mots, même sans correspondance exacte.
 - App Mac : un import YouTube interrompu reprend pendant 24 h, puis repart du début.
 - App Mac : « Oublier ce serveur » dans les Réglages.
-- App Mac : `RECALL_DATA_DIR` isole les essais de développement de la bibliothèque réelle.
+- App Mac : `SILLAGE_DATA_DIR` isole les essais de développement de la bibliothèque réelle.
 - Dépôt : branche `main`, règles communes `AGENTS.md`, `npm run verify`, tableau `npm run board`, CI GitHub.

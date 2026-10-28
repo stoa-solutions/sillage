@@ -1,4 +1,4 @@
-import type { MusicMetadata } from "@playlist-recall/core/types";
+import type { MusicMetadata } from "@sillage/core/types";
 import { hash } from "../../content.ts";
 import type { Database, videos } from "../../db/index.ts";
 import { MusicBrainzClient } from "../../integrations/musicbrainz/index.ts";

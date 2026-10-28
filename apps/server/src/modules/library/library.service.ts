@@ -1,8 +1,8 @@
 import {
   exportLibrary as exportFormat,
   parseImport,
-} from "@playlist-recall/core/import";
-import type { LibraryImport } from "@playlist-recall/core/types";
+} from "@sillage/core/import";
+import type { LibraryImport } from "@sillage/core/types";
 import { parsePlaylistId } from "../../content.ts";
 import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
 import { enqueueMissing } from "../indexing/index.ts";

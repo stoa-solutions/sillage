@@ -33,7 +33,7 @@ Exécuter trois requêtes sur un compte de test avec un export privé `{ "url": 
 npm run eval:dj -- --live --connection-file /chemin/prive/connexion.json --max-requests 3
 ```
 
-Le format `Session/session.json` de l’app est aussi accepté. Ce chemin est explicite : le script ne cherche pas de session tout seul. Alternative : `RECALL_API_URL` et `RECALL_API_TOKEN` dans l’environnement. Ne jamais committer un jeton ni le passer en argument. Les clés Gemini/YouTube restent sur le serveur.
+Le format `Session/session.json` de l’app est aussi accepté. Ce chemin est explicite : le script ne cherche pas de session tout seul. Alternative : `SILLAGE_API_URL` et `SILLAGE_API_TOKEN` dans l’environnement. Ne jamais committer un jeton ni le passer en argument. Les clés Gemini/YouTube restent sur le serveur.
 
 Un seul cas après une correction :
 

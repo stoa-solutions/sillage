@@ -6,7 +6,7 @@ export function lookupTokens(query: string): string[] {
   return [...new Set(normalizeMusic(query.replace(/[’']/g, "")).split(" ").filter(w => w && !filler.has(w)))];
 }
 
-/** Bounded lexical recall for small spelling errors, before vector inference.
+/** Bounded lexical matching for small spelling errors, before vector inference.
  * Patterns are passed as SQL values, never interpolated into the statement.
  */
 export function approximateLookupPatterns(query: string): string[] {

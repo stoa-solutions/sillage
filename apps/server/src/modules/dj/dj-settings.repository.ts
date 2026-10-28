@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import type { AiProvider } from "@playlist-recall/core/dj";
+import type { AiProvider } from "@sillage/core/dj";
 import {
   accountAiCredentials,
   accountDjSettings,

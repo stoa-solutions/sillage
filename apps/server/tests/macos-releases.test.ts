@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { releaseRoutes as macosReleases } from "../src/modules/releases/index.ts";
 it("serves an empty feed until a release is published and excludes other files", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "recall-mac-"));
+  const directory = await mkdtemp(join(tmpdir(), "sillage-mac-"));
   vi.stubEnv("MAC_RELEASES_DIR", directory);
   try {
     const app = macosReleases();
@@ -13,13 +13,13 @@ it("serves an empty feed until a release is published and excludes other files",
     expect(await feed.text()).toContain("<channel>");
     expect((await app.request("/application.env")).status).toBe(404);
     expect(
-      (await app.request("/Playlist-Recall-1.0.0-universal.zip")).status,
+      (await app.request("/Sillage-1.0.0-universal.zip")).status,
     ).toBe(404);
     await writeFile(
-      join(directory, "Playlist-Recall-1.0.0-universal.zip"),
+      join(directory, "Sillage-1.0.0-universal.zip"),
       "signed-test-archive",
     );
-    const archive = await app.request("/Playlist-Recall-1.0.0-universal.zip");
+    const archive = await app.request("/Sillage-1.0.0-universal.zip");
     expect(archive.status).toBe(200);
     expect(await archive.text()).toBe("signed-test-archive");
   } finally {

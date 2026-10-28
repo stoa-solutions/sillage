@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, max } from "drizzle-orm";
-import type { MusicMetadata, Video } from "@playlist-recall/core/types";
+import type { MusicMetadata, Video } from "@sillage/core/types";
 import { documentText, hash } from "../../content.ts";
 import {
   listeningHistory,

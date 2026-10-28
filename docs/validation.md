@@ -2,14 +2,14 @@
 
 ## Livré et vérifié
 
-- Monorepo privé `SamuelChojnacki/playlist-recall`, branche `main` (anciennement `codex/server-recall`).
+- Monorepo privé `stoa-solutions/sillage`, branche `main` (anciennement une ancienne branche de travail).
 - API HTTPS authentifiée, PostgreSQL 17/pgvector dédié, worker et calcul CPU isolé déployés dans Dokploy. Route `/health` relue indépendamment avec le SHA de release. Une requête de bibliothèque sans jeton renvoie 401.
 - 2 792 vidéos et 2 818 appartenances importées depuis l’ancienne bibliothèque ; 2 666 titres avec passages textuels indexés. Le fichier local original est inchangé (empreinte vérifiée), ancien paquet V1 conservé dans `.runtime/before-v2/extension`.
 - Les 13 fichiers des modèles ont la même empreinte avant et après transfert sur le VPS. Les véritables encodeurs E5 et SigLIP produisent respectivement 384 et 768 dimensions.
 - 51 tests : 30 extension, 8 serveur, 13 PostgreSQL réels. Vérifications TypeScript et compilation du paquet Chrome réussies ; audit des dépendances de production sans vulnérabilité signalée.
 - Cas couverts : pagination et doublons, authentification, contraintes numériques, échec sans perte du dernier instantané, disparition confirmée deux fois, import ancien préservant les détails enrichis, migration des positions déplacées, baux et reprise, rejet d’un ancien calcul, remplacement transactionnel des passages, miniature modifiée à URL stable, reprise des erreurs et planification à six heures.
 - Chrome réel dans un profil de recette : import de connexion privée, recherche texte et visuelle, mode local, persistance après réouverture, raccourci clavier, affichages 1 440 et 390 pixels sans débordement. Polling observé à 8 requêtes sur trois cycles après correction, sans boucle.
-- Sauvegarde native Dokploy vers R2, chaque jour à 02:30 UTC, rétention 30 versions. Objet `playlist-recall-db-ltxetq/playlist-recall/daily/2026-10-06T22-42-55-213Z.sql.gz` téléchargé (5 990 142 octets), décompressé et restauré via `pg_restore` dans un conteneur temporaire isolé. Comptes restaurés : 1 playlist, 2 792 vidéos, 2 818 appartenances, 2 666 passages et 16 images déjà prêtes à l’heure du dump. Conteneur de restauration supprimé après contrôle.
+- Sauvegarde native Dokploy vers R2, chaque jour à 02:30 UTC, rétention 30 versions. Objet `sillage-db/sillage/daily/2026-10-06T22-42-55-213Z.sql.gz` téléchargé (5 990 142 octets), décompressé et restauré via `pg_restore` dans un conteneur temporaire isolé. Comptes restaurés : 1 playlist, 2 792 vidéos, 2 818 appartenances, 2 666 passages et 16 images déjà prêtes à l’heure du dump. Conteneur de restauration supprimé après contrôle.
 - Plafonds Docker relus : 192 Mio API, 192 Mio worker, 1 408 Mio calcul, 384 Mio DB. CPU calcul limité à 1,5. Aucun événement OOM sur les services de la release pendant la recette. Stoa HTTP 200 et ses services web/API, mail, newsletter et analytics toujours sains lors du contrôle.
 
 ## Pertinence et temps de réponse
@@ -38,7 +38,7 @@ La clé YouTube n’est pas configurée. Le compte Google Cloud actif sur le Mac
 ## Repères d’exploitation
 
 - Projet : `CahXxpjWgyYYeSR3DAury` ; environnement : `ro60Ugc9wEnGd2GYLkN1s`.
-- Compose : `zRyS7prIvUEikKdaU9UqH` ; service : `playlist-recall-app-wvpmwu`.
-- PostgreSQL : `lFxXzna7NFSqUyr2ia0wN` ; service : `playlist-recall-db-ltxetq`.
+- Compose : `zRyS7prIvUEikKdaU9UqH` ; service : `sillage-app`.
+- PostgreSQL : `lFxXzna7NFSqUyr2ia0wN` ; service : `sillage-db`.
 - Sauvegarde : `5XFfsp_N5ueE4dJdPkBP8`.
-- Configuration et scripts d’administration privés : `/root/playlist-recall` sur le VPS.
+- Configuration et scripts d’administration privés : `/root/sillage` sur le VPS.

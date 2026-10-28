@@ -1,7 +1,7 @@
 name: Sillage — Serveur privé
 values:
   - key: base_url
-    value: https://recall.stoa.solutions
+    value: https://sillage.stoa.solutions
     enabled: true
     type: default
   - key: api_token

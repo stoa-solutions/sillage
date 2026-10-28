@@ -1,7 +1,7 @@
 {
   "productName": "Sillage",
   "signature": "by Stoa",
-  "previousName": "Playlist Recall",
+  "previousName": "Sillage",
   "namingApproved": "2026-10-26 — user selection in this conversation",
   "iconStatus": "Visual direction approved by Samuel on 2026-10-26; app integration tracked separately",
   "source": "Built-in Codex ImageGen; technical resizing and format export with sharp and Apple iconutil",
@@ -132,7 +132,7 @@
       "sha256": "58022dc1dea7a511d93d5574e805859b3d26cd5cd9caa25104bc3409f6211046"
     },
     {
-      "file": "reference/recall-current.png",
+      "file": "reference/sillage-previous.png",
       "bytes": 4448,
       "width": 128,
       "height": 128,

@@ -1,4 +1,4 @@
-import type { DjTrack } from "@playlist-recall/core/dj";
+import type { DjTrack } from "@sillage/core/dj";
 
 /** A catalogue row of the fixtures (SQL column names), as the MCP repository returns it. */
 export type CatalogRow = {

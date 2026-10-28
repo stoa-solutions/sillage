@@ -8,7 +8,7 @@ Références : AGENTS.md, docs/architecture.md, docs/accounts.md, docs/macos.md,
 
 ### P1 — Une réponse tardive réaffiche les agents privés du compte précédent
 
-**Emplacement :** `apps/macos/Sources/RecallMac/DJAgentsModel.swift:41–45`, et les mutations après attente des opérations CRUD, lignes 53–89.
+**Emplacement :** `apps/macos/Sources/SillageMac/DJAgentsModel.swift:41–45`, et les mutations après attente des opérations CRUD, lignes 53–89.
 
 `reset()` vide les agents, mais n’annule ni n’invalide les requêtes. Une liste demandée avec le compte A peut terminer après le passage au compte B et remplacer `agents` par les noms et instructions privés de A. Les autres modèles utilisent déjà la génération de session. Cela enfreint l’isolation des comptes décrite dans `docs/architecture.md:7` et les attentes de tests sur réponses tardives, ligne 132. Il s’agit d’une fuite d’état dans l’interface, pas d’un contournement des filtres SQL.
 
@@ -32,7 +32,7 @@ Pas d’autre violation non déjà couverte par les outils, ni de mauvaise abstr
 
 ### P2 — La liste des profils ne permet pas de parcourir tous les agents autorisés
 
-**Emplacement :** `apps/macos/Sources/RecallMac/DJAgentsViews.swift:109–129` ; `SettingsView.swift:85`.
+**Emplacement :** `apps/macos/Sources/SillageMac/DJAgentsViews.swift:109–129` ; `SettingsView.swift:85`.
 
 La colonne est un VStack non défilant dans une fenêtre de 850 × 750. Quatre profils de base et vingt profils personnels, les titres et le bouton de création dépassent la hauteur disponible. Les profils inférieurs deviennent hors cadre ou comprimés. Cela compromet l’administration de la capacité annoncée.
 

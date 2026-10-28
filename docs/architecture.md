@@ -1,8 +1,8 @@
-# Architecture Recall 2.2
+# Architecture Sillage 2.2
 
 ## Produit et limites
 
-Recall comprend une app Mac et un serveur. Le Mac utilise uniquement la bibliothèque serveur.
+Sillage comprend une app Mac et un serveur. Le Mac utilise uniquement la bibliothèque serveur.
 
 La connexion Google crée un compte isolé : playlists, réglages Gemini, limites et calage des paroles sont propres au compte. Le catalogue public de vidéos et ses vecteurs sont mutualisés, mais les recherches filtrent les abonnements `user_playlists`. Chaque nouvelle requête SQL ou outil MCP doit conserver ce filtre. Les identifiants proposés par le modèle sont revalidés avant de quitter le serveur. Voir [accounts.md](accounts.md).
 
@@ -41,7 +41,7 @@ Les limites de concurrence et de débit HTTP sont encore propres à chaque proce
 
 ## App Mac native
 
-L’app SwiftUI existe dans `apps/macos`. Son noyau `RecallKit` contient le client HTTP du serveur, la file de lecture et la session. Le module `RecallMac` contient les adaptateurs de session privée, micro Apple, WebKit et Sparkle. Voir [le guide Mac](macos.md).
+L’app SwiftUI existe dans `apps/macos`. Son noyau `SillageKit` contient le client HTTP du serveur, la file de lecture et la session. Le module `SillageMac` contient les adaptateurs de session privée, micro Apple, WebKit et Sparkle. Voir [le guide Mac](macos.md).
 
 Depuis la version 1.3, le Mac ne garde aucune bibliothèque : recherche, imports et tours de DJ passent par le serveur. Voir la décision [0002](adr/0002-server-only-mac-library.md), qui remplace [0001](adr/0001-native-local-library.md).
 
@@ -53,7 +53,7 @@ Sources : https://sparkle-project.org/documentation/ et https://developer.apple.
 
 ## Ajouter une fonctionnalité sans mêler les couches
 
-- **Règle pure** : `RecallKit` sur Mac, `packages/core` pour les contrats partagés, ou un module serveur pur (`modules/dj/decision.ts`, `modules/search/search.relevance.ts`). Tests sans réseau.
+- **Règle pure** : `SillageKit` sur Mac, `packages/core` pour les contrats partagés, ou un module serveur pur (`modules/dj/decision.ts`, `modules/search/search.relevance.ts`). Tests sans réseau.
 - **Effet externe** : un adaptateur ciblé (HTTPClient, outils MCP, voix, lecteur). Les secrets et autorisations restent aux frontières.
 - **État de session** : `PlaybackQueue` gère ordre/historique, `DJComposition` les suites bornées et exclusions, `LyricsModel` le cache/calage par compte. L’UI affiche ces états ; elle ne refait pas leurs règles.
 - **Temps de lecture** : `Player` possède l’horloge `PlaybackClock`. Les panneaux lisent la même position, même après fermeture/réouverture. Les déplacements natifs sont précis ; YouTube reste soumis aux limites de son lecteur et de son tampon.
@@ -66,7 +66,7 @@ Démarrage et parcours de contribution : [developing.md](developing.md).
 
 ## Serveur : données et modules
 
-Le schéma PostgreSQL est décrit avec Drizzle dans `apps/server/src/db/schema/`, un fichier par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`). Il décrit tout : colonnes `vector` de pgvector, colonnes `tsvector` générées, contraintes CHECK, index partiels et d’expression, avec les noms réels des contraintes. Les valeurs fixes sont des enums PostgreSQL (`job_kind`, `job_status`, `playlist_status`, `sync_run_status`, `listening_outcome`, `lyrics_status`, `ai_provider`, `user_dj_provider`, `discovery_scope`, `turn_trigger`, `turn_status`, `journal_origin`). Seuls le déclencheur `recall_music_revision` et la configuration de recherche `recall_simple` restent en SQL écrit à la main dans les migrations. Les requêtes utilisent le constructeur proche du SQL de Drizzle (`orm.select().from(...)`), typé de bout en bout ; aucun module n’écrit de SQL brut sur le pool.
+Le schéma PostgreSQL est décrit avec Drizzle dans `apps/server/src/db/schema/`, un fichier par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`). Il décrit tout : colonnes `vector` de pgvector, colonnes `tsvector` générées, contraintes CHECK, index partiels et d’expression, avec les noms réels des contraintes. Les valeurs fixes sont des enums PostgreSQL (`job_kind`, `job_status`, `playlist_status`, `sync_run_status`, `listening_outcome`, `lyrics_status`, `ai_provider`, `user_dj_provider`, `discovery_scope`, `turn_trigger`, `turn_status`, `journal_origin`). Seuls le déclencheur `sillage_music_revision` et la configuration de recherche `sillage_simple` restent en SQL écrit à la main dans les migrations. Les requêtes utilisent le constructeur proche du SQL de Drizzle (`orm.select().from(...)`), typé de bout en bout ; aucun module n’écrit de SQL brut sur le pool.
 
 Les migrations sont dans `apps/server/drizzle/` : `0000_baseline` (ancien schéma idempotent : une base existante l’applique sans changement, une base neuve est créée), puis `0001` à `0003` (passage des valeurs fixes en enums). L’API applique les migrations en attente au démarrage (`src/boot.ts`), dans une transaction, sous un verrou consultatif de session pris sur une connexion dédiée avant la lecture du journal (`src/db/migrate.ts`). L’historique est dans le schéma PostgreSQL `drizzle`.
 
@@ -119,7 +119,7 @@ apps/server/src/modules/dj/
 └── journal/                 # traces, mémoire, clôture des tours au redémarrage
 ```
 
-L’intention d’une phrase tapée est lue par `@playlist-recall/core/intent` (pur, partagé). Les outils MCP sont dans `modules/mcp/` (`mcp.service.ts`, indices de recherche indépendants dans `mcp.retrieval.ts`) et la correspondance des titres dans `modules/search/music-matching.ts`.
+L’intention d’une phrase tapée est lue par `@sillage/core/intent` (pur, partagé). Les outils MCP sont dans `modules/mcp/` (`mcp.service.ts`, indices de recherche indépendants dans `mcp.retrieval.ts`) et la correspondance des titres dans `modules/search/music-matching.ts`.
 
 `dj-turn.service` compose ces modules. `provider` connaît le format fournisseur, mais ne décide pas de la file ; `decision` est le seul endroit où une réponse du modèle devient une issue, et chaque issue porte une raison enregistrée au journal ; `catalog` relit les titres pour le compte authentifié. Le bail vit en mémoire du processus API, unique pour l’instant (voir « Volume et évolution »). Les fichiers internes du DJ n'importent jamais son `index.ts`, afin d'éviter une dépendance circulaire ; `check:architecture` le vérifie. Les routes HTTP restent stables : un rangement de fichiers ne doit pas imposer une migration aux clients.
 

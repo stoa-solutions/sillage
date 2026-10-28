@@ -214,7 +214,7 @@ it("exposes YouTube only for discovery and restricts library MCP to owned playli
       name: "library_search",
       arguments: {
         query: "Discovery",
-        playlistId: `recall-discoveries:${alice}`,
+        playlistId: `sillage-discoveries:${alice}`,
       },
     });
     expect(JSON.stringify(result)).not.toContain("newtrack001");

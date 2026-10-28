@@ -15,7 +15,7 @@ import {
   syncPlaylist,
 } from "../src/modules/library/index.ts";
 import { YouTube } from "../src/integrations/youtube/index.ts";
-import type { LibraryImport } from "@playlist-recall/core/types";
+import type { LibraryImport } from "@sillage/core/types";
 vi.mock("../src/integrations/inference/client.ts", () => ({ infer: vi.fn() }));
 const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
@@ -226,7 +226,7 @@ it("matches unaccented words against accented metadata", async () => {
   await importLibrary(db, fixture);
   await db.query("UPDATE videos SET title='Vidéo préférée'");
   const result = await db.query(
-    "SELECT id FROM videos WHERE search_document @@ websearch_to_tsquery('recall_simple','video preferee')",
+    "SELECT id FROM videos WHERE search_document @@ websearch_to_tsquery('sillage_simple','video preferee')",
   );
   expect(result.rowCount).toBe(1);
 });
@@ -505,7 +505,7 @@ it("exposes authenticated MCP tools with a real protocol handshake", async () =>
   });
   expect(response.status).toBe(200);
   expect((await response.json()).result.serverInfo.name).toBe(
-    "recall-music-library",
+    "sillage-music-library",
   );
 });
 it("searches available music through an MCP client and respects exclusions", async () => {

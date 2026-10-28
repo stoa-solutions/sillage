@@ -61,11 +61,11 @@ beforeEach(async () => {
   );
   await db.query(
     `INSERT INTO playlists(id,title,source_url,sync_enabled) VALUES('PLalice12345','Alice','https://www.youtube.com/playlist?list=PLalice12345',true),('PLbob1234567','Bob','https://www.youtube.com/playlist?list=PLbob1234567',true),($1,'Mes découvertes','',false)`,
-    [`recall-discoveries:${alice}`],
+    [`sillage-discoveries:${alice}`],
   );
   await db.query(
     `INSERT INTO user_playlists(user_id,playlist_id) VALUES($1,'PLalice12345'),($2,'PLbob1234567'),($1,$3)`,
-    [alice, bob, `recall-discoveries:${alice}`],
+    [alice, bob, `sillage-discoveries:${alice}`],
   );
   await db.query(
     `INSERT INTO videos(id,title,channel,thumbnail_url,content_hash) VALUES('alicevideo1','Jazz Alice','Alice','https://i.ytimg.com/vi/alicevideo1/hqdefault.jpg','hash-a'),('shared12345','Jazz commun','Shared','https://i.ytimg.com/vi/shared12345/hqdefault.jpg','hash-s')`,
@@ -162,7 +162,7 @@ it("removes a playlist from one account without touching YouTube or other accoun
   const playlists = (await (await req("GET", "/v1/playlists")).json())
     .playlists;
   expect(playlists.map((p: any) => p.id)).toEqual([
-    `recall-discoveries:${alice}`,
+    `sillage-discoveries:${alice}`,
   ]);
   expect(
     (await (await req("POST", "/v1/search", tokenA, { query: "" })).json())
@@ -175,13 +175,13 @@ it("removes a playlist from one account without touching YouTube or other accoun
   ).toBe(1);
   await db.query(
     `INSERT INTO memberships(key,playlist_id,video_id,position,seen_generation) VALUES('d',$1,'alicevideo1',1,0)`,
-    [`recall-discoveries:${alice}`],
+    [`sillage-discoveries:${alice}`],
   );
   expect(
     (
       await req(
         "DELETE",
-        "/v1/playlists/" + encodeURIComponent(`recall-discoveries:${alice}`),
+        "/v1/playlists/" + encodeURIComponent(`sillage-discoveries:${alice}`),
       )
     ).status,
   ).toBe(200);
@@ -190,7 +190,7 @@ it("removes a playlist from one account without touching YouTube or other accoun
   );
   const kept = await db.query(
     "SELECT count(*)::int AS n FROM memberships WHERE playlist_id=$1 AND active",
-    [`recall-discoveries:${alice}`],
+    [`sillage-discoveries:${alice}`],
   );
   expect(kept.rows[0].n).toBe(0);
 });

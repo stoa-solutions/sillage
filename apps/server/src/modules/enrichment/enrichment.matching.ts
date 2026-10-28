@@ -1,4 +1,4 @@
-import type { MusicMetadata } from "@playlist-recall/core/types";
+import type { MusicMetadata } from "@sillage/core/types";
 
 export interface SourceTrack {
   title: string;

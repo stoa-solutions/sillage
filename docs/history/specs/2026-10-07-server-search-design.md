@@ -1,4 +1,4 @@
-# Playlist Recall — synchronisation serveur et recherche enrichie
+# Sillage — synchronisation serveur et recherche enrichie
 
 Date : 7 octobre 2026. Statut : approuvée par Samuel le 7 octobre 2026 ; développement et déploiement autorisés.
 
@@ -12,12 +12,12 @@ Livrable visé : extension connectée à une API privée, synchronisation durabl
 
 ## État constaté
 
-- Dépôt existant : `playlist-recall`, branche `codex/local-playlist-recall`, arbre propre avant ce document.
+- Dépôt existant : `sillage`, branche `codex/local-sillage`, arbre propre avant ce document.
 - Extension WXT / React / TypeScript ; IndexedDB ; modèle E5 multilingue local de 384 dimensions ; recherche lexicale et sémantique fusionnée par rang.
 - Export personnel embarqué : 2 818 entrées, 2 792 vidéos uniques, 2 666 vecteurs. Zéro description et des tags pour une seule vidéo. Ce décompte ne représente pas la playlist YouTube actuelle.
 - Le document sémantique actuel coupe la description à 1 000 caractères : enrichir la collecte sans revoir cette préparation limiterait le gain.
 - VPS contrôlé en lecture seule : 4 processeurs logiques, 5 921 Mio de RAM, 2 860 Mio disponibles lors du contrôle, 331 Gio libres sur le disque racine. Cette mesure ponctuelle n’est pas une garantie de capacité en charge. Aucune capacité GPU n’a été vérifiée.
-- Stoa, le mail, les analytics et la newsletter partagent déjà cette machine. PostgreSQL de Stoa est une ressource indépendante. Playlist Recall aura sa propre base et ses services, sans modification de la base ni des conteneurs Stoa.
+- Stoa, le mail, les analytics et la newsletter partagent déjà cette machine. PostgreSQL de Stoa est une ressource indépendante. Sillage aura sa propre base et ses services, sans modification de la base ni des conteneurs Stoa.
 
 ## Choix du stockage et du moteur
 
@@ -34,7 +34,7 @@ Recherche vectorielle exacte au départ, après application des filtres, pour di
 
 ```mermaid
 flowchart LR
-  E[Extension Chrome] -->|HTTPS et jeton personnel| A[API Playlist Recall]
+  E[Extension Chrome] -->|HTTPS et jeton personnel| A[API Sillage]
   A --> D[(PostgreSQL et pgvector)]
   S[Planification toutes les 6 heures] --> J[File de tâches persistante]
   A -->|Actualiser maintenant| J
@@ -45,7 +45,7 @@ flowchart LR
   W --> M
 ```
 
-- Conserver le dépôt Playlist Recall autonome et les entrées WXT actuelles. Ajouter un dossier serveur organisé autour de `playlists`, `sync`, `indexing`, `search` et `auth`, avec des contrats partagés validés à la frontière.
+- Conserver le dépôt Sillage autonome et les entrées WXT actuelles. Ajouter un dossier serveur organisé autour de `playlists`, `sync`, `indexing`, `search` et `auth`, avec des contrats partagés validés à la frontière.
 - API Node / TypeScript et Hono. Processus de calcul séparé du serveur HTTP, utilisant des modèles ONNX locaux. Réutiliser les fonctions compatibles de préparation et de filtres ; ne pas importer React ou les API Chrome côté serveur.
 - Base PostgreSQL avec pgvector dédiée, accessible uniquement sur un réseau privé. Volume persistant et sauvegardes indépendants du redéploiement de l’application.
 - File de tâches en PostgreSQL : prise atomique, bail avec expiration, reprise, tentatives bornées et clé d’idempotence. Pas de Redis supplémentaire requis.

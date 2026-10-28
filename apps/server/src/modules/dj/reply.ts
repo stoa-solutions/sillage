@@ -1,4 +1,4 @@
-import type { DjTrack } from "@playlist-recall/core/dj";
+import type { DjTrack } from "@sillage/core/dj";
 import type { DiscoveryEvidence } from "./evidence.ts";
 
 /**

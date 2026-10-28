@@ -29,7 +29,7 @@ export class MusicBrainzClient {
         response = await this.fetcher(url, {
           headers: {
             "User-Agent":
-              "PlaylistRecall/1.5.4 (https://recall.stoa.solutions)",
+              "Sillage/1.5.4 (https://sillage.stoa.solutions)",
             Accept: "application/json",
           },
           signal: AbortSignal.timeout(15000),
