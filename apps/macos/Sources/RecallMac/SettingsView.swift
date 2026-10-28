@@ -59,7 +59,7 @@ struct SettingsView: View {
         if page == .appearance {
           AppearanceSettings()
         } else if page == .agents {
-          DJAgentsSettings(agents: dj.agents)
+          DJAgentsSettings(agents: dj.agents).id(dj.agents.epoch)
         } else {
           Form {
             switch page {

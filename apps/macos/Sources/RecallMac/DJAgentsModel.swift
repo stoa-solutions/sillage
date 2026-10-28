@@ -29,10 +29,12 @@ final class DJAgentsModel: ObservableObject {
   }
 
   /// Bumped when the account changes: an answer for the previous account must not land here.
-  private var epoch = 0
+  @Published private(set) var epoch = 0
+  private var loadID = UUID()
 
   func reset() {
     epoch += 1
+    loadID = UUID()
     agents = []
     error = ""
     loading = false
@@ -41,9 +43,11 @@ final class DJAgentsModel: ObservableObject {
   func load() async {
     guard let connection = session.connection else { return }
     let started = epoch
+    let request = UUID()
+    loadID = request
     loading = true
     let result = await outcome { try await HTTPClient().djAgents(connection) }
-    guard started == epoch else { return }
+    guard started == epoch, request == loadID else { return }
     loading = false
     switch result {
     case .success(let list):

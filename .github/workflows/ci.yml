@@ -74,7 +74,7 @@ jobs:
           postgres://postgres:smoke_test@host.docker.internal:5432/smoke_test
           ${{ github.sha }}
   macos:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

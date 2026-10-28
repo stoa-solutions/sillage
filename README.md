@@ -18,15 +18,15 @@ Le mode **Textes et souvenirs** combine mots-clés et sens du texte. Le mode **M
 
 ## Configuration personnelle et redistribution
 
-Dans **Réglages → Ton IA musicale**, chaque compte peut utiliser une clé Gemini personnelle et choisir le modèle. La clé est chiffrée sur le serveur, jamais incluse dans les exports ni renvoyée au client. Un changement de modèle ne demande pas de la ressaisir. Le serveur doit configurer `DJ_SETTINGS_ENCRYPTION_KEY` pour activer cette fonction.
+Dans **Réglages → Ton IA musicale**, chaque compte peut utiliser une clé Gemini ou Claude personnelle et choisir le modèle. La clé est chiffrée sur le serveur, jamais incluse dans les exports ni renvoyée au client. Un changement de modèle ne demande pas de la ressaisir. Le serveur doit configurer `DJ_SETTINGS_ENCRYPTION_KEY` pour activer cette fonction.
 
-Les comptes Google ont chacun leurs playlists et leur clé Gemini ; le catalogue public et les vecteurs sont mutualisés, avec filtrage par compte. Voir [les comptes](docs/accounts.md).
+Les comptes Google ont chacun leurs playlists et leurs clés Gemini et Claude ; le catalogue public et les vecteurs sont mutualisés, avec filtrage par compte. Voir [les comptes](docs/accounts.md).
 
 Voir [l’architecture et la trajectoire Mac](docs/architecture.md) pour les frontières de code, les secrets et les limites actuelles.
 
 ## Mode DJ
 
-Décrivez votre mood dans le chat ou avec le micro : le DJ cherche dans votre bibliothèque par MCP et prépare une file de titres. La réponse vocale du DJ est optionnelle. Le chat et les métadonnées utiles à la sélection sont transmis à Gemini ; la clé reste sur le serveur.
+Décrivez votre mood dans le chat ou avec le micro : le DJ cherche dans votre bibliothèque par MCP et prépare une file de titres. La réponse vocale du DJ est optionnelle. Le chat et les métadonnées utiles à la sélection sont transmis au fournisseur choisi ; la clé reste sur le serveur.
 
 La musique utilise le lecteur officiel YouTube. Certains titres restent indisponibles en intégration ; un lien permet de les ouvrir sur YouTube. Il s’agit d’une sélection qui enchaîne les titres, sans mixage audio ni mesure du tempo.
 
@@ -46,7 +46,7 @@ Pour lancer une app Mac de développement sans toucher aux données personnelles
 
 ## Données et confidentialité
 
-Les recherches et métadonnées sont envoyées à votre serveur ; les modèles y calculent les vecteurs sur CPU. La clé YouTube reste côté serveur. La recherche seule n’utilise pas d’API d’IA payante. Le mode DJ fait appel à Gemini côté serveur, avec un plafond quotidien ; aucune télémétrie applicative n’est ajoutée. Les miniatures sont chargées depuis `i.ytimg.com` ; l'affichage des miniatures et la lecture demandent une connexion.
+Les recherches et métadonnées sont envoyées à votre serveur ; les modèles y calculent les vecteurs sur CPU. La clé YouTube reste côté serveur. La recherche seule n’utilise pas d’API d’IA payante. Le mode DJ fait appel au fournisseur choisi côté serveur, avec un plafond quotidien ; aucune télémétrie applicative n’est ajoutée. Les miniatures sont chargées depuis `i.ytimg.com` ; l'affichage des miniatures et la lecture demandent une connexion.
 
 Les dates d'écoute ne sont pas disponibles. La synchronisation du serveur utilise uniquement l’API officielle YouTube pour les playlists publiques ou non répertoriées. Des entrées dont YouTube n'a pas renvoyé les métadonnées restent identifiées comme telles.
 

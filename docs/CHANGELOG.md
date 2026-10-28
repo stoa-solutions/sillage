@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage 1.8.5 (76) : dernière intégration des agents de Claude, quota de création atomique, liste défilable et isolation des réponses entre comptes. Les brouillons de réglages sont réinitialisés au changement de compte ; deux chargements simultanés gardent la réponse la plus récente.
+
 - Sillage 1.8.4 (75) : une seule fenêtre principale ; les ouvertures depuis le Dock et la barre des menus réutilisent le lecteur. Le bundle interdit le lancement simultané de plusieurs instances par macOS. Les agents de base et personnalisés de Claude sont inclus.
 
 - Agents du DJ côté serveur : profils qui changent le ton et les préférences du DJ sans toucher à ses règles. Quatre agents de base (Le DJ, Le Disquaire, L’Archiviste, Focus) et agents personnalisés par compte dans `dj_agents` (`/v1/dj/agents`), choisis par `agentId` dans `/v1/dj/chat`, suites comprises. Un agent inconnu ou supprimé repasse sur l’agent par défaut ; le journal garde l’agent utilisé. Scénarios `--suite agents` dans le banc d’évaluation. Sur Mac : pastille d’agent dans la barre de chat et page Réglages → Agents (choisir, dupliquer, créer, modifier, supprimer) ; `/règles` montre le profil de l’agent choisi. Mettre à jour le serveur avant l’app : sans agents côté serveur, la pastille reste cachée. Une réponse du DJ peut contenir jusqu’à 20 titres ou cartes (8 auparavant) : au-delà, la liste est coupée au lieu de faire échouer le tour ; « quinze titres », `/suite 20` et les listes de titres exacts suivent la même limite. Identité des agents plus marquée : profils de base réécrits avec un exemple de ton, voix de l’agent rappelée en dernier au modèle, jusqu’à deux phrases d’explication après l’annonce, nom de l’agent affiché au-dessus de ses réponses.
