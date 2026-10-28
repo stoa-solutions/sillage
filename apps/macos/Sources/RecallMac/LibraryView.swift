@@ -13,8 +13,8 @@ struct LibraryView: View {
   @State private var deleting: ServerPlaylistSummary?
   @State private var showingHistory = false
   // Recette: a test build can open on Mon goût (SILLAGE_QA_LIBRARY=taste) without a click.
-  @State private var showingTaste =
-    ProcessInfo.processInfo.environment["SILLAGE_QA_LIBRARY"] == "taste"
+  private static let qaTaste = ProcessInfo.processInfo.environment["SILLAGE_QA_LIBRARY"] == "taste"
+  @State private var showingTaste = qaTaste
   @EnvironmentObject var history: ListeningHistoryModel
 
   var body: some View {
@@ -36,7 +36,7 @@ struct LibraryView: View {
     .task(id: session.generation) { await library.watchEnrichment() }
     .onChange(of: session.generation) { _, _ in
       showingHistory = false
-      showingTaste = false
+      showingTaste = Self.qaTaste
     }
     .confirmationDialog(
       "Retirer « \(deleting?.title ?? "") » ?", isPresented: deletingBinding,
@@ -54,42 +54,54 @@ struct LibraryView: View {
 
   // MARK: Sidebar
 
-  /// The Atelier board gives the playlists about a third of the window (0.345), within
-  /// readable bounds.
-  static func sidebarWidth(_ window: CGFloat) -> CGFloat { min(max(window * 0.345, 220), 380) }
+  /// The 2026-10-28 board gives the sidebar about a fifth of the window, within readable bounds.
+  static func sidebarWidth(_ window: CGFloat) -> CGFloat { min(max(window * 0.21, 250), 290) }
 
   private var sidebar: some View {
     VStack(alignment: .leading, spacing: 0) {
-      HStack(spacing: 2) {
-        Text("Playlists").font(.system(size: 14, weight: .semibold))
-        Spacer()
-        IconButton(symbol: "plus", help: "Ajouter une playlist YouTube") { adding = true }
-          .popover(isPresented: $adding, arrowEdge: .bottom) { importForm.padding(16) }
-        IconButton(
-          symbol: "arrow.clockwise", help: "Récupérer les nouveautés de tes playlists YouTube"
-        ) { library.sync(refreshYouTube: true) }
-        .disabled(library.syncing || library.importing)
-        .rotationEffect(.degrees(library.syncing ? 360 : 0))
-        .animation(
-          library.syncing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default,
-          value: library.syncing)
-      }.padding(.leading, 16).padding(.trailing, 8).padding(.top, 12).padding(.bottom, 8)
       ScrollView {
-        VStack(spacing: 2) {
-          tasteItem
-          historyItem
-          playlistItem(
-            id: "", title: "Toutes les vidéos", count: library.libraryCount,
-            symbol: "music.note.list")
-          ForEach(library.playlists) { playlist in
-            playlistItem(id: playlist.id, title: playlist.title, count: playlist.entries)
-              .contextMenu {
-                Button("Retirer de ma bibliothèque…", systemImage: "trash", role: .destructive) {
-                  deleting = playlist
-                }
-              }
+        VStack(alignment: .leading, spacing: 0) {
+          MonoLabel("Bibliothèque").padding(.horizontal, 12).padding(.bottom, 12)
+          LibrarySideRow(
+            title: "Toutes les vidéos", symbol: "music.note.list",
+            count: library.libraryCount,
+            selected: !showingHistory && !showingTaste && library.selectedPlaylist.isEmpty
+          ) { showPlaylist("") }
+          LibrarySideRow(title: "Mon goût", symbol: "waveform", selected: showingTaste) {
+            showingHistory = false
+            showingTaste = true
           }
-        }.padding(.horizontal, 8)
+          LibrarySideRow(
+            title: "Écoutes récentes", symbol: "clock.arrow.circlepath", selected: showingHistory,
+            action: openHistory)
+          SillageRule().padding(.horizontal, 12).padding(.vertical, 20)
+          HStack(spacing: 2) {
+            MonoLabel("Tes playlists")
+            Spacer()
+            IconButton(symbol: "plus", help: "Ajouter une playlist YouTube") { adding = true }
+              .popover(isPresented: $adding, arrowEdge: .bottom) { importForm.padding(16) }
+            IconButton(
+              symbol: "arrow.clockwise", help: "Récupérer les nouveautés de tes playlists YouTube"
+            ) { library.sync(refreshYouTube: true) }
+            .disabled(library.syncing || library.importing)
+            .rotationEffect(.degrees(library.syncing ? 360 : 0))
+            .animation(
+              library.syncing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default,
+              value: library.syncing)
+          }.padding(.leading, 12).padding(.bottom, 8)
+          ForEach(library.playlists) { playlist in
+            LibraryPlaylistRow(
+              title: playlist.title, count: playlist.entries,
+              selected: !showingHistory && !showingTaste
+                && library.selectedPlaylist == playlist.id
+            ) { showPlaylist(playlist.id) }
+            .contextMenu {
+              Button("Retirer de ma bibliothèque…", systemImage: "trash", role: .destructive) {
+                deleting = playlist
+              }
+            }
+          }
+        }.padding(.horizontal, 12).padding(.top, 24).padding(.bottom, 12)
       }
       if library.importing {
         importStatus.padding(12)
@@ -97,34 +109,10 @@ struct LibraryView: View {
     }
   }
 
-  private func playlistItem(id: String, title: String, count: Int, symbol: String? = nil)
-    -> some View
-  {
-    SidebarItem(
-      title: title, detail: "\(count.formatted()) vidéos", symbol: symbol,
-      tileTitle: symbol == nil ? title : nil,
-      selected: !showingHistory && !showingTaste && library.selectedPlaylist == id
-    ) {
-      showingHistory = false
-      showingTaste = false
-      library.selectedPlaylist = id
-    }
-  }
-
-  private var tasteItem: some View {
-    SidebarItem(
-      title: "Mon goût", detail: "Ce que tes écoutes disent de toi", symbol: "waveform",
-      selected: showingTaste
-    ) {
-      showingHistory = false
-      showingTaste = true
-    }
-  }
-
-  private var historyItem: some View {
-    SidebarItem(
-      title: "Écoutes récentes", detail: "Historique", symbol: "clock.arrow.circlepath",
-      selected: showingHistory, action: openHistory)
+  private func showPlaylist(_ id: String) {
+    showingHistory = false
+    showingTaste = false
+    library.selectedPlaylist = id
   }
 
   private func openHistory() {
@@ -146,7 +134,8 @@ struct LibraryView: View {
       }.frame(maxWidth: .infinity, maxHeight: .infinity)
     } else if showingTaste {
       TasteOverviewView(
-        taste: dj.taste, current: dj.current, play: play, enqueue: { dj.enqueue($0) })
+        taste: dj.taste, current: dj.current, play: play, enqueue: { dj.enqueue($0) },
+        explore: { showPlaylist("") })
     } else if showingHistory {
       ListeningHistoryView(
         model: history, play: play, enqueue: { dj.enqueue($0) },
@@ -161,13 +150,12 @@ struct LibraryView: View {
         if library.importing { importStatus }
       }.padding(32).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     } else {
-      VStack(alignment: .leading, spacing: 12) {
-        SearchField(prompt: "Filtrer : artiste, titre, souvenir…", text: $library.query)
-          .onChange(of: library.query) { _, _ in library.search() }
-          .accessibilityLabel("Filtrer la bibliothèque")
-        header(wide: wide)
+      VStack(alignment: .leading, spacing: 0) {
+        head(wide: wide).padding(.bottom, 24)
+        controls(wide: wide).padding(.bottom, 20)
+        if !wide && library.importing { importStatus.padding(.bottom, 12) }
         songs
-      }.padding(.top, 12).padding(.horizontal, 16)
+      }.padding(.top, 28).padding(.horizontal, 32).padding(.bottom, 18)
     }
   }
 
@@ -177,52 +165,66 @@ struct LibraryView: View {
   private var title: String { library.selectedPlaylistSummary?.title ?? "Toutes les vidéos" }
   private var count: Int { library.selectedPlaylistSummary?.entries ?? library.libraryCount }
 
-  /// A small context block, not a hero: tile, title, count, then play and shuffle.
-  private func header(wide: Bool) -> some View {
-    VStack(alignment: .leading, spacing: 10) {
-      HStack(alignment: .center, spacing: 12) {
-        PlaylistTile(
-          title: title, symbol: library.selectedPlaylist.isEmpty ? "music.note.list" : nil,
-          size: 56)
-        VStack(alignment: .leading, spacing: 2) {
-          if wide {
-            Text(title).font(.system(size: 22, weight: .medium)).lineLimit(1)
-              .truncationMode(.tail).help(title).accessibilityAddTraits(.isHeader)
-          } else {
-            playlistMenu
+  /// Eyebrow, title and counts; Mon goût one click away on the right.
+  private func head(wide: Bool) -> some View {
+    LibraryPageHead(
+      eyebrow: library.selectedPlaylist.isEmpty ? "Ta collection" : "Playlist",
+      title: title
+    ) {
+      HStack(spacing: 8) {
+        Text("\(count.formatted()) titres").font(.system(size: 11, design: .monospaced))
+        if library.selectedPlaylist.isEmpty && !library.playlists.isEmpty {
+          Circle().fill(.secondary).frame(width: 3, height: 3)
+          Text(
+            "\(library.playlists.count) playlist\(library.playlists.count > 1 ? "s" : "")"
+          ).font(.system(size: 11))
+        }
+        enrichmentChip
+      }
+    } trailing: {
+      if wide {
+        LibraryLinkButton(title: "Mon goût", trailingSymbol: "chevron.right") {
+          showingHistory = false
+          showingTaste = true
+        }
+      } else {
+        playlistMenu
+      }
+    }
+  }
+
+  /// Play, shuffle, the playlist's own actions, then the filter on the right.
+  private func controls(wide: Bool) -> some View {
+    HStack(spacing: 10) {
+      Button(action: playAll) { Label("Tout lire", systemImage: "play.fill") }
+        .buttonStyle(LibraryPrimaryButtonStyle()).disabled(library.results.isEmpty)
+        .help("Lire depuis le début").accessibilityLabel("Lire \(title)")
+      Button(action: shuffle) { Label("Aléatoire", systemImage: "shuffle") }
+        .buttonStyle(LibrarySecondaryButtonStyle()).disabled(library.results.isEmpty)
+        .help("Lire dans un ordre aléatoire")
+      if let playlist = library.selectedPlaylistSummary {
+        Menu {
+          Button("Retirer de ma bibliothèque…", systemImage: "trash", role: .destructive) {
+            deleting = playlist
           }
-          HStack(spacing: 8) {
-            Text("\(count.formatted()) vidéos").foregroundStyle(.secondary)
-            enrichmentChip
-          }.font(.system(size: 12))
-        }
-        Spacer(minLength: 0)
+        } label: {
+          Image(systemName: "ellipsis").frame(width: 36, height: 36)
+            .background(
+              RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.sillageHover))
+            .contentShape(Rectangle())
+        }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+          .foregroundStyle(.secondary).help("Plus d’actions pour cette playlist")
+          .accessibilityLabel("Plus d’actions pour \(playlist.title)")
       }
-      HStack(spacing: 10) {
-        Button(action: playAll) { PlayDisc(size: 32) }.buttonStyle(.plain)
-          .disabled(library.results.isEmpty).help("Lire depuis le début")
-          .accessibilityLabel("Lire \(title)")
-        IconButton(symbol: "shuffle", help: "Lire dans un ordre aléatoire", action: shuffle)
-          .disabled(library.results.isEmpty)
-        if let playlist = library.selectedPlaylistSummary {
-          Menu {
-            Button("Retirer de ma bibliothèque…", systemImage: "trash", role: .destructive) {
-              deleting = playlist
-            }
-          } label: {
-            Image(systemName: "ellipsis").frame(width: 26, height: 26)
-              .contentShape(Rectangle())
-          }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
-            .foregroundStyle(.secondary).help("Plus d’actions pour cette playlist")
-            .accessibilityLabel("Plus d’actions pour \(playlist.title)")
-        }
-        if !wide {
-          IconButton(symbol: "plus", help: "Ajouter une playlist YouTube") { adding = true }
-            .popover(isPresented: $adding, arrowEdge: .bottom) { importForm.padding(16) }
-        }
-        Spacer(minLength: 0)
+      if !wide {
+        IconButton(symbol: "plus", help: "Ajouter une playlist YouTube") { adding = true }
+          .popover(isPresented: $adding, arrowEdge: .bottom) { importForm.padding(16) }
       }
-      if !wide && library.importing { importStatus }
+      Spacer(minLength: 12)
+      SearchField(prompt: "Filtrer : artiste, titre, souvenir…", text: $library.query)
+        .onChange(of: library.query) { _, _ in library.search() }
+        .accessibilityLabel("Filtrer la bibliothèque")
+        .frame(maxWidth: 324)
     }
   }
 
@@ -248,11 +250,13 @@ struct LibraryView: View {
         }
       }
     } label: {
+      // A narrow window has no sidebar: the collections live in this menu.
       HStack(spacing: 6) {
-        Text(title).font(.system(size: 22, weight: .semibold)).lineLimit(1)
-        Image(systemName: "chevron.down").font(.callout.weight(.semibold))
-          .foregroundStyle(.secondary)
-      }.accessibilityElement(children: .ignore).accessibilityLabel("Collection : \(title)")
+        Image(systemName: "rectangle.stack").font(.system(size: 14))
+        Text("Collections").font(.system(size: 12))
+        Image(systemName: "chevron.down").font(.system(size: 10, weight: .semibold))
+      }.foregroundStyle(.secondary)
+        .accessibilityElement(children: .ignore).accessibilityLabel("Collection : \(title)")
     }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
   }
 
@@ -266,31 +270,56 @@ struct LibraryView: View {
   }
 
   private var songs: some View {
-    ScrollView {
-      LazyVStack(spacing: 0) {
-        ForEach(library.results) { row in
-          SongRow(
-            index: row.id + 1, track: row.track, playing: dj.current?.id == row.track.id,
-            onPlay: { play(row.track) }, onEnqueue: { dj.enqueue(row.track) }
-          )
-          .onAppear {
-            if row.id == library.results.count - 10 || row.id == library.results.count - 1 {
-              library.search(more: true)
+    GeometryReader { geometry in
+      let compact = geometry.size.width < LibraryColumns.compactBelow
+      VStack(spacing: 0) {
+        TableHeaderRow {
+          MonoLabel("#").frame(width: 26)
+          MonoLabel("Titre").frame(maxWidth: .infinity, alignment: .leading)
+          if !compact {
+            MonoLabel("Artiste").frame(width: LibraryColumns.artist, alignment: .leading)
+          }
+          MonoLabel("Durée").frame(width: LibraryColumns.duration, alignment: .trailing)
+          Color.clear.frame(width: LibraryColumns.actions, height: 1)
+        }
+        ScrollView {
+          LazyVStack(spacing: 0) {
+            ForEach(library.results) { row in
+              LibraryTableRow(
+                index: row.id + 1, track: row.track, playing: dj.current?.id == row.track.id,
+                compact: compact, onPlay: { play(row.track) },
+                onEnqueue: { dj.enqueue(row.track) }
+              )
+              .onAppear {
+                if row.id == library.results.count - 10 || row.id == library.results.count - 1 {
+                  library.search(more: true)
+                }
+              }
+            }
+            if library.loadingMore {
+              ProgressView().controlSize(.small).padding(12)
             }
           }
         }
-        if library.loadingMore {
-          ProgressView().controlSize(.small).padding(12)
+        // A legacy scroller would narrow the rows and shift their columns off the header.
+        .scrollIndicators(.never)
+        .id("\(library.selectedPlaylist)|\(library.query)")
+        .overlay {
+          if library.searching && library.results.isEmpty {
+            ProgressView()
+          } else if library.results.isEmpty && !library.query.isEmpty && !library.searching {
+            EmptyState(symbol: "magnifyingglass", message: "Aucun morceau ne correspond.")
+          }
         }
-      }.padding(.bottom, 12)
-    }
-    .padding(.horizontal, -8)
-    .id("\(library.selectedPlaylist)|\(library.query)")
-    .overlay {
-      if library.searching && library.results.isEmpty {
-        ProgressView()
-      } else if library.results.isEmpty && !library.query.isEmpty && !library.searching {
-        EmptyState(symbol: "magnifyingglass", message: "Aucun morceau ne correspond.")
+        HStack {
+          MonoLabel(
+            library.query.isEmpty
+              ? "\(count.formatted()) titres dans \(library.selectedPlaylist.isEmpty ? "ta bibliothèque" : "cette playlist")"
+              : "\(library.results.count.formatted()) titres trouvés", uppercase: false)
+          Spacer()
+          Text("Les playlists restent intactes sur YouTube.").font(.system(size: 10))
+            .foregroundStyle(.secondary)
+        }.padding(.horizontal, 10).padding(.top, 12)
       }
     }
   }
@@ -369,5 +398,77 @@ private struct EnrichmentChip: View {
       .popover(isPresented: $open) {
         EnrichmentProgressView(progress: progress, error: error).padding(12).frame(width: 420)
       }
+  }
+}
+
+/// A sidebar entry: glyph, title, optional count; an orange edge marks the selection.
+private struct LibrarySideRow: View {
+  let title: String
+  let symbol: String
+  var count: Int? = nil
+  let selected: Bool
+  let action: () -> Void
+  @State private var hovering = false
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 10) {
+        Image(systemName: symbol).font(.system(size: 15))
+          .foregroundStyle(selected ? Color.sillage(.actionText) : .secondary)
+          .frame(width: 20).accessibilityHidden(true)
+        Text(title).font(.system(size: 13, weight: selected ? .semibold : .regular))
+          .foregroundStyle(selected ? Color.primary : .secondary).lineLimit(1)
+        Spacer(minLength: 4)
+        if let count {
+          Text(count.formatted()).font(.system(size: 11, design: .monospaced))
+            .foregroundStyle(.secondary)
+        }
+      }
+      .padding(.horizontal, 12).frame(height: 44)
+      .modifier(LibrarySelection(selected: selected, hovering: hovering))
+    }.buttonStyle(.plain).onHover { hovering = $0 }
+      .accessibilityAddTraits(selected ? .isSelected : []).padding(.vertical, 2)
+  }
+}
+
+/// A playlist in the sidebar: its tile, title and number of titles.
+private struct LibraryPlaylistRow: View {
+  let title: String
+  let count: Int
+  let selected: Bool
+  let action: () -> Void
+  @State private var hovering = false
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 10) {
+        PlaylistTile(title: title, size: 34)
+        VStack(alignment: .leading, spacing: 2) {
+          Text(title).font(.system(size: 12, weight: .medium)).lineLimit(1).help(title)
+          Text("\(count.formatted()) titre\(count > 1 ? "s" : "")").font(.system(size: 11))
+            .foregroundStyle(.secondary)
+        }
+        Spacer(minLength: 0)
+      }
+      .padding(.horizontal, 12).frame(height: 64)
+      .modifier(LibrarySelection(selected: selected, hovering: hovering))
+    }.buttonStyle(.plain).onHover { hovering = $0 }
+      .accessibilityAddTraits(selected ? .isSelected : [])
+  }
+}
+
+private struct LibrarySelection: ViewModifier {
+  let selected: Bool
+  let hovering: Bool
+  func body(content: Content) -> some View {
+    content
+      .background(
+        RoundedRectangle(cornerRadius: 8, style: .continuous).fill(
+          selected ? Color.sillageSelectionGlass : hovering ? Color.sillageHover : .clear)
+      )
+      .overlay(alignment: .leading) {
+        if selected {
+          Capsule().fill(Color.sillage(.primaryFill)).frame(width: 3, height: 20)
+        }
+      }
+      .contentShape(Rectangle())
   }
 }

@@ -28,7 +28,15 @@ struct TasteButtons: View {
     } label: {
       Image(systemName: active ? symbol + ".fill" : symbol)
         .foregroundStyle(active ? Color.recall : .secondary)
-        .frame(width: size, height: size).contentShape(Rectangle())
+        .frame(width: size, height: size)
+        .background {
+          // A given opinion sits on a small orange-tinted square, as on the boards.
+          if active {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+              .fill(Color.sillage(.primaryFill).opacity(0.16))
+          }
+        }
+        .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .accessibilityLabel(label)
