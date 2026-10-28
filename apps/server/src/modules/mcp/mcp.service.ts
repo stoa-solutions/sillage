@@ -47,6 +47,9 @@ function firstText(result: { content: { text: string }[] }): string {
   if (!block) throw new Error("Tool result without content.");
   return block.text;
 }
+/** taste: candidates ordered by the listener's taste; search: the sources' own order (A/B). */
+export type CandidateRanking = "taste" | "search";
+
 export function musicMcp(
   db: Database,
   excludeIds: string[] = [],
@@ -54,6 +57,7 @@ export function musicMcp(
   discover = false,
   scope?: "library" | "youtube" | "all",
   rejectedIds: string[] = [],
+  ranking: CandidateRanking = "taste",
 ) {
   const server = new McpServer({
     name: "recall-music-library",
@@ -398,10 +402,10 @@ export function musicMcp(
             ],
           };
         const filtered = { ...args, playlistId: chosen?.id };
-        const results = new Map<
-          string,
-          { video: DjTrack; inLibrary: boolean }
-        >();
+        // Each source keeps its own order; they are merged once both answered, library first,
+        // so the order never depends on which source replied first.
+        const owned: { video: DjTrack; inLibrary: boolean }[] = [];
+        const external: { video: DjTrack; inLibrary: boolean }[] = [];
         const sources: {
           source: "library" | "youtube";
           status: "ok" | "error" | "unsupported";
@@ -417,7 +421,7 @@ export function musicMcp(
                 const result = await librarySearch(filtered);
                 const data = JSON.parse(firstText(result));
                 for (const video of data.tracks)
-                  results.set(video.id, { video, inLibrary: true });
+                  owned.push({ video, inLibrary: true });
                 sources.push({
                   source: "library",
                   status: "ok",
@@ -476,10 +480,7 @@ export function musicMcp(
                     ),
                   ),
                 };
-                for (const item of data.results) {
-                  const existing = results.get(item.video.id);
-                  if (!existing?.inLibrary) results.set(item.video.id, item);
-                }
+                external.push(...data.results);
                 sources.push({ source: "youtube", status: "ok" });
                 for (const attempt of attempts)
                   if (attempt.status === "rejected")
@@ -511,8 +512,18 @@ export function musicMcp(
             })(),
           );
         await Promise.all(jobs);
-        // The listener's taste orders the candidates and labels each one for the DJ.
-        const ranked = await tasteService(db).rank(userId, [...results.values()]);
+        const results = new Map<string, { video: DjTrack; inLibrary: boolean }>();
+        for (const item of interleaveClues([owned, external]))
+          if (!results.get(item.video.id)?.inLibrary) results.set(item.video.id, item);
+        // The listener's taste orders an open search and labels every candidate for the DJ.
+        // A named artist keeps the search's order: favourites must not hide the exact match.
+        const candidates = [...results.values()];
+        const ranked =
+          ranking === "taste"
+            ? await tasteService(db).rank(userId, candidates, {
+                targeted: Boolean(args.artist),
+              })
+            : candidates;
         return {
           content: [
             {
@@ -561,8 +572,9 @@ export async function connectMusicMcp(
   discover = false,
   scope?: "library" | "youtube" | "all",
   rejectedIds: string[] = [],
+  ranking: CandidateRanking = "taste",
 ) {
-  const server = musicMcp(db, excludeIds, userId, discover, scope, rejectedIds);
+  const server = musicMcp(db, excludeIds, userId, discover, scope, rejectedIds, ranking);
   const client = new Client({ name: "recall-dj", version: "1.0.0" });
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair();

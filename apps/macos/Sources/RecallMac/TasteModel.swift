@@ -1,13 +1,16 @@
 import Foundation
 import RecallKit
 
-/// 👍 / 👎 on the tracks of this account, and how long a 👎 keeps a track out of proposals.
+/// « J’aime » and « Je n’aime pas » on the tracks of this account, how long a dislike keeps a
+/// track out of proposals, and the taste overview shown in the Library.
 /// Opinions are shown at once and sent in the background; a failure restores the previous one.
 @MainActor
 final class TasteModel: ObservableObject {
   @Published private(set) var opinions: [String: TrackOpinion] = [:]
   @Published private(set) var dislikeDays = TasteLimits.defaultDislikeDays
   @Published var error = ""
+  @Published private(set) var overview: TasteOverview?
+  @Published private(set) var loadingOverview = false
   private var loaded: Set<String> = []
   private let session: Session
   /// Bumped when the account changes: an answer for the previous account must not land here.
@@ -22,7 +25,28 @@ final class TasteModel: ObservableObject {
     opinions = [:]
     loaded = []
     dislikeDays = TasteLimits.defaultDislikeDays
+    overview = nil
     error = ""
+  }
+
+  func loadOverview() async {
+    guard let connection = session.connection else { return }
+    let started = epoch
+    loadingOverview = true
+    defer { if started == epoch { loadingOverview = false } }
+    do {
+      let value = try await HTTPClient().tasteOverview(connection)
+      guard started == epoch else { return }
+      overview = value
+      dislikeDays = value.dislikeDays
+      for item in value.tracks {
+        opinions[item.id] = item.opinion.flatMap(TrackOpinion.init(rawValue:))
+        loaded.insert(item.id)
+      }
+      error = ""
+    } catch {
+      if started == epoch { self.error = error.localizedDescription }
+    }
   }
 
   /// The opinion of a track as the server has it, once per track and account.

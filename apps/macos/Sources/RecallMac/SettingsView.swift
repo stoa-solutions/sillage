@@ -3,100 +3,151 @@ import SwiftUI
 
 enum SettingsPage: String, CaseIterable, Identifiable {
   static let requestKey = "settingsRequestedPage"
-  case appearance = "Apparence"
   case dj = "DJ et voix"
   case agents = "Agents"
+  case taste = "Goût"
   case playback = "Lecture"
+  case appearance = "Apparence"
   case desk = "Bureau"
   case account = "Compte"
   var id: String { rawValue }
   var symbol: String {
     switch self {
-    case .appearance: return "paintpalette"
-    case .dj: return "waveform"
-    case .agents: return "person.wave.2"
-    case .playback: return "play.rectangle"
-    case .desk: return "menubar.rectangle"
-    case .account: return "person.crop.circle"
+    case .dj: "waveform"
+    case .agents: "person.wave.2"
+    case .taste: "hand.thumbsup"
+    case .playback: "play.rectangle"
+    case .appearance: "paintpalette"
+    case .desk: "menubar.rectangle"
+    case .account: "person.crop.circle"
     }
   }
+  /// One sentence under the page title: what the page decides.
+  var subtitle: String {
+    switch self {
+    case .dj: "Le modèle qui fait tourner ton DJ, sa clé et sa voix."
+    case .agents: "Qui te répond, et sur quel ton."
+    case .taste: "Comment tes avis et tes écoutes guident les propositions."
+    case .playback: "La qualité du clip dans Compact et Studio."
+    case .appearance: "Le fond de Sillage quand aucun morceau ne joue."
+    case .desk: "Parler au DJ depuis n’importe quelle app."
+    case .account: "Ton compte, tes playlists et ta session."
+    }
+  }
+  /// Sidebar groups, in order.
+  static let groups: [(title: String, pages: [SettingsPage])] = [
+    ("Écoute", [.dj, .agents, .taste, .playback]),
+    ("Sillage", [.appearance, .desk]),
+    ("Compte", [.account]),
+  ]
 }
 
+/// Réglages on the same glass as the main window: the Stoa light behind, a sidebar veil and
+/// a reading veil, one page at a time. The system chooses light or dark, as everywhere else.
 struct SettingsView: View {
   @EnvironmentObject var session: Session
   @EnvironmentObject var library: LibraryModel
   @EnvironmentObject var dj: DJModel
   @EnvironmentObject var desk: DeskIntegration
-  @State private var page = SettingsPage.appearance
+  @State private var page = SettingsPage.dj
   /// A page asked for from elsewhere (the composer's agent menu), consumed once.
   @AppStorage(SettingsPage.requestKey) private var requestedPage = ""
   @State private var key = ""
   @State private var busy = false
   @State private var message = ""
   var body: some View {
-    HStack(spacing: 0) {
-      VStack(alignment: .leading, spacing: 8) {
-        Text("Réglages").font(.title2.weight(.semibold)).padding(.bottom, 16)
-        ForEach(SettingsPage.allCases) { item in
-          Button {
-            page = item
-          } label: {
-            Label(item.rawValue, systemImage: item.symbol)
-              .frame(maxWidth: .infinity, alignment: .leading).padding(10)
-              .background(
-                page == item ? Color.recall.opacity(0.16) : .clear,
-                in: RoundedRectangle(cornerRadius: 10))
-          }.buttonStyle(.plain)
-            .accessibilityAddTraits(page == item ? .isSelected : [])
-        }
-        Spacer()
-        Text("À ton rythme.").font(.caption).foregroundStyle(.secondary)
-      }.padding(20).frame(width: 190).background(.background.secondary)
-      Divider()
-      VStack(alignment: .leading, spacing: 0) {
-        Text(page.rawValue).font(.title2.weight(.semibold)).padding(.horizontal, 24).padding(
-          .top, 24)
-        if page == .appearance {
-          AppearanceSettings()
-        } else if page == .agents {
-          DJAgentsSettings(agents: dj.agents).id(dj.agents.epoch)
-        } else {
-          Form {
-            switch page {
-            case .account: accountSettings
-            case .dj: djSettings
-            case .playback:
-              Section("Vidéo") { StudioQualitySettings(player: dj.player) }
-              Section {
-                Text(
-                  "Studio change l’affichage du clip. Le fond d’accueil se règle dans Apparence."
-                )
-                .font(.callout).foregroundStyle(.secondary)
-              }
-            case .desk: DeskSettings(desk: desk)
-            case .appearance, .agents: EmptyView()
-            }
-            if !session.error.isEmpty {
-              Text(session.error).font(.caption).foregroundStyle(.orange)
-            }
-          }.formStyle(.grouped)
-        }
-      }.frame(maxWidth: .infinity, maxHeight: .infinity)
-    }.frame(width: 850, height: 750).preferredColorScheme(.dark)
-      .onChange(of: key) { _, value in if !value.isEmpty { message = "" } }
-      .onChange(of: session.provider) { _, _ in
-        key = ""
-        message = ""
+    ZStack {
+      SillageBackdrop()
+      HStack(spacing: 0) {
+        sidebar.frame(width: 220).sillageSurface(.sidebar)
+        SillageRule(vertical: true)
+        content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+          .sillageSurface(.reading)
       }
-      .onChange(of: session.model) { _, _ in message = "" }
-      .onChange(of: session.generation) { _, _ in
-        key = ""
-        message = ""
-      }
-      .task { await session.refreshCredentials() }
-      .onAppear(perform: openRequestedPage)
-      .onChange(of: requestedPage) { _, _ in openRequestedPage() }
+    }
+    .frame(width: 860, height: 720)
+    .onChange(of: key) { _, value in if !value.isEmpty { message = "" } }
+    .onChange(of: session.provider) { _, _ in
+      key = ""
+      message = ""
+    }
+    .onChange(of: session.model) { _, _ in message = "" }
+    .onChange(of: session.generation) { _, _ in
+      key = ""
+      message = ""
+    }
+    .task { await session.refreshCredentials() }
+    .onAppear(perform: openRequestedPage)
+    .onChange(of: requestedPage) { _, _ in openRequestedPage() }
   }
+
+  private var sidebar: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      HStack(spacing: 8) {
+        Image(nsImage: SillageGlyph.image(listening: false)).accessibilityHidden(true)
+        Text("Réglages").font(.system(size: 15, weight: .semibold))
+      }.padding(.horizontal, 16).padding(.top, 18).padding(.bottom, 6)
+      ScrollView {
+        VStack(alignment: .leading, spacing: 2) {
+          ForEach(SettingsPage.groups, id: \.title) { group in
+            SidebarTitle(group.title)
+            ForEach(group.pages) { item in
+              SidebarItem(title: item.rawValue, symbol: item.symbol, selected: page == item) {
+                page = item
+              }
+            }
+          }
+        }.padding(.horizontal, 8)
+      }
+      Spacer(minLength: 0)
+      Text(Self.versionLine).font(.system(size: 11)).foregroundStyle(.secondary)
+        .padding(16)
+    }
+  }
+
+  /// « Sillage 1.8.6 (77) · by Stoa », from the bundle.
+  private static let versionLine: String = {
+    let info = Bundle.main.infoDictionary
+    let version = info?["CFBundleShortVersionString"] as? String
+    let build = info?["CFBundleVersion"] as? String
+    guard let version else { return "Sillage · by Stoa" }
+    return "Sillage \(version)\(build.map { " (\($0))" } ?? "") · by Stoa"
+  }()
+
+  @ViewBuilder private var content: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      PageHeader(
+        title: page.rawValue, subtitle: page.subtitle,
+        titleFont: .system(size: 24, weight: .semibold)
+      )
+      .padding(.horizontal, 28).padding(.top, 26).padding(.bottom, 4)
+      switch page {
+      case .appearance: AppearanceSettings()
+      case .agents: DJAgentsSettings(agents: dj.agents).id(dj.agents.epoch)
+      default:
+        Form {
+          switch page {
+          case .account: accountSettings
+          case .dj: djSettings
+          case .taste: TasteSettingsSection(taste: dj.taste)
+          case .playback:
+            Section("Vidéo") { StudioQualitySettings(player: dj.player) }
+            Section {
+              Text("Studio change l’affichage du clip. Le fond d’accueil se règle dans Apparence.")
+                .font(.callout).foregroundStyle(.secondary)
+            }
+          case .desk: DeskSettings(desk: desk)
+          case .appearance, .agents: EmptyView()
+          }
+          if !session.error.isEmpty {
+            Text(session.error).font(.caption).foregroundStyle(.orange)
+          }
+        }
+        .formStyle(.grouped).scrollContentBackground(.hidden)
+      }
+    }
+  }
+
   private func openRequestedPage() {
     guard let requested = SettingsPage(rawValue: requestedPage) else { return }
     page = requested
@@ -209,7 +260,6 @@ struct SettingsView: View {
       }
       if !message.isEmpty { Text(message).font(.callout).textSelection(.enabled) }
     }
-    TasteSettingsSection(taste: dj.taste)
     Section("Voix") {
       if session.activeProvider == .anthropic {
         Label("Voix macOS", systemImage: "waveform")

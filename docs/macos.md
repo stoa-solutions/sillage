@@ -303,9 +303,15 @@ L’accueil et **Réglages → DJ et voix** partagent le choix Gemini/Claude et 
 
 La voix est indépendante du choix de raisonnement : Claude utilise directement la voix macOS. Gemini propose la voix expressive existante et son repli macOS. Les deux chemins gardent les mêmes commandes de lecture et outils musicaux. Pour tester sans la session ni la bibliothèque de Samuel, lancer une build QA avec `RECALL_DATA_DIR` dans un dossier temporaire.
 
-## Goût : 👍 / 👎
+## Goût : J’aime / Je n’aime pas, Mon goût
 
-Le lecteur, la barre de lecture et la barre des menus portent 👍 / 👎 pour le morceau en cours (`TasteButtons`, `TasteModel`). L’avis s’affiche aussitôt et part au serveur ; un échec rétablit l’avis précédent, et un second appui retire l’avis. Le modèle ignore les réponses arrivées après un changement de compte. Réglages → DJ et voix → Goût règle le nombre de jours pendant lesquels un 👎 écarte un titre. Chaque écoute envoie `listenedMs`, mesuré par `PlaybackQueue.progress`. Les règles de classement sont côté serveur ([server-tour.md](server-tour.md)).
+Bibliothèque → **Mon goût** (`TasteOverviewView`) montre ce que les écoutes et les avis disent : quatre chiffres, les artistes avec leur affinité, puis chaque titre avec sa catégorie, son affinité 0–100, son étiquette en aide au survol et les deux boutons d’avis ; un filtre par catégorie au-dessus. Un avis donné ici recharge la page une fois les clics terminés. Aucun emoji dans l’app : pictogrammes `hand.thumbsup` et `hand.thumbsdown`.
+
+Le lecteur, la barre de lecture et la barre des menus portent les boutons J’aime / Je n’aime pas pour le morceau en cours (`TasteButtons`, `TasteModel`). L’avis s’affiche aussitôt et part au serveur ; un échec rétablit l’avis précédent, et un second appui retire l’avis. Le modèle ignore les réponses arrivées après un changement de compte. Réglages → Goût règle le nombre de jours pendant lesquels un 👎 écarte un titre. Chaque écoute envoie `listenedMs`, mesuré par `PlaybackQueue.progress`. Les règles de classement sont côté serveur ([server-tour.md](server-tour.md)).
+
+## Réglages
+
+Même verre que la fenêtre principale : `SillageBackdrop` derrière, voile `.sidebar` pour la barre latérale, voile `.reading` pour la page, apparence du système (plus de sombre forcé). Barre latérale en trois groupes (Écoute : DJ et voix, Agents, Goût, Lecture ; Sillage : Apparence, Bureau ; Compte), avec `SidebarItem` comme la Bibliothèque. Chaque page porte un titre et une phrase. Les formulaires gardent les contrôles natifs (`Form` groupé, fond masqué) ; la version de l’app est rappelée en bas de la barre latérale.
 
 ## Agents du DJ
 

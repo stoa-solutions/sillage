@@ -119,12 +119,12 @@ Limites : l’annonce « C’est parti : … » est écrite par le serveur, l’
 
 Le DJ apprend ce que la personne aime à partir de ses 👍 / 👎 et de son historique d’écoute.
 
-1. `taste.rules.ts` : **toutes les règles**, en fonctions pures (poids des signaux, seuil d’un passage rapide, délai d’un 👎, part de découverte). `tasteOf()` calcule le score et l’étiquette d’un titre ; `rankByTaste()` ordonne les candidats : 👎 récents retirés, titres aimés en tête, une place sur quatre pour la découverte, ordre de la recherche conservé dans chaque groupe. Changer un poids se fait ici et nulle part ailleurs.
-2. `taste.repository.ts` : `track_feedback` (un avis par compte et par titre, remplacé ou retiré), `taste_settings` (délai d’un 👎 par compte, 5 jours par défaut, de 1 à 60) et les agrégats de `listening_history` (écoutes, écoutes complètes, passages avant 30 s grâce à `listened_ms`).
-3. `taste.service.ts` → `rank()` : appelé par `music_search` (module `mcp`) avant de rendre ses résultats. Chaque vidéo reçoit `taste` (« aimé · écouté 13 fois »), que `compactVideo` transmet au modèle. Si la lecture du goût échoue, l’ordre de la recherche est conservé.
-4. `taste.controller.ts` : `GET/PUT /v1/taste/feedback/{videoId}` (`like`, `dislike`, `none`) et `GET/PUT /v1/taste/settings`.
+1. `taste.rules.ts` : **toutes les règles**, en fonctions pures. Une **écoute** est un titre fini, ou arrêté après 60 s (les anciennes écoutes sans durée ne comptent que finies) ; un **passage rapide** est arrêté avant 30 s. Score : J’aime +4, écouté +1, +1 par doublement des écoutes, −2 par passage rapide (3 au plus), Je n’aime pas −5 puis estompé. `tasteOf()` en tire une **catégorie** (Coup de cœur, Souvent écouté, Déjà écouté, Pas encore d’avis, Peu accroché, Écarté pour l’instant), une **affinité** 0–100 et une étiquette. `rankByTaste()` ordonne une recherche ouverte (écartés retirés, favoris en tête, une place sur quatre pour la découverte) et laisse une recherche ciblée dans son ordre. `artistTastes()` classe les artistes par moyenne prudente (trois titres neutres ajoutés), crédit MusicBrainz d’abord, sinon la chaîne nettoyée.
+2. `taste.repository.ts` : `track_feedback`, `taste_settings`, les agrégats de `listening_history` (écoutes et passages rapides grâce à `listened_ms`) et `heardTracks()`, chaque titre écouté ou noté avec son titre de catalogue.
+3. `taste.service.ts` → `rank()` : appelé par `music_search` (module `mcp`) après une fusion à ordre fixe (bibliothèque puis YouTube, en alternance). Un `artist` nommé rend la recherche ciblée. `overview()` alimente Bibliothèque → Mon goût. `DjInput.ranking = "search"` désactive le tri pour une évaluation A/B.
+4. `taste.controller.ts` : `GET/PUT /v1/taste/feedback/{videoId}` (`like`, `dislike`, `none`), `GET /v1/taste/overview` et `GET/PUT /v1/taste/settings`.
 
-Un 👎 n’est jamais définitif : il écarte le titre des propositions pendant le délai du compte, puis son poids baisse de moitié à chaque nouveau délai. Un titre demandé par son nom passe toujours (résolution exacte du catalogue, avant toute recherche). Un 👍 ne modifie aucune playlist.
+Un 👎 n’est jamais définitif : il écarte le titre des propositions pendant le délai du compte, puis son poids baisse de moitié à chaque nouveau délai. Un titre demandé par son nom passe toujours : résolution exacte du catalogue avant toute recherche, et une recherche par artiste garde les titres écartés. Un 👍 ne modifie aucune playlist.
 
 ## 9. Lecteur, versions Mac, santé : `player`, `releases`, `system`
 

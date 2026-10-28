@@ -71,6 +71,6 @@ struct AppearanceSettings: View {
         Text("Réglages enregistrés automatiquement sur ce Mac.").font(.caption).foregroundStyle(
           .secondary)
       }
-    }.formStyle(.grouped)
+    }.formStyle(.grouped).scrollContentBackground(.hidden)
   }
 }

@@ -99,6 +99,7 @@ export async function djTurn(
     plan.externalSearch,
     plan.scope,
     input.rejectedIds,
+    input.ranking ?? "taste",
   );
   const tracksOf = (ids: string[]) =>
     plan.externalSearch

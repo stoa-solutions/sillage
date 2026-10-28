@@ -1,8 +1,9 @@
-import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   listeningHistory,
   tasteSettings,
   trackFeedback,
+  videos,
   type Orm,
 } from "../../db/index.ts";
 import type { TasteValue, TrackSignals } from "./taste.rules.ts";
@@ -12,33 +13,25 @@ export async function signalsFor(
   orm: Orm,
   owner: string,
   videoIds: readonly string[],
-  earlySkipMs: number,
+  thresholds: { listenMs: number; earlySkipMs: number },
 ): Promise<Map<string, TrackSignals>> {
   const signals = new Map<string, TrackSignals>();
   if (!videoIds.length) return signals;
   const ids = [...new Set(videoIds)];
+  const { outcome, listenedMs } = listeningHistory;
   const plays = await orm
     .select({
       videoId: listeningHistory.videoId,
-      plays: count(),
-      finished: sql<number>`count(*) FILTER (WHERE ${listeningHistory.outcome} = 'finished')::int`,
-      earlySkips: sql<number>`count(*) FILTER (WHERE ${listeningHistory.outcome} = 'skipped' AND ${listeningHistory.listenedMs} < ${earlySkipMs})::int`,
+      // Old plays have no listening time: they count only when finished.
+      listens: sql<number>`count(*) FILTER (WHERE ${outcome} = 'finished' OR (${outcome} IN ('skipped', 'replaced') AND ${listenedMs} >= ${thresholds.listenMs}))::int`,
+      earlySkips: sql<number>`count(*) FILTER (WHERE ${outcome} = 'skipped' AND ${listenedMs} < ${thresholds.earlySkipMs})::int`,
     })
     .from(listeningHistory)
-    .where(
-      and(
-        eq(listeningHistory.userId, owner),
-        inArray(listeningHistory.videoId, ids),
-        inArray(listeningHistory.outcome, ["finished", "skipped"]),
-      ),
-    )
+    .where(and(eq(listeningHistory.userId, owner), inArray(listeningHistory.videoId, ids)))
     .groupBy(listeningHistory.videoId);
   for (const row of plays)
-    signals.set(row.videoId, {
-      plays: row.plays,
-      finished: row.finished,
-      earlySkips: row.earlySkips,
-    });
+    if (row.listens || row.earlySkips)
+      signals.set(row.videoId, { listens: row.listens, earlySkips: row.earlySkips });
   const opinions = await orm
     .select({
       videoId: trackFeedback.videoId,
@@ -49,10 +42,40 @@ export async function signalsFor(
     .where(and(eq(trackFeedback.userId, owner), inArray(trackFeedback.videoId, ids)));
   for (const row of opinions)
     signals.set(row.videoId, {
-      ...(signals.get(row.videoId) ?? { plays: 0, finished: 0, earlySkips: 0 }),
+      ...(signals.get(row.videoId) ?? { listens: 0, earlySkips: 0 }),
       feedback: { value: row.value, at: row.at },
     });
   return signals;
+}
+
+/**
+ * Every track this listener played or gave an opinion on, with what the catalogue knows of
+ * it. A track played from YouTube without being saved keeps the title its last play recorded.
+ */
+export async function heardTracks(orm: Orm, owner: string) {
+  const heard = sql`(
+    SELECT video_id FROM ${listeningHistory} WHERE user_id = ${owner}
+    UNION SELECT video_id FROM ${trackFeedback} WHERE user_id = ${owner}
+  )`;
+  const rows = await orm.execute<{
+    id: string;
+    title: string | null;
+    channel: string | null;
+    duration_seconds: number | null;
+    music_metadata: unknown;
+  }>(sql`
+    SELECT h.video_id AS id,
+      coalesce(v.title, last.title) AS title,
+      coalesce(v.channel, last.channel) AS channel,
+      v.duration_seconds, v.music_metadata
+    FROM ${heard} h(video_id)
+    LEFT JOIN ${videos} v ON v.id = h.video_id
+    LEFT JOIN LATERAL (
+      SELECT title, channel FROM ${listeningHistory}
+      WHERE user_id = ${owner} AND video_id = h.video_id
+      ORDER BY played_at DESC LIMIT 1
+    ) last ON true`);
+  return rows.rows;
 }
 
 export async function feedbackOf(orm: Orm, owner: string, videoId: string) {

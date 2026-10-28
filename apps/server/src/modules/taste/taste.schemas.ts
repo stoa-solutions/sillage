@@ -21,6 +21,42 @@ export const tasteSettingsInput = z
       .max(TASTE_RULES.dislikeDays.max),
   })
   .openapi("TasteSettingsInput");
+export const tasteOverviewBody = z
+  .object({
+    dislikeDays: z.number().int(),
+    summary: z.object({
+      tracks: z.number().int(),
+      listens: z.number().int(),
+      liked: z.number().int(),
+      hidden: z.number().int(),
+    }),
+    artists: z.array(
+      z.object({
+        name: z.string(),
+        tracks: z.number().int(),
+        listens: z.number().int(),
+        score: z.number(),
+        affinity: z.number().int(),
+      }),
+    ),
+    tracks: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        channel: z.string().nullable(),
+        durationSeconds: z.number().nullable(),
+        artist: z.string().optional(),
+        category: z.enum(["favourite", "frequent", "heard", "unconvinced", "hidden", "unknown"]),
+        categoryTitle: z.string(),
+        affinity: z.number().int(),
+        listens: z.number().int(),
+        opinion: z.enum(["like", "dislike"]).nullable(),
+        daysLeft: z.number().int().optional(),
+        label: z.string().optional(),
+      }),
+    ),
+  })
+  .openapi("TasteOverview");
 export const tasteSettingsBody = z
   .object({ dislikeDays: z.number().int() })
   .openapi("TasteSettings");

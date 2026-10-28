@@ -1,0 +1,18 @@
+$kind: http-request
+description: >-
+  Ce que les écoutes et les avis du compte disent de son goût : totaux, artistes préférés (moyenne prudente par artiste)
+  et chaque titre écouté ou noté avec sa catégorie (Coup de cœur, Souvent écouté, Déjà écouté, Peu accroché, Écarté pour
+  l’instant) et son affinité de 0 à 100.
+
+
+  Effet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection
+  sur son compte.
+url: "{{base_url}}/v1/taste/overview"
+method: GET
+headers:
+  Accept: application/json
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 3000

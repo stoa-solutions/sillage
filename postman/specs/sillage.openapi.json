@@ -3594,7 +3594,7 @@
       "put": {
         "operationId": "setTrackFeedback",
         "summary": "Donner ou retirer un avis",
-        "description": "like remonte le titre dans les propositions du DJ. dislike l’écarte des propositions pendant le délai du compte (5 jours par défaut), puis son poids s’estompe ; le titre reste jouable s’il est demandé par son nom. none retire l’avis. Aucune playlist n’est modifiée.",
+        "description": "like remonte le titre dans les propositions ouvertes du DJ. dislike l’écarte des propositions pendant le délai du compte (5 jours par défaut), puis son poids s’estompe ; le titre reste jouable s’il est demandé par son nom. none retire l’avis. Aucune playlist n’est modifiée.",
         "tags": [
           "Goût"
         ],
@@ -3633,6 +3633,79 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TrackFeedback"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/taste/overview": {
+      "get": {
+        "operationId": "getTasteOverview",
+        "summary": "Mon goût",
+        "description": "Ce que les écoutes et les avis du compte disent de son goût : totaux, artistes préférés (moyenne prudente par artiste) et chaque titre écouté ou noté avec sa catégorie (Coup de cœur, Souvent écouté, Déjà écouté, Peu accroché, Écarté pour l’instant) et son affinité de 0 à 100.",
+        "tags": [
+          "Goût"
+        ],
+        "x-sillage-effect": "read",
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TasteOverview"
                 }
               }
             }
@@ -6561,6 +6634,13 @@
               "all"
             ]
           },
+          "ranking": {
+            "type": "string",
+            "enum": [
+              "taste",
+              "search"
+            ]
+          },
           "agentId": {
             "type": "string",
             "pattern": "^[a-z0-9-]{1,64}$/i"
@@ -6852,6 +6932,150 @@
         },
         "required": [
           "value"
+        ]
+      },
+      "TasteOverview": {
+        "type": "object",
+        "properties": {
+          "dislikeDays": {
+            "type": "integer"
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "tracks": {
+                "type": "integer"
+              },
+              "listens": {
+                "type": "integer"
+              },
+              "liked": {
+                "type": "integer"
+              },
+              "hidden": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "tracks",
+              "listens",
+              "liked",
+              "hidden"
+            ]
+          },
+          "artists": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "tracks": {
+                  "type": "integer"
+                },
+                "listens": {
+                  "type": "integer"
+                },
+                "score": {
+                  "type": "number"
+                },
+                "affinity": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "name",
+                "tracks",
+                "listens",
+                "score",
+                "affinity"
+              ]
+            }
+          },
+          "tracks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "channel": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "durationSeconds": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "artist": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "favourite",
+                    "frequent",
+                    "heard",
+                    "unconvinced",
+                    "hidden",
+                    "unknown"
+                  ]
+                },
+                "categoryTitle": {
+                  "type": "string"
+                },
+                "affinity": {
+                  "type": "integer"
+                },
+                "listens": {
+                  "type": "integer"
+                },
+                "opinion": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "like",
+                    "dislike",
+                    null
+                  ]
+                },
+                "daysLeft": {
+                  "type": "integer"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "channel",
+                "durationSeconds",
+                "category",
+                "categoryTitle",
+                "affinity",
+                "listens",
+                "opinion"
+              ]
+            }
+          }
+        },
+        "required": [
+          "dislikeDays",
+          "summary",
+          "artists",
+          "tracks"
         ]
       },
       "TasteSettings": {

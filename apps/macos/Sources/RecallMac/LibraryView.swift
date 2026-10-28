@@ -12,6 +12,7 @@ struct LibraryView: View {
   @State private var adding = false
   @State private var deleting: ServerPlaylistSummary?
   @State private var showingHistory = false
+  @State private var showingTaste = false
   @EnvironmentObject var history: ListeningHistoryModel
 
   var body: some View {
@@ -33,6 +34,7 @@ struct LibraryView: View {
     .task(id: session.generation) { await library.watchEnrichment() }
     .onChange(of: session.generation) { _, _ in
       showingHistory = false
+      showingTaste = false
     }
     .confirmationDialog(
       "Retirer « \(deleting?.title ?? "") » ?", isPresented: deletingBinding,
@@ -72,6 +74,7 @@ struct LibraryView: View {
       }.padding(.leading, 16).padding(.trailing, 8).padding(.top, 12).padding(.bottom, 8)
       ScrollView {
         VStack(spacing: 2) {
+          tasteItem
           historyItem
           playlistItem(
             id: "", title: "Toutes les vidéos", count: library.libraryCount,
@@ -98,10 +101,21 @@ struct LibraryView: View {
     SidebarItem(
       title: title, detail: "\(count.formatted()) vidéos", symbol: symbol,
       tileTitle: symbol == nil ? title : nil,
-      selected: !showingHistory && library.selectedPlaylist == id
+      selected: !showingHistory && !showingTaste && library.selectedPlaylist == id
     ) {
       showingHistory = false
+      showingTaste = false
       library.selectedPlaylist = id
+    }
+  }
+
+  private var tasteItem: some View {
+    SidebarItem(
+      title: "Mon goût", detail: "Ce que tes écoutes disent de toi", symbol: "waveform",
+      selected: showingTaste
+    ) {
+      showingHistory = false
+      showingTaste = true
     }
   }
 
@@ -112,6 +126,7 @@ struct LibraryView: View {
   }
 
   private func openHistory() {
+    showingTaste = false
     showingHistory = true
     history.load(session)
   }
@@ -127,6 +142,9 @@ struct LibraryView: View {
         Button("Continuer avec Google") { session.showOnboarding = true }
           .buttonStyle(.borderedProminent).disabled(session.loadingCredentials)
       }.frame(maxWidth: .infinity, maxHeight: .infinity)
+    } else if showingTaste {
+      TasteOverviewView(
+        taste: dj.taste, current: dj.current, play: play, enqueue: { dj.enqueue($0) })
     } else if showingHistory {
       ListeningHistoryView(
         model: history, play: play, enqueue: { dj.enqueue($0) },
@@ -208,16 +226,22 @@ struct LibraryView: View {
 
   private var playlistMenu: some View {
     Menu {
+      Button("Mon goût") {
+        showingHistory = false
+        showingTaste = true
+      }
       Button("Écoutes récentes", action: openHistory)
       Divider()
       Button("Toutes les vidéos") {
         showingHistory = false
+        showingTaste = false
         library.selectedPlaylist = ""
       }
       Divider()
       ForEach(library.playlists) { playlist in
         Button(playlist.title) {
           showingHistory = false
+          showingTaste = false
           library.selectedPlaylist = playlist.id
         }
       }

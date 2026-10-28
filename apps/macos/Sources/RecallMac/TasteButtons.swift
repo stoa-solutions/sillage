@@ -1,7 +1,8 @@
 import RecallKit
 import SwiftUI
 
-/// 👍 / 👎 on the track playing, next to the transport controls. A second press withdraws it.
+/// « J’aime » / « Je n’aime pas » on a track, next to the transport controls or in Mon goût.
+/// A second press withdraws it.
 struct TasteButtons: View {
   @ObservedObject var taste: TasteModel
   let track: Track?
@@ -13,7 +14,7 @@ struct TasteButtons: View {
         .help("J’aime : le DJ le proposera plus souvent")
       button(.dislike, symbol: "hand.thumbsdown", label: "Je n’aime pas")
         .help(
-          "Je n’aime pas : écarté des propositions pendant \(taste.dislikeDays) jours, toujours jouable si tu le demandes"
+          "Je n’aime pas : écarté des propositions pendant \(taste.dislikeDays) jours, toujours jouable si tu le demandes par son nom"
         )
     }
     .disabled(track == nil)
@@ -35,28 +36,62 @@ struct TasteButtons: View {
   }
 }
 
-/// Réglages → DJ et voix: how long a 👎 keeps a track out of the DJ's proposals.
+/// Réglages → Goût: what an opinion does, and how long « Je n’aime pas » keeps a track away.
 struct TasteSettingsSection: View {
   @ObservedObject var taste: TasteModel
   var body: some View {
-    Section("Goût") {
+    Section("Tes avis") {
+      Label {
+        VStack(alignment: .leading, spacing: 2) {
+          Text("J’aime")
+          Text("Le DJ propose ce titre plus souvent et s’en inspire pour la suite.")
+            .font(.caption).foregroundStyle(.secondary)
+        }
+      } icon: {
+        Image(systemName: "hand.thumbsup").foregroundStyle(Color.recall)
+      }
+      Label {
+        VStack(alignment: .leading, spacing: 2) {
+          Text("Je n’aime pas")
+          Text(
+            "Le titre sort des propositions pour un temps. Demandé par son nom, il passe toujours."
+          )
+          .font(.caption).foregroundStyle(.secondary)
+        }
+      } icon: {
+        Image(systemName: "hand.thumbsdown").foregroundStyle(Color.recall)
+      }
+      Text(
+        "Les boutons sont à côté de « suivant », dans le lecteur et la barre des menus. Ils ne modifient aucune playlist."
+      )
+      .font(.caption).foregroundStyle(.secondary)
+    }
+    Section("Je n’aime pas") {
       Stepper(
         value: Binding(
           get: { taste.dislikeDays },
           set: { days in Task { await taste.saveDislikeDays(days) } }),
         in: TasteLimits.dislikeDays
       ) {
-        Text(
-          "Un 👎 écarte un titre pendant \(taste.dislikeDays) jour\(taste.dislikeDays > 1 ? "s" : "")"
-        )
+        LabeledContent("Écarter pendant") {
+          Text("\(taste.dislikeDays) jour\(taste.dislikeDays > 1 ? "s" : "")")
+            .monospacedDigit()
+        }
       }
       Text(
-        "Ensuite, il revient peu à peu. Un titre demandé par son nom passe toujours. 👍 et 👎 n’ajoutent ni ne retirent rien de tes playlists."
+        "Passé ce délai, le titre revient peu à peu : son poids baisse de moitié à chaque nouveau délai."
       )
       .font(.caption).foregroundStyle(.secondary)
       if !taste.error.isEmpty {
         Text(taste.error).font(.caption).foregroundStyle(.orange)
       }
+    }
+    Section("Découverte") {
+      LabeledContent("Part de découverte", value: "1 titre sur 4")
+      Text(
+        "Même quand tes favoris sont nombreux, une place sur quatre va à un titre que tu n’as pas encore aimé ou beaucoup écouté."
+      )
+      .font(.caption).foregroundStyle(.secondary)
     }
     .task { await taste.loadSettings() }
   }

@@ -76,7 +76,7 @@ it("uses 5 days by default and keeps each account's own delay within bounds", as
   expect((await req("PUT", "/taste/settings", tokenA, { dislikeDays: 61 })).status).toBe(400);
 });
 
-it("ranks a search from the listener's history and opinions, never another account's", async () => {
+it("ranks an open search from real listens and opinions, never another account's", async () => {
   // Bob loves "skipped0001": that must not change Alice's ranking.
   await req("PUT", "/taste/feedback/skipped0001", tokenB, { value: "like" });
   const events = [
@@ -84,44 +84,88 @@ it("ranks a search from the listener's history and opinions, never another accou
     play("skipped0001", "skipped", 4_000),
     play("skipped0001", "skipped", 6_000),
     play("lateskip001", "skipped", 120_000),
+    // An old skip without a listening time says nothing either way.
+    play("oldskip0001", "skipped"),
+    play("oldskip0001", "skipped"),
   ];
   expect((await req("POST", "/history", tokenA, { events })).status).toBe(200);
-  const { rows } = await db.query(
-    "SELECT listened_ms FROM listening_history WHERE user_id=$1 AND video_id='lateskip001'",
-    [alice],
-  );
-  expect(rows[0].listened_ms).toBe(120_000);
   await req("PUT", "/taste/feedback/disliked001", tokenA, { value: "dislike" });
   await req("PUT", "/taste/feedback/liked000001", tokenA, { value: "like" });
 
-  const ranked = await tasteService(db).rank(
-    alice,
-    ["unknown0001", "skipped0001", "disliked001", "lateskip001", "favorite001", "liked000001"].map(
-      candidate,
-    ),
-  );
+  const ids = ["unknown0001", "skipped0001", "oldskip0001", "disliked001", "lateskip001", "favorite001", "liked000001"];
+  const ranked = await tasteService(db).rank(alice, ids.map(candidate));
   expect(ranked.map((item) => item.video.id)).toEqual([
-    "favorite001",
     "liked000001",
-    // A late skip is only « next »: no penalty, the search order holds among neutral tracks.
-    "unknown0001",
+    "favorite001",
     "lateskip001",
+    "unknown0001",
+    "oldskip0001",
     "skipped0001",
   ]);
   const labels = Object.fromEntries(
     ranked.map((item) => [item.video.id, (item.video as { taste?: string }).taste]),
   );
-  expect(labels["favorite001"]).toBe("écouté 4 fois");
-  expect(labels["liked000001"]).toBe("aimé");
-  expect(labels["skipped0001"]).toContain("souvent passé vite");
-  expect(labels["unknown0001"]).toBeUndefined();
+  expect(labels).toMatchObject({
+    favorite001: "écouté 4 fois",
+    liked000001: "aimé",
+    lateskip001: "déjà écouté",
+    skipped0001: "souvent passé vite",
+  });
+  expect(labels["oldskip0001"]).toBeUndefined();
+  // A named artist keeps the search's order and the hidden track.
+  const targeted = await tasteService(db).rank(alice, ids.map(candidate), { targeted: true });
+  expect(targeted.map((item) => item.video.id)).toEqual(ids);
 });
 
-it("lets a 👎 come back after the account's delay", async () => {
+it("lets a dislike come back after the account's delay", async () => {
   await req("PUT", "/taste/feedback/disliked001", tokenA, { value: "dislike" });
   const later = new Date(Date.now() + 6 * 86_400_000);
-  const ranked = await tasteService(db).rank(alice, [candidate("disliked001")], later);
+  const ranked = await tasteService(db).rank(alice, [candidate("disliked001")], { now: later });
   expect(ranked.map((item) => item.video.id)).toEqual(["disliked001"]);
   await req("PUT", "/taste/settings", tokenA, { dislikeDays: 30 });
-  expect(await tasteService(db).rank(alice, [candidate("disliked001")], later)).toEqual([]);
+  expect(await tasteService(db).rank(alice, [candidate("disliked001")], { now: later })).toEqual([]);
+});
+
+it("summarises the account's taste: totals, artists and categorised tracks", async () => {
+  await db.query(
+    `INSERT INTO videos(id,title,channel,thumbnail_url,content_hash,music_metadata) VALUES
+     ('cudi0000001','Mr. Rager','KidCudiVEVO','https://i.ytimg.com/vi/cudi0000001/hqdefault.jpg','h1',
+      '{"source":"MusicBrainz","status":"matched","artists":[{"id":"1","name":"Kid Cudi","role":"primary"}],"albums":[],"genres":[],"artistGenres":[],"searchText":"","checkedAt":"2026-10-01"}'),
+     ('cudi0000002','Pursuit of Happiness','Kid Cudi - Topic','https://i.ytimg.com/vi/cudi0000002/hqdefault.jpg','h2',NULL)`,
+  );
+  const events = [
+    ...Array.from({ length: 6 }, () => play("cudi0000001", "finished")),
+    ...Array.from({ length: 3 }, () => play("cudi0000002", "finished")),
+    play("yt000000001", "skipped", 3_000),
+    play("yt000000001", "skipped", 2_000),
+  ];
+  await req("POST", "/history", tokenA, { events });
+  await req("PUT", "/taste/feedback/cudi0000002", tokenA, { value: "like" });
+  await req("PUT", "/taste/feedback/gone0000001", tokenA, { value: "dislike" });
+  await req("POST", "/history", tokenB, { events: [play("cudi0000001", "finished")] });
+
+  const overview = await (await req("GET", "/taste/overview")).json();
+  expect(overview.summary).toEqual({ tracks: 2, listens: 9, liked: 1, hidden: 1 });
+  expect(overview.artists[0]).toMatchObject({ name: "Kid Cudi", tracks: 2, listens: 9 });
+  expect(overview.tracks.map((track: { id: string }) => track.id)).toEqual([
+    "cudi0000002",
+    "cudi0000001",
+    "yt000000001",
+    "gone0000001",
+  ]);
+  expect(overview.tracks[0]).toMatchObject({
+    title: "Pursuit of Happiness",
+    category: "favourite",
+    categoryTitle: "Coup de cœur",
+    opinion: "like",
+    listens: 3,
+  });
+  expect(overview.tracks[2]).toMatchObject({
+    title: "Titre yt000000001",
+    category: "unconvinced",
+    label: "souvent passé vite",
+  });
+  expect(overview.tracks[3]).toMatchObject({ category: "hidden", daysLeft: 5, opinion: "dislike" });
+  const bobs = await (await req("GET", "/taste/overview", tokenB)).json();
+  expect(bobs.summary).toEqual({ tracks: 1, listens: 1, liked: 0, hidden: 0 });
 });

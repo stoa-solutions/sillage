@@ -7,6 +7,8 @@ export const djInput = z.object({
   requestId: z.string().uuid().optional(),
   trigger: z.enum(["user", "continuation"]).optional(),
   scope: z.enum(["library", "youtube", "all"]).optional(),
+  /** Evaluation only: search compares the DJ without taste ranking (A/B). Clients omit it. */
+  ranking: z.enum(["taste", "search"]).optional(),
   /** A base agent key (`focus`) or a custom agent uuid; unknown ones fall back to the default. */
   agentId: z
     .string()

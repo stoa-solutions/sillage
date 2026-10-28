@@ -1,8 +1,8 @@
 $kind: http-request
 description: >-
-  like remonte le titre dans les propositions du DJ. dislike l’écarte des propositions pendant le délai du compte (5
-  jours par défaut), puis son poids s’estompe ; le titre reste jouable s’il est demandé par son nom. none retire l’avis.
-  Aucune playlist n’est modifiée.
+  like remonte le titre dans les propositions ouvertes du DJ. dislike l’écarte des propositions pendant le délai du
+  compte (5 jours par défaut), puis son poids s’estompe ; le titre reste jouable s’il est demandé par son nom. none
+  retire l’avis. Aucune playlist n’est modifiée.
 
 
   Effet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la

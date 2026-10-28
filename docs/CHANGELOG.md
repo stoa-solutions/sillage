@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Goût, version aboutie : Bibliothèque → Mon goût (chiffres, artistes et titres par catégorie avec affinité 0–100, avis modifiables sur place). Logique revue : seules les vraies écoutes comptent (finies ou au-delà de 60 s), « souvent passé vite » demande deux passages rapides, J’aime pèse plus qu’une douzaine d’écoutes, une recherche par artiste garde son ordre et les titres écartés, ordre de fusion bibliothèque/YouTube fixe. Réglages refaits sur le verre Sillage, apparence du système, page Goût dédiée, aucun emoji dans l’app.
+
 - Sillage 1.8.6 (77) : 👍 / 👎 sur le morceau en cours (lecteur, barre de lecture, barre des menus), réglage du délai d’un 👎 dans Réglages → DJ et voix → Goût, temps écouté envoyé avec chaque écoute. Installation locale propre : anciennes copies, aperçus et sauvegardes retirés.
 
 - Goût de la personne : boutons 👍 / 👎 sur le morceau en cours (lecteur, barre de lecture, barre des menus). Un 👎 écarte le titre des propositions du DJ pendant 5 jours, réglables de 1 à 60 dans Réglages → DJ et voix, puis il revient peu à peu ; il reste jouable s’il est demandé. Aucune playlist n’est modifiée. Chaque écoute enregistre son temps écouté pour distinguer un vrai rejet d’un simple « suivant ». La recherche du DJ est ordonnée par goût, avec une place sur quatre pour la découverte, et le DJ voit « aimé », « écouté 13 fois » ou « souvent passé vite ». Règles réunies dans `apps/server/src/modules/taste/taste.rules.ts`.

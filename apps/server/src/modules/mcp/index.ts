@@ -6,5 +6,6 @@ export {
   musicMcp,
   musicTracks,
   requestedTracks,
+  type CandidateRanking,
   type DjTrack,
 } from "./mcp.service.ts";

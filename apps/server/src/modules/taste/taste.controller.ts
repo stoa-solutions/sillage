@@ -11,6 +11,7 @@ import {
 import {
   feedbackBody,
   feedbackInput,
+  tasteOverviewBody,
   tasteSettingsBody,
   tasteSettingsInput,
   videoIdParam,
@@ -39,12 +40,24 @@ const setFeedbackRoute = createRoute({
     operationId: "setTrackFeedback",
     tag: TAG,
     summary: "Donner ou retirer un avis",
-    description: `like remonte le titre dans les propositions du DJ. dislike l’écarte des propositions pendant le délai du compte (${TASTE_RULES.dislikeDays.default} jours par défaut), puis son poids s’estompe ; le titre reste jouable s’il est demandé par son nom. none retire l’avis. Aucune playlist n’est modifiée.`,
+    description: `like remonte le titre dans les propositions ouvertes du DJ. dislike l’écarte des propositions pendant le délai du compte (${TASTE_RULES.dislikeDays.default} jours par défaut), puis son poids s’estompe ; le titre reste jouable s’il est demandé par son nom. none retire l’avis. Aucune playlist n’est modifiée.`,
     effect: "write",
     example: feedbackExample,
   }),
   request: { params: videoIdParam, body: jsonBody(feedbackInput, feedbackExample) },
   responses: { ...commonErrors(), 200: jsonResponse(feedbackBody, "Réponse réussie") },
+});
+const overviewRoute = createRoute({
+  method: "get",
+  path: "/overview",
+  ...operation({
+    operationId: "getTasteOverview",
+    tag: TAG,
+    summary: "Mon goût",
+    description:
+      "Ce que les écoutes et les avis du compte disent de son goût : totaux, artistes préférés (moyenne prudente par artiste) et chaque titre écouté ou noté avec sa catégorie (Coup de cœur, Souvent écouté, Déjà écouté, Peu accroché, Écarté pour l’instant) et son affinité de 0 à 100.",
+  }),
+  responses: { ...commonErrors(), 200: jsonResponse(tasteOverviewBody, "Réponse réussie") },
 });
 const getSettingsRoute = createRoute({
   method: "get",
@@ -88,6 +101,9 @@ export function tasteRoutes(db: Database) {
     await taste.setFeedback(c.get("userId"), videoId, saved);
     return c.json({ videoId, value: saved }, 200);
   });
+  app.openapi(overviewRoute, async (c) =>
+    c.json(await taste.overview(c.get("userId")), 200),
+  );
   app.openapi(getSettingsRoute, async (c) =>
     c.json(await taste.settings(c.get("userId")), 200),
   );
