@@ -2511,11 +2511,22 @@
       "get": {
         "operationId": "getDjRules",
         "summary": "Prompt système actuel",
-        "description": "Règles de l’agent côté serveur, consultables par un compte connecté. Cette route ne modifie pas le prompt.",
+        "description": "Règles du DJ côté serveur, consultables par un compte connecté. Avec agentId, ajoute le profil de cet agent tel que le DJ le reçoit. Cette route ne modifie pas le prompt.",
         "tags": [
           "DJ"
         ],
         "x-sillage-effect": "read",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{1,64}$/i"
+            },
+            "required": false,
+            "name": "agentId",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Réponse réussie",

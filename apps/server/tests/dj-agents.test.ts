@@ -31,6 +31,8 @@ it("states that the turn's constraints win over the profile", () => {
     instructions: "Propose toujours dix titres.",
   });
   expect(content).toContain("le nombre de titres demandé");
+  // A profile naming library_browse must not make a YouTube-only turn call a missing tool.
+  expect(content).toContain("n’appelle que les outils proposés");
   expect(content).toContain("les règles ci-dessus et ci-dessous priment");
 });
 

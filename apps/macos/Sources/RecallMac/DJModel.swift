@@ -21,6 +21,7 @@ final class DJModel: ObservableObject {
   @Published private(set) var rulesText = ""
   private var rulesTask: Task<Void, Never>?
   @Published var searchScope: DiscoveryScope = .library
+  let agents: DJAgentsModel
   let player = Player()
   let microphone = Microphone()
   lazy var voice = VoiceOutput(engine: player.engine)
@@ -57,6 +58,7 @@ final class DJModel: ObservableObject {
 
   init(session: Session) {
     self.session = session
+    agents = DJAgentsModel(session: session)
     journal.onSyncIssue = { [weak session] failed in
       let notice = "Le journal du DJ attend sa synchronisation. La lecture continue."
       if failed {
@@ -78,7 +80,11 @@ final class DJModel: ObservableObject {
     session.$loadingCredentials.sink { [weak self] loading in
       // Published fires before the value is stored: read the new value, not the session.
       guard let self else { return }
-      Task { @MainActor in self.dispatch(.accountReady(!loading && self.session.hasServer)) }
+      Task { @MainActor in
+        let ready = !loading && self.session.hasServer
+        self.dispatch(.accountReady(ready))
+        if ready { await self.agents.load() }
+      }
     }.store(in: &subscriptions)
     voice.onFallback = { [weak self] in
       self?.session.notice = "Voix locale macOS utilisée pour cette réponse."
@@ -111,6 +117,7 @@ final class DJModel: ObservableObject {
     listeningChanges.send(listening)
     prompt = ""
     searchScope = .library
+    agents.reset()
     dispatch(.accountReady(!session.loadingCredentials && session.hasServer))
   }
   func send(_ text: String? = nil, source: DiscoveryScope? = nil) {
@@ -139,7 +146,12 @@ final class DJModel: ObservableObject {
     }
     rulesTask = Task { [weak self] in
       do {
-        let response = try await HTTPClient().server(connection, path: "dj/rules")
+        // The rules as the DJ receives them, with the profile of the agent chosen here.
+        let agent =
+          self?.agents.selectedID.addingPercentEncoding(withAllowedCharacters: .alphanumerics)
+          ?? DJAgent.defaultID
+        let response = try await HTTPClient().server(
+          connection, path: "dj/rules?agentId=" + agent)
         try Task.checkCancellation()
         self?.rulesText = response["prompt"] as? String ?? "Règles indisponibles."
       } catch {
@@ -310,6 +322,8 @@ final class DJModel: ObservableObject {
     var request = request
     request.conversationId = journal.conversationId
     request.requestId = journalRequests[id]?.0 ?? UUID()
+    // Read when the request leaves, so a refill uses the agent chosen at that moment.
+    request.agentId = agents.selectedID
     work = Task { [weak self] in
       do {
         let response = try await ServerDJ(connection: connection).turn(request)

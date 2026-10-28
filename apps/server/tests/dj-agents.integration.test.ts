@@ -127,6 +127,16 @@ it("resolves a turn's agent, falling back to the default for unknown, foreign or
     expect(await agents.resolve(alice, id)).toEqual({ trace: { id, fallback: true } });
 });
 
+it("shows the rules as the DJ receives them, with the chosen agent's profile", async () => {
+  const plain = await (await req("GET", "/rules")).json();
+  expect(plain.prompt).not.toContain("PROFIL DE L’AGENT");
+  const focus = await (await req("GET", "/rules?agentId=focus")).json();
+  expect(focus.prompt.startsWith(plain.prompt)).toBe(true);
+  expect(focus.prompt).toContain("PROFIL DE L’AGENT « Focus »");
+  const stale = await (await req("GET", "/rules?agentId=" + randomUUID())).json();
+  expect(stale.prompt).toBe(plain.prompt);
+});
+
 it("records the agent used by a chat turn in its journal", async () => {
   // Without a configured provider the turn stops after its plan is journaled.
   const response = await req("POST", "/chat", tokenA, {

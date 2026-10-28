@@ -71,3 +71,9 @@ export const djResponseBody = z
   })
   .openapi("DjResponse");
 export const rulesBody = z.object({ prompt: z.string() });
+export const rulesQuery = z.object({
+  agentId: z
+    .string()
+    .regex(/^[a-z0-9-]{1,64}$/i)
+    .optional(),
+});

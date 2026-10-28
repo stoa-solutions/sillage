@@ -644,7 +644,10 @@ struct DJView: View {
           .lineLimit(1...5).textFieldStyle(.plain)
           .onSubmit { model.send(source: source) }
         HStack(spacing: 8) {
-          if !panelOnly { ScopeMenu(scope: $model.searchScope) }
+          if !panelOnly {
+            ScopeMenu(scope: $model.searchScope)
+            AgentMenu(agents: model.agents)
+          }
           Spacer(minLength: 0)
           Button {
             model.toggleMicrophone(source: source)

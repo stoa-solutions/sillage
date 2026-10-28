@@ -1,6 +1,7 @@
 $kind: http-request
 description: >-
-  Règles de l’agent côté serveur, consultables par un compte connecté. Cette route ne modifie pas le prompt.
+  Règles du DJ côté serveur, consultables par un compte connecté. Avec agentId, ajoute le profil de cet agent tel que le
+  DJ le reçoit. Cette route ne modifie pas le prompt.
 
 
   Effet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection
@@ -9,6 +10,10 @@ url: "{{base_url}}/v1/dj/rules"
 method: GET
 headers:
   Accept: application/json
+queryParams:
+  - key: agentId
+    value: "{{agentId}}"
+    disabled: true
 scripts:
   - type: afterResponse
     code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });

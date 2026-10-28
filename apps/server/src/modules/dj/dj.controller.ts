@@ -30,6 +30,7 @@ import {
   djSettingsBody,
   djStatusBody,
   rulesBody,
+  rulesQuery,
   speechRequestBody,
   speechResultBody,
 } from "./dj.schemas.ts";
@@ -49,6 +50,7 @@ import {
 } from "./dj-lease.ts";
 import { planTurn } from "./plan.ts";
 import { djSystemPrompt } from "./prompt.ts";
+import { profileRules } from "./messages.ts";
 import { djTurn } from "./dj-turn.service.ts";
 import { djAgentsService } from "../dj-agents/index.ts";
 
@@ -65,8 +67,9 @@ const rulesRoute = createRoute({
     tag: TAG,
     summary: "Prompt système actuel",
     description:
-      "Règles de l’agent côté serveur, consultables par un compte connecté. Cette route ne modifie pas le prompt.",
+      "Règles du DJ côté serveur, consultables par un compte connecté. Avec agentId, ajoute le profil de cet agent tel que le DJ le reçoit. Cette route ne modifie pas le prompt.",
   }),
+  request: { query: rulesQuery },
   responses: { ...commonErrors(), 200: jsonResponse(rulesBody, "Réponse réussie") },
 });
 const statusRoute = createRoute({
@@ -199,7 +202,16 @@ export function createDjRoutes(
   const app = featureRouter<ApiEnvironment>();
   const agents = djAgentsService(db);
   app.route("/", journalRoutes(db));
-  app.openapi(rulesRoute, (c) => c.json({ prompt: djSystemPrompt }, 200));
+  app.openapi(rulesRoute, async (c) => {
+    const { profile } = await agents.resolve(
+      c.get("userId"),
+      c.req.valid("query").agentId,
+    );
+    return c.json(
+      { prompt: djSystemPrompt + (profile ? profileRules(profile) : "") },
+      200,
+    );
+  });
   app.openapi(statusRoute, async (c) => {
     const config = await personalDjConfig(db, c.get("userId"));
     return c.json({

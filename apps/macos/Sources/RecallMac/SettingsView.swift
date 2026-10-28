@@ -1,9 +1,11 @@
 import RecallKit
 import SwiftUI
 
-private enum SettingsPage: String, CaseIterable, Identifiable {
+enum SettingsPage: String, CaseIterable, Identifiable {
+  static let requestKey = "settingsRequestedPage"
   case appearance = "Apparence"
   case dj = "DJ et voix"
+  case agents = "Agents"
   case playback = "Lecture"
   case desk = "Bureau"
   case account = "Compte"
@@ -12,6 +14,7 @@ private enum SettingsPage: String, CaseIterable, Identifiable {
     switch self {
     case .appearance: return "paintpalette"
     case .dj: return "waveform"
+    case .agents: return "person.wave.2"
     case .playback: return "play.rectangle"
     case .desk: return "menubar.rectangle"
     case .account: return "person.crop.circle"
@@ -25,6 +28,8 @@ struct SettingsView: View {
   @EnvironmentObject var dj: DJModel
   @EnvironmentObject var desk: DeskIntegration
   @State private var page = SettingsPage.appearance
+  /// A page asked for from elsewhere (the composer's agent menu), consumed once.
+  @AppStorage(SettingsPage.requestKey) private var requestedPage = ""
   @State private var key = ""
   @State private var busy = false
   @State private var message = ""
@@ -53,6 +58,8 @@ struct SettingsView: View {
           .top, 24)
         if page == .appearance {
           AppearanceSettings()
+        } else if page == .agents {
+          DJAgentsSettings(agents: dj.agents)
         } else {
           Form {
             switch page {
@@ -67,7 +74,7 @@ struct SettingsView: View {
                 .font(.callout).foregroundStyle(.secondary)
               }
             case .desk: DeskSettings(desk: desk)
-            case .appearance: EmptyView()
+            case .appearance, .agents: EmptyView()
             }
             if !session.error.isEmpty {
               Text(session.error).font(.caption).foregroundStyle(.orange)
@@ -87,6 +94,13 @@ struct SettingsView: View {
         message = ""
       }
       .task { await session.refreshCredentials() }
+      .onAppear(perform: openRequestedPage)
+      .onChange(of: requestedPage) { _, _ in openRequestedPage() }
+  }
+  private func openRequestedPage() {
+    guard let requested = SettingsPage(rawValue: requestedPage) else { return }
+    page = requested
+    requestedPage = ""
   }
   private var accountSettings: some View {
     Section("Compte") {

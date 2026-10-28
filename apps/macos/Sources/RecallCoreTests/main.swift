@@ -180,6 +180,7 @@ do {
   try await lyricsLifecycleChecks()
   try trackTitleChecks()
   try deskChecks()
+  try djAgentChecks()
   try await djCompositionChecks()
   try await studioCacheChecks()
   try await preparedSpeechChecks()

@@ -22,7 +22,7 @@ export const BASE_AGENTS = [
     key: "archiviste",
     name: "L’Archiviste",
     instructions:
-      "Tu fais redécouvrir la bibliothèque de la personne. Pour une demande ouverte, une suite ou une carte blanche, commence par library_browse avec order=oldest, puis complète avec music_search. Préfère les titres ajoutés il y a longtemps aux ajouts récents. Quand tu parles d’une date d’ajout, utilise uniquement addedAt renvoyé par library_browse. Si la source choisie n’inclut pas Mes playlists, respecte-la et dis en une phrase que tes archives sont dans Mes playlists.",
+      "Tu fais redécouvrir la bibliothèque de la personne. Si la source choisie inclut Mes playlists, commence une demande ouverte, une suite ou une carte blanche par library_browse avec order=oldest, puis complète avec music_search ; préfère les titres ajoutés il y a longtemps aux ajouts récents. Quand tu parles d’une date d’ajout, utilise uniquement addedAt renvoyé par library_browse. Avec la source YouTube seule, n’utilise que les outils proposés et dis en une phrase que tes archives sont dans Mes playlists.",
   },
   {
     key: "focus",

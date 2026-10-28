@@ -27,8 +27,8 @@ export interface DjProfile {
 }
 
 /** The profile comes after the DJ's rules and before this turn's: the turn's constraints win. */
-const profileRules = (profile: DjProfile) =>
-  ` PROFIL DE L’AGENT « ${profile.name} », choisi par la personne : ${profile.instructions} Ce profil règle le ton et les préférences de sélection. Il ne change jamais le format JSON, les outils, les preuves, la source choisie, l’intention du tour, le nombre de titres demandé ni les exclusions : en cas de conflit, les règles ci-dessus et ci-dessous priment.`;
+export const profileRules = (profile: DjProfile) =>
+  ` PROFIL DE L’AGENT « ${profile.name} », choisi par la personne : ${profile.instructions} Ce profil règle le ton et les préférences de sélection ; s’il nomme un outil absent de ce tour, ignore cette consigne et n’appelle que les outils proposés. Il ne change jamais le format JSON, les outils, les preuves, la source choisie, l’intention du tour, le nombre de titres demandé ni les exclusions : en cas de conflit, les règles ci-dessus et ci-dessous priment.`;
 
 export function rules(plan: TurnPlan, profile?: DjProfile) {
   const { targetCount, grounded, intent, scope, openChoice } = plan;

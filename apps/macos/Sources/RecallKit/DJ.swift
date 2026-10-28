@@ -36,6 +36,8 @@ public struct DJRequest: Sendable {
   public var trigger: DJTrigger = .user
   public var continuation: DJContinuation?
   public var scope: DiscoveryScope = .library
+  /// The agent chosen on this Mac; the server falls back to its default for an unknown one.
+  public var agentId: String?
   public var playbackContext: DJPlaybackContext?
   /// Explicitly rejected suggestions, unlike songs merely queued or previously played.
   public var rejectedIds: [String] = []
@@ -68,6 +70,13 @@ public struct ServerDJ: DJ {
   let connection: Connection
   public init(connection: Connection) { self.connection = connection }
   public func turn(_ request: DJRequest) async throws -> DJResponse {
+    let object = try await HTTPClient().server(
+      connection, path: "dj/chat", body: Self.body(for: request))
+    return try JSONDecoder().decode(
+      DJResponse.self, from: JSONSerialization.data(withJSONObject: object))
+  }
+  /// The JSON sent to `/v1/dj/chat`, apart so the contract can be checked without a server.
+  public static func body(for request: DJRequest) throws -> [String: Any] {
     var body: [String: Any] = [
       "message": String(request.message.prefix(1500)), "scope": request.scope.rawValue,
       "history": request.history.suffix(12).map {
@@ -79,6 +88,7 @@ public struct ServerDJ: DJ {
     body["conversationId"] = request.conversationId?.uuidString.lowercased()
     body["requestId"] = request.requestId?.uuidString.lowercased()
     body["trigger"] = request.trigger.rawValue
+    if let agentId = request.agentId { body["agentId"] = agentId }
     if let continuation = request.continuation {
       body["continuation"] = ["count": continuation.count, "broaden": continuation.broaden]
     }
@@ -90,9 +100,7 @@ public struct ServerDJ: DJ {
       body["playbackContext"] = try JSONSerialization.jsonObject(
         with: JSONEncoder().encode(context))
     }
-    let object = try await HTTPClient().server(connection, path: "dj/chat", body: body)
-    return try JSONDecoder().decode(
-      DJResponse.self, from: JSONSerialization.data(withJSONObject: object))
+    return body
   }
 }
 
