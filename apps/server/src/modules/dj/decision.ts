@@ -108,6 +108,17 @@ function answer(output: Selection, state: DecisionState): Decision | undefined {
   return undefined;
 }
 
+/**
+ * What the turn found, played when the model chose nothing on a real playback request.
+ * Composition.fallback decides which candidates qualify; undefined keeps the model's answer.
+ */
+function playFound(state: DecisionState): Decision | undefined {
+  const found = state.fallback?.();
+  return found && found.action !== "keep" && found.ids.length
+    ? { kind: "play", reason: "fallback", action: found.action, ids: found.ids }
+    : undefined;
+}
+
 export function decide(output: Selection, state: DecisionState): Decision {
   const { plan, findings } = state;
 
@@ -115,6 +126,9 @@ export function decide(output: Selection, state: DecisionState): Decision {
   //    intent never turns a question into a playback failure.
   if (output.action === "keep" && !hasIds(output)) {
     const spoken = answer(output, state);
+    // A model that found the listener's favourites for « mets-moi ce que j'aime » and then
+    // only chats still owes the music it was asked for.
+    if (spoken?.reason === "conversation") return playFound(state) ?? spoken;
     if (spoken) return spoken;
   }
 
@@ -169,9 +183,8 @@ export function decide(output: Selection, state: DecisionState): Decision {
   // A playback request answered with music but no choice at all (keep, or an action without
   // tracks): play what the turn found rather than leave the listener with nothing.
   if (output.kind === "music" && !hasIds(output)) {
-    const found = state.fallback?.();
-    if (found && found.action !== "keep" && found.ids.length)
-      return { kind: "play", reason: "fallback", action: found.action, ids: found.ids };
+    const found = playFound(state);
+    if (found) return found;
   }
   if (composed.action === "keep") return { kind: "nothing", reason: "no-match" };
   const target = plan.targetCount;

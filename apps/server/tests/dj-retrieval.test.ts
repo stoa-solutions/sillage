@@ -898,6 +898,28 @@ it("plays the listed favourites when the model concludes with music but chooses 
   expect(played.action).toBe("replace");
   expect(played.tracks.map((item) => item.id)).toEqual([track.id]);
 
+  // Seen in production too: the favourites listed, then a « conversation » with no track.
+  const chatty = {
+    content: JSON.stringify({
+      kind: "conversation",
+      reply: "C’est bien noté, je prends le temps de chercher.",
+      action: "keep",
+      trackIds: [],
+    }),
+  };
+  provider([browse, chatty]);
+  const chatted = await djTurn(
+    db,
+    djInput.parse({ message: "Mets-moi quelque chose que j'aime" }),
+    undefined,
+    config,
+    "alice",
+  );
+  expect(chatted.tracks.map((item) => item.id)).toEqual([track.id]);
+  provider([browse, chatty]);
+  const thankedChat = await djTurn(db, djInput.parse({ message: "merci" }), undefined, config, "alice");
+  expect(thankedChat.tracks).toEqual([]);
+
   // A thank-you after the same listing never starts music.
   provider([browse, emptyMusic]);
   const thanked = await djTurn(db, djInput.parse({ message: "merci" }), undefined, config, "alice");
