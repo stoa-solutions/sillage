@@ -42,5 +42,17 @@ func djAgentChecks() throws {
   try expect(list.resolve("11111111-2222-4333-8444-555555555555") != "dj", "Own agent dropped")
   try expect(list.resolve("focus-removed") == "dj", "Missing agent kept")
   try expect(list.resolve(nil) == "dj", "No selection did not use the default")
-  print("DJ agent checks passed: typed and refill requests, default fallback")
+  // The answering agent stays on the reply, even when a refill drops repeated tracks.
+  let answered = try JSONDecoder().decode(
+    DJResponse.self,
+    from: Data(
+      #"{"reply":"C’est parti","action":"append","tracks":[{"id":"first123456","title":"Navajo"},{"id":"fresh123456","title":"Fresh"}],"agent":{"id":"disquaire","name":"Le Disquaire"}}"#
+        .utf8))
+  try expect(
+    queue.freshContinuation(answered).agent?.name == "Le Disquaire",
+    "A refill lost the answering agent")
+  let plain = try JSONDecoder().decode(
+    DJResponse.self, from: Data(#"{"reply":"Ok","action":"keep","tracks":[]}"#.utf8))
+  try expect(plain.agent == nil, "An answer without agent invented one")
+  print("DJ agent checks passed: typed and refill requests, default fallback, answering agent")
 }

@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { djInput } from "../src/modules/dj/dj.contracts.ts";
 import { initialMessages } from "../src/modules/dj/messages.ts";
+import { Composition } from "../src/modules/dj/composition.ts";
 import { planTurn } from "../src/modules/dj/plan.ts";
 import { djSystemPrompt } from "../src/modules/dj/prompt.ts";
 import { BASE_AGENTS, DEFAULT_AGENT } from "../src/modules/dj-agents/index.ts";
@@ -44,4 +45,18 @@ it("ships a default agent without a profile and base agents within the stored li
     expect(agent.name.length).toBeLessThanOrEqual(40);
     expect(agent.instructions.length).toBeLessThanOrEqual(1500);
   }
+});
+
+it("restates the agent's voice last, after the request and in the final composition", () => {
+  const input = djInput.parse({ message: "mets du jazz" });
+  const profile = { name: "Le Disquaire", instructions: "Un fait précis." };
+  const messages = initialMessages(input, planTurn(input), [], undefined, profile);
+  const last = messages.at(-1)?.content ?? "";
+  expect(last.startsWith("mets du jazz")).toBe(true);
+  expect(last).toContain("tu réponds en tant que « Le Disquaire »");
+  expect(messages[0]?.content).toContain("Ta voix s’entend dans explanation");
+  const plain = initialMessages(input, planTurn(input));
+  expect(plain.at(-1)?.content).toBe("mets du jazz");
+  const final = new Composition(input, planTurn(input)).finalMessages(messages, [], [], profile);
+  expect(final.at(-1)?.content).toContain("tu réponds en tant que « Le Disquaire »");
 });

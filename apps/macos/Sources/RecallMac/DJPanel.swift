@@ -91,6 +91,10 @@ struct ChatBubble: View {
       HStack(alignment: .top, spacing: 10) {
         DJAvatar()
         VStack(alignment: .leading, spacing: 8) {
+          if let agent = message.agentName {
+            Text(agent).font(.caption.weight(.semibold)).foregroundStyle(Color.recall)
+              .padding(.bottom, -4)
+          }
           MarkdownMessage(message.content, sources: message.sources ?? [])
           if let sources = message.sources, !sources.isEmpty {
             ForEach(sources) { source in

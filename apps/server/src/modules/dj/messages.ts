@@ -28,7 +28,7 @@ export interface DjProfile {
 
 /** The profile comes after the DJ's rules and before this turn's: the turn's constraints win. */
 export const profileRules = (profile: DjProfile) =>
-  ` PROFIL DE L’AGENT « ${profile.name} », choisi par la personne : ${profile.instructions} Ce profil règle le ton et les préférences de sélection ; s’il nomme un outil absent de ce tour, ignore cette consigne et n’appelle que les outils proposés. Il ne change jamais le format JSON, les outils, les preuves, la source choisie, l’intention du tour, le nombre de titres demandé ni les exclusions : en cas de conflit, les règles ci-dessus et ci-dessous priment.`;
+  ` PROFIL DE L’AGENT « ${profile.name} », choisi par la personne : ${profile.instructions} Ta voix s’entend dans explanation, affichée juste après la liste des titres que le serveur annonce (une ou deux phrases, sans répéter les titres ni annoncer l’action), et dans reply pour une conversation ou une information. Écris-les dans ce style, pas dans un style neutre. Ce profil règle le ton et les préférences de sélection ; s’il nomme un outil absent de ce tour, ignore cette consigne et n’appelle que les outils proposés. Il ne change jamais le format JSON, les outils, les preuves, la source choisie, l’intention du tour, le nombre de titres demandé ni les exclusions : en cas de conflit, les règles ci-dessus et ci-dessous priment.`;
 
 export function rules(plan: TurnPlan, profile?: DjProfile) {
   const { targetCount, grounded, intent, scope, openChoice } = plan;
@@ -145,6 +145,10 @@ export function initialMessages(
           },
         ]
       : []),
-    { role: "user", content: request },
+    { role: "user", content: request + (profile ? profileReminder(profile) : "") },
   ];
 }
+
+/** Repeated last: a small model follows the most recent instruction, so the voice is restated. */
+export const profileReminder = (profile: DjProfile) =>
+  `\n\n(Rappel du serveur : tu réponds en tant que « ${profile.name} ». Écris explanation et reply dans sa voix ; les règles du DJ restent prioritaires.)`;

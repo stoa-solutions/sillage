@@ -342,8 +342,11 @@ export function createDjRoutes(
         memory,
         agent.profile,
       );
-      await finish("completed", response, model);
-      return c.json(response, 200);
+      const { id, name } = agent.trace;
+      const answered =
+        agent.profile && name ? { ...response, agent: { id, name } } : response;
+      await finish("completed", answered, model);
+      return c.json(answered, 200);
     } catch (error) {
       const reason = lease.signal.reason;
       if (reason instanceof TurnSuperseded) {

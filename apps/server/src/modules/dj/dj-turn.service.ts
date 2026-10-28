@@ -135,6 +135,7 @@ export async function djTurn(
               base,
               [...research.information.values()],
               research.failures,
+              profile,
             )
           : messages,
         research.tools,

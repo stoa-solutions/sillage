@@ -426,7 +426,7 @@ public struct ListeningSession: Sendable {
     messages.append(
       ChatMessage(
         role: "assistant", content: response.reply, discoveries: response.discoveries,
-        sources: response.sources))
+        sources: response.sources, agentName: response.agent?.name))
     messages = Array(messages.suffix(24))
     let before = queue.tracks.count
     let changed = queue.apply(response, automatic: request.automatic)

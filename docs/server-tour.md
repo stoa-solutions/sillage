@@ -111,6 +111,7 @@ Un agent est un profil ajouté aux règles du DJ, jamais un remplacement : ton e
 2. `dj-agents.controller.ts` : `GET/POST /v1/dj/agents`, `PUT/DELETE /v1/dj/agents/{id}` ; un compte ne voit et ne modifie que ses agents personnalisés (20 au maximum), les agents de base sont en lecture seule.
 3. `dj-agents.service.ts` → `resolve()` : appelé par `/v1/dj/chat` avant le journal. Un `agentId` inconnu, étranger ou supprimé repasse sur l’agent par défaut (`fallback` au journal) : une suite envoyée avec une sélection périmée joue quand même.
 4. `dj/messages.ts` → `rules(plan, profile)` place le profil entre `djSystemPrompt` et les règles du Tour, qui restent les dernières. Le journal garde l’agent, son nom et l’empreinte de ses instructions dans `plan.agent` ; `promptHash` reste celui du prompt de base.
+5. La voix de l’agent s’entend dans `explanation` (après l’annonce écrite par le serveur) et dans `reply` des conversations. `profileReminder` la rappelle à la fin de la demande et de la composition finale : un petit modèle suit d’abord la consigne la plus récente. La réponse de `/v1/dj/chat` porte `agent: {id, name}` quand ce n’est pas le DJ par défaut ; le Mac l’affiche au-dessus de la bulle.
 
 Limites : l’annonce « C’est parti : … » est écrite par le serveur, l’agent agit sur le choix, `explanation` et les réponses de conversation. Un titre exact trouvé dans le catalogue répond sans modèle, donc sans agent.
 

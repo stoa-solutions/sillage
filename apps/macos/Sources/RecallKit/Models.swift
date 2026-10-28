@@ -41,6 +41,8 @@ public struct ChatMessage: Codable, Identifiable, Sendable {
   public let content: String
   public let sources: [InformationSource]?
   public let discoveries: [DiscoveryItem]?
+  /// The agent that wrote an answer, shown above it; nil for the default DJ.
+  public let agentName: String?
   /// Preserve the visible candidates in provider context; catalog metadata is data, not instructions.
   public var contextContent: String {
     guard let discoveries, !discoveries.isEmpty else { return String(content.prefix(2000)) }
@@ -58,24 +60,32 @@ public struct ChatMessage: Codable, Identifiable, Sendable {
   }
   public init(
     role: String, content: String, discoveries: [DiscoveryItem]? = nil,
-    sources: [InformationSource]? = nil
+    sources: [InformationSource]? = nil, agentName: String? = nil
   ) {
     self.sources = sources
     self.discoveries = discoveries
     self.role = role
     self.content = content
+    self.agentName = agentName
   }
 }
 public struct DJResponse: Codable, Sendable {
+  /// The agent that answered, sent by the server when it is not the default DJ.
+  public struct Agent: Codable, Sendable {
+    public let id: String
+    public let name: String
+  }
   public let reply: String
   public let action: String
   public let tracks: [Track]
   public let sources: [InformationSource]?
   public let discoveries: [DiscoveryItem]?
+  public let agent: Agent?
   public init(
     reply: String, action: String, tracks: [Track], discoveries: [DiscoveryItem]? = nil,
-    sources: [InformationSource]? = nil
+    sources: [InformationSource]? = nil, agent: Agent? = nil
   ) {
+    self.agent = agent
     self.sources = sources
     self.discoveries = discoveries
     self.reply = reply

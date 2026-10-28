@@ -68,6 +68,8 @@ export const djResponseBody = z
     discoveries: z.array(discoveryItemBody).optional(),
     sources: z.array(informationSourceBody).optional(),
     source: z.string().optional(),
+    /** The agent that answered, when it is not the default DJ. */
+    agent: z.object({ id: z.string(), name: z.string() }).optional(),
   })
   .openapi("DjResponse");
 export const rulesBody = z.object({ prompt: z.string() });

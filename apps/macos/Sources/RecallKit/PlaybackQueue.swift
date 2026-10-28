@@ -32,7 +32,7 @@ public struct PlaybackQueue: Sendable {
     guard response.action != "keep", !response.tracks.isEmpty else {
       return DJResponse(
         reply: "Je n’ai pas trouvé de nouvelle suite compatible avec ta demande.", action: "keep",
-        tracks: [])
+        tracks: [], agent: response.agent)
     }
     var seen = encounteredIDs.union(tracks.map(\.id))
     var songs = encounteredSongs.union(tracks.flatMap { PlaybackIdentity.keys($0) })
@@ -49,7 +49,9 @@ public struct PlaybackQueue: Sendable {
       fresh.isEmpty
       ? "Cette sélection ne contient aucun nouveau morceau pour cette session."
       : "Je poursuis avec " + fresh.prefix(3).map(\.title).joined(separator: ", ") + "."
-    return DJResponse(reply: reply, action: fresh.isEmpty ? "keep" : "append", tracks: fresh)
+    return DJResponse(
+      reply: reply, action: fresh.isEmpty ? "keep" : "append", tracks: fresh,
+      agent: response.agent)
   }
   public init() {}
   public mutating func markEnded() {
