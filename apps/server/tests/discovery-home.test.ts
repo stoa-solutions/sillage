@@ -97,7 +97,7 @@ it("explores the listener's genres without their usual artists", async () => {
   const given = sources({
     similar: vi.fn().mockResolvedValue([]),
     search: vi.fn().mockImplementation(async (_user: string, query: string) =>
-      query === "electronic music"
+      query === "electronic official music video"
         ? found(
             { id: "known000001", title: "Maribou State - Turnmills", channel: "Maribou State" },
             { id: "unknown0001", title: "Caribou - Can't Do Without You", channel: "Caribou" },
@@ -141,8 +141,9 @@ it("draws other neighbours on refresh", async () => {
   const given = sources({ similar: vi.fn().mockResolvedValue(many), search });
   await discoveryHome(given, "alice", { rotate: true, random: () => 0 });
   const queried: string[] = search.mock.calls.map((call) => call[1]);
-  expect(queried.filter((query) => query.startsWith("New "))).toHaveLength(3);
-  expect(queried).not.toEqual(expect.arrayContaining(["New 0", "New 1", "New 2"]));
+  // Two neighbours, then two spares since neither had a track: never the first closest one.
+  expect(queried.filter((query) => query.startsWith("New "))).toHaveLength(4);
+  expect(queried).not.toContain("New 0");
 });
 
 it("distinguishes an artist credit from a homonymous song title", async () => {
@@ -161,4 +162,41 @@ it("distinguishes an artist credit from a homonymous song title", async () => {
   const result = await discoveryHome(given, "alice");
   const own = required(result.sections.find((section) => section.kind === "artists"));
   expect(own.items.map((item) => item.video.id)).toEqual(["right000001"]);
+});
+
+it("rejects a homonymous song on another artist's Topic channel, and mixes", async () => {
+  const given = sources({
+    similar: vi.fn().mockResolvedValue([neighbour("Phoenix", "ph")]),
+    search: vi.fn().mockImplementation(async (_user: string, query: string) =>
+      query === "Phoenix"
+        ? found(
+            { id: "youngthug01", title: "Phoenix", channel: "Young Thug - Topic" },
+            { id: "phoenixmix1", title: "Phoenix - Best of Mix", channel: "Phoenix" },
+            { id: "phoenix0001", title: "Phoenix - Lisztomania", channel: "Phoenix" },
+          )
+        : found(),
+    ),
+  });
+  const result = await discoveryHome(given, "alice");
+  expect(result.suggestions.map((item) => item.video.id)).toEqual(["phoenix0001"]);
+});
+
+it("goes one step further, from the neighbours of a new artist", async () => {
+  const given = sources({
+    similar: vi.fn().mockImplementation(async (mbid: string) =>
+      mbid === "ms" ? [neighbour("Kiasmos", "ki")] : mbid === "ki" ? [neighbour("Ólafur Arnalds", "oa")] : [],
+    ),
+    search: vi.fn().mockImplementation(async (_user: string, query: string) =>
+      query === "Kiasmos"
+        ? found({ id: "kiasmos0001", title: "Kiasmos - Looped" })
+        : query === "Ólafur Arnalds"
+          ? found({ id: "olafur00001", title: "Ólafur Arnalds - Saman" })
+          : found(),
+    ),
+  });
+  const result = await discoveryHome(given, "alice");
+  const further = required(result.sections.find((section) => section.id === "further"));
+  expect(required(further.items[0]).reason).toBe(
+    "Ólafur Arnalds, proche de Kiasmos, lui-même proche de Maribou State",
+  );
 });

@@ -12,18 +12,23 @@ export interface DiscoverySeed {
 
 /** How much « Pour toi » proposes; every number of the page lives here. */
 export const HOME_RULES = {
-  /** Favourite artists whose listening neighbours are explored. */
-  tasteSeeds: 5,
-  /** Recently heard artists added to them, for what the listener is into right now. */
+  /** Favourite artists asked for neighbours; niche ones often have none. */
+  tasteSeeds: 12,
+  /** Recently heard artists, placed after the three favourites. */
   recentSeeds: 2,
-  /** New artists kept per seed, among its closest unknown neighbours. */
-  neighboursPerSeed: 3,
+  /** « Autour de X » shelves at most. */
+  neighbourSections: 6,
+  /** New artists kept per shelf, among the closest unknown neighbours. */
+  neighboursPerSeed: 2,
+  /** Further neighbours tried when one has no usable track. */
+  spareNeighbours: 2,
   /** A refresh draws them from this many closest neighbours instead. */
-  neighbourPool: 8,
+  neighbourPool: 10,
   tracksPerArtist: 2,
+  /** « Plus loin »: neighbours of the first new artists found. */
+  furtherArtists: 3,
   genreSections: 2,
   tracksPerGenre: 6,
-  ownArtistTracks: 6,
   /** Searches running at once: the catalog source accepts four. */
   concurrency: 3,
   ideas: 8,
@@ -69,6 +74,11 @@ const titleKey = (value: string) =>
     .trim();
 const nameKey = (value: string) => normalizeMusic(value).trim();
 const JUNK = /\b(type beat|backing track|tutorial|audiobook|podcast|for drummers?|bpm|reaction|karaoke|cover|lyrics? video)\b/i;
+/** Mixes and compilations: a discovery is one artist's song. */
+const MIX = /\b(mix|mixtape|compilation|playlist|best of|greatest hits|full album|non-?stop|\d+\s*hours?)\b/i;
+const LONGEST_SONG = 15 * 60;
+/** Lives and sessions come after the studio version of the same artist. */
+const LIVE = /\b(live|tiny desk|kexp|session|concert|performance)\b/i;
 
 /** The listener's artists and genres, from their library, their plays and their taste ranking. */
 export function listenerProfile(
@@ -121,8 +131,7 @@ export function discoverySeeds(history: HistoryRow[]): DiscoverySeed[] {
     .filter((row) => ["finished", "replaced"].includes(row.outcome))
     .slice(0, 20)) {
     const metadata = row.music_metadata?.status === "matched" ? row.music_metadata : undefined;
-    const artist =
-      metadata?.artists?.[0]?.name ?? row.channel?.replace(/\s*[-–]\s*Topic$/i, "") ?? undefined;
+    const artist = artistName({ title: row.title, channel: row.channel, musicMetadata: metadata });
     const genres = metadata?.genres?.length ? metadata.genres : metadata?.artistGenres;
     if (genres?.[0])
       add(genres[0], `Pour explorer ${genres[0]}, autour de tes écoutes récentes`, "genre");
@@ -132,16 +141,29 @@ export function discoverySeeds(history: HistoryRow[]): DiscoverySeed[] {
   return seeds.slice(0, 3);
 }
 
-/** An artist name in a song title is not an artist credit (e.g. a song called The Alchemist). */
+/**
+ * An artist name in a song title is not an artist credit (a song called The Alchemist, a
+ * Young Thug song called Phoenix): the credit is a « X - Topic » channel, the artist's own
+ * channel, or the part of the title before « - », « | » or « : ».
+ */
 function byArtist(artist: string, title: string, channel: string) {
   const name = normalizeMusic(artist);
   const contains = (value: string) => (" " + normalizeMusic(value) + " ").includes(" " + name + " ");
-  if (contains(channel)) return true;
-  const credit = title.split(/\s+[-–—]\s+/)[0] ?? title;
-  if (contains(credit)) return true;
+  const topic = /^(.*?)\s*-\s*Topic$/i.exec(channel)?.[1];
+  if (topic !== undefined) return contains(topic);
+  if (contains(channel.replace(/VEVO$/i, ""))) return true;
+  const parts = title.split(/\s+[-–—|]\s+|:\s+/);
+  if (parts.length > 1 && contains(parts[0]!)) return true;
   return ["feat ", "ft ", "featuring ", "avec "].some((marker) =>
     normalizeMusic(title).includes(marker + name),
   );
+}
+
+/** The artist a video credits by itself (Topic channel or « Artist - Song »), never a channel. */
+function creditedArtist(video: { title?: string | null; channel?: string | null }) {
+  const channel = video.channel ?? "";
+  const titled = /^(.+?)\s+[-–—]\s+\S/.test(video.title ?? "");
+  return /-\s*Topic$/i.test(channel) || titled ? artistName({ ...video, musicMetadata: null }) : undefined;
 }
 
 /** Runs the tasks a few at a time, in order; a failed task yields undefined. */
@@ -186,80 +208,120 @@ export async function discoveryHome(
     !heard.has(item.video.id) &&
     !used.has(item.video.id) &&
     !titles.has(titleKey(item.video.title)) &&
-    !JUNK.test(item.video.title);
+    !JUNK.test(item.video.title) &&
+    !MIX.test(item.video.title) &&
+    (item.video.durationSeconds ?? 0) <= LONGEST_SONG;
   const take = (item: SearchItem, reason: string, artist?: string): HomeItem => {
     used.add(item.video.id);
     titles.add(titleKey(item.video.title ?? ""));
     return { ...item, reason, ...(artist ? { artist } : {}) };
   };
 
-  // Seeds: favourite artists with a MusicBrainz ID, then recently heard ones.
-  const seeds: { name: string; mbid: string }[] = [];
+  const tracksOf = (artist: string, results: SearchItem[] | undefined) =>
+    (results ?? [])
+      .filter((item) => usable(item) && byArtist(artist, item.video.title ?? "", item.video.channel ?? ""))
+      .sort((a, b) => Number(LIVE.test(a.video.title ?? "")) - Number(LIVE.test(b.video.title ?? "")))
+      .slice(0, HOME_RULES.tracksPerArtist);
+
+  // Seeds: three favourites, the recent artists, then the other favourites. Only artists with a
+  // MusicBrainz ID have neighbours; many niche ones have none, hence the long list.
+  const candidates: { name: string; mbid: string }[] = [];
   const seedNames = new Set<string>();
   const addSeed = (name: string, mbid: string | undefined) => {
     if (!mbid || seedNames.has(nameKey(name))) return;
     seedNames.add(nameKey(name));
-    seeds.push({ name, mbid });
+    candidates.push({ name, mbid });
   };
-  for (const artist of profile.artists) {
-    if (seeds.length >= HOME_RULES.tasteSeeds) break;
-    addSeed(artist.name, artist.mbid);
-  }
+  const favourites = profile.artists.slice(0, HOME_RULES.tasteSeeds);
   const recentArtists = recent.filter((seed) => seed.kind === "artist");
+  favourites.slice(0, 3).forEach((artist) => addSeed(artist.name, artist.mbid));
   for (const seed of recentArtists.slice(0, HOME_RULES.recentSeeds)) {
-    const mbid = profile.artists.find((artist) => nameKey(artist.name) === nameKey(seed.query))?.mbid;
-    addSeed(seed.query, mbid);
+    const known = profile.artists.find((artist) => nameKey(artist.name) === nameKey(seed.query));
+    addSeed(known?.name ?? seed.query, known?.mbid);
   }
+  favourites.slice(3).forEach((artist) => addSeed(artist.name, artist.mbid));
 
   const neighbourLists = await limited(
-    seeds.map((seed) => () => sources.similar(seed.mbid)),
+    candidates.map((seed) => () => sources.similar(seed.mbid)),
     HOME_RULES.concurrency,
   );
   const chosen = new Set<string>();
-  const plans = seeds.map((seed, index) => {
-    const unknown = (neighbourLists.results[index] ?? []).filter(
-      (artist) =>
-        !profile.knownMbids.has(artist.mbid) &&
-        !profile.knownNames.has(nameKey(artist.name)) &&
-        !seedNames.has(nameKey(artist.name)) &&
-        !chosen.has(artist.mbid),
-    );
-    const pool = unknown.slice(0, rotate ? HOME_RULES.neighbourPool : HOME_RULES.neighboursPerSeed);
+  const unknown = (artist: SimilarArtist) =>
+    !profile.knownMbids.has(artist.mbid) &&
+    !profile.knownNames.has(nameKey(artist.name)) &&
+    !seedNames.has(nameKey(artist.name)) &&
+    !chosen.has(artist.mbid);
+  const plans: { seed: { name: string; mbid: string }; pool: SimilarArtist[]; found: { artist: SimilarArtist; items: SearchItem[] }[] }[] = [];
+  candidates.forEach((seed, index) => {
+    if (plans.length >= HOME_RULES.neighbourSections) return;
+    const pool = (neighbourLists.results[index] ?? [])
+      .filter(unknown)
+      .slice(0, rotate ? HOME_RULES.neighbourPool : HOME_RULES.neighboursPerSeed + HOME_RULES.spareNeighbours);
+    if (!pool.length) return;
     if (rotate)
       for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(random() * (i + 1));
         [pool[i], pool[j]] = [pool[j]!, pool[i]!];
       }
-    const picked = pool.slice(0, HOME_RULES.neighboursPerSeed);
-    for (const artist of picked) chosen.add(artist.mbid);
-    return { seed, picked };
+    const kept = pool.slice(0, HOME_RULES.neighboursPerSeed + HOME_RULES.spareNeighbours);
+    kept.forEach((artist) => chosen.add(artist.mbid));
+    plans.push({ seed, pool: kept, found: [] });
   });
 
-  const neighbourSearches = plans.flatMap(({ seed, picked }) =>
-    picked.map((artist) => ({ seed, artist })),
+  // First pass: two neighbours per shelf, the genres and the listener's own artists.
+  const first = plans.flatMap((plan) =>
+    plan.pool.slice(0, HOME_RULES.neighboursPerSeed).map((artist) => ({ plan, artist })),
   );
   const genres = profile.genres.slice(0, HOME_RULES.genreSections);
   const ownArtists = recentArtists.slice(0, 2);
-  const searches = await limited(
+  const firstSearches = await limited(
     [
-      ...neighbourSearches.map(({ artist }) => () => sources.search(user, artist.name)),
-      ...genres.map((genre) => () => sources.search(user, genre + " music")),
+      ...first.map(({ artist }) => () => sources.search(user, artist.name)),
+      ...genres.map((genre) => () => sources.search(user, genre + " official music video")),
       ...ownArtists.map((seed) => () => sources.search(user, seed.query + " official music")),
     ],
     HOME_RULES.concurrency,
   );
+  first.forEach(({ plan, artist }, index) => {
+    const items = tracksOf(artist.name, firstSearches.results[index]?.results);
+    if (items.length) plan.found.push({ artist, items });
+  });
+
+  // Second pass: a spare neighbour for each one without a usable track, and one step further.
+  const second = plans.flatMap((plan) =>
+    plan.pool
+      .slice(HOME_RULES.neighboursPerSeed)
+      .slice(0, HOME_RULES.neighboursPerSeed - plan.found.length)
+      .map((artist) => ({ plan, artist })),
+  );
+  const steps = plans
+    .filter((plan) => plan.found.length)
+    .slice(0, HOME_RULES.furtherArtists)
+    .map((plan) => ({ seed: plan.seed, via: plan.found[0]!.artist }));
+  const furtherLists = await limited(
+    steps.map((step) => () => sources.similar(step.via.mbid)),
+    HOME_RULES.concurrency,
+  );
+  const further = steps.flatMap((step, index) => {
+    const next = (furtherLists.results[index] ?? []).find(unknown);
+    if (!next) return [];
+    chosen.add(next.mbid);
+    return [{ ...step, artist: next }];
+  });
+  const secondSearches = await limited(
+    [...second, ...further].map(({ artist }) => () => sources.search(user, artist.name)),
+    HOME_RULES.concurrency,
+  );
+  second.forEach(({ plan, artist }, index) => {
+    const items = tracksOf(artist.name, secondSearches.results[index]?.results);
+    if (items.length) plan.found.push({ artist, items });
+  });
 
   const sections: HomeSection[] = [];
-  plans.forEach(({ seed, picked }) => {
-    const items: HomeItem[] = [];
-    for (const artist of picked) {
-      const at = neighbourSearches.findIndex((entry) => entry.artist === artist);
-      const results = searches.results[at]?.results ?? [];
-      results
-        .filter((item) => usable(item) && byArtist(artist.name, item.video.title ?? "", item.video.channel ?? ""))
-        .slice(0, HOME_RULES.tracksPerArtist)
-        .forEach((item) => items.push(take(item, `${artist.name}, proche de ${seed.name}`, artist.name)));
-    }
+  for (const { seed, found } of plans) {
+    const items = found.flatMap(({ artist, items }) =>
+      items.map((item) => take(item, `${artist.name}, proche de ${seed.name}`, artist.name)),
+    );
     if (items.length)
       sections.push({
         id: `neighbours:${seed.mbid}`,
@@ -268,16 +330,33 @@ export async function discoveryHome(
         reason: `Des artistes que tu n’as pas encore, écoutés par les mêmes personnes que ${seed.name}`,
         items,
       });
-  });
+  }
+  const far = further.flatMap(({ seed, via, artist }, index) =>
+    tracksOf(artist.name, secondSearches.results[second.length + index]?.results).map((item) =>
+      take(item, `${artist.name}, proche de ${via.name}, lui-même proche de ${seed.name}`, artist.name),
+    ),
+  );
+  if (far.length)
+    sections.push({
+      id: "further",
+      kind: "neighbours",
+      title: "Plus loin",
+      reason: "Un pas de plus : les voisins de tes nouvelles découvertes",
+      items: far,
+    });
   genres.forEach((genre, index) => {
-    const results = searches.results[neighbourSearches.length + index]?.results ?? [];
-    const items = results
+    const artists = new Set<string>();
+    const items = (firstSearches.results[first.length + index]?.results ?? [])
       .filter((item) => {
-        const name = artistName(item.video);
-        return usable(item) && (!name || !profile.knownNames.has(nameKey(name)));
+        const name = creditedArtist(item.video);
+        if (!name || !usable(item)) return false;
+        const key = nameKey(name);
+        if (profile.knownNames.has(key) || key === nameKey(genre) || artists.has(key)) return false;
+        artists.add(key);
+        return true;
       })
       .slice(0, HOME_RULES.tracksPerGenre)
-      .map((item) => take(item, `Du ${genre}, par des artistes que tu n’as pas`, artistName(item.video)));
+      .map((item) => take(item, `${creditedArtist(item.video)}, côté ${genre}`, creditedArtist(item.video)));
     if (items.length)
       sections.push({
         id: `genre:${genre.toLowerCase()}`,
@@ -289,11 +368,7 @@ export async function discoveryHome(
   });
   const own: HomeItem[] = [];
   ownArtists.forEach((seed, index) => {
-    const results =
-      searches.results[neighbourSearches.length + genres.length + index]?.results ?? [];
-    results
-      .filter((item) => usable(item) && byArtist(seed.query, item.video.title ?? "", item.video.channel ?? ""))
-      .slice(0, HOME_RULES.ownArtistTracks / 2)
+    tracksOf(seed.query, firstSearches.results[first.length + genres.length + index]?.results)
       .forEach((item) => own.push(take(item, seed.reason, seed.query)));
   });
   if (own.length)
@@ -306,12 +381,17 @@ export async function discoveryHome(
     });
 
   const suggestions = sections.flatMap((section) => section.items);
-  const failed = searches.failures + neighbourLists.failures;
+  const failed =
+    firstSearches.failures + secondSearches.failures + neighbourLists.failures + furtherLists.failures;
   return {
     sections,
     suggestions,
     basedOn: [
-      ...new Set([...seeds.map((seed) => seed.name), ...ownArtists.map((seed) => seed.query), ...genres]),
+      ...new Set([
+        ...plans.filter((plan) => plan.found.length).map((plan) => plan.seed.name),
+        ...ownArtists.map((seed) => seed.query),
+        ...genres,
+      ]),
     ],
     ideas: profile.genres.slice(0, HOME_RULES.ideas),
     notice: failed
