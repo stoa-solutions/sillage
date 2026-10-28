@@ -33,15 +33,18 @@ struct MainView: View {
     ProcessInfo.processInfo.environment["SILLAGE_QA_SECTION"].flatMap(Destination.init)
     ?? .dj
   @State private var compactRestHeight: CGFloat = 0
+  /// Pages opened over each tab (an artist, then another…); each tab keeps its own.
+  @State private var routes: [Destination: [AppRoute]] = [:]
+  private var route: AppRoute? { routes[section]?.last }
   @AppStorage("djPanelCollapsed") private var panelCollapsed = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.openSettings) private var openSettings
   /// Compact's narrow toolbar: smaller tabs and an icon-only Studio toggle, nothing hidden.
-  private var pocket: Bool { section == .dj && !dj.player.studio }
+  private var pocket: Bool { section == .dj && !dj.player.studio && route == nil }
   /// The Studio clip fills the window only on the DJ page; lists keep the Stoa backdrop.
-  private var stage: Bool { section == .dj && dj.player.studio }
+  private var stage: Bool { section == .dj && dj.player.studio && route == nil }
   private var presentation: WindowPresentation {
-    section == .dj && !dj.player.studio
+    pocket
       ? .compact(restHeight: compactRestHeight, panelOpen: !panelCollapsed) : .reading
   }
   /// The window depends on the player (Studio on or off), which MainView does not observe
@@ -54,7 +57,8 @@ struct MainView: View {
 
   private var scene: some View {
     Shell(
-      player: dj.player, current: dj.current, focused: section == .dj && !session.showOnboarding,
+      player: dj.player, current: dj.current,
+      focused: section == .dj && route == nil && !session.showOnboarding,
       stage: stage, immersion: immersion
     ) {
       page
@@ -105,11 +109,12 @@ struct MainView: View {
     }
     .background(WindowSizer(presentation: presentation, animate: !reduceMotion))
     .tint(.sillageOrange)
-    // A name clicked anywhere (the player, « Le morceau », the Studio card) opens its page.
+    // A name clicked anywhere opens its page over the current tab, without leaving it.
     .environment(\.openArtist) { name in
-      discovery.open(.artist(name))
-      section = .discover
+      guard routes[section]?.last != .artist(name) else { return }
+      routes[section, default: []].append(.artist(name))
     }
+    .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: routes)
     .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: section)
     .sheet(isPresented: $session.showOnboarding) {
       OnboardingView().environmentObject(session).environmentObject(library)
@@ -127,8 +132,21 @@ struct MainView: View {
     }.pickerStyle(.segmented).fixedSize().neutralSelection().studioChrome(immersion.visible)
   }
 
+  /// « Retour » names where it leads: the artist seen before, or the tab.
+  private var backTitle: String {
+    let stack = routes[section] ?? []
+    if stack.count > 1, case .artist(let previous) = stack[stack.count - 2] { return previous }
+    return switch section {
+    case .dj: "DJ"
+    case .library: "Bibliothèque"
+    case .discover: "Découvrir"
+    }
+  }
+
   private var minimumWidth: CGFloat {
-    CGFloat(SillageWindowLayout.minimumWidth(studio: dj.player.studio, reading: section != .dj))
+    CGFloat(
+      SillageWindowLayout.minimumWidth(
+        studio: dj.player.studio, reading: section != .dj || route != nil))
   }
   private var minimumHeight: CGFloat {
     if case .compact(let rest, let open) = presentation {
@@ -136,7 +154,8 @@ struct MainView: View {
         SillageWindowLayout.compactMinimumHeight(restHeight: Double(rest), panelOpen: open))
     }
     return CGFloat(
-      SillageWindowLayout.minimumHeight(studio: dj.player.studio, reading: section != .dj))
+      SillageWindowLayout.minimumHeight(
+        studio: dj.player.studio, reading: section != .dj || route != nil))
   }
 
   /// Banners on top, then the page; pages fade into each other.
@@ -161,10 +180,28 @@ struct MainView: View {
         }
       }
       ZStack {
-        switch section {
-        case .discover: DiscoverView(openDJ: { section = .dj }).transition(.opacity)
-        case .dj: DJView(model: dj).transition(.opacity)
-        case .library: LibraryView(onPlay: { section = .dj }).transition(.opacity)
+        // The tab stays alive under an opened page: going back finds it as it was left.
+        Group {
+          switch section {
+          case .discover: DiscoverView(openDJ: { section = .dj }).transition(.opacity)
+          case .dj: DJView(model: dj).transition(.opacity)
+          case .library: LibraryView(onPlay: { section = .dj }).transition(.opacity)
+          }
+        }
+        .opacity(route == nil ? 1 : 0).allowsHitTesting(route == nil)
+        .accessibilityHidden(route != nil)
+        if case .artist(let name) = route {
+          ArtistPage(
+            name: name, backTitle: backTitle,
+            back: { _ = routes[section]?.popLast() },
+            openDJ: {
+              routes[.dj] = []
+              section = .dj
+            }
+          )
+          .id(name)
+          .transition(
+            reduceMotion ? .opacity : .move(edge: .trailing).combined(with: .opacity))
         }
       }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }

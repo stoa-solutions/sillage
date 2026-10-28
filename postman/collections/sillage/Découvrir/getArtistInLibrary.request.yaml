@@ -1,0 +1,21 @@
+$kind: http-request
+description: >-
+  Les titres de la bibliothèque crédités à cet artiste (artiste principal, ou invité selon MusicBrainz), les plus
+  écoutés d’abord, avec le nombre d’écoutes du compte. 50 au plus.
+
+
+  Effet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection
+  sur son compte.
+url: "{{base_url}}/v1/discover/artist/library?name={{name}}"
+method: GET
+headers:
+  Accept: application/json
+queryParams:
+  - key: name
+    value: "{{name}}"
+    disabled: false
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 4000

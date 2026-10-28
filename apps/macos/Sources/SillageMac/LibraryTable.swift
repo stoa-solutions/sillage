@@ -202,6 +202,8 @@ struct TableSongCell: View {
   let track: Track
   let name: TrackTitle
   var subtitle: String? = nil
+  /// A credit line opens its artist; any other subtitle is plain text.
+  var subtitleIsArtist = true
   let playing: Bool
   let onPlay: () -> Void
   @State private var hovering = false
@@ -214,7 +216,13 @@ struct TableSongCell: View {
             .underline(hovering).foregroundStyle(
               playing ? Color.sillage(.playingText) : Color.primary)
         }.buttonStyle(.plain).onHover { hovering = $0 }.help("Lire \(name.title)")
-        if let subtitle { ArtistLink(text: subtitle, font: .system(size: 11)) }
+        if let subtitle {
+          if subtitleIsArtist {
+            ArtistLink(text: subtitle, font: .system(size: 11))
+          } else {
+            Text(subtitle).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+          }
+        }
       }
     }.frame(maxWidth: .infinity, alignment: .leading)
   }

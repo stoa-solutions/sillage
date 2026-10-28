@@ -1,15 +1,16 @@
 import SillageKit
 import SwiftUI
 
-/// Découvrir, only what is new to the listener: « Pour toi », their scenes and the world
-/// around an artist, each made of artists they have never heard. From any shelf, an artist
-/// opens its own page: the listener wanders freely, with « Retour » to step back. The search
-/// looks only outside the library. The DJ and the queue stay one click away.
+/// Découvrir, only what is new to the listener: « Pour toi » and their scenes, made of artists
+/// they have never heard. An artist opens its own page over the tab (ArtistPage), with
+/// « Retour » to step back. The search looks only outside the library. The DJ and the queue
+/// stay one click away.
 struct DiscoverView: View {
   let openDJ: () -> Void
   @EnvironmentObject var discovery: DiscoveryModel
   @EnvironmentObject var session: Session
   @EnvironmentObject var dj: DJModel
+  @Environment(\.openArtist) private var openArtist
   @State private var typing: Task<Void, Never>?
   @State private var selectedID: String?
   @AppStorage("discoverDJPanelCollapsed") private var djCollapsed = true
@@ -101,8 +102,8 @@ struct DiscoverView: View {
           MonoLabel("Tes artistes").padding(.horizontal, 12).padding(.bottom, 8)
             .help("Pars d’un artiste que tu aimes : ses voisins et ses collaborations")
           ForEach(artists, id: \.self) { name in
-            LibrarySideRow(title: name, symbol: "person", selected: isHere(.artist(name))) {
-              discovery.open(.artist(name))
+            LibrarySideRow(title: name, symbol: "person", selected: false) {
+              openArtist?(name)
             }
           }
         }
@@ -135,12 +136,7 @@ struct DiscoverView: View {
   private func main(wide: Bool) -> some View {
     let rows = self.rows
     return VStack(alignment: .leading, spacing: 0) {
-      // An artist's page is headed by its own banner; only the way back stays above it.
-      if case .artist = discovery.place, !discovery.searched {
-        artistBar.padding(.bottom, 14)
-      } else {
-        head(rows).padding(.bottom, 20)
-      }
+      head(rows).padding(.bottom, 20)
       HStack(spacing: 8) {
         SearchField(
           prompt: "Un artiste, un titre que tu n’as pas encore…", text: $discovery.query,
@@ -182,8 +178,6 @@ struct DiscoverView: View {
           }
         case .scene:
           Text("Des artistes de cette scène que tu n’as jamais écoutés.")
-        case .artist:
-          Text("Ses titres, ses voisins d’écoute et ses collaborations.")
         }
       }
     } trailing: {
@@ -211,23 +205,11 @@ struct DiscoverView: View {
     }
   }
 
-  private var artistBar: some View {
-    HStack(spacing: 12) {
-      if !discovery.trail.isEmpty {
-        LibraryLinkButton(title: "Retour", symbol: "chevron.left") { discovery.back() }
-      }
-      MonoLabel("Découvrir / Artiste")
-      Spacer(minLength: 0)
-      if loading { ProgressView().controlSize(.small) }
-    }
-  }
-
   private var eyebrow: String {
     if discovery.searched { return "Découvrir / Recherche" }
     return switch discovery.place {
     case .forYou: "Découvrir / Pour toi"
     case .scene: "Découvrir / Scène"
-    case .artist: "Découvrir / Artiste"
     }
   }
   private var title: String {
@@ -235,7 +217,6 @@ struct DiscoverView: View {
     return switch discovery.place {
     case .forYou: "Pour toi"
     case .scene(let genre): capitalized(genre)
-    case .artist(let name): name
     }
   }
   private var loading: Bool {
@@ -251,9 +232,6 @@ struct DiscoverView: View {
       let compact = geometry.size.width < LibraryColumns.compactBelow
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 0) {
-          if case .artist(let name) = discovery.place, !discovery.searched {
-            ArtistHero(name: name).padding(.bottom, 28).id(name)
-          }
           if let content {
             ForEach(content.sections) { section in
               DiscoveryShelf(section: section, compact: compact).padding(.bottom, 28)
@@ -288,7 +266,6 @@ struct DiscoverView: View {
     switch discovery.place {
     case .forYou: "Je cherche des artistes proches de tes goûts…"
     case .scene(let genre): "Je cherche des artistes \(genre) que tu n’as pas…"
-    case .artist(let name): "Je cherche autour de \(name)…"
     }
   }
 
@@ -540,23 +517,25 @@ struct AnyLabelStyle: LabelStyle {
   func makeBody(configuration: Configuration) -> some View { make(configuration) }
 }
 
-/// A shelf of « Pour toi »: its title, why it is here, then its tracks in table rows.
-private struct DiscoveryShelf: View {
+/// A shelf of « Pour toi » or of an artist's page: its title, why it is here, the artists it
+/// brings (each opens its page), then its tracks in table rows.
+struct DiscoveryShelf: View {
   let section: DiscoverySection
   let compact: Bool
-  @EnvironmentObject var discovery: DiscoveryModel
-  /// The artists of the shelf, in order, except the one whose page this already is.
+  var title: String? = nil
+  /// The artist whose page this is: not offered again as a way out.
+  var hiding: String? = nil
+  @Environment(\.openArtist) private var openArtist
   private var artists: [String] {
     var seen = Set<String>()
     return section.items.compactMap(\.artist).filter { name in
-      if case .artist(let here) = discovery.place, here == name { return false }
-      return seen.insert(name).inserted
+      name != hiding && seen.insert(name).inserted
     }
   }
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(alignment: .firstTextBaseline, spacing: 8) {
-        Text(section.title).font(.system(size: 15, weight: .semibold))
+        Text(title ?? section.title).font(.system(size: 15, weight: .semibold))
           .accessibilityAddTraits(.isHeader)
         Text(String(format: "%02d", section.items.count))
           .font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary)
@@ -572,7 +551,7 @@ private struct DiscoveryShelf: View {
         HStack(spacing: 6) {
           ForEach(artists, id: \.self) { name in
             Button {
-              discovery.open(.artist(name))
+              openArtist?(name)
             } label: {
               Label(name, systemImage: "arrow.up.right").labelStyle(.titleAndIcon)
             }.buttonStyle(SillageChipStyle()).controlSize(.small)

@@ -145,3 +145,24 @@ extension HTTPClient {
       AICheck.self, from: JSONSerialization.data(withJSONObject: object))
   }
 }
+
+/// One of the listener's own songs by an artist, with how often they played it.
+public struct OwnedTrack: Decodable, Identifiable, Sendable {
+  public let video: Track
+  public let plays: Int
+  public var id: String { video.id }
+}
+private struct OwnedTracks: Decodable { let tracks: [OwnedTrack] }
+
+extension HTTPClient {
+  /// The artist's songs already in the library, most played first.
+  public func artistInLibrary(_ connection: Connection, name: String) async throws -> [OwnedTrack] {
+    var query = URLComponents()
+    query.queryItems = [URLQueryItem(name: "name", value: name)]
+    let encoded = (query.percentEncodedQuery ?? "").replacingOccurrences(of: "+", with: "%2B")
+    let object = try await server(connection, path: "discover/artist/library?" + encoded)
+    return try JSONDecoder().decode(
+      OwnedTracks.self, from: JSONSerialization.data(withJSONObject: object)
+    ).tracks
+  }
+}

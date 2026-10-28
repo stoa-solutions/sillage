@@ -165,3 +165,28 @@ export async function historySize(db: Executor, userId: string) {
     .where(eq(listeningHistory.userId, userId));
   return row?.plays ?? 0;
 }
+
+/** Every video in the account's active playlists, with how often the account played it. */
+export async function libraryWithPlays(db: Executor, userId: string) {
+  const plays = db
+    .select({ videoId: listeningHistory.videoId, plays: count().as("plays") })
+    .from(listeningHistory)
+    .where(eq(listeningHistory.userId, userId))
+    .groupBy(listeningHistory.videoId)
+    .as("plays");
+  return db
+    .select({
+      id: videos.id,
+      title: videos.title,
+      channel: videos.channel,
+      durationSeconds: videos.durationSeconds,
+      thumbnailUrl: videos.thumbnailUrl,
+      musicMetadata: videos.musicMetadata,
+      plays: sql<number>`coalesce(${plays.plays}, 0)`,
+    })
+    .from(videos)
+    .leftJoin(plays, eq(plays.videoId, videos.id))
+    .where(
+      sql`${videos.available} AND EXISTS(SELECT 1 FROM ${memberships} m WHERE m.video_id = ${videos.id} AND m.active AND ${followedBy(db, userId, sql`m.playlist_id`)})`,
+    );
+}

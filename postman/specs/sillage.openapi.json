@@ -1400,6 +1400,94 @@
         }
       }
     },
+    "/v1/discover/artist/library": {
+      "get": {
+        "operationId": "getArtistInLibrary",
+        "summary": "Ses titres dans ta bibliothèque",
+        "description": "Les titres de la bibliothèque crédités à cet artiste (artiste principal, ou invité selon MusicBrainz), les plus écoutés d’abord, avec le nombre d’écoutes du compte. 50 au plus.",
+        "tags": [
+          "Découvrir"
+        ],
+        "x-sillage-effect": "read",
+        "x-sillage-example": {
+          "name": "Mac Miller"
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "required": true,
+            "name": "name",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtistInLibrary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/discover/search": {
       "post": {
         "operationId": "searchYouTube",
@@ -6187,6 +6275,32 @@
         "required": [
           "video",
           "inLibrary"
+        ]
+      },
+      "ArtistInLibrary": {
+        "type": "object",
+        "properties": {
+          "tracks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "video": {
+                  "$ref": "#/components/schemas/DjTrack"
+                },
+                "plays": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "video",
+                "plays"
+              ]
+            }
+          }
+        },
+        "required": [
+          "tracks"
         ]
       },
       "DiscoveryPage": {

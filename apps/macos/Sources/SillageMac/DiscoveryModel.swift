@@ -2,11 +2,10 @@ import Combine
 import Foundation
 import SillageKit
 
-/// Where Découvrir is: « Pour toi », a scene, or the world around an artist.
+/// Where Découvrir is: « Pour toi » or a scene. An artist has its own page, over any tab.
 enum DiscoveryPlace: Hashable {
   case forYou
   case scene(String)
-  case artist(String)
 }
 
 /// Shared by Discover and DJ result cards; only small request results live on the Mac.
@@ -197,17 +196,11 @@ enum DiscoveryPlace: Hashable {
     pageLoading = false
     if next == .forYou { loadHome() } else { loadPage() }
   }
-  /// The current scene or artist; `force` draws other artists.
+  /// The current scene; `force` draws other artists.
   func loadPage(force: Bool = false) {
     guard let connection = session.connection else { return }
     let target = place
-    let (scene, artist): (String?, String?) =
-      switch target {
-      case .forYou: (nil, nil)
-      case .scene(let genre): (genre, nil)
-      case .artist(let name): (nil, name)
-      }
-    guard scene != nil || artist != nil else { return }
+    guard case .scene(let scene) = target else { return }
     let generation = session.generation
     pageTask?.cancel()
     pageLoading = true
@@ -216,7 +209,7 @@ enum DiscoveryPlace: Hashable {
       defer { if session.generation == generation && place == target { pageLoading = false } }
       do {
         let result = try await HTTPClient().discoveryPage(
-          connection, scene: scene, artist: artist, refresh: force)
+          connection, scene: scene, refresh: force)
         try Task.checkCancellation()
         guard session.generation == generation, place == target else { return }
         page = result

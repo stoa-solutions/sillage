@@ -29,7 +29,9 @@ import {
   discoveryScene,
   listenerProfile,
 } from "./discovery-home.service.ts";
-import { historySize, knownVideos, recentListening } from "./discovery.repository.ts";
+import { historySize, knownVideos, libraryWithPlays, recentListening } from "./discovery.repository.ts";
+import { ownTracksOf } from "./discovery-artist.ts";
+import { trackBody } from "../library/index.ts";
 import type { HomeSources } from "./discovery-home.service.ts";
 import { Discovery, DiscoveryError, discoveryFor } from "./discovery.service.ts";
 
@@ -104,6 +106,27 @@ const artistRoute = createRoute({
     ...unavailable,
   },
 });
+const ownRoute = createRoute({
+  method: "get",
+  path: "/artist/library",
+  ...operation({
+    operationId: "getArtistInLibrary",
+    tag: TAG,
+    summary: "Ses titres dans ta bibliothèque",
+    description:
+      "Les titres de la bibliothèque crédités à cet artiste (artiste principal, ou invité selon MusicBrainz), les plus écoutés d’abord, avec le nombre d’écoutes du compte. 50 au plus.",
+    example: { name: "Mac Miller" },
+  }),
+  request: { query: z.object({ name: z.string().trim().min(1).max(120) }) },
+  responses: {
+    ...commonErrors(),
+    200: jsonResponse(
+      z.object({ tracks: z.array(z.object({ video: trackBody, plays: z.number().int() })) }).openapi("ArtistInLibrary"),
+      "Réponse réussie",
+    ),
+  },
+});
+
 const searchRoute = createRoute({
   method: "post",
   path: "/search",
@@ -283,6 +306,27 @@ export function discoveryRoutes(
       await kept(user, "artist:" + name.toLowerCase(), rotate, (given) =>
         discoveryArtist(given, user, name, { rotate }),
       ),
+      200,
+    );
+  });
+  app.openapi(ownRoute, async (c) => {
+    const { name } = c.req.valid("query");
+    const owned = ownTracksOf(await libraryWithPlays(db.orm, c.get("userId")), name);
+    return c.json(
+      {
+        tracks: owned.map(({ plays, ...video }) => ({
+          video: {
+            id: video.id,
+            title: video.title ?? "",
+            channel: video.channel,
+            durationSeconds: video.durationSeconds,
+            thumbnailUrl: video.thumbnailUrl,
+            url: `https://www.youtube.com/watch?v=${video.id}`,
+            musicMetadata: (video.musicMetadata as never) ?? null,
+          },
+          plays: Number(plays),
+        })),
+      },
       200,
     );
   });

@@ -320,3 +320,14 @@ it("says so when MusicBrainz does not know an artist", async () => {
   const result = await discoveryArtist(sources(), "alice", "Inconnu");
   expect(result.emptyReason).toContain("MusicBrainz ne connaît pas Inconnu");
 });
+
+it("finds the listener's own songs by an artist, main or featured, most played first", async () => {
+  const { ownTracksOf } = await import("../src/modules/discovery/discovery-artist.ts");
+  const rows = [
+    { id: "a", title: "Self Care", channel: "Mac Miller - Topic", musicMetadata: null, plays: 2 },
+    { id: "b", title: "Mac Miller - Dang! (feat. Anderson .Paak)", channel: "MacMillerVEVO", musicMetadata: null, plays: 9 },
+    { id: "c", title: "Clip", channel: "Someone", plays: 0, musicMetadata: { status: "matched", artists: [{ name: "Thundercat", role: "primary" }, { name: "Mac Miller", role: "featured" }] } },
+    { id: "d", title: "Macadam", channel: "Mac Millerand", musicMetadata: null, plays: 50 },
+  ];
+  expect(ownTracksOf(rows, "mac miller").map((row) => row.id)).toEqual(["b", "a", "c"]);
+});
