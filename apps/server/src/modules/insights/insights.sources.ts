@@ -1,3 +1,4 @@
+import { setTimeout as delay } from "node:timers/promises";
 import type { Database } from "../../db/index.ts";
 import { MusicBrainzClient } from "../../integrations/musicbrainz/index.ts";
 import { wikipedia } from "../../integrations/wikipedia/index.ts";
@@ -17,8 +18,23 @@ type Detail = {
 };
 
 /** MusicBrainz's artist of exactly this name, with its genres and Wikidata link. */
-export function catalogArtists(db: Database, fetcher?: typeof fetch): InsightsSources["catalog"] {
-  const mb = new MusicBrainzClient(db, fetcher);
+export function catalogArtists(
+  db: Database,
+  fetcher?: typeof fetch,
+  pause = 2_000,
+): InsightsSources["catalog"] {
+  const client = new MusicBrainzClient(db, fetcher);
+  // MusicBrainz turns requests away when it is busy (HTTP 503): one more try after a pause.
+  const mb = {
+    get: async <T>(path: string, params: Record<string, string>) => {
+      try {
+        return await client.get<T>(path, params);
+      } catch {
+        await delay(pause);
+        return client.get<T>(path, params);
+      }
+    },
+  };
   return {
     async artist(name: string): Promise<CatalogArtist | null> {
       const found = await mb.get<Found>("artist", {

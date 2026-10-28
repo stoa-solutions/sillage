@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
 import { hash } from "../src/content.ts";
 import { createApp } from "../src/app.ts";
-import type { InsightsSources } from "../src/modules/insights/index.ts";
+import { catalogArtists, type InsightsSources } from "../src/modules/insights/index.ts";
 vi.mock("../src/integrations/inference/client.ts", () => ({ infer: vi.fn() }));
 const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
@@ -99,7 +99,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   calls.length = 0;
   musicDown = false;
-  await db.query("TRUNCATE users,tokens,insights_cache CASCADE");
+  await db.query("TRUNCATE users,tokens,insights_cache,musicbrainz_cache CASCADE");
   const alice = randomUUID();
   await db.query(`INSERT INTO users(id,google_sub,email) VALUES($1,'g-alice','alice@example.test')`, [alice]);
   await db.query(`INSERT INTO tokens(id,name,hash,user_id) VALUES($1,'A',$2,$3)`, [randomUUID(), hash(token), alice]);
@@ -175,3 +175,17 @@ it("brings what people say of a video and its song's article, kept a day", async
   expect(calls).toEqual([]);
   expect((await get("/v1/insights/video/too-short")).status).toBe(400);
 });
+
+it("asks MusicBrainz again once when it turns a request away", async () => {
+  let answers = 0;
+  const fetcher = (async (input: URL | RequestInfo) => {
+    answers += 1;
+    if (answers === 1) return new Response("busy", { status: 503 });
+    return String(input).includes("/artist/")
+      ? Response.json({ id: "id-1", type: "Person", area: { name: "United Kingdom" }, genres: [{ name: "nu jazz", count: 3 }] })
+      : Response.json({ artists: [{ id: "id-1", name: "Alfa Mist", score: 100 }] });
+  }) as typeof fetch;
+  const found = await catalogArtists(db, fetcher, 0).artist("Alfa Mist");
+  expect(found).toMatchObject({ id: "id-1", type: "Person", genres: ["nu jazz"] });
+  expect(answers).toBe(3);
+}, 15_000);
