@@ -1,0 +1,19 @@
+$kind: http-request
+description: >-
+  Pochette, artiste, année, description et titres jouables d’un album ou d’un single YouTube Music (gardé 30 jours pour
+  tous les comptes) ; inLibrary dit si le compte a déjà chaque titre. 404 si ce n’est pas un album.
+
+
+  Effet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/insights/album/:browseId"
+method: GET
+headers:
+  Accept: application/json
+pathVariables:
+  browseId: "{{browseId}}"
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 3000

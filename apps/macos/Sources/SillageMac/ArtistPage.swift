@@ -4,6 +4,14 @@ import SwiftUI
 /// A page opened over the current tab; « Retour » (⌘[) goes back to where it came from.
 enum AppRoute: Hashable {
   case artist(String)
+  case album(id: String, title: String)
+  /// What « Retour » says when this page is the one to go back to.
+  var title: String {
+    switch self {
+    case .artist(let name): name
+    case .album(_, let title): title
+    }
+  }
 }
 
 /// What the artist page needs from the server for this account: the listener's own songs by
@@ -302,6 +310,7 @@ private struct ArtistLinks: View {
 
 private struct ReleaseTile: View {
   let release: ArtistProfile.Release
+  @Environment(\.openRoute) private var openRoute
   var body: some View {
     let tile = VStack(alignment: .leading, spacing: 6) {
       RemotePicture(url: release.artwork, placeholder: "square.stack")
@@ -312,7 +321,13 @@ private struct ReleaseTile: View {
         .font(.system(size: 10.5, design: .monospaced)).foregroundStyle(.secondary)
     }
     .frame(width: 112, alignment: .leading)
-    if let url = release.url {
+    if let openRoute {
+      Button {
+        openRoute(.album(id: release.browseId, title: release.title))
+      } label: {
+        tile.contentShape(Rectangle())
+      }.buttonStyle(.plain).help("Ouvrir \(release.title)")
+    } else if let url = release.url {
       Link(destination: url) { tile }.buttonStyle(.plain).help("Ouvrir sur YouTube Music")
     } else {
       tile

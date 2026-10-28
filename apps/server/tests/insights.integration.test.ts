@@ -39,6 +39,29 @@ const sources: Partial<InsightsSources> = {
           }
         : null;
     },
+    async album(browseId) {
+      calls.push(`album:${browseId}`);
+      return browseId === "MPREb_bankrupt"
+        ? {
+            browseId,
+            title: "Bankrupt!",
+            artist: "Phoenix",
+            kind: "Album",
+            year: "2013",
+            summary: "2 titres • 7 minutes",
+            description: null,
+            artwork: null,
+            tracks: [
+              { videoId: "tBsRvthVhdw", title: "Entertainment", position: 1, durationSeconds: 220, plays: "10 M lectures" },
+              { videoId: "1FbJw2JetUo", title: "The Real Thing", position: 2, durationSeconds: 203, plays: null },
+            ],
+          }
+        : null;
+    },
+    async searchArtists(query) {
+      calls.push(`searchArtists:${query}`);
+      return [{ browseId: "UCphoenix", name: "Phoenix", portrait: null, audience: "7,26 M auditeurs/mois" }];
+    },
   },
   catalog: {
     async artist(name) {
@@ -88,6 +111,7 @@ const sources: Partial<InsightsSources> = {
 };
 const app = createApp(db, undefined, undefined, sources);
 const token = "alice-insights-token-1234567890";
+let alice = "";
 const get = async (path: string) => {
   const response = await app.request(path, { headers: { Authorization: "Bearer " + token } });
   return { status: response.status, body: (await response.json()) as any };
@@ -99,8 +123,8 @@ beforeAll(async () => {
 beforeEach(async () => {
   calls.length = 0;
   musicDown = false;
-  await db.query("TRUNCATE users,tokens,insights_cache,musicbrainz_cache CASCADE");
-  const alice = randomUUID();
+  await db.query("TRUNCATE users,tokens,insights_cache,musicbrainz_cache,playlists,videos CASCADE");
+  alice = randomUUID();
   await db.query(`INSERT INTO users(id,google_sub,email) VALUES($1,'g-alice','alice@example.test')`, [alice]);
   await db.query(`INSERT INTO tokens(id,name,hash,user_id) VALUES($1,'A',$2,$3)`, [randomUUID(), hash(token), alice]);
 });
@@ -189,3 +213,31 @@ it("asks MusicBrainz again once when it turns a request away", async () => {
   expect(found).toMatchObject({ id: "id-1", type: "Person", genres: ["nu jazz"] });
   expect(answers).toBe(3);
 }, 15_000);
+
+it("opens an album with the tracks the account already has, kept for everyone", async () => {
+  await db.query(`INSERT INTO playlists(id,title,source_url) VALUES('PLalice12345','A','https://www.youtube.com/playlist?list=PLalice12345')`);
+  await db.query(`INSERT INTO user_playlists(user_id,playlist_id) VALUES($1,'PLalice12345')`, [alice]);
+  await db.query(
+    `INSERT INTO videos(id,title,channel,duration_seconds,thumbnail_url,content_hash) VALUES('1FbJw2JetUo','The Real Thing','Phoenix - Topic',203,'https://i.ytimg.com/vi/1FbJw2JetUo/hqdefault.jpg','h1')`,
+  );
+  await db.query(`INSERT INTO memberships(key,playlist_id,video_id,position,seen_generation) VALUES('1','PLalice12345','1FbJw2JetUo',1,1)`);
+  const { status, body } = await get("/v1/insights/album/MPREb_bankrupt");
+  expect(status).toBe(200);
+  expect(body).toMatchObject({ title: "Bankrupt!", artist: "Phoenix", year: "2013" });
+  expect(body.tracks.map((track: any) => [track.title, track.inLibrary])).toEqual([
+    ["Entertainment", false],
+    ["The Real Thing", true],
+  ]);
+  calls.length = 0;
+  await get("/v1/insights/album/MPREb_bankrupt");
+  expect(calls).toEqual([]);
+  expect((await get("/v1/insights/album/MPREb_nothinghere")).status).toBe(404);
+  expect((await get("/v1/insights/album/not-an-album")).status).toBe(400);
+});
+
+it("suggests artists for what is typed, once a day per query", async () => {
+  expect((await get("/v1/insights/artists?query=phoe")).body.artists[0]).toMatchObject({ name: "Phoenix" });
+  calls.length = 0;
+  await get("/v1/insights/artists?query=Phoe");
+  expect(calls).toEqual([]);
+});

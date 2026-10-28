@@ -1400,6 +1400,79 @@
         }
       }
     },
+    "/v1/discover/artists": {
+      "get": {
+        "operationId": "getLibraryArtists",
+        "summary": "Mes artistes",
+        "description": "Les artistes de la bibliothèque (artiste principal de chaque titre), avec le nombre de titres, les écoutes du compte et la miniature du titre le plus écouté ; les plus écoutés d’abord.",
+        "tags": [
+          "Découvrir"
+        ],
+        "x-sillage-effect": "read",
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryArtists"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/discover/artist/library": {
       "get": {
         "operationId": "getArtistInLibrary",
@@ -5861,6 +5934,189 @@
           }
         }
       }
+    },
+    "/v1/insights/album/{browseId}": {
+      "get": {
+        "operationId": "getAlbum",
+        "summary": "Un album et ses titres",
+        "description": "Pochette, artiste, année, description et titres jouables d’un album ou d’un single YouTube Music (gardé 30 jours pour tous les comptes) ; inLibrary dit si le compte a déjà chaque titre. 404 si ce n’est pas un album.",
+        "tags": [
+          "Autour du morceau"
+        ],
+        "x-sillage-effect": "provider",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^MPRE[\\w-]{5,40}$",
+              "description": "Album YouTube Music (MPREb_…)"
+            },
+            "required": true,
+            "description": "Album YouTube Music (MPREb_…)",
+            "name": "browseId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Album"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Album introuvable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/insights/artists": {
+      "get": {
+        "operationId": "searchArtists",
+        "summary": "Chercher un artiste",
+        "description": "Jusqu’à 6 artistes YouTube Music pour ce qui est tapé, avec portrait et audience. Gardé 1 jour par recherche.",
+        "tags": [
+          "Autour du morceau"
+        ],
+        "x-sillage-effect": "provider",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 120,
+              "description": "Ce que la personne tape"
+            },
+            "required": true,
+            "description": "Ce que la personne tape",
+            "name": "query",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtistSearch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session absente, expirée ou révoquée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps supérieur à 30 Mio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de débit ou opération déjà en cours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne sans diagnostic privé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6275,6 +6531,44 @@
         "required": [
           "video",
           "inLibrary"
+        ]
+      },
+      "LibraryArtists": {
+        "type": "object",
+        "properties": {
+          "artists": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "tracks": {
+                  "type": "integer"
+                },
+                "plays": {
+                  "type": "integer"
+                },
+                "coverVideoId": {
+                  "type": "string"
+                },
+                "cover": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "tracks",
+                "plays",
+                "coverVideoId",
+                "cover"
+              ]
+            }
+          }
+        },
+        "required": [
+          "artists"
         ]
       },
       "ArtistInLibrary": {
@@ -8775,6 +9069,143 @@
           "commentCount",
           "comments",
           "song"
+        ]
+      },
+      "Album": {
+        "type": "object",
+        "properties": {
+          "browseId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "artist": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "year": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "artwork": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          },
+          "tracks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "videoId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "position": {
+                  "type": "integer"
+                },
+                "durationSeconds": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "plays": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "inLibrary": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "videoId",
+                "title",
+                "position",
+                "durationSeconds",
+                "plays",
+                "inLibrary"
+              ]
+            }
+          }
+        },
+        "required": [
+          "browseId",
+          "title",
+          "artist",
+          "kind",
+          "year",
+          "summary",
+          "description",
+          "artwork",
+          "tracks"
+        ]
+      },
+      "ArtistSearch": {
+        "type": "object",
+        "properties": {
+          "artists": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "browseId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "portrait": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uri"
+                },
+                "audience": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "browseId",
+                "name",
+                "portrait",
+                "audience"
+              ]
+            }
+          }
+        },
+        "required": [
+          "artists"
         ]
       }
     }

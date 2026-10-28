@@ -1,8 +1,8 @@
 import type { Database } from "../../db/index.ts";
-import type { MusicArtist } from "../../integrations/youtube-music/index.ts";
+import type { MusicAlbum, MusicArtist, MusicArtistHit } from "../../integrations/youtube-music/index.ts";
 import { artistKey } from "../../integrations/youtube-music/index.ts";
 import type { WikiSummary } from "../../integrations/wikipedia/index.ts";
-import { keep, kept } from "./insights.repository.ts";
+import { keep, kept, ownedAmong } from "./insights.repository.ts";
 
 /** What MusicBrainz knows of an artist of exactly this name. */
 export interface CatalogArtist {
@@ -17,7 +17,11 @@ export interface CatalogArtist {
 }
 
 export interface InsightsSources {
-  music: { artist(name: string): Promise<MusicArtist | null> };
+  music: {
+    artist(name: string): Promise<MusicArtist | null>;
+    album(browseId: string): Promise<MusicAlbum | null>;
+    searchArtists(query: string, limit?: number): Promise<MusicArtistHit[]>;
+  };
   wikipedia: {
     summary(lang: string, title: string): Promise<WikiSummary | null>;
     sitelinks(qid: string): Promise<{ lang: string; title: string }[]>;
@@ -35,6 +39,8 @@ export const INSIGHT_RULES = {
   artistDays: 7,
   missingArtistDays: 1,
   videoDays: 1,
+  albumDays: 30,
+  searchDays: 1,
   comments: 8,
 };
 
@@ -208,4 +214,28 @@ async function songArticle(sources: InsightsSources, artist: string, title: stri
     if (found) return found;
   }
   return null;
+}
+
+/** An album and its tracks (YouTube Music, kept 30 days), each saying whether the account has it. */
+export async function albumPage(db: Database, sources: InsightsSources, userId: string, browseId: string) {
+  const key = `album:${browseId}`;
+  const known = await kept(db, key, INSIGHT_RULES.albumDays);
+  let album = known?.value as MusicAlbum | null | undefined;
+  if (!known) {
+    album = await sources.music.album(browseId);
+    await keep(db, key, album);
+  }
+  if (!album) return null;
+  const owned = await ownedAmong(db, userId, album.tracks.map((track) => track.videoId));
+  return { ...album, tracks: album.tracks.map((track) => ({ ...track, inLibrary: owned.has(track.videoId) })) };
+}
+
+/** Artists for a search box, from YouTube Music; kept a day per query. */
+export async function searchArtists(db: Database, sources: InsightsSources, query: string) {
+  const key = `artists:${query.trim().toLowerCase()}`;
+  const known = await kept(db, key, INSIGHT_RULES.searchDays);
+  if (known) return known.value as MusicArtistHit[];
+  const hits = await sources.music.searchArtists(query, 6);
+  await keep(db, key, hits);
+  return hits;
 }

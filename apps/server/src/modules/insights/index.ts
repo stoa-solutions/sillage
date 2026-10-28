@@ -1,6 +1,8 @@
 export { insightsRoutes } from "./insights.controller.ts";
 export {
   artistProfile,
+  albumPage,
+  searchArtists,
   videoInsights,
   INSIGHT_RULES,
   type InsightsSources,

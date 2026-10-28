@@ -9,10 +9,18 @@ import SwiftUI
 private struct OpenArtistKey: EnvironmentKey {
   static let defaultValue: ((String) -> Void)? = nil
 }
+/// Opens any page (artist, album) over the current tab.
+private struct OpenRouteKey: EnvironmentKey {
+  static let defaultValue: ((AppRoute) -> Void)? = nil
+}
 extension EnvironmentValues {
   var openArtist: ((String) -> Void)? {
     get { self[OpenArtistKey.self] }
     set { self[OpenArtistKey.self] = newValue }
+  }
+  var openRoute: ((AppRoute) -> Void)? {
+    get { self[OpenRouteKey.self] }
+    set { self[OpenRouteKey.self] = newValue }
   }
 }
 

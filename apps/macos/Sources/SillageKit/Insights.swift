@@ -203,3 +203,78 @@ public final class InsightsModel: ObservableObject {
     }
   }
 }
+
+/// An album or single from YouTube Music, its tracks marked when the library has them.
+public struct Album: Decodable, Equatable, Sendable {
+  public struct Entry: Decodable, Equatable, Identifiable, Sendable {
+    public let videoId: String
+    public let title: String
+    public let position: Int
+    public let durationSeconds: Int?
+    public let plays: String?
+    public let inLibrary: Bool
+    public var id: String { videoId }
+  }
+  public let browseId: String
+  public let title: String
+  public let artist: String?
+  public let kind: String
+  public let year: String?
+  public let summary: String?
+  public let description: String?
+  public let artwork: URL?
+  public let tracks: [Entry]
+  public var url: URL? { URL(string: "https://music.youtube.com/browse/\(browseId)") }
+  /// A track as the player knows it; the « Artist - Topic » channel credits the album's artist.
+  public func track(_ entry: Entry) -> Track {
+    Track(
+      id: entry.videoId, title: entry.title, channel: artist.map { "\($0) - Topic" },
+      durationSeconds: entry.durationSeconds.map(Double.init))
+  }
+}
+
+/// An artist suggested by YouTube Music for what is typed.
+public struct ArtistHit: Decodable, Equatable, Identifiable, Sendable {
+  public let browseId: String
+  public let name: String
+  public let portrait: URL?
+  public let audience: String?
+  public var id: String { browseId }
+}
+
+/// An artist of the library: songs, the account's plays, and its most played song's cover.
+public struct LibraryArtist: Decodable, Equatable, Identifiable, Sendable {
+  public let name: String
+  public let tracks: Int
+  public let plays: Int
+  public let coverVideoId: String
+  public let cover: URL?
+  public var id: String { name }
+}
+
+private struct ArtistHits: Decodable { let artists: [ArtistHit] }
+private struct LibraryArtists: Decodable { let artists: [LibraryArtist] }
+
+extension HTTPClient {
+  public func album(_ connection: Connection, browseId: String) async throws -> Album {
+    guard browseId.range(of: "^MPRE[A-Za-z0-9_-]{5,40}$", options: .regularExpression) != nil
+    else { throw SillageError.message("Album invalide.") }
+    let object = try await server(connection, path: "insights/album/\(browseId)")
+    return try JSONDecoder().decode(Album.self, from: JSONSerialization.data(withJSONObject: object))
+  }
+  public func searchArtists(_ connection: Connection, query: String) async throws -> [ArtistHit] {
+    var components = URLComponents()
+    components.queryItems = [URLQueryItem(name: "query", value: query)]
+    let encoded = (components.percentEncodedQuery ?? "").replacingOccurrences(of: "+", with: "%2B")
+    let object = try await server(connection, path: "insights/artists?" + encoded)
+    return try JSONDecoder().decode(
+      ArtistHits.self, from: JSONSerialization.data(withJSONObject: object)
+    ).artists
+  }
+  public func libraryArtists(_ connection: Connection) async throws -> [LibraryArtist] {
+    let object = try await server(connection, path: "discover/artists")
+    return try JSONDecoder().decode(
+      LibraryArtists.self, from: JSONSerialization.data(withJSONObject: object)
+    ).artists
+  }
+}

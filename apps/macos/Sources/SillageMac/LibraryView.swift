@@ -12,6 +12,7 @@ struct LibraryView: View {
   @State private var adding = false
   @State private var deleting: ServerPlaylistSummary?
   @State private var showingHistory = false
+  @State private var showingArtists = false
   // Recette: a test build can open on Mon goût (SILLAGE_QA_LIBRARY=taste) without a click.
   private static let qaTaste = ProcessInfo.processInfo.environment["SILLAGE_QA_LIBRARY"] == "taste"
   @State private var showingTaste = qaTaste
@@ -36,6 +37,7 @@ struct LibraryView: View {
     .task(id: session.generation) { await library.watchEnrichment() }
     .onChange(of: session.generation) { _, _ in
       showingHistory = false
+      showingArtists = false
       showingTaste = Self.qaTaste
     }
     .confirmationDialog(
@@ -65,10 +67,17 @@ struct LibraryView: View {
           LibrarySideRow(
             title: "Toutes les vidéos", symbol: "music.note.list",
             count: library.libraryCount,
-            selected: !showingHistory && !showingTaste && library.selectedPlaylist.isEmpty
+            selected: !showingHistory && !showingTaste && !showingArtists
+              && library.selectedPlaylist.isEmpty
           ) { showPlaylist("") }
+          LibrarySideRow(title: "Mes artistes", symbol: "person.2", selected: showingArtists) {
+            showingHistory = false
+            showingTaste = false
+            showingArtists = true
+          }
           LibrarySideRow(title: "Mon goût", symbol: "waveform", selected: showingTaste) {
             showingHistory = false
+            showingArtists = false
             showingTaste = true
           }
           LibrarySideRow(
@@ -92,7 +101,7 @@ struct LibraryView: View {
           ForEach(library.playlists) { playlist in
             LibraryPlaylistRow(
               title: playlist.title, count: playlist.entries,
-              selected: !showingHistory && !showingTaste
+              selected: !showingHistory && !showingTaste && !showingArtists
                 && library.selectedPlaylist == playlist.id
             ) { showPlaylist(playlist.id) }
             .contextMenu {
@@ -112,11 +121,13 @@ struct LibraryView: View {
   private func showPlaylist(_ id: String) {
     showingHistory = false
     showingTaste = false
+    showingArtists = false
     library.selectedPlaylist = id
   }
 
   private func openHistory() {
     showingTaste = false
+    showingArtists = false
     showingHistory = true
     history.load(session)
   }
@@ -132,6 +143,8 @@ struct LibraryView: View {
         Button("Continuer avec Google") { session.showOnboarding = true }
           .buttonStyle(.borderedProminent).disabled(session.loadingCredentials)
       }.frame(maxWidth: .infinity, maxHeight: .infinity)
+    } else if showingArtists {
+      LibraryArtistsView()
     } else if showingTaste {
       TasteOverviewView(
         taste: dj.taste, current: dj.current, play: play, enqueue: { dj.enqueue($0) },

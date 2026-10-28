@@ -1,0 +1,20 @@
+$kind: http-request
+description: >-
+  Jusqu’à 6 artistes YouTube Music pour ce qui est tapé, avec portrait et audience. Gardé 1 jour par recherche.
+
+
+  Effet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la
+  collection sur son compte.
+url: "{{base_url}}/v1/insights/artists?query={{query}}"
+method: GET
+headers:
+  Accept: application/json
+queryParams:
+  - key: query
+    value: "{{query}}"
+    disabled: false
+scripts:
+  - type: afterResponse
+    code: pm.test("Réponse réussie", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });
+    language: text/javascript
+order: 4000

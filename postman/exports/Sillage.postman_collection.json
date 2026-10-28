@@ -826,6 +826,44 @@
           ]
         },
         {
+          "name": "getLibraryArtists",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/discover/artists",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "discover",
+                "artists"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "description": "Les artistes de la bibliothèque (artiste principal de chaque titre), avec le nombre de titres, les écoutes du compte et la miniature du titre le plus écouté ; les plus écoutés d’abord.\n\nEffet : read. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "getArtistInLibrary",
           "request": {
             "method": "GET",
@@ -2977,6 +3015,95 @@
               ]
             },
             "description": "Vues, j’aime et commentaires les mieux classés par YouTube (API officielle, 2 unités de quota), et l’article Wikipedia du morceau quand artist et title permettent de le trouver. Gardé 1 jour pour tous les comptes.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getAlbum",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/insights/album/:browseId",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "insights",
+                "album",
+                ":browseId"
+              ],
+              "query": [],
+              "variable": [
+                {
+                  "key": "browseId",
+                  "value": "{{browseId}}"
+                }
+              ]
+            },
+            "description": "Pochette, artiste, année, description et titres jouables d’un album ou d’un single YouTube Music (gardé 30 jours pour tous les comptes) ; inLibrary dit si le compte a déjà chaque titre. 404 si ce n’est pas un album.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "searchArtists",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/insights/artists?query={{query}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "insights",
+                "artists"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "{{query}}",
+                  "disabled": false,
+                  "description": "Ce que la personne tape"
+                }
+              ],
+              "variable": []
+            },
+            "description": "Jusqu’à 6 artistes YouTube Music pour ce qui est tapé, avec portrait et audience. Gardé 1 jour par recherche.\n\nEffet : provider. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
           },
           "response": [],
           "event": [

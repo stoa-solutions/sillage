@@ -28,6 +28,8 @@ struct MainView: View {
   @EnvironmentObject var dj: DJModel
   @EnvironmentObject var discovery: DiscoveryModel
   @StateObject private var immersion = StudioImmersion()
+  @StateObject private var search = GlobalSearchModel()
+  @State private var searching = false
   // Recette: a test build can open on a given page without scripted clicks.
   @State private var section =
     ProcessInfo.processInfo.environment["SILLAGE_QA_SECTION"].flatMap(Destination.init)
@@ -68,6 +70,17 @@ struct MainView: View {
     // snaps back to its height after a drag). No hard maximum: banners and full screen must
     // always be able to grow the window.
     .frame(minWidth: minimumWidth, minHeight: minimumHeight)
+    // ⌘F: one search for artists, the library and what is new, over any page.
+    .overlay(alignment: .top) {
+      if searching {
+        ZStack(alignment: .top) {
+          Color.black.opacity(0.18).ignoresSafeArea().onTapGesture(perform: closeSearch)
+            .accessibilityHidden(true)
+          GlobalSearchPanel(model: search, close: closeSearch).padding(.top, 16)
+        }.transition(.opacity)
+      }
+    }
+    .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: searching)
     .toolbar {
       ToolbarItem(placement: .principal) {
         // Every page stays one click away, Compact included (⌘1, ⌘2, ⌘3 too); opening
@@ -76,6 +89,15 @@ struct MainView: View {
       }.withoutSystemBackground()
       ToolbarItem(placement: .primaryAction) {
         HStack(spacing: 10) {
+          Button {
+            searching ? closeSearch() : (searching = true)
+          } label: {
+            Image(systemName: "magnifyingglass").frame(width: 24, height: 24)
+              .contentShape(Rectangle())
+          }
+          .keyboardShortcut("f", modifiers: .command)
+          .help("Rechercher (⌘F)").accessibilityLabel("Rechercher")
+          .disabled(!session.hasServer)
           DisplayPicker(player: dj.player, iconOnly: pocket)
           SettingsLink {
             Image(systemName: "gearshape").frame(width: 24, height: 24).contentShape(Rectangle())
@@ -109,11 +131,9 @@ struct MainView: View {
     }
     .background(WindowSizer(presentation: presentation, animate: !reduceMotion))
     .tint(.sillageOrange)
-    // A name clicked anywhere opens its page over the current tab, without leaving it.
-    .environment(\.openArtist) { name in
-      guard routes[section]?.last != .artist(name) else { return }
-      routes[section, default: []].append(.artist(name))
-    }
+    // A name or an album clicked anywhere opens its page over the current tab.
+    .environment(\.openRoute, open)
+    .environment(\.openArtist) { open(.artist($0)) }
     .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: routes)
     .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: section)
     .sheet(isPresented: $session.showOnboarding) {
@@ -132,10 +152,25 @@ struct MainView: View {
     }.pickerStyle(.segmented).fixedSize().neutralSelection().studioChrome(immersion.visible)
   }
 
-  /// « Retour » names where it leads: the artist seen before, or the tab.
+  private func closeSearch() {
+    searching = false
+    search.clear()
+  }
+
+  private func open(_ next: AppRoute) {
+    guard routes[section]?.last != next else { return }
+    routes[section, default: []].append(next)
+  }
+  private func back() { _ = routes[section]?.popLast() }
+  private func openDJ() {
+    routes[.dj] = []
+    section = .dj
+  }
+
+  /// « Retour » names where it leads: the page seen before, or the tab.
   private var backTitle: String {
     let stack = routes[section] ?? []
-    if stack.count > 1, case .artist(let previous) = stack[stack.count - 2] { return previous }
+    if stack.count > 1 { return stack[stack.count - 2].title }
     return switch section {
     case .dj: "DJ"
     case .library: "Bibliothèque"
@@ -190,16 +225,16 @@ struct MainView: View {
         }
         .opacity(route == nil ? 1 : 0).allowsHitTesting(route == nil)
         .accessibilityHidden(route != nil)
-        if case .artist(let name) = route {
-          ArtistPage(
-            name: name, backTitle: backTitle,
-            back: { _ = routes[section]?.popLast() },
-            openDJ: {
-              routes[.dj] = []
-              section = .dj
+        if let route {
+          Group {
+            switch route {
+            case .artist(let name):
+              ArtistPage(name: name, backTitle: backTitle, back: back, openDJ: openDJ)
+            case .album(let id, _):
+              AlbumPage(browseId: id, backTitle: backTitle, back: back, openDJ: openDJ)
             }
-          )
-          .id(name)
+          }
+          .id(route)
           .transition(
             reduceMotion ? .opacity : .move(edge: .trailing).combined(with: .opacity))
         }

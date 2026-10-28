@@ -331,3 +331,21 @@ it("finds the listener's own songs by an artist, main or featured, most played f
   ];
   expect(ownTracksOf(rows, "mac miller").map((row) => row.id)).toEqual(["b", "a", "c"]);
 });
+
+it("lists the library's artists, most played first, with their best song as cover", async () => {
+  const { libraryArtists } = await import("../src/modules/discovery/discovery-artist.ts");
+  const row = (id: string, title: string, channel: string, plays: number) => ({
+    id, title, channel, plays, musicMetadata: null, thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+  });
+  expect(
+    libraryArtists([
+      row("a", "Self Care", "Mac Miller - Topic", 2),
+      row("b", "Mac Miller - Dang!", "MacMillerVEVO", 9),
+      row("c", "Todo Me Lleva", "Acid Coco - Topic", 14),
+      row("d", "Jet Fuel", "Mac Miller - Topic", 1),
+    ]),
+  ).toEqual([
+    { name: "Acid Coco", tracks: 1, plays: 14, coverVideoId: "c", cover: "https://i.ytimg.com/vi/c/hqdefault.jpg" },
+    { name: "Mac Miller", tracks: 3, plays: 12, coverVideoId: "b", cover: "https://i.ytimg.com/vi/b/hqdefault.jpg" },
+  ]);
+});

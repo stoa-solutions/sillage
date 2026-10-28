@@ -76,9 +76,8 @@ struct DiscoverView: View {
 
   // MARK: Sidebar (same structure as Bibliothèque)
 
-  /// What the listener can explore: their scenes and their artists, known by the server.
+  /// What the listener can explore: their scenes, known by the server.
   private var scenes: [String] { (discovery.page ?? discovery.home)?.scenes ?? [] }
-  private var artists: [String] { (discovery.page ?? discovery.home)?.artists ?? [] }
 
   private var sidebar: some View {
     ScrollView {
@@ -95,16 +94,6 @@ struct DiscoverView: View {
             LibrarySideRow(
               title: capitalized(genre), symbol: "waveform", selected: isHere(.scene(genre))
             ) { discovery.open(.scene(genre)) }
-          }
-        }
-        if !artists.isEmpty {
-          SillageRule().padding(.horizontal, 12).padding(.vertical, 20)
-          MonoLabel("Tes artistes").padding(.horizontal, 12).padding(.bottom, 8)
-            .help("Pars d’un artiste que tu aimes : ses voisins et ses collaborations")
-          ForEach(artists, id: \.self) { name in
-            LibrarySideRow(title: name, symbol: "person", selected: false) {
-              openArtist?(name)
-            }
           }
         }
       }.padding(.horizontal, 12).padding(.top, 24).padding(.bottom, 12)

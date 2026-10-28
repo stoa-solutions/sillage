@@ -20,6 +20,28 @@ export interface MusicArtist {
   related: { name: string; portrait: string | null }[];
 }
 
+/** An album or single page: its header and its playable tracks, in order. */
+export interface MusicAlbum {
+  browseId: string;
+  title: string;
+  artist: string | null;
+  kind: string;
+  year: string | null;
+  /** « 10 titres • 40 minutes » */
+  summary: string | null;
+  description: string | null;
+  artwork: string | null;
+  tracks: { videoId: string; title: string; position: number; durationSeconds: number | null; plays: string | null }[];
+}
+
+/** An artist row of a search, for suggestions while typing. */
+export interface MusicArtistHit {
+  browseId: string;
+  name: string;
+  portrait: string | null;
+  audience: string | null;
+}
+
 /** YouTube Music's web client and its « Titres » filter: songs only, no videos or mixes. */
 const CLIENT = { clientName: "WEB_REMIX", clientVersion: "1.20241028.01.00", hl: "fr" };
 const SONGS = "EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D";
@@ -75,6 +97,18 @@ export class YouTubeMusic {
     const row = findArtistRow(found, name);
     if (!row) return null;
     return parseArtistPage(await this.call("browse", { browseId: row.browseId }), row);
+  }
+
+  /** Artists for a free query, best first: what a search box suggests. */
+  async searchArtists(query: string, limit = 6): Promise<MusicArtistHit[]> {
+    return parseArtistHits(
+      await this.call("search", { query, params: decodeURIComponent(ARTISTS) }),
+    ).slice(0, limit);
+  }
+
+  /** An album page by its browse id (MPREb_…), or null when it is not an album. */
+  async album(browseId: string): Promise<MusicAlbum | null> {
+    return parseAlbum(await this.call("browse", { browseId }), browseId);
   }
 
   /**
@@ -215,6 +249,71 @@ export function parseArtistPage(
     audience: audience || null,
     releases: releases.slice(0, 12),
     related: related.slice(0, 12),
+  };
+}
+
+/** Every artist row of a search answer, in order. */
+export function parseArtistHits(body: unknown): MusicArtistHit[] {
+  const hits: MusicArtistHit[] = [];
+  find(body, (node) => {
+    const row = (node as Record<string, any>)["musicResponsiveListItemRenderer"];
+    if (!row) return undefined;
+    const browseId = row.navigationEndpoint?.browseEndpoint?.browseId;
+    const name = texts(row.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text);
+    const detail = texts(row.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text);
+    if (pageType(row) === "MUSIC_PAGE_TYPE_ARTIST" && typeof browseId === "string" && name)
+      hits.push({
+        browseId,
+        name,
+        portrait: enlarged(picture(row.thumbnail), 240),
+        audience: detail.split(" • ").slice(1).join(" • ") || null,
+      });
+    return undefined;
+  });
+  return hits;
+}
+
+const clockSeconds = (text: string) => {
+  const parts = text.split(":").map(Number);
+  return parts.length >= 2 && parts.every(Number.isFinite)
+    ? parts.reduce((total, part) => total * 60 + part, 0)
+    : null;
+};
+
+/** An album page: header (title, artist, kind and year, description) and its tracks. */
+export function parseAlbum(body: unknown, browseId: string): MusicAlbum | null {
+  const header = find(body, (node) => {
+    const value = node as Record<string, any>;
+    return value["musicResponsiveHeaderRenderer"] ?? value["musicDetailHeaderRenderer"];
+  });
+  if (!header) return null;
+  const subtitle = texts(header.subtitle);
+  const tracks: MusicAlbum["tracks"] = [];
+  find(body, (node) => {
+    const row = (node as Record<string, any>)["musicResponsiveListItemRenderer"];
+    if (!row) return undefined;
+    const videoId = row.playlistItemData?.videoId;
+    const title = texts(row.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text);
+    if (typeof videoId === "string" && /^[\w-]{11}$/.test(videoId) && title)
+      tracks.push({
+        videoId,
+        title,
+        position: Number(texts(row.index)) || tracks.length + 1,
+        durationSeconds: clockSeconds(texts(row.fixedColumns?.[0]?.musicResponsiveListItemFixedColumnRenderer?.text)),
+        plays: texts(row.flexColumns?.[2]?.musicResponsiveListItemFlexColumnRenderer?.text) || null,
+      });
+    return undefined;
+  });
+  return {
+    browseId,
+    title: texts(header.title),
+    artist: texts(header.straplineTextOne) || texts(header.subtitle?.runs?.[2] ? { runs: [header.subtitle.runs[2]] } : null) || null,
+    kind: subtitle.split(" • ")[0] || "Album",
+    year: /\b(19|20)\d\d\b/.exec(subtitle)?.[0] ?? null,
+    summary: texts(header.secondSubtitle) || null,
+    description: texts(header.description?.musicDescriptionShelfRenderer?.description ?? header.description) || null,
+    artwork: picture(header.thumbnail),
+    tracks,
   };
 }
 

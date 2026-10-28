@@ -30,7 +30,7 @@ import {
   listenerProfile,
 } from "./discovery-home.service.ts";
 import { historySize, knownVideos, libraryWithPlays, recentListening } from "./discovery.repository.ts";
-import { ownTracksOf } from "./discovery-artist.ts";
+import { libraryArtists, ownTracksOf } from "./discovery-artist.ts";
 import { trackBody } from "../library/index.ts";
 import type { HomeSources } from "./discovery-home.service.ts";
 import { Discovery, DiscoveryError, discoveryFor } from "./discovery.service.ts";
@@ -122,6 +122,37 @@ const ownRoute = createRoute({
     ...commonErrors(),
     200: jsonResponse(
       z.object({ tracks: z.array(z.object({ video: trackBody, plays: z.number().int() })) }).openapi("ArtistInLibrary"),
+      "Réponse réussie",
+    ),
+  },
+});
+
+const artistsRoute = createRoute({
+  method: "get",
+  path: "/artists",
+  ...operation({
+    operationId: "getLibraryArtists",
+    tag: TAG,
+    summary: "Mes artistes",
+    description:
+      "Les artistes de la bibliothèque (artiste principal de chaque titre), avec le nombre de titres, les écoutes du compte et la miniature du titre le plus écouté ; les plus écoutés d’abord.",
+  }),
+  responses: {
+    ...commonErrors(),
+    200: jsonResponse(
+      z
+        .object({
+          artists: z.array(
+            z.object({
+              name: z.string(),
+              tracks: z.number().int(),
+              plays: z.number().int(),
+              coverVideoId: z.string(),
+              cover: z.string(),
+            }),
+          ),
+        })
+        .openapi("LibraryArtists"),
       "Réponse réussie",
     ),
   },
@@ -309,6 +340,16 @@ export function discoveryRoutes(
       200,
     );
   });
+  app.openapi(artistsRoute, async (c) =>
+    c.json(
+      {
+        artists: libraryArtists(
+          (await libraryWithPlays(db.orm, c.get("userId"))).map((row) => ({ ...row, plays: Number(row.plays) })),
+        ),
+      },
+      200,
+    ),
+  );
   app.openapi(ownRoute, async (c) => {
     const { name } = c.req.valid("query");
     const owned = ownTracksOf(await libraryWithPlays(db.orm, c.get("userId")), name);

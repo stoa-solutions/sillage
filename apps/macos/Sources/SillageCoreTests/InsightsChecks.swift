@@ -63,5 +63,14 @@ func insightsChecks() async throws {
   model.loadArtist("Phoenix", connection: a, retry: true)
   for _ in 0..<20 where model.loading(artist: "Phoenix") { await Task.yield() }
   try expect(model.artist("PHOENIX")?.name == "Phoenix", "Artist not kept across spellings")
-  print("Insights checks passed: lead artist, quality, counts, shared artist pages")
+  let album = try JSONDecoder().decode(
+    Album.self,
+    from: Data(
+      #"{"browseId":"MPREb_U72FqcwqU1Q","title":"Bankrupt!","artist":"Phoenix","kind":"Album","year":"2013","summary":null,"description":null,"artwork":null,"tracks":[{"videoId":"tBsRvthVhdw","title":"Entertainment","position":1,"durationSeconds":220,"plays":null,"inLibrary":false}]}"#
+        .utf8))
+  let first = album.track(album.tracks[0])
+  try expect(
+    TrackTitle(first).artist == "Phoenix" && first.durationSeconds == 220,
+    "Album track credited to \(TrackTitle(first).artist ?? "nobody")")
+  print("Insights checks passed: lead artist, quality, counts, shared artist pages, albums")
 }
