@@ -103,6 +103,8 @@ const asTrack = <T extends Video>(video: T) => ({
 
 /** Search and save YouTube music outside the library, under /v1/discover. */
 const HOME_TTL = 20 * 60 * 1000;
+/** An artist's catalog barely moves in a day, and YouTube throttles bursts of searches. */
+const ARTIST_PAGE_TTL = 24 * 60 * 60 * 1000;
 
 export function discoveryRoutes(
   db: Database,
@@ -141,8 +143,9 @@ export function discoveryRoutes(
             (await tasteService(db).overview(owner)).artists,
           ),
         similar: (mbid) => neighbours.similar(mbid),
-        artistId: (name) => artistId(name),
-        search: (owner, query) => service.search(owner, query),
+        // A name lookup that fails only leaves this artist out: no warning for it.
+        artistId: (name) => artistId(name).catch(() => undefined),
+        search: (owner, query) => service.search(owner, query, "", ARTIST_PAGE_TTL),
       },
       user,
       { rotate: refresh },

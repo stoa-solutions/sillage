@@ -32,8 +32,8 @@ export const HOME_RULES = {
   furtherArtists: 3,
   genreSections: 2,
   tracksPerGenre: 6,
-  /** Searches running at once: the catalog source accepts four. */
-  concurrency: 3,
+  /** Searches running at once: the catalog source accepts four, YouTube throttles bursts. */
+  concurrency: 2,
   ideas: 8,
 } as const;
 

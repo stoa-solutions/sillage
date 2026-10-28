@@ -47,7 +47,8 @@ export class Discovery {
       ids,
     ) => ownedAmong(db.orm, user, ids),
   ) {}
-  async search(user: string, query: string, pageToken = "") {
+  /** `keep` is how long a public page stays cached; « Pour toi » keeps an artist's a day. */
+  async search(user: string, query: string, pageToken = "", keep = 300000) {
     const parsed = discoveryInput.parse({ query, pageToken });
     const key = JSON.stringify([parsed.query.toLowerCase(), parsed.pageToken]);
     let result = this.cache.get(key);
@@ -64,10 +65,10 @@ export class Discovery {
       }
       try {
         const data = await request;
-        result = { until: Date.now() + 300000, result: data };
+        result = { until: Date.now() + keep, result: data };
         // An empty page is often the search engine throttling a burst: never kept.
         if (data.videos.length) {
-          if (this.cache.size >= 100)
+          if (this.cache.size >= 500)
             this.cache.delete(this.cache.keys().next().value!);
           this.cache.set(key, result);
         }
