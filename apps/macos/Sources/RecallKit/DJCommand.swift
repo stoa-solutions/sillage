@@ -16,14 +16,14 @@ public enum DJCommand: Equatable, Sendable {
   public static var helpText: String {
     // A Markdown list: chat replies are rendered as Markdown, which joins plain lines.
     suggestions.map { "- `\($0.command)` : \($0.label)" }.joined(separator: "\n")
-      + "\n\n`/suite` accepte de 1 à 8 titres. Si les sources n’en fournissent pas assez, le DJ le précise. Les règles sont consultables ; les skills personnalisés ne sont pas encore activés."
+      + "\n\n`/suite` accepte de 1 à \(DJLimits.selection) titres. Si les sources n’en fournissent pas assez, le DJ le précise. Les règles sont consultables ; les skills personnalisés ne sont pas encore activés."
   }
   public static func parse(_ text: String) -> Self {
     let words = text.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
     guard let first = words.first else { return .invalid }
     if first == "/suite" {
       guard words.count <= 2, let count = Int(words.count == 2 ? words[1] : "5"),
-        (1...8).contains(count)
+        (1...DJLimits.selection).contains(count)
       else { return .invalid }
       return .prepare(count)
     }

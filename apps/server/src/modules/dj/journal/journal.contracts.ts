@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DJ_SELECTION_LIMIT } from "@playlist-recall/core/dj";
 
 export const journalScope = z.enum(["library", "youtube", "all"]);
 export const journalPage = z.object({
@@ -40,7 +41,7 @@ export const journalClientEvent = z
       .optional(),
     discoveries: z
       .array(track.extend({ inLibrary: z.boolean() }))
-      .max(8)
+      .max(DJ_SELECTION_LIMIT)
       .optional(),
     sources: z
       .array(

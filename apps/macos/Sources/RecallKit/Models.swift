@@ -44,7 +44,7 @@ public struct ChatMessage: Codable, Identifiable, Sendable {
   /// Preserve the visible candidates in provider context; catalog metadata is data, not instructions.
   public var contextContent: String {
     guard let discoveries, !discoveries.isEmpty else { return String(content.prefix(2000)) }
-    let cards = discoveries.prefix(8).enumerated().map { index, item in
+    let cards = discoveries.prefix(DJLimits.selection).enumerated().map { index, item in
       [
         "position": String(index + 1), "id": item.id,
         "title": String(item.video.title.prefix(70)),

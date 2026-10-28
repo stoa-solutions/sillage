@@ -18,7 +18,8 @@ const deferred = /\b(a la suite|a suivre|dans la (file|queue)|en (file|queue)|ap
 const appendVerb = /\b(continue|poursuis|prolonge|prepare(?:r)?|ajoute|rajoute|enqueue)\b/;
 const browseVerb = /\b(cherche|chercher|recherche|trouve|trouver|montre|propose|decouvre)\b/;
 const numbers: Record<string, number> = {
-  un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8,
+  un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8, neuf: 9,
+  dix: 10, onze: 11, douze: 12, treize: 13, quatorze: 14, quinze: 15, seize: 16, vingt: 20,
 };
 
 /** Polite prefixes do not change a prohibition into a musical wish. */
@@ -60,7 +61,8 @@ export function parseDJIntent(message: string): ParsedDJIntent {
 
   const named = /\b(?:meme (?:style|ambiance|vibe|esprit|genre|veine) que|comme (?!ca\b|celle ci\b|celui ci\b|ce morceau\b|ce titre\b)\S+)/.test(text);
   const current = /\b(meme (style|ambiance|vibe|esprit|genre|veine)|comme (ca|celle ci|celui ci|ce morceau|ce titre)|dans (cet esprit|cette ambiance|cette veine))\b/.test(text);
-  const count = active.join(" ").match(/\b([1-8]|un|une|deux|trois|quatre|cinq|six|sept|huit)\s+(?:nouveaux?\s+|nouvelles?\s+)?(?:morceaux?|titres?|sons?|chansons?)\b/)?.[1];
+  // Up to DJ_SELECTION_LIMIT (20): digits, or the single-word French numbers.
+  const count = active.join(" ").match(/\b(20|1[0-9]|[1-9]|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingt)\s+(?:nouveaux?\s+|nouvelles?\s+)?(?:morceaux?|titres?|sons?|chansons?)\b/)?.[1];
   return {
     intent,
     timing: now ? "now" : later ? "later" : "unspecified",

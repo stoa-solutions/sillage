@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DJ_SELECTION_LIMIT } from "@playlist-recall/core/dj";
 
 /** Validated HTTP input and structured provider output. No effects in this module. */
 export const djInput = z.object({
@@ -31,7 +32,7 @@ export const djInput = z.object({
    */
   continuation: z
     .object({
-      count: z.number().int().min(1).max(8).default(5),
+      count: z.number().int().min(1).max(DJ_SELECTION_LIMIT).default(5),
       broaden: z.boolean().default(false),
     })
     .optional(),
@@ -53,7 +54,7 @@ export const djInput = z.object({
         channel: z.string().max(200).nullish(),
       }),
     )
-    .max(8)
+    .max(DJ_SELECTION_LIMIT)
     .default([]),
   rejectedIds: z
     .array(z.string().regex(/^[\w-]{11}$/))
@@ -64,7 +65,11 @@ export const djInput = z.object({
     .max(100)
     .default([]),
 });
-const videoIds = z.array(z.string().regex(/^[\w-]{11}$/)).max(8);
+/** A model asked for more than the limit (or told so by an agent) still answers: extra IDs are dropped. */
+const videoIds = z
+  .array(z.string().regex(/^[\w-]{11}$/))
+  .max(200)
+  .transform((ids) => ids.slice(0, DJ_SELECTION_LIMIT));
 /** Providers write `null` for an unused field; that is an absence, not an unreadable answer. */
 const absent = <T extends z.ZodType>(schema: T, fallback: z.infer<T>) =>
   schema.nullish().transform((value) => value ?? fallback);

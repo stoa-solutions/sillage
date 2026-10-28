@@ -5779,7 +5779,7 @@
                       "inLibrary"
                     ]
                   },
-                  "maxItems": 8
+                  "maxItems": 20
                 },
                 "sources": {
                   "type": "array",
@@ -6269,7 +6269,7 @@
               "count": {
                 "type": "integer",
                 "minimum": 1,
-                "maximum": 8,
+                "maximum": 20,
                 "default": 5
               },
               "broaden": {
@@ -6334,7 +6334,7 @@
                 "title"
               ]
             },
-            "maxItems": 8,
+            "maxItems": 20,
             "default": []
           },
           "rejectedIds": {

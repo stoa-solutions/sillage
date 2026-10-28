@@ -1,5 +1,7 @@
 import type { MusicMetadata } from "./types.ts";
 // Wire contracts shared by the API and clients. No credentials or runtime APIs.
+/** Most tracks or cards one DJ answer may hold; a longer list from a model is cut, not refused. */
+export const DJ_SELECTION_LIMIT = 20;
 export const DJ_MODELS = [
   "gemini-4-argon",
   "gemini-3.8-flash",

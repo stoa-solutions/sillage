@@ -1,3 +1,4 @@
+import { DJ_SELECTION_LIMIT } from "@playlist-recall/core/dj";
 import { parseDJIntent, type DJIntent } from "@playlist-recall/core/intent";
 import type { DjInput } from "./dj.contracts.ts";
 
@@ -79,7 +80,7 @@ export function planTurn(input: DjInput): TurnPlan {
     openChoice,
     relative,
     targetCount,
-    selectionLimit: parsed.count ?? targetCount ?? 8,
+    selectionLimit: parsed.count ?? targetCount ?? DJ_SELECTION_LIMIT,
     avoidRepeats: parsed.intent === "append" || relative,
     broaden: false,
     playback,

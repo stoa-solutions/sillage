@@ -69,7 +69,9 @@ public struct DJJournalBuffer: Sendable {
           kind: "message", role: message.role, content: String(message.content.prefix(8192)),
           action: nil,
           requestId: requestId, current: track, queueIds: queue,
-          discoveries: message.discoveries.map { Array($0.prefix(8).map(JournalDiscovery.init)) },
+          discoveries: message.discoveries.map {
+            Array($0.prefix(DJLimits.selection).map(JournalDiscovery.init))
+          },
           sources: message.sources.map { Array($0.prefix(5)) }))
     }
     if let action {

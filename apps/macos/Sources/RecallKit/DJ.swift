@@ -30,6 +30,11 @@ public struct DJContinuation: Sendable, Equatable {
   }
 }
 
+/// Same bound as the server's DJ_SELECTION_LIMIT: tracks or cards in one answer, `/suite` counts.
+public enum DJLimits {
+  public static let selection = 20
+}
+
 public struct DJRequest: Sendable {
   public var conversationId: UUID?
   public var requestId: UUID?
@@ -94,7 +99,7 @@ public struct ServerDJ: DJ {
     }
     if !request.discoveryContext.isEmpty {
       body["discoveryContext"] = try JSONSerialization.jsonObject(
-        with: JSONEncoder().encode(Array(request.discoveryContext.prefix(8))))
+        with: JSONEncoder().encode(Array(request.discoveryContext.prefix(DJLimits.selection))))
     }
     if let context = request.playbackContext {
       body["playbackContext"] = try JSONSerialization.jsonObject(

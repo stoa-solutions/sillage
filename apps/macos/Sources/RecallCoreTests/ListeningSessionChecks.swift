@@ -252,6 +252,9 @@ func listeningSessionChecks() throws {
     session.handle(.ask("/aide", source: .all)).requests.isEmpty, "Help consumed an AI turn")
   try expect(DJCommand.parse("/suite") == .prepare(5), "Default suite was not five songs")
   try expect(DJCommand.parse("/suite 8") == .prepare(8), "Explicit suite length lost")
+  try expect(
+    DJCommand.parse("/suite 20") == .prepare(20), "Suite up to the selection limit refused")
+  try expect(DJCommand.parse("/suite 21") == .invalid, "Suite above the selection limit accepted")
 
   // The last transport intent wins over a slower answer, for both manual and automatic turns.
   session = playingAlone(a)

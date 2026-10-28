@@ -260,7 +260,7 @@ public struct ListeningSession: Sendable {
         say(user: text)
         say(
           assistant:
-            "Commande inconnue ou nombre invalide. Utilise /suite 1 à 8, /suivant, /pause, /reprendre, /prompt ou /aide."
+            "Commande inconnue ou nombre invalide. Utilise /suite 1 à \(DJLimits.selection), /suivant, /pause, /reprendre, /prompt ou /aide."
         )
       }
       return
@@ -385,7 +385,9 @@ public struct ListeningSession: Sendable {
     var request = request
     if pending?.automatic == true { request.trigger = .continuation }
     request.rejectedIds = rejectedDiscoveryIDs
-    request.discoveryContext = latestDiscoveries.prefix(8).map { DJDiscoveryContext($0.video) }
+    request.discoveryContext = latestDiscoveries.prefix(DJLimits.selection).map {
+      DJDiscoveryContext($0.video)
+    }
     return request
   }
 

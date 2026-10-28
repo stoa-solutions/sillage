@@ -764,3 +764,46 @@ it("adds the chosen agent's profile between the DJ rules and this turn's constra
   expect(profile).toBeLessThan(system.indexOf("INTENTION DU TOUR"));
   expect(system).toContain("Une phrase courte, sans anecdote.");
 });
+
+it("keeps a turn whose model proposes more cards than before, up to the selection limit", async () => {
+  // The hostile-agent case seen in production: ten cards used to fail the whole turn.
+  const many = Array.from({ length: 25 }, (_, index) => ({
+    video: {
+      id: `many${String(index).padStart(7, "0")}`,
+      title: `Titre ${index}`,
+      channel: "Artiste",
+      url: `https://www.youtube.com/watch?v=many${String(index).padStart(7, "0")}`,
+    },
+    inLibrary: true,
+  }));
+  mocks.call.mockResolvedValue({
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          results: many,
+          sources: [{ source: "library", status: "ok" }],
+        }),
+      },
+    ],
+  });
+  provider([tool, answer(many.slice(0, 10).map((item) => item.video.id))]);
+  const ten = await djTurn(
+    db,
+    djInput.parse({ message: "Propose de l’énergie sans rien lancer" }),
+    undefined,
+    config,
+    "alice",
+  );
+  expect(ten).toMatchObject({ action: "keep", tracks: [] });
+  expect(ten.discoveries).toHaveLength(10);
+  provider([tool, answer(many.map((item) => item.video.id))]);
+  const capped = await djTurn(
+    db,
+    djInput.parse({ message: "Propose de l’énergie sans rien lancer" }),
+    undefined,
+    config,
+    "alice",
+  );
+  expect(capped.discoveries).toHaveLength(20);
+});

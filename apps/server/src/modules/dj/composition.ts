@@ -1,6 +1,7 @@
 import type { DjInput, Selection } from "./dj.contracts.ts";
 import type { TurnPlan } from "./plan.ts";
 import { compactVideo, type DiscoveryEvidence } from "./evidence.ts";
+import { DJ_SELECTION_LIMIT } from "@playlist-recall/core/dj";
 import { playbackAction } from "@playlist-recall/core/intent";
 import { DjUnavailable } from "./errors.ts";
 import type { InformationSource } from "../../integrations/searxng/index.ts";
@@ -89,7 +90,7 @@ export class Composition {
             (!this.plan.avoidRepeats ||
               !this.input.excludeIds.includes(item.video.id)),
         )
-        .slice(0, Math.min(8, this.plan.selectionLimit)),
+        .slice(0, Math.min(DJ_SELECTION_LIMIT, this.plan.selectionLimit)),
     };
   }
 

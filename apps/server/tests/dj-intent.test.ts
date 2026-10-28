@@ -68,6 +68,8 @@ it("does not turn a corrected immediate request back into append", () => {
 it.each([
   ["Prépare trois nouveaux morceaux à suivre", 3],
   ["Prépare huit nouvelles chansons à suivre", 8],
+  ["Prépare quinze titres à suivre", 15],
+  ["Ajoute 20 morceaux", 20],
   ["Ajoute 2 titres", 2],
   ["Ajoute un morceau", 1],
 ])("extracts the explicit bounded count in %s", (message, count) => {
@@ -87,4 +89,8 @@ it.each([
 ])("distinguishes an explicit reference in %s", (message, reference, relative) => {
   expect(parseDJIntent(message).reference).toBe(reference);
   expect(followsCurrent(message)).toBe(relative);
+});
+
+it("ignores a count above the selection limit instead of misreading it", () => {
+  expect(parseDJIntent("Ajoute 25 titres").count).toBeUndefined();
 });

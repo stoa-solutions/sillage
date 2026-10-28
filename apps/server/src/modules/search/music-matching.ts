@@ -1,3 +1,4 @@
+import { DJ_SELECTION_LIMIT } from "@playlist-recall/core/dj";
 import { parseDJIntent } from "@playlist-recall/core/intent";
 
 /** Matching uses catalog metadata, never inferred audio characteristics. */
@@ -164,10 +165,10 @@ export function resolveExactRequest(
       return title.length > 0 && catalog.some((track) => songTitle(track.title) === title);
     });
   if (!parts.length) return null;
-  if (parts.length > 8)
+  if (parts.length > DJ_SELECTION_LIMIT)
     return {
       tracks: [],
-      missing: ["Une demande est limitée à huit titres."],
+      missing: [`Une demande est limitée à ${DJ_SELECTION_LIMIT} titres.`],
       append: false,
     };
   const tracks: RequestedTrack[] = [],
