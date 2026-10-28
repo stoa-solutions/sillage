@@ -1,17 +1,20 @@
 # Découvrir — fonctionnement actuel
 
-État relu dans le code le 26 octobre 2026. Le serveur sélectionne les contenus ; le Mac affiche les cartes, lance la lecture ou ajoute à la file. L’accueil et la recherche explicite sont deux circuits distincts.
+État relu dans le code le 28 octobre 2026. Le serveur sélectionne les contenus ; le Mac affiche les rayons, lance la lecture ou ajoute à la file. L’accueil « Pour toi » et la recherche explicite sont deux circuits distincts.
 
 ## Quand tu ouvres Découvrir
 
-1. Le serveur relit les **80 dernières écoutes** de ton compte.
-2. Parmi les 20 plus récentes marquées `finished` ou `replaced`, il extrait jusqu’à **3 pistes de recherche** : genre MusicBrainz certain si disponible, puis artiste crédité ou chaîne YouTube.
-3. Il cherche ces pistes en parallèle, écarte les vidéos déjà dans ta bibliothèque et celles des 80 dernières écoutes, ainsi que les doublons de titre et certains contenus parasites.
-4. Il entrelace jusqu’à **12 suggestions**, avec une raison telle que « Parce que tu as écouté… ».
+« Pour toi » cherche d’abord **des artistes que tu ne connais pas encore**, puis des titres neufs de tes propres artistes.
 
-Ce circuit n’appelle pas Gemini et ne fabrique pas une playlist via un modèle. C’est une sélection par règles sur des métadonnées et ton historique. Les genres d’un artiste sont un indice lorsque le morceau n’a pas son propre genre ; ils ne garantissent pas le style de chaque titre.
+1. **Ton profil.** Le serveur relit toutes les vidéos de ta bibliothèque et de ton historique, avec leur nombre d’écoutes : artistes connus (nom et identifiant MusicBrainz), genres pondérés par les écoutes. Les artistes de Mon goût, classés par affinité, deviennent les points de départ.
+2. **Les voisins.** Pour les 5 artistes préférés qui ont un identifiant MusicBrainz, puis 2 artistes récents, il demande à ListenBrainz les artistes écoutés dans les mêmes sessions. Tout artiste déjà présent dans ta bibliothèque ou ton historique est écarté, par identifiant comme par nom. Il garde 3 voisins par point de départ, tirés d’une réserve de 8.
+3. **Les titres.** Chaque voisin est cherché sur YouTube (SearXNG d’abord) ; seuls les titres crédités à cet artiste sont gardés, 2 par artiste. Un rayon « Autour de X » regroupe les voisins d’un même point de départ, avec la raison « Kiasmos, proche de Maribou State ».
+4. **Les genres.** Deux rayons « Côté <genre> » explorent tes genres les plus écoutés sans tes artistes habituels.
+5. **Tes artistes.** Un dernier rayon propose des titres de tes artistes récents absents de ta bibliothèque.
 
-Le Mac conserve l’accueil en mémoire **5 minutes**. « Actualiser » force le rafraîchissement. Sans historique exploitable, il invite à écouter quelques morceaux ; il n’existe pas encore de sélection initiale de goûts à l’inscription.
+« D’autres propositions » tire d’autres voisins dans la réserve. Le serveur garde la page 20 minutes par compte ; ListenBrainz est mis en cache une journée. Un artiste trop confidentiel n’a parfois aucun voisin : il ne sert alors qu’au rayon de tes artistes. Ce circuit n’appelle aucun modèle d’IA. Sans écoute ni bibliothèque, l’accueil invite à écouter quelques morceaux.
+
+La barre latérale rappelle tes recherches récentes, propose tes genres comme « envies » et permet de chercher dans une playlist.
 
 ## Quand tu saisis une recherche
 
@@ -39,8 +42,8 @@ Les métadonnées publiques d’une vidéo sont communes, mais les comptes ont l
 ## Limites à améliorer en priorité
 
 1. **Mieux apprendre les goûts.** `replaced` est actuellement un signal positif, même si l’utilisateur a changé très vite de morceau. L’historique ne contient pas encore la durée réellement écoutée. Il faudrait distinguer écoute appréciée, saut rapide et refus explicite.
-2. **Faire découvrir d’autres artistes.** Le mélange actuel peut favoriser le même artiste et des genres trop larges. Ajouter une mesure de diversité et une exclusion plus durable des titres déjà proposés serait plus utile qu’un simple accroissement du nombre de cartes.
-3. **Rendre l’intention visible.** Trois directions simples : « Proche de mes goûts », « Artistes voisins », « Surprends-moi », avec une raison courte et « Moins comme ça ». Ce sont des propositions, pas des fonctions déjà présentes.
+2. **Retenir ce qui a déjà été proposé.** Une suggestion ignorée plusieurs fois devrait céder sa place ; « Moins comme ça » sur un artiste voisin reste à faire.
+3. **Couvrir les artistes confidentiels.** ListenBrainz connaît mal certains artistes ; un repli par crédits ou label sourcé serait utile.
 4. **Accélérer la recherche Partout.** Interroger bibliothèque et YouTube en parallèle, afficher chaque bloc dès sa réponse et permettre la vraie pagination des deux sources.
 5. **Améliorer le départ sans historique.** Quelques artistes ou genres choisis une fois suffiraient pour un premier accueil utile.
 
@@ -50,10 +53,11 @@ Ces évolutions doivent conserver l’isolation des comptes et le design actuel.
 
 | Fichier | Responsabilité |
 | --- | --- |
-| `apps/macos/Sources/SillageMac/DiscoverView.swift` | Écran, sections et actions de carte. |
+| `apps/macos/Sources/SillageMac/DiscoverView.swift` | Écran, barre latérale, rayons « Pour toi » et résultats. |
 | `apps/macos/Sources/SillageMac/DiscoveryModel.swift` | Requêtes, annulation, pagination YouTube et cache d’accueil. |
-| `apps/server/src/discovery.ts` | Routes, cache public de recherche, vérification et ajout par compte. |
-| `apps/server/src/discovery-home.ts` | Historique, pistes de recherche et sélection de suggestions. |
+| `apps/server/src/modules/discovery/discovery.controller.ts` | Routes, cache public de recherche, cache « Pour toi », vérification et ajout par compte. |
+| `apps/server/src/modules/discovery/discovery-home.service.ts` | Profil d’écoute, voisins, rayons et exclusions de « Pour toi ». |
+| `apps/server/src/integrations/listenbrainz/client.ts` | Artistes voisins ListenBrainz, avec cache d’une journée. |
 | `apps/server/src/searxng.ts` | Recherche externe ; fichiers associés pour la vérification des vidéos. |
 | `apps/server/src/musicbrainz/rollout.ts` | Activation progressive de l’enrichissement et compteurs. |
 

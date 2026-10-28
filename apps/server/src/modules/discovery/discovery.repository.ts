@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, max } from "drizzle-orm";
+import { and, count, desc, eq, inArray, max, sql } from "drizzle-orm";
 import type { MusicMetadata, Video } from "@sillage/core/types";
 import { documentText, hash } from "../../content.ts";
 import {
@@ -117,4 +117,51 @@ export async function recentListening(
     outcome: row.outcome,
     music_metadata: (row.musicMetadata as MusicMetadata | null) ?? null,
   }));
+}
+
+export interface KnownVideo {
+  title: string | null;
+  channel: string | null;
+  musicMetadata: MusicMetadata | null;
+  plays: number;
+}
+
+/**
+ * Every video the account owns or has heard, with how often it was heard: what the listener
+ * already knows, and where their artists' MusicBrainz IDs and genres come from.
+ */
+export async function knownVideos(db: Executor, userId: string): Promise<KnownVideo[]> {
+  const plays = db
+    .select({ videoId: listeningHistory.videoId, plays: count().as("plays") })
+    .from(listeningHistory)
+    .where(eq(listeningHistory.userId, userId))
+    .groupBy(listeningHistory.videoId)
+    .as("plays");
+  const rows = await db
+    .select({
+      title: videos.title,
+      channel: videos.channel,
+      musicMetadata: videos.musicMetadata,
+      plays: sql<number>`coalesce(${plays.plays}, 0)`,
+    })
+    .from(videos)
+    .leftJoin(plays, eq(plays.videoId, videos.id))
+    .where(
+      sql`${plays.videoId} IS NOT NULL OR EXISTS(SELECT 1 FROM ${memberships} m WHERE m.video_id = ${videos.id} AND m.active AND ${followedBy(db, userId, sql`m.playlist_id`)})`,
+    );
+  return rows.map((row) => ({
+    title: row.title,
+    channel: row.channel,
+    musicMetadata: (row.musicMetadata as MusicMetadata | null) ?? null,
+    plays: Number(row.plays),
+  }));
+}
+
+/** How many plays the account's history holds: fewer than before means a deletion. */
+export async function historySize(db: Executor, userId: string) {
+  const [row] = await db
+    .select({ plays: count() })
+    .from(listeningHistory)
+    .where(eq(listeningHistory.userId, userId));
+  return row?.plays ?? 0;
 }

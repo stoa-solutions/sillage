@@ -38,13 +38,49 @@ public struct DiscoverySuggestion: Decodable, Identifiable, Sendable {
   public let video: Track
   public let inLibrary: Bool
   public let reason: String
+  /// The discovered artist, when the suggestion comes from a listening neighbour.
+  public let artist: String?
   public var id: String { video.id }
+  public var item: DiscoveryItem { DiscoveryItem(video: video, inLibrary: inLibrary) }
+}
+/// One shelf of « Pour toi »: neighbours of a favourite artist, a genre, or new tracks of
+/// the listener's own artists.
+public struct DiscoverySection: Decodable, Identifiable, Sendable {
+  public let id: String
+  public let kind: String
+  public let title: String
+  public let reason: String
+  public let items: [DiscoverySuggestion]
 }
 public struct DiscoveryHome: Decodable, Sendable {
+  public let sections: [DiscoverySection]
   public let suggestions: [DiscoverySuggestion]
   public let basedOn: [String]
+  /// The listener's own genres, for the « envies » shortcuts.
+  public let ideas: [String]
   public let notice: String?
   public let emptyReason: String?
+  private enum CodingKeys: String, CodingKey {
+    case sections, suggestions, basedOn, ideas, notice, emptyReason
+  }
+  public init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+    suggestions = try values.decode([DiscoverySuggestion].self, forKey: .suggestions)
+    // A server from before the shelves sends one flat list: it becomes one shelf.
+    sections =
+      try values.decodeIfPresent([DiscoverySection].self, forKey: .sections)
+      ?? (suggestions.isEmpty
+        ? []
+        : [
+          DiscoverySection(
+            id: "suggestions", kind: "artists", title: "Selon tes écoutes", reason: "",
+            items: suggestions)
+        ])
+    basedOn = try values.decodeIfPresent([String].self, forKey: .basedOn) ?? []
+    ideas = try values.decodeIfPresent([String].self, forKey: .ideas) ?? []
+    notice = try values.decodeIfPresent(String.self, forKey: .notice)
+    emptyReason = try values.decodeIfPresent(String.self, forKey: .emptyReason)
+  }
 }
 public struct AICheck: Decodable, Sendable {
   public let ok: Bool
@@ -52,8 +88,12 @@ public struct AICheck: Decodable, Sendable {
   public let message: String
 }
 extension HTTPClient {
-  public func discoveryHome(_ connection: Connection) async throws -> DiscoveryHome {
-    let object = try await server(connection, path: "discover/home")
+  /// `refresh` asks the server for other neighbours instead of the page it keeps.
+  public func discoveryHome(_ connection: Connection, refresh: Bool = false) async throws
+    -> DiscoveryHome
+  {
+    let object = try await server(
+      connection, path: refresh ? "discover/home?refresh=true" : "discover/home")
     return try JSONDecoder().decode(
       DiscoveryHome.self, from: JSONSerialization.data(withJSONObject: object))
   }

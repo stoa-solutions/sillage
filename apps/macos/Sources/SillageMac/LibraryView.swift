@@ -402,7 +402,7 @@ private struct EnrichmentChip: View {
 }
 
 /// A sidebar entry: glyph, title, optional count; an orange edge marks the selection.
-private struct LibrarySideRow: View {
+struct LibrarySideRow: View {
   let title: String
   let symbol: String
   var count: Int? = nil
@@ -431,7 +431,7 @@ private struct LibrarySideRow: View {
 }
 
 /// A playlist in the sidebar: its tile, title and number of titles.
-private struct LibraryPlaylistRow: View {
+struct LibraryPlaylistRow: View {
   let title: String
   let count: Int
   let selected: Bool

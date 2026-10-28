@@ -24,10 +24,26 @@ export const discoveryPageBody = z
     nextPageToken: z.string().nullable(),
   })
   .openapi("DiscoveryPage");
+const homeItemBody = discoveryItemBody.extend({
+  reason: z.string(),
+  artist: z.string().optional(),
+});
 export const discoveryHomeBody = z
   .object({
-    suggestions: z.array(discoveryItemBody.extend({ reason: z.string() })),
+    sections: z.array(
+      z
+        .object({
+          id: z.string(),
+          kind: z.enum(["neighbours", "genre", "artists"]),
+          title: z.string(),
+          reason: z.string(),
+          items: z.array(homeItemBody),
+        })
+        .openapi("DiscoverySection"),
+    ),
+    suggestions: z.array(homeItemBody),
     basedOn: z.array(z.string()),
+    ideas: z.array(z.string()),
     notice: z.string().nullable(),
     emptyReason: z.string().nullable(),
   })

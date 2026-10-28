@@ -141,7 +141,7 @@ import SillageKit
     homeTask = Task {
       defer { if session.generation == generation { homeLoading = false } }
       do {
-        let result = try await HTTPClient().discoveryHome(connection)
+        let result = try await HTTPClient().discoveryHome(connection, refresh: force)
         try Task.checkCancellation()
         guard session.generation == generation else { return }
         home = result

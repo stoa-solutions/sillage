@@ -140,38 +140,41 @@ struct DiscoverView: View {
 
   private var sidebar: some View {
     ScrollView {
-      VStack(alignment: .leading, spacing: 2) {
-        SidebarTitle("Découvrir")
-        SidebarItem(
-          title: "Pour toi", detail: "Selon tes écoutes", symbol: "sparkles",
-          selected: !discovery.searched, action: showForYou)
+      VStack(alignment: .leading, spacing: 0) {
+        MonoLabel("Découvrir").padding(.horizontal, 12).padding(.bottom, 12)
+        LibrarySideRow(title: "Pour toi", symbol: "sparkles", selected: !discovery.searched) {
+          showForYou()
+        }
         if !recent.isEmpty {
+          SillageRule().padding(.horizontal, 12).padding(.vertical, 20)
           HStack {
-            SidebarTitle("Récentes")
+            MonoLabel("Récentes")
             Spacer()
-            Button("Effacer") { recentText = "" }.buttonStyle(.plain).font(.system(size: 12))
-              .foregroundStyle(.secondary).padding(.trailing, 8)
-          }
-          ForEach(recent.prefix(6), id: \.self) { query in
-            SidebarItem(
+            Button("Effacer") { recentText = "" }.buttonStyle(.plain).font(.system(size: 11))
+              .foregroundStyle(.secondary)
+          }.padding(.horizontal, 12).padding(.bottom, 8)
+          ForEach(recent.prefix(5), id: \.self) { query in
+            LibrarySideRow(
               title: query, symbol: "clock.arrow.circlepath",
               selected: discovery.searched && discovery.submittedQuery == query
             ) { run(query) }
           }
         }
-        SidebarTitle("Envies")
-        ForEach(Self.ideas, id: \.self) { idea in
-          SidebarItem(
+        SillageRule().padding(.horizontal, 12).padding(.vertical, 20)
+        MonoLabel("Tes envies").padding(.horizontal, 12).padding(.bottom, 8)
+          .help("Les genres les plus présents dans ta bibliothèque et tes écoutes")
+        ForEach(ideas, id: \.self) { idea in
+          LibrarySideRow(
             title: idea, symbol: "music.note",
             selected: discovery.searched && discovery.submittedQuery == idea
           ) { run(idea) }
         }
         if !library.playlists.isEmpty {
-          SidebarTitle("Dans une playlist")
+          SillageRule().padding(.horizontal, 12).padding(.vertical, 20)
+          MonoLabel("Dans une playlist").padding(.horizontal, 12).padding(.bottom, 8)
           ForEach(library.playlists) { playlist in
-            SidebarItem(
-              title: playlist.title, detail: "\(playlist.entries.formatted()) vidéos",
-              tileTitle: playlist.title,
+            LibraryPlaylistRow(
+              title: playlist.title, count: playlist.entries,
               selected: discovery.scope == .library && discovery.playlistID == playlist.id
             ) {
               discovery.scope = .library
@@ -179,8 +182,14 @@ struct DiscoverView: View {
             }
           }
         }
-      }.padding(.horizontal, 8).padding(.vertical, 12)
+      }.padding(.horizontal, 12).padding(.top, 24).padding(.bottom, 12)
     }
+  }
+
+  /// The listener's own genres when the server knows them, else a few starting points.
+  private var ideas: [String] {
+    let own = (discovery.home?.ideas ?? []).map { $0.prefix(1).uppercased() + $0.dropFirst() }
+    return own.isEmpty ? Self.ideas : Array(own.prefix(8))
   }
 
   private func showForYou() {
@@ -198,7 +207,7 @@ struct DiscoverView: View {
         ForEach(recent.prefix(4), id: \.self) { query in
           Chip(title: query, symbol: "clock.arrow.circlepath") { run(query) }
         }
-        ForEach(Self.ideas, id: \.self) { idea in
+        ForEach(ideas, id: \.self) { idea in
           Chip(title: idea) { run(idea) }
         }
       }
@@ -209,94 +218,93 @@ struct DiscoverView: View {
 
   private func main(wide: Bool) -> some View {
     let rows = self.rows
-    return VStack(alignment: .leading, spacing: 12) {
+    return VStack(alignment: .leading, spacing: 0) {
+      head(rows).padding(.bottom, 20)
       SearchField(
         prompt: "Un titre, un artiste, une envie…", text: $discovery.query,
         onSubmit: { submit() }, busy: discovery.searching
-      ).accessibilityLabel("Rechercher un morceau")
-      filters
-      if !wide { shortcuts }
+      ).accessibilityLabel("Rechercher un morceau").padding(.bottom, 12)
+      filters.padding(.bottom, 16)
+      if !wide { shortcuts.padding(.bottom, 12) }
       if !session.hasServer {
         Button("Continuer avec Google") { session.showOnboarding = true }
-          .buttonStyle(.borderedProminent)
+          .buttonStyle(LibraryPrimaryButtonStyle()).padding(.bottom, 12)
       }
-      header(rows)
       if discovery.searched { results(rows) } else { recommendations }
-    }.padding(.top, 12).padding(.horizontal, 16)
+    }.padding(.top, 28).padding(.horizontal, 32).padding(.bottom, 18)
   }
 
-  /// A small context block, as in Bibliothèque: tile, title, count.
-  private func header(_ rows: [DiscoveryRow]) -> some View {
+  /// Eyebrow, title and what the page is built from, as in Bibliothèque.
+  private func head(_ rows: [DiscoveryRow]) -> some View {
     let playlist =
       discovery.scope == .youtube
       ? nil : library.playlists.first { $0.id == discovery.playlistID }
-    let title =
-      discovery.searched
-      ? "« \(discovery.submittedQuery) »" : "Pour toi"
-    let detail: String =
-      discovery.searched
-      ? [
-        discovery.scope.title + (playlist.map { " · " + $0.title } ?? ""),
-        rows.isEmpty ? nil : "\(rows.count) résultat\(rows.count > 1 ? "s" : "")",
-      ].compactMap { $0 }.joined(separator: ", ")
-      : (discovery.home.map { "\($0.suggestions.count) titres selon tes écoutes" }
-        ?? "Selon tes écoutes")
-    return HStack(spacing: 12) {
-      PlaylistTile(
-        title: title, symbol: discovery.searched ? "magnifyingglass" : "sparkles", size: 56)
-      VStack(alignment: .leading, spacing: 2) {
-        Text(title).font(.system(size: 22, weight: .medium)).lineLimit(1).truncationMode(.tail)
-          .help(title).accessibilityAddTraits(.isHeader)
-        Text(detail).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
-      }
-      Spacer(minLength: 0)
+    return LibraryPageHead(
+      eyebrow: discovery.searched ? "Découvrir / Recherche" : "Découvrir / Pour toi",
+      title: discovery.searched ? "« \(discovery.submittedQuery) »" : "Pour toi"
+    ) {
       if discovery.searched {
-        IconButton(symbol: "xmark", help: "Revenir à Pour toi", action: showForYou)
+        Text(
+          [
+            discovery.scope.title + (playlist.map { " · " + $0.title } ?? ""),
+            rows.isEmpty ? nil : "\(rows.count) résultat\(rows.count > 1 ? "s" : "")",
+          ].compactMap { $0 }.joined(separator: ", "))
+      } else if let home = discovery.home, !home.basedOn.isEmpty {
+        Text("À partir de \(home.basedOn.prefix(6).joined(separator: " · "))").lineLimit(1)
+          .help("Tes artistes préférés, tes écoutes récentes et tes genres")
       } else {
-        if discovery.homeLoading { ProgressView().controlSize(.small) }
-        IconButton(symbol: "arrow.clockwise", help: "Actualiser les recommandations") {
-          discovery.loadHome(force: true)
-        }.disabled(discovery.homeLoading || !session.hasServer)
+        Text("Des artistes que tu ne connais pas encore, selon tes goûts.")
+      }
+    } trailing: {
+      if discovery.searched {
+        LibraryLinkButton(title: "Pour toi", symbol: "xmark", action: showForYou)
+      } else {
+        HStack(spacing: 8) {
+          if discovery.homeLoading { ProgressView().controlSize(.small) }
+          LibraryLinkButton(title: "D’autres propositions", symbol: "arrow.clockwise") {
+            discovery.loadHome(force: true)
+          }.disabled(discovery.homeLoading || !session.hasServer)
+            .help("Tire d’autres artistes voisins de tes goûts")
+        }
       }
     }
   }
 
-  /// Recommendations in the same rows as Bibliothèque; the reason is one hover away.
+  /// « Pour toi » as shelves: each says where it comes from, then its tracks.
   private var recommendations: some View {
-    ScrollView {
-      LazyVStack(spacing: 0) {
-        if let home = discovery.home {
-          ForEach(Array(home.suggestions.enumerated()), id: \.element.id) { index, suggestion in
-            SongRow(
-              index: index + 1, track: suggestion.video,
-              playing: dj.current?.id == suggestion.video.id,
-              onPlay: { dj.play(suggestion.video, source: .all) },
-              onEnqueue: { dj.enqueue(suggestion.video, source: .all) },
-              accessory: AnyView(
-                SaveButton(
-                  item: DiscoveryItem(video: suggestion.video, inLibrary: suggestion.inLibrary),
-                  source: .all)),
-              note: suggestion.reason,
-              onSave: saveAction(
-                DiscoveryItem(video: suggestion.video, inLibrary: suggestion.inLibrary)))
+    GeometryReader { geometry in
+      let compact = geometry.size.width < LibraryColumns.compactBelow
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 0) {
+          if let home = discovery.home {
+            ForEach(home.sections) { section in
+              DiscoveryShelf(section: section, compact: compact).padding(.bottom, 28)
+            }
+            if let notice = home.notice {
+              Text(notice).font(.callout).foregroundStyle(.secondary).padding(.vertical, 8)
+            }
+            if let empty = home.emptyReason {
+              EmptyState(symbol: "sparkles", message: empty)
+            }
+          } else if discovery.homeLoading {
+            HStack(spacing: 8) {
+              ProgressView().controlSize(.small)
+              Text("Je cherche des artistes proches de tes goûts…").font(.callout)
+                .foregroundStyle(.secondary)
+            }.frame(maxWidth: .infinity).padding(.top, 60)
           }
-          if let notice = home.notice {
-            Text(notice).font(.callout).foregroundStyle(.secondary).padding(.vertical, 8)
+          if !discovery.homeError.isEmpty {
+            Text(discovery.homeError).font(.callout).foregroundStyle(Color.sillage(.actionText))
+              .padding(.vertical, 8)
           }
-          if let empty = home.emptyReason {
-            EmptyState(symbol: "sparkles", message: empty)
+          if !session.hasServer {
+            EmptyState(
+              symbol: "person.crop.circle",
+              message: "Connecte-toi pour découvrir selon tes écoutes.")
           }
-        }
-        if !discovery.homeError.isEmpty {
-          Text(discovery.homeError).font(.callout).foregroundStyle(Color.sillage(.actionText))
-            .padding(.vertical, 8)
-        }
-        if !session.hasServer {
-          EmptyState(
-            symbol: "person.crop.circle", message: "Connecte-toi pour découvrir selon tes écoutes.")
-        }
-      }.padding(.bottom, 12)
-    }.padding(.horizontal, -8)
+        }.padding(.bottom, 12)
+      }.scrollIndicators(.never)
+    }
   }
 
   // MARK: Results
@@ -558,4 +566,74 @@ struct AnyLabelStyle: LabelStyle {
   private let make: (Configuration) -> AnyView
   init<S: LabelStyle>(_ style: S) { make = { AnyView(style.makeBody(configuration: $0)) } }
   func makeBody(configuration: Configuration) -> some View { make(configuration) }
+}
+
+/// A shelf of « Pour toi »: its title, why it is here, then its tracks in table rows.
+private struct DiscoveryShelf: View {
+  let section: DiscoverySection
+  let compact: Bool
+  var body: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
+        Text(section.title).font(.system(size: 15, weight: .semibold))
+          .accessibilityAddTraits(.isHeader)
+        Text(String(format: "%02d", section.items.count))
+          .font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary)
+        Spacer()
+        MonoLabel(source, uppercase: false)
+      }.padding(.bottom, 4)
+      if !section.reason.isEmpty {
+        Text(section.reason).font(.system(size: 12)).foregroundStyle(.secondary)
+          .padding(.bottom, 10)
+      }
+      SillageRule()
+      ForEach(section.items) { suggestion in
+        DiscoverySuggestionRow(suggestion: suggestion, compact: compact)
+      }
+    }
+  }
+  private var source: String {
+    switch section.kind {
+    case "neighbours": "Voisins d’écoute · ListenBrainz"
+    case "genre": "Genre de ta bibliothèque"
+    default: "Tes artistes"
+    }
+  }
+}
+
+/// A suggested track: song and artist, why it is suggested, duration, then queue and keep.
+private struct DiscoverySuggestionRow: View {
+  let suggestion: DiscoverySuggestion
+  let compact: Bool
+  @EnvironmentObject var dj: DJModel
+  @State private var hovering = false
+  var body: some View {
+    let track = suggestion.video
+    let name = TrackTitle(track)
+    let playing = dj.current?.id == track.id
+    HStack(spacing: 12) {
+      TableSongCell(
+        track: track, name: name, subtitle: suggestion.artist ?? name.artist, playing: playing,
+        onPlay: play)
+      if !compact {
+        Text(suggestion.reason).font(.system(size: 11)).foregroundStyle(.secondary)
+          .lineLimit(2).frame(width: 240, alignment: .leading)
+      }
+      Text(track.durationSeconds.map(clock) ?? "").font(.system(size: 11, design: .monospaced))
+        .foregroundStyle(.secondary).frame(width: LibraryColumns.duration, alignment: .trailing)
+      HStack(spacing: 2) {
+        IconButton(symbol: "text.badge.plus", help: "Lire ensuite") {
+          dj.enqueue(track, source: .all)
+        }.opacity(hovering ? 1 : 0)
+        SaveButton(item: suggestion.item, source: .all)
+      }.frame(width: 56, alignment: .trailing)
+    }
+    .modifier(
+      TableRowFrame(
+        track: track, name: name, playing: playing, onPlay: play,
+        onEnqueue: { dj.enqueue(track, source: .all) }, hovering: $hovering)
+    )
+    .help(suggestion.reason)
+  }
+  private func play() { dj.play(suggestion.video, source: .all) }
 }

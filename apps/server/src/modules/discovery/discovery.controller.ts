@@ -19,8 +19,10 @@ import {
   discoveryPageBody,
   discoverySavedBody,
 } from "./discovery.schemas.ts";
-import { discoveryHome } from "./discovery-home.service.ts";
-import { recentListening } from "./discovery.repository.ts";
+import { listenBrainz, type ListenBrainz } from "../../integrations/listenbrainz/index.ts";
+import { tasteService } from "../taste/index.ts";
+import { discoveryHome, listenerProfile } from "./discovery-home.service.ts";
+import { historySize, knownVideos, recentListening } from "./discovery.repository.ts";
 import { Discovery, DiscoveryError, discoveryFor } from "./discovery.service.ts";
 
 const TAG = "Découvrir";
@@ -34,11 +36,12 @@ const homeRoute = createRoute({
   ...operation({
     operationId: "getDiscoveryHome",
     tag: TAG,
-    summary: "Suggestions selon l’historique",
+    summary: "Suggestions selon le goût et l’historique",
     description:
-      "Relit les 80 dernières écoutes du compte. Parmi les 20 écoutes finished/replaced les plus récentes, extrait au plus 3 pistes artiste/genre MusicBrainz. Cherche ces pistes, écarte les vidéos déjà possédées ou récemment écoutées et entrelace au plus 12 suggestions. Heuristique sans appel Gemini, pas apprentissage de goûts collaboratif. Pas d’historique : emptyReason et suggestions vides.",
+      "Rayons « Pour toi » : voisins d’écoute ListenBrainz des artistes préférés (Mon goût) et récents, hors de tout artiste de la bibliothèque et des écoutes ; genres de la bibliothèque sans les artistes habituels ; nouveaux titres des artistes récents. Écarte les vidéos possédées ou écoutées. Sans appel IA. Gardé 20 minutes par compte ; refresh=true tire d’autres voisins. ideas : genres de la bibliothèque, pour les envies.",
     effect: "provider",
   }),
+  request: { query: z.object({ refresh: z.enum(["true", "false"]).optional() }) },
   responses: {
     ...commonErrors(),
     200: jsonResponse(discoveryHomeBody, "Réponse réussie"),
@@ -97,27 +100,47 @@ const asTrack = <T extends Video>(video: T) => ({
 });
 
 /** Search and save YouTube music outside the library, under /v1/discover. */
+const HOME_TTL = 20 * 60 * 1000;
+
 export function discoveryRoutes(
   db: Database,
   service: Discovery = discoveryFor(db),
+  neighbours: Pick<ListenBrainz, "similar"> = listenBrainz,
 ) {
   const app = featureRouter<ApiEnvironment>("Recherche ou vidéo invalide.");
+  // One page per account, kept briefly: a home costs a few dozen catalog searches.
+  const homes = new Map<string, { until: number; plays: number; body: unknown }>();
   app.openapi(homeRoute, async (c) => {
+    const user = c.get("userId");
+    const refresh = c.req.valid("query").refresh === "true";
+    // A deleted history makes a kept page stale; new plays wait for the next one.
+    const plays = await historySize(db.orm, user);
+    const kept = homes.get(user);
+    if (!refresh && kept && kept.until > Date.now() && plays >= kept.plays)
+      return c.json(kept.body as never, 200);
     const home = await discoveryHome(
-      (user) => recentListening(db.orm, user),
-      c.get("userId"),
-      service,
-    );
-    return c.json(
       {
-        ...home,
-        suggestions: home.suggestions.map((item) => ({
-          ...item,
-          video: asTrack(item.video),
-        })),
+        history: (owner) => recentListening(db.orm, owner),
+        profile: async (owner) =>
+          listenerProfile(
+            await knownVideos(db.orm, owner),
+            (await tasteService(db).overview(owner)).artists,
+          ),
+        similar: (mbid) => neighbours.similar(mbid),
+        search: (owner, query) => service.search(owner, query),
       },
-      200,
+      user,
+      { rotate: refresh },
     );
+    const track = <T extends { video: Video }>(item: T) => ({ ...item, video: asTrack(item.video) });
+    const body = {
+      ...home,
+      sections: home.sections.map((section) => ({ ...section, items: section.items.map(track) })),
+      suggestions: home.suggestions.map(track),
+    };
+    if (homes.size >= 200) homes.delete(homes.keys().next().value!);
+    homes.set(user, { until: Date.now() + HOME_TTL, plays, body });
+    return c.json(body, 200);
   });
   app.openapi(searchRoute, async (c) => {
     const input = c.req.valid("json");

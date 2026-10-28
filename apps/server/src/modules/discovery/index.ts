@@ -5,7 +5,12 @@ export {
   discoveryFor,
   type DiscoverySource,
 } from "./discovery.service.ts";
-export { discoveryHome, discoverySeeds } from "./discovery-home.service.ts";
+export {
+  discoveryHome,
+  discoverySeeds,
+  HOME_RULES,
+  listenerProfile,
+} from "./discovery-home.service.ts";
 export {
   discoveryAddInput,
   discoveryInput,

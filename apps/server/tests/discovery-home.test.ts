@@ -1,6 +1,11 @@
 import { expect, it, vi } from "vitest";
-import { discoveryHome, discoverySeeds } from "../src/modules/discovery/index.ts";
+import {
+  discoveryHome,
+  discoverySeeds,
+  listenerProfile,
+} from "../src/modules/discovery/index.ts";
 import { required } from "./support/required.ts";
+
 const played = {
   video_id: "played00001",
   title: "Known Song",
@@ -9,109 +14,151 @@ const played = {
   music_metadata: null,
 };
 const history = [played];
-const video = (id: string, title: string) => ({
+const video = (id: string, title: string, channel = "Artist") => ({
   id,
   title,
-  channel: "Artist",
+  channel,
   durationSeconds: 200,
   thumbnailUrl: "https://i.ytimg.com/test",
   url: `https://youtube.com/watch?v=${id}`,
 });
+const found = (...items: { id: string; title: string; channel?: string; owned?: boolean }[]) => ({
+  results: items.map((item) => ({
+    video: video(item.id, item.title, item.channel),
+    inLibrary: item.owned ?? false,
+  })),
+  nextPageToken: null,
+});
+const matched = (artist: string, id: string, genres: string[] = []) => ({
+  status: "matched" as const,
+  source: "MusicBrainz" as const,
+  checkedAt: "2026-10-28T00:00:00Z",
+  searchText: artist,
+  artists: [{ id, name: artist, role: "primary" as const }],
+  albums: [],
+  genres,
+  artistGenres: [],
+});
+const neighbour = (name: string, mbid: string) => ({ name, mbid, score: 100 });
+/** A listener who loves Maribou State and owns a Bonobo track. */
+const profile = listenerProfile(
+  [
+    { title: "Steal", channel: "Maribou State", musicMetadata: matched("Maribou State", "ms", ["electronic"]), plays: 9 },
+    { title: "Kerala", channel: "Bonobo", musicMetadata: matched("Bonobo", "bo", ["electronic"]), plays: 0 },
+    { title: "Rap song", channel: "Rapper", musicMetadata: matched("Rapper", "ra", ["hip hop"]), plays: 1 },
+  ],
+  [{ name: "Maribou State" }],
+);
+const sources = (overrides: Partial<Parameters<typeof discoveryHome>[0]> = {}) => ({
+  history: vi.fn().mockResolvedValue([]),
+  profile: vi.fn().mockResolvedValue(profile),
+  similar: vi.fn().mockResolvedValue([
+    neighbour("Bonobo", "bo"),
+    neighbour("Kiasmos", "ki"),
+    neighbour("Khruangbin", "kh"),
+  ]),
+  search: vi.fn().mockImplementation(async (_user: string, query: string) =>
+    query === "Kiasmos"
+      ? found({ id: "kiasmos0001", title: "Kiasmos - Looped", channel: "Erased Tapes" }, { id: "wrongartist", title: "Someone - Else" })
+      : query === "Khruangbin"
+        ? found({ id: "khruang0001", title: "Maria También", channel: "Khruangbin" }, { id: "khruang0002", title: "Owned", channel: "Khruangbin", owned: true })
+        : found(),
+  ),
+  ...overrides,
+});
+
+it("reads the listener's artists, IDs and genres weighted by plays", () => {
+  expect(profile.artists).toEqual([{ name: "Maribou State", mbid: "ms" }]);
+  expect(profile.knownMbids).toEqual(new Set(["ms", "bo", "ra"]));
+  expect(profile.genres).toEqual(["electronic", "hip hop"]);
+});
+
 it("uses recent positive history and ignores skips", () => {
   expect(
-    discoverySeeds([
-      ...history,
-      { ...played, channel: "Skipped", outcome: "skipped" },
-    ]),
-  ).toEqual([
-    {
-      query: "Artist",
-      reason: "Parce que tu as écouté Artist",
-      kind: "artist",
-    },
-  ]);
+    discoverySeeds([...history, { ...played, channel: "Skipped", outcome: "skipped" }]),
+  ).toEqual([{ query: "Artist", reason: "Parce que tu as écouté Artist", kind: "artist" }]);
 });
-it("queries only this account, excludes heard titles and owned tracks and labels its recommendation", async () => {
-  const loadHistory = vi.fn().mockResolvedValue(history);
-  const search = vi.fn().mockResolvedValue({
-    results: [
-      { video: video("played00001", "Known Song"), inLibrary: false },
-      {
-        video: video("alternate01", "Known Song (Official Video)"),
-        inLibrary: false,
-      },
-      { video: video("owned000001", "Owned"), inLibrary: true },
-      { video: video("newtrack001", "New song"), inLibrary: false },
-    ],
-  });
-  const result = await discoveryHome(
-    loadHistory,
-    "alice",
-    { search },
-  );
-  expect(loadHistory).toHaveBeenCalledWith("alice");
-  expect(search).toHaveBeenCalledWith("alice", "Artist official music");
-  expect(result.suggestions.map((r) => r.video.id)).toEqual(["newtrack001"]);
-  expect(required(result.suggestions[0]).reason).toContain("Artist");
+
+it("proposes unknown neighbours of a favourite artist, by those artists only, never owned", async () => {
+  const given = sources();
+  const result = await discoveryHome(given, "alice");
+  expect(given.similar).toHaveBeenCalledWith("ms");
+  // Bonobo is in the library: never proposed as a discovery.
+  expect(given.search).not.toHaveBeenCalledWith("alice", "Bonobo");
+  const around = required(result.sections.find((section) => section.kind === "neighbours"));
+  expect(around.title).toBe("Autour de Maribou State");
+  expect(around.items.map((item) => item.video.id)).toEqual(["kiasmos0001", "khruang0001"]);
+  expect(required(around.items[0]).reason).toBe("Kiasmos, proche de Maribou State");
+  expect(result.suggestions).toHaveLength(2);
+  expect(result.ideas).toEqual(["electronic", "hip hop"]);
 });
-it("does not invent personal recommendations for an empty account, and does not cache deleted history", async () => {
-  const loadHistory = vi.fn().mockResolvedValue([]);
-  const search = vi.fn();
-  const result = await discoveryHome(loadHistory, "bob", {
-    search,
+
+it("explores the listener's genres without their usual artists", async () => {
+  const given = sources({
+    similar: vi.fn().mockResolvedValue([]),
+    search: vi.fn().mockImplementation(async (_user: string, query: string) =>
+      query === "electronic music"
+        ? found(
+            { id: "known000001", title: "Maribou State - Turnmills", channel: "Maribou State" },
+            { id: "unknown0001", title: "Caribou - Can't Do Without You", channel: "Caribou" },
+          )
+        : found(),
+    ),
   });
+  const result = await discoveryHome(given, "alice");
+  const genre = required(result.sections.find((section) => section.kind === "genre"));
+  expect(genre.title).toBe("Côté electronic");
+  expect(genre.items.map((item) => item.video.id)).toEqual(["unknown0001"]);
+});
+
+it("does not invent personal recommendations for an empty account", async () => {
+  const given = sources({
+    profile: vi.fn().mockResolvedValue(listenerProfile([], [])),
+  });
+  const result = await discoveryHome(given, "bob");
   expect(result.suggestions).toEqual([]);
-  expect(search).not.toHaveBeenCalled();
+  expect(given.search).not.toHaveBeenCalled();
   expect(result.emptyReason).toContain("Écoute quelques morceaux");
 });
-it("keeps available suggestions when another seed fails", async () => {
-  const loadHistory = vi.fn().mockResolvedValue([...history, { ...history[0], channel: "Second" }],
-  );
-  const search = vi
-    .fn()
-    .mockResolvedValueOnce({
-      results: [{ video: video("newtrack001", "New"), inLibrary: false }],
-    })
-    .mockRejectedValueOnce(new Error("provider failure"));
-  const result = await discoveryHome(
-    loadHistory,
-    "alice",
-    { search },
-  );
-  expect(result.suggestions).toHaveLength(1);
+
+it("keeps what was found when a neighbour source or a search fails", async () => {
+  const given = sources({
+    search: vi.fn().mockImplementation(async (_user: string, query: string) => {
+      if (query === "Kiasmos") throw new Error("provider failure");
+      return query === "Khruangbin"
+        ? found({ id: "khruang0001", title: "Maria También", channel: "Khruangbin" })
+        : found();
+    }),
+  });
+  const result = await discoveryHome(given, "alice");
+  expect(result.suggestions.map((item) => item.video.id)).toEqual(["khruang0001"]);
   expect(result.notice).toContain("Une recherche");
 });
 
+it("draws other neighbours on refresh", async () => {
+  const many = Array.from({ length: 8 }, (_, index) => neighbour(`New ${index}`, `n${index}`));
+  const search = vi.fn().mockResolvedValue(found());
+  const given = sources({ similar: vi.fn().mockResolvedValue(many), search });
+  await discoveryHome(given, "alice", { rotate: true, random: () => 0 });
+  const queried: string[] = search.mock.calls.map((call) => call[1]);
+  expect(queried.filter((query) => query.startsWith("New "))).toHaveLength(3);
+  expect(queried).not.toEqual(expect.arrayContaining(["New 0", "New 1", "New 2"]));
+});
+
 it("distinguishes an artist credit from a homonymous song title", async () => {
-  const loadHistory = vi.fn().mockResolvedValue([{ ...history[0], channel: "The Alchemist" }]);
-  const search = vi.fn().mockResolvedValue({
-    results: [
-      {
-        video: {
-          ...video(
-            "wrong000001",
-            'Blue Öyster Cult - "The Alchemist" - Official Music Video',
-          ),
-          channel: "Blue Öyster Cult",
-        },
-        inLibrary: false,
-      },
-      {
-        video: {
-          ...video(
-            "right000001",
-            "Freddie Gibbs & The Alchemist - A Thousand Mountains",
-          ),
-          channel: "Freddie Gibbs",
-        },
-        inLibrary: false,
-      },
-    ],
+  const given = sources({
+    history: vi.fn().mockResolvedValue([{ ...played, channel: "The Alchemist" }]),
+    similar: vi.fn().mockResolvedValue([]),
+    search: vi.fn().mockImplementation(async (_user: string, query: string) =>
+      query === "The Alchemist official music"
+        ? found(
+            { id: "wrong000001", title: 'Blue Öyster Cult - "The Alchemist" - Official Music Video', channel: "Blue Öyster Cult" },
+            { id: "right000001", title: "Freddie Gibbs & The Alchemist - A Thousand Mountains", channel: "Freddie Gibbs" },
+          )
+        : found(),
+    ),
   });
-  const result = await discoveryHome(
-    loadHistory,
-    "alice",
-    { search },
-  );
-  expect(result.suggestions.map((r) => r.video.id)).toEqual(["right000001"]);
+  const result = await discoveryHome(given, "alice");
+  const own = required(result.sections.find((section) => section.kind === "artists"));
+  expect(own.items.map((item) => item.video.id)).toEqual(["right000001"]);
 });
