@@ -2,13 +2,27 @@
 
 État relu dans le code le 28 octobre 2026. Le serveur sélectionne les contenus ; le Mac affiche les rayons, lance la lecture ou ajoute à la file. L’accueil « Pour toi » et la recherche explicite sont deux circuits distincts.
 
+## Ce qu’est Découvrir
+
+Un onglet consacré à ce que tu n’as jamais écouté. La barre latérale propose **Pour toi**, **Tes scènes** (tes genres précis les plus écoutés : digital cumbia, alternative R&B…) et **Tes artistes** (tes favoris puis les plus écoutés). Chaque rayon affiche ses artistes : un clic ouvre la page de l’artiste, d’où l’on repart vers ses voisins. « Retour » ramène au lieu précédent. Chercher dans tes playlists relève de Bibliothèque : la recherche de Découvrir ne montre que ce qui n’est pas chez toi.
+
+Les titres d’un artiste viennent de **YouTube Music** (titres crédités à l’artiste, sans mix ni reprise), puis l’API YouTube vérifie chaque vidéo. Ils sont gardés une journée. SearXNG reste réservé à la recherche et au DJ.
+
+## Une scène
+
+Les artistes que MusicBrainz range dans ce genre et que tu n’as pas, avec leurs titres.
+
+## Un artiste
+
+Ses titres absents de ta bibliothèque, ses voisins d’écoute ListenBrainz, les artistes avec qui il a enregistré (MusicBrainz), puis un pas plus loin.
+
 ## Quand tu ouvres Découvrir
 
 « Pour toi » cherche d’abord **des artistes que tu ne connais pas encore**, puis des titres neufs de tes propres artistes.
 
 1. **Ton profil.** Le serveur relit toutes les vidéos de ta bibliothèque et de ton historique, avec leur nombre d’écoutes : artistes connus (nom et identifiant MusicBrainz), genres pondérés par les écoutes. Les points de départ sont les artistes de Mon goût, puis tes artistes les plus écoutés.
 2. **Les voisins.** Pour chaque point de départ, il demande à ListenBrainz les artistes écoutés dans les mêmes sessions, jusqu’à remplir 6 rayons. Un artiste sans identifiant MusicBrainz est cherché par son nom (6 recherches par page au plus, mises en cache 30 jours). Beaucoup d’artistes confidentiels n’ont aucun voisin : ils sont passés. Tout artiste déjà présent dans ta bibliothèque ou ton historique est écarté, par identifiant comme par nom.
-3. **Les titres.** Chaque voisin est cherché sur YouTube (SearXNG) ; seuls les titres crédités à cet artiste sont gardés (une chaîne « X - Topic » d’un autre artiste ou un simple titre homonyme ne comptent pas), sans mix ni compilation, une version par chanson, la version studio avant les lives. Deux artistes par rayon, trois titres par artiste ; un voisin sans titre utilisable est remplacé.
+3. **Les titres.** Chaque voisin est cherché sur YouTube Music ; seuls les titres crédités à cet artiste sont gardés (une chaîne « X - Topic » d’un autre artiste ou un simple titre homonyme ne comptent pas), sans mix ni compilation, une version par chanson, la version studio avant les lives. Deux artistes par rayon, trois titres par artiste ; un voisin sans titre utilisable est remplacé.
 4. **Artistes confidentiels.** Quand ListenBrainz ne connaît aucun voisin inconnu d’un artiste, Sillage regarde dans MusicBrainz, données libres et sourcées : d’abord les artistes qui ont enregistré avec lui (rayon « Avec X », par exemple Jäde ou Josman pour Squidji), sinon les artistes de son genre le plus précis (rayon « Scène digital cumbia » pour Acid Coco). Les genres trop larges (pop, hip hop…) ne font pas une scène. Au plus 8 requêtes MusicBrainz nouvelles par page ; les réponses sont gardées 30 jours. Wikidata a été évalué : trop peu renseigné pour ces artistes. LB Radio demande désormais un jeton ListenBrainz.
 5. **Plus loin.** Les voisins des premières découvertes, pour sortir encore un peu de tes habitudes.
 6. **Tes artistes.** Un dernier rayon propose des titres de tes artistes récents absents de ta bibliothèque.
@@ -17,9 +31,7 @@ YouTube bride le moteur de recherche après une rafale, et la recherche comme le
 
 « D’autres propositions » tire d’autres voisins dans une réserve de 10. Le serveur garde la page 20 minutes par compte ; ListenBrainz est mis en cache une journée. Ce circuit n’appelle aucun modèle d’IA. Sans écoute ni bibliothèque, l’accueil invite à écouter quelques morceaux.
 
-La barre latérale rappelle tes recherches récentes, propose tes genres les plus écoutés comme « envies » et permet de chercher dans une playlist.
-
-## Quand tu saisis une recherche
+## La recherche (aussi utilisée par le DJ)
 
 | Source choisie | Ce que fait le Mac |
 | --- | --- |

@@ -108,6 +108,14 @@ beforeEach(async () => {
               .map(video),
           });
       }
+      if (address.hostname === "music.youtube.com") {
+        const credit = { text: "Real artist", navigationEndpoint: { browseEndpoint: { browseEndpointContextSupportedConfigs: { browseEndpointContextMusicConfig: { pageType: "MUSIC_PAGE_TYPE_ARTIST" } } } } };
+        const song = (videoId: string, title: string) => ({ musicResponsiveListItemRenderer: { playlistItemData: { videoId }, flexColumns: [
+          { musicResponsiveListItemFlexColumnRenderer: { text: { runs: [{ text: title }] } } },
+          { musicResponsiveListItemFlexColumnRenderer: { text: { runs: [credit, { text: " • 3:00" }] } } },
+        ] } });
+        return Response.json({ contents: [song("newtrack001", "First new"), song("newtrack002", "Second new")] });
+      }
       if (address.pathname.endsWith(":generateContent")) {
         const body = JSON.parse(String(init?.body));
         if (!body.tools) return status === 200 ? googleResponse([{text:"OK"}])

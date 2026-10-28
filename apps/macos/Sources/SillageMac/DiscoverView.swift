@@ -1,25 +1,19 @@
 import SillageKit
 import SwiftUI
 
-/// One search across the account's playlists and YouTube (Sillage « Atelier de lumière »).
-/// The bar searches while typing; results read as one list with a preview on the right,
-/// which folds before the list gets too narrow. Recommendations keep their own grid.
-/// The DJ and the queue stay one click away in a panel that opens on demand.
+/// Découvrir, only what is new to the listener: « Pour toi », their scenes and the world
+/// around an artist, each made of artists they have never heard. From any shelf, an artist
+/// opens its own page: the listener wanders freely, with « Retour » to step back. The search
+/// looks only outside the library. The DJ and the queue stay one click away.
 struct DiscoverView: View {
   let openDJ: () -> Void
   @EnvironmentObject var discovery: DiscoveryModel
-  @EnvironmentObject var library: LibraryModel
   @EnvironmentObject var session: Session
   @EnvironmentObject var dj: DJModel
   @State private var typing: Task<Void, Never>?
   @State private var selectedID: String?
   @AppStorage("discoverDJPanelCollapsed") private var djCollapsed = true
   @FocusState private var listFocused: Bool
-  @AppStorage("discover.recent") private var recentText = ""
-  private static let ideas = [
-    "Rap français", "Afrobeat", "Jazz doux", "Années 80", "Lo-fi pour travailler",
-  ]
-  private var recent: [String] { recentText.split(separator: "\n").map(String.init) }
 
   var body: some View {
     VStack(spacing: 0) {
@@ -35,7 +29,7 @@ struct DiscoverView: View {
             .sillageSurface(.reading)
           if !djCollapsed {
             SillageRule(vertical: true)
-            DJView(model: dj, panelOnly: true, source: discovery.scope)
+            DJView(model: dj, panelOnly: true, source: .all)
               .frame(width: 340).sillageSurface(.sidebar)
               .transition(.move(edge: .trailing).combined(with: .opacity))
           }
@@ -54,58 +48,12 @@ struct DiscoverView: View {
     }
     .onChange(of: discovery.query) { _, text in searchWhileTyping(text) }
     .onChange(of: discovery.submittedQuery) { _, _ in selectedID = nil }
-    .onChange(of: discovery.scope) { _, _ in
-      if discovery.searched { discovery.search() }
-    }
-    .onChange(of: discovery.playlistID) { _, _ in
-      if discovery.searched && discovery.scope != .youtube { discovery.search() }
-    }
   }
 
   // MARK: Search
 
-  private var filters: some View {
-    HStack(spacing: 8) {
-      ForEach(DiscoveryScope.allCases) { scope in
-        Chip(title: scope.title, selected: discovery.scope == scope) { discovery.scope = scope }
-      }
-      Spacer()
-      Button {
-        withAnimation(.easeOut(duration: 0.2)) { djCollapsed.toggle() }
-      } label: {
-        Label("DJ et file", systemImage: "sidebar.right")
-      }.buttonStyle(SillageChipStyle(selected: !djCollapsed))
-        .help(djCollapsed ? "Ouvrir le DJ et la file" : "Replier le DJ et la file")
-        .accessibilityValue(djCollapsed ? "Replié" : "Ouvert")
-      if discovery.scope != .youtube && !library.playlists.isEmpty {
-        Menu {
-          Button("Toutes mes playlists") { discovery.playlistID = "" }
-          Divider()
-          ForEach(library.playlists) { playlist in
-            Button(playlist.title) { discovery.playlistID = playlist.id }
-          }
-        } label: {
-          HStack(spacing: 4) {
-            Text(
-              library.playlists.first { $0.id == discovery.playlistID }?.title
-                ?? "Toutes mes playlists"
-            ).lineLimit(1)
-            Image(systemName: "chevron.down").imageScale(.small)
-          }.font(.callout).foregroundStyle(.secondary)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(
-              "Playlist : "
-                + (library.playlists.first { $0.id == discovery.playlistID }?.title
-                  ?? "Toutes mes playlists"))
-        }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
-      }
-    }
-  }
-
-  /// Only a deliberate search (Return or a chip) is remembered, never a pause while typing.
   private func submit() {
     typing?.cancel()
-    remember(discovery.query.trimmingCharacters(in: .whitespacesAndNewlines))
     discovery.search()
   }
 
@@ -125,60 +73,36 @@ struct DiscoverView: View {
     }
   }
 
-  private func remember(_ query: String) {
-    guard !query.isEmpty else { return }
-    let list = [query] + recent.filter { $0.caseInsensitiveCompare(query) != .orderedSame }
-    recentText = list.prefix(8).joined(separator: "\n")
-  }
-
-  private func run(_ query: String) {
-    discovery.query = query
-    submit()
-  }
-
   // MARK: Sidebar (same structure as Bibliothèque)
+
+  /// What the listener can explore: their scenes and their artists, known by the server.
+  private var scenes: [String] { (discovery.page ?? discovery.home)?.scenes ?? [] }
+  private var artists: [String] { (discovery.page ?? discovery.home)?.artists ?? [] }
 
   private var sidebar: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
         MonoLabel("Découvrir").padding(.horizontal, 12).padding(.bottom, 12)
-        LibrarySideRow(title: "Pour toi", symbol: "sparkles", selected: !discovery.searched) {
-          showForYou()
+        LibrarySideRow(title: "Pour toi", symbol: "sparkles", selected: isHere(.forYou)) {
+          discovery.open(.forYou)
         }
-        if !recent.isEmpty {
+        if !scenes.isEmpty {
           SillageRule().padding(.horizontal, 12).padding(.vertical, 20)
-          HStack {
-            MonoLabel("Récentes")
-            Spacer()
-            Button("Effacer") { recentText = "" }.buttonStyle(.plain).font(.system(size: 11))
-              .foregroundStyle(.secondary)
-          }.padding(.horizontal, 12).padding(.bottom, 8)
-          ForEach(recent.prefix(5), id: \.self) { query in
+          MonoLabel("Tes scènes").padding(.horizontal, 12).padding(.bottom, 8)
+            .help("Tes genres les plus écoutés : des artistes de ces scènes que tu n’as pas encore")
+          ForEach(scenes, id: \.self) { genre in
             LibrarySideRow(
-              title: query, symbol: "clock.arrow.circlepath",
-              selected: discovery.searched && discovery.submittedQuery == query
-            ) { run(query) }
+              title: capitalized(genre), symbol: "waveform", selected: isHere(.scene(genre))
+            ) { discovery.open(.scene(genre)) }
           }
         }
-        SillageRule().padding(.horizontal, 12).padding(.vertical, 20)
-        MonoLabel("Tes envies").padding(.horizontal, 12).padding(.bottom, 8)
-          .help("Les genres les plus présents dans ta bibliothèque et tes écoutes")
-        ForEach(ideas, id: \.self) { idea in
-          LibrarySideRow(
-            title: idea, symbol: "music.note",
-            selected: discovery.searched && discovery.submittedQuery == idea
-          ) { run(idea) }
-        }
-        if !library.playlists.isEmpty {
+        if !artists.isEmpty {
           SillageRule().padding(.horizontal, 12).padding(.vertical, 20)
-          MonoLabel("Dans une playlist").padding(.horizontal, 12).padding(.bottom, 8)
-          ForEach(library.playlists) { playlist in
-            LibraryPlaylistRow(
-              title: playlist.title, count: playlist.entries,
-              selected: discovery.scope == .library && discovery.playlistID == playlist.id
-            ) {
-              discovery.scope = .library
-              discovery.playlistID = playlist.id
+          MonoLabel("Tes artistes").padding(.horizontal, 12).padding(.bottom, 8)
+            .help("Pars d’un artiste que tu aimes : ses voisins et ses collaborations")
+          ForEach(artists, id: \.self) { name in
+            LibrarySideRow(title: name, symbol: "person", selected: isHere(.artist(name))) {
+              discovery.open(.artist(name))
             }
           }
         }
@@ -186,29 +110,21 @@ struct DiscoverView: View {
     }
   }
 
-  /// The listener's own genres when the server knows them, else a few starting points.
-  private var ideas: [String] {
-    let own = (discovery.home?.ideas ?? []).map { $0.prefix(1).uppercased() + $0.dropFirst() }
-    return own.isEmpty ? Self.ideas : Array(own.prefix(8))
+  private func isHere(_ place: DiscoveryPlace) -> Bool {
+    !discovery.searched && discovery.place == place
   }
 
-  private func showForYou() {
-    discovery.query = ""
-    discovery.clearResults()
-  }
-
-  /// When the sidebar is hidden (narrow window or DJ panel open), its shortcuts move here.
+  /// When the sidebar is hidden (narrow window or DJ panel open), its places move here.
   private var shortcuts: some View {
     ScrollView(.horizontal, showsIndicators: false) {
       HStack(spacing: 8) {
-        if discovery.searched {
-          Chip(title: "Pour toi", symbol: "sparkles", action: showForYou)
+        Chip(title: "Pour toi", symbol: "sparkles", selected: isHere(.forYou)) {
+          discovery.open(.forYou)
         }
-        ForEach(recent.prefix(4), id: \.self) { query in
-          Chip(title: query, symbol: "clock.arrow.circlepath") { run(query) }
-        }
-        ForEach(ideas, id: \.self) { idea in
-          Chip(title: idea) { run(idea) }
+        ForEach(scenes.prefix(6), id: \.self) { genre in
+          Chip(title: capitalized(genre), selected: isHere(.scene(genre))) {
+            discovery.open(.scene(genre))
+          }
         }
       }
     }
@@ -220,81 +136,123 @@ struct DiscoverView: View {
     let rows = self.rows
     return VStack(alignment: .leading, spacing: 0) {
       head(rows).padding(.bottom, 20)
-      SearchField(
-        prompt: "Un titre, un artiste, une envie…", text: $discovery.query,
-        onSubmit: { submit() }, busy: discovery.searching
-      ).accessibilityLabel("Rechercher un morceau").padding(.bottom, 12)
-      filters.padding(.bottom, 16)
+      HStack(spacing: 8) {
+        SearchField(
+          prompt: "Un artiste, un titre que tu n’as pas encore…", text: $discovery.query,
+          onSubmit: { submit() }, busy: discovery.searching
+        ).accessibilityLabel("Chercher de la musique nouvelle")
+        Button {
+          withAnimation(.easeOut(duration: 0.2)) { djCollapsed.toggle() }
+        } label: {
+          Label("DJ et file", systemImage: "sidebar.right")
+        }.buttonStyle(SillageChipStyle(selected: !djCollapsed))
+          .help(djCollapsed ? "Ouvrir le DJ et la file" : "Replier le DJ et la file")
+          .accessibilityValue(djCollapsed ? "Replié" : "Ouvert")
+      }.padding(.bottom, 16)
       if !wide { shortcuts.padding(.bottom, 12) }
       if !session.hasServer {
         Button("Continuer avec Google") { session.showOnboarding = true }
           .buttonStyle(LibraryPrimaryButtonStyle()).padding(.bottom, 12)
       }
-      if discovery.searched { results(rows) } else { recommendations }
+      if discovery.searched { results(rows) } else { shelves }
     }.padding(.top, 28).padding(.horizontal, 32).padding(.bottom, 18)
   }
 
   /// Eyebrow, title and what the page is built from, as in Bibliothèque.
   private func head(_ rows: [DiscoveryRow]) -> some View {
-    let playlist =
-      discovery.scope == .youtube
-      ? nil : library.playlists.first { $0.id == discovery.playlistID }
-    return LibraryPageHead(
-      eyebrow: discovery.searched ? "Découvrir / Recherche" : "Découvrir / Pour toi",
-      title: discovery.searched ? "« \(discovery.submittedQuery) »" : "Pour toi"
-    ) {
+    LibraryPageHead(eyebrow: eyebrow, title: title) {
       if discovery.searched {
         Text(
-          [
-            discovery.scope.title + (playlist.map { " · " + $0.title } ?? ""),
-            rows.isEmpty ? nil : "\(rows.count) résultat\(rows.count > 1 ? "s" : "")",
-          ].compactMap { $0 }.joined(separator: ", "))
-      } else if let home = discovery.home, !home.basedOn.isEmpty {
-        Text("À partir de \(home.basedOn.prefix(6).joined(separator: " · "))").lineLimit(1)
-          .help("Tes artistes préférés, tes écoutes récentes et tes genres")
+          rows.isEmpty
+            ? "Hors de ta bibliothèque"
+            : "\(rows.count) résultat\(rows.count > 1 ? "s" : ""), hors de ta bibliothèque")
       } else {
-        Text("Des artistes que tu ne connais pas encore, selon tes goûts.")
+        switch discovery.place {
+        case .forYou:
+          if let home = discovery.home, !home.basedOn.isEmpty {
+            Text("À partir de \(home.basedOn.prefix(6).joined(separator: " · "))").lineLimit(1)
+              .help("Tes artistes préférés et tes écoutes")
+          } else {
+            Text("Des artistes que tu ne connais pas encore, selon tes goûts.")
+          }
+        case .scene:
+          Text("Des artistes de cette scène que tu n’as jamais écoutés.")
+        case .artist:
+          Text("Ses titres, ses voisins d’écoute et ses collaborations.")
+        }
       }
     } trailing: {
-      if discovery.searched {
-        LibraryLinkButton(title: "Pour toi", symbol: "xmark", action: showForYou)
-      } else {
-        HStack(spacing: 8) {
-          if discovery.homeLoading { ProgressView().controlSize(.small) }
+      HStack(spacing: 8) {
+        if discovery.searched {
+          LibraryLinkButton(title: "Fermer la recherche", symbol: "xmark") {
+            discovery.query = ""
+            discovery.clearResults()
+          }
+        } else {
+          if !discovery.trail.isEmpty {
+            LibraryLinkButton(title: "Retour", symbol: "chevron.left") { discovery.back() }
+          }
+          if loading { ProgressView().controlSize(.small) }
           LibraryLinkButton(title: "D’autres propositions", symbol: "arrow.clockwise") {
-            discovery.loadHome(force: true)
-          }.disabled(discovery.homeLoading || !session.hasServer)
-            .help("Tire d’autres artistes voisins de tes goûts")
+            if discovery.place == .forYou {
+              discovery.loadHome(force: true)
+            } else {
+              discovery.loadPage(force: true)
+            }
+          }.disabled(loading || !session.hasServer)
+            .help("Tire d’autres artistes")
         }
       }
     }
   }
 
-  /// « Pour toi » as shelves: each says where it comes from, then its tracks.
-  private var recommendations: some View {
-    GeometryReader { geometry in
+  private var eyebrow: String {
+    if discovery.searched { return "Découvrir / Recherche" }
+    return switch discovery.place {
+    case .forYou: "Découvrir / Pour toi"
+    case .scene: "Découvrir / Scène"
+    case .artist: "Découvrir / Artiste"
+    }
+  }
+  private var title: String {
+    if discovery.searched { return "« \(discovery.submittedQuery) »" }
+    return switch discovery.place {
+    case .forYou: "Pour toi"
+    case .scene(let genre): capitalized(genre)
+    case .artist(let name): name
+    }
+  }
+  private var loading: Bool {
+    discovery.place == .forYou ? discovery.homeLoading : discovery.pageLoading
+  }
+
+  /// The current place as shelves: each says where it comes from, then its tracks.
+  private var shelves: some View {
+    let forYou = discovery.place == .forYou
+    let content = forYou ? discovery.home : discovery.page
+    let failure = forYou ? discovery.homeError : discovery.pageError
+    return GeometryReader { geometry in
       let compact = geometry.size.width < LibraryColumns.compactBelow
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 0) {
-          if let home = discovery.home {
-            ForEach(home.sections) { section in
+          if let content {
+            ForEach(content.sections) { section in
               DiscoveryShelf(section: section, compact: compact).padding(.bottom, 28)
             }
-            if let notice = home.notice {
+            if let notice = content.notice {
               Text(notice).font(.callout).foregroundStyle(.secondary).padding(.vertical, 8)
             }
-            if let empty = home.emptyReason {
+            if let empty = content.emptyReason {
               EmptyState(symbol: "sparkles", message: empty)
             }
-          } else if discovery.homeLoading {
+          } else if loading {
             HStack(spacing: 8) {
               ProgressView().controlSize(.small)
-              Text("Je cherche des artistes proches de tes goûts…").font(.callout)
-                .foregroundStyle(.secondary)
+              Text(waiting).font(.callout).foregroundStyle(.secondary)
             }.frame(maxWidth: .infinity).padding(.top, 60)
           }
-          if !discovery.homeError.isEmpty {
-            Text(discovery.homeError).font(.callout).foregroundStyle(Color.sillage(.actionText))
+          if !failure.isEmpty {
+            Text(failure).font(.callout).foregroundStyle(Color.sillage(.actionText))
               .padding(.vertical, 8)
           }
           if !session.hasServer {
@@ -307,22 +265,21 @@ struct DiscoverView: View {
     }
   }
 
+  private var waiting: String {
+    switch discovery.place {
+    case .forYou: "Je cherche des artistes proches de tes goûts…"
+    case .scene(let genre): "Je cherche des artistes \(genre) que tu n’as pas…"
+    case .artist(let name): "Je cherche autour de \(name)…"
+    }
+  }
+
   // MARK: Results
 
-  /// One list: playlist matches first (unless YouTube only), then YouTube videos.
+  /// YouTube only, without what the library already has.
   private var rows: [DiscoveryRow] {
-    var rows: [DiscoveryRow] = []
-    if discovery.scope != .youtube {
-      rows += discovery.libraryTracks.map {
-        DiscoveryRow(id: "library:" + $0.id, track: $0, item: nil)
-      }
+    discovery.youtube.filter { !$0.inLibrary }.map {
+      DiscoveryRow(id: "youtube:" + $0.id, track: $0.video, item: $0)
     }
-    if discovery.scope != .library {
-      rows += discovery.youtube.map {
-        DiscoveryRow(id: "youtube:" + $0.id, track: $0.video, item: $0)
-      }
-    }
-    return rows
   }
 
   /// Rows and the selection are computed once per update, then passed down.
@@ -332,7 +289,7 @@ struct DiscoverView: View {
       let preview = geometry.size.width >= 640
       HStack(alignment: .top, spacing: 16) {
         resultList(rows, selected: selected, saveInRows: !preview)
-        if preview, let selected { ResultPreview(row: selected, source: discovery.scope) }
+        if preview, let selected { ResultPreview(row: selected, source: .youtube) }
       }
     }
   }
@@ -341,8 +298,7 @@ struct DiscoverView: View {
     -> some View
   {
     let lastID = rows.last?.id
-    // Same accessory column on every row as soon as one row has a save button.
-    let accessorySlot: CGFloat? = saveInRows && rows.contains { $0.item != nil } ? 26 : nil
+    let accessorySlot: CGFloat? = saveInRows && !rows.isEmpty ? 26 : nil
     return ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 2) {
@@ -350,15 +306,15 @@ struct DiscoverView: View {
             SongRow(
               index: position + 1, track: row.track,
               playing: dj.current?.id == row.track.id,
-              onPlay: { dj.play(row.track, source: discovery.scope) },
-              onEnqueue: { dj.enqueue(row.track, source: discovery.scope) },
+              onPlay: { dj.play(row.track, source: .youtube) },
+              onEnqueue: { dj.enqueue(row.track, source: .youtube) },
               selected: row.id == selected?.id,
               onSelect: {
                 selectedID = row.id
                 listFocused = true
               },
               accessory: saveInRows && row.item != nil
-                ? AnyView(SaveButton(item: row.item!, source: discovery.scope)) : nil,
+                ? AnyView(SaveButton(item: row.item!, source: .youtube)) : nil,
               onSave: row.item.flatMap(saveAction),
               accessoryWidth: accessorySlot
             )
@@ -373,17 +329,9 @@ struct DiscoverView: View {
               }
             }
           }
-          if !discovery.libraryError.isEmpty && discovery.scope != .youtube {
-            error(discovery.libraryError)
-          }
-          // Both sources usually fail for the same reason: one message, one retry.
-          if !discovery.youtubeError.isEmpty && discovery.scope != .library
-            && (discovery.youtubeError != discovery.libraryError || discovery.scope == .youtube)
-          {
-            error(discovery.youtubeError)
-          }
+          if !discovery.youtubeError.isEmpty { error(discovery.youtubeError) }
           // Cards load more on scroll; the button covers a page too short to scroll.
-          if discovery.nextPage != nil && !discovery.searching && discovery.scope != .library {
+          if discovery.nextPage != nil && !discovery.searching {
             Button("Plus de résultats") { discovery.search(more: true) }
               .buttonStyle(SillageChipStyle()).padding(.vertical, 8)
           }
@@ -394,12 +342,10 @@ struct DiscoverView: View {
             }.frame(maxWidth: .infinity).padding(.top, 40)
               .accessibilityElement(children: .combine)
           }
-          if rows.isEmpty && !discovery.searching && discovery.libraryError.isEmpty
-            && discovery.youtubeError.isEmpty
-          {
+          if rows.isEmpty && !discovery.searching && discovery.youtubeError.isEmpty {
             EmptyState(
               symbol: "magnifyingglass",
-              message: "Aucun résultat. Essaie un titre ou un artiste plus précis.")
+              message: "Rien de nouveau pour cette recherche. Essaie un artiste ou un titre.")
           }
         }.padding(.bottom, 12)
       }
@@ -415,7 +361,7 @@ struct DiscoverView: View {
       }
       .onKeyPress(.return) {
         guard let selected else { return .ignored }
-        dj.play(selected.track, source: discovery.scope)
+        dj.play(selected.track, source: .youtube)
         return .handled
       }
     }
@@ -435,6 +381,9 @@ struct DiscoverView: View {
     }.padding(8)
   }
 }
+
+/// « digital cumbia » → « Digital cumbia », for a title or a row.
+func capitalized(_ genre: String) -> String { genre.prefix(1).uppercased() + genre.dropFirst() }
 
 struct DiscoveryRow: Identifiable, Equatable {
   let id: String
@@ -572,6 +521,15 @@ struct AnyLabelStyle: LabelStyle {
 private struct DiscoveryShelf: View {
   let section: DiscoverySection
   let compact: Bool
+  @EnvironmentObject var discovery: DiscoveryModel
+  /// The artists of the shelf, in order, except the one whose page this already is.
+  private var artists: [String] {
+    var seen = Set<String>()
+    return section.items.compactMap(\.artist).filter { name in
+      if case .artist(let here) = discovery.place, here == name { return false }
+      return seen.insert(name).inserted
+    }
+  }
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -584,7 +542,20 @@ private struct DiscoveryShelf: View {
       }.padding(.bottom, 4)
       if !section.reason.isEmpty {
         Text(section.reason).font(.system(size: 12)).foregroundStyle(.secondary)
-          .padding(.bottom, 10)
+          .padding(.bottom, 8)
+      }
+      if !artists.isEmpty {
+        // Each new artist opens its own page: the listener goes wherever they like.
+        HStack(spacing: 6) {
+          ForEach(artists, id: \.self) { name in
+            Button {
+              discovery.open(.artist(name))
+            } label: {
+              Label(name, systemImage: "arrow.up.right").labelStyle(.titleAndIcon)
+            }.buttonStyle(SillageChipStyle()).controlSize(.small)
+              .help("Explorer autour de \(name)")
+          }
+        }.padding(.bottom, 10)
       }
       SillageRule()
       ForEach(section.items) { suggestion in

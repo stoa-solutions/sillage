@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage 1.10.0 (83) : Découvrir devient un onglet de découverte pure. Barre latérale : Pour toi, Tes scènes (tes genres précis), Tes artistes. Une scène montre des artistes de ce genre que tu n’as jamais écoutés ; un artiste montre ses titres, ses voisins et ses collaborations. Depuis chaque rayon, un clic sur un artiste ouvre sa page, « Retour » ramène en arrière. La recherche ne montre que ce qui n’est pas dans ta bibliothèque ; les recherches récentes, les envies génériques et le filtre par playlist quittent l’onglet. Les titres viennent désormais de YouTube Music (titres crédités, sans mix), ce qui évite le bridage de la recherche YouTube et laisse SearXNG au DJ.
+
 - Sillage 1.9.2 (82) : Découvrir trouve aussi des artistes autour de tes favoris confidentiels, que ListenBrainz ne connaît pas. Rayon « Avec X » : les artistes qui ont enregistré avec lui, d’après les crédits MusicBrainz ; rayon « Scène <genre> » : les artistes de son genre le plus précis (digital cumbia plutôt que pop). Sources libres uniquement, chaque titre dit d’où il vient.
 
 - Sillage 1.9.1 (81) : Découvrir propose enfin des artistes que tu ne connais pas. « Pour toi » part de tes artistes préférés (Mon goût) et récents, demande leurs voisins d’écoute à ListenBrainz, écarte tout artiste déjà dans ta bibliothèque ou ton historique et range les titres en rayons : « Autour de X », « Plus loin », « De tes artistes, pas encore chez toi ». Chaque titre dit pourquoi il est là ; « D’autres propositions » tire d’autres voisins. Écran repris dans le style de Bibliothèque : barre latérale (Pour toi, récentes, tes genres en envies, playlists), en-tête avec surtitre, lignes de table.

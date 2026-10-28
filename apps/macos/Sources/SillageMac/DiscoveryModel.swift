@@ -2,10 +2,25 @@ import Combine
 import Foundation
 import SillageKit
 
+/// Where Découvrir is: « Pour toi », a scene, or the world around an artist.
+enum DiscoveryPlace: Hashable {
+  case forYou
+  case scene(String)
+  case artist(String)
+}
+
 /// Shared by Discover and DJ result cards; only small request results live on the Mac.
 @MainActor final class DiscoveryModel: ObservableObject {
   @Published var query = ""
-  @Published var scope: DiscoveryScope = .all
+  /// Découvrir searches only what is new: YouTube, outside the library.
+  @Published var scope: DiscoveryScope = .youtube
+  @Published private(set) var place: DiscoveryPlace = .forYou
+  /// Places visited before, for « Retour ».
+  @Published private(set) var trail: [DiscoveryPlace] = []
+  @Published private(set) var page: DiscoveryHome?
+  @Published private(set) var pageLoading = false
+  @Published private(set) var pageError = ""
+  private var pageTask: Task<Void, Never>?
   @Published var playlistID = ""
   @Published private(set) var libraryTracks: [Track] = []
   @Published private(set) var youtube: [DiscoveryItem] = []
@@ -33,6 +48,13 @@ import SillageKit
     self.library = library
   }
   func reset() {
+    pageTask?.cancel()
+    pageTask = nil
+    place = .forYou
+    trail = []
+    page = nil
+    pageLoading = false
+    pageError = ""
     homeTask?.cancel()
     homeTask = nil
     home = nil
@@ -149,6 +171,58 @@ import SillageKit
       } catch {
         guard !Task.isCancelled, session.generation == generation else { return }
         homeError = error.localizedDescription
+      }
+    }
+  }
+  /// Opens a scene or an artist; « Pour toi » stays loaded underneath.
+  func open(_ next: DiscoveryPlace) {
+    query = ""
+    clearResults()
+    guard next != place else { return }
+    trail = Array((trail + [place]).suffix(20))
+    show(next)
+  }
+  /// Back to the place visited before.
+  func back() {
+    guard let previous = trail.popLast() else { return }
+    query = ""
+    clearResults()
+    show(previous)
+  }
+  private func show(_ next: DiscoveryPlace) {
+    place = next
+    pageTask?.cancel()
+    page = nil
+    pageError = ""
+    pageLoading = false
+    if next == .forYou { loadHome() } else { loadPage() }
+  }
+  /// The current scene or artist; `force` draws other artists.
+  func loadPage(force: Bool = false) {
+    guard let connection = session.connection else { return }
+    let target = place
+    let (scene, artist): (String?, String?) =
+      switch target {
+      case .forYou: (nil, nil)
+      case .scene(let genre): (genre, nil)
+      case .artist(let name): (nil, name)
+      }
+    guard scene != nil || artist != nil else { return }
+    let generation = session.generation
+    pageTask?.cancel()
+    pageLoading = true
+    pageError = ""
+    pageTask = Task {
+      defer { if session.generation == generation && place == target { pageLoading = false } }
+      do {
+        let result = try await HTTPClient().discoveryPage(
+          connection, scene: scene, artist: artist, refresh: force)
+        try Task.checkCancellation()
+        guard session.generation == generation, place == target else { return }
+        page = result
+      } catch {
+        guard !Task.isCancelled, session.generation == generation, place == target else { return }
+        pageError = error.localizedDescription
       }
     }
   }

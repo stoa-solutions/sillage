@@ -149,7 +149,7 @@ it("distinguishes an artist credit from a homonymous song title", async () => {
     history: vi.fn().mockResolvedValue([{ ...played, channel: "The Alchemist" }]),
     similar: vi.fn().mockResolvedValue([]),
     search: vi.fn().mockImplementation(async (_user: string, query: string) =>
-      query === "The Alchemist official music"
+      query === "The Alchemist"
         ? found(
             { id: "wrong000001", title: 'Blue Öyster Cult - "The Alchemist" - Official Music Video', channel: "Blue Öyster Cult" },
             { id: "right000001", title: "Freddie Gibbs & The Alchemist - A Thousand Mountains", channel: "Freddie Gibbs" },

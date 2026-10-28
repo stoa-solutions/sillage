@@ -218,8 +218,6 @@ const MUSICBRAINZ_REQUESTS = 8;
 
 /** Search and save YouTube music outside the library, under /v1/discover. */
 const HOME_TTL = 20 * 60 * 1000;
-/** An artist's catalog barely moves in a day, and YouTube throttles bursts of searches. */
-const ARTIST_PAGE_TTL = 24 * 60 * 60 * 1000;
 
 export function discoveryRoutes(
   db: Database,
@@ -235,8 +233,9 @@ export function discoveryRoutes(
     profile: async (owner: string) =>
       listenerProfile(await knownVideos(db.orm, owner), (await tasteService(db).overview(owner)).artists),
     similar: (mbid: string) => neighbours.similar(mbid),
-    search: (owner: string, query: string) => service.search(owner, query, "", ARTIST_PAGE_TTL),
-    cached: (query: string) => service.cached(query),
+    // An artist's songs from YouTube Music: credited, without mixes, and spares SearXNG.
+    search: (owner: string, artist: string) => service.songs(owner, artist),
+    cached: (artist: string) => service.songsCached(artist),
   };
   const track = <T extends { video: Video }>(item: T) => ({ ...item, video: asTrack(item.video) });
   /** Serves a kept page, or builds it; a deleted history makes a kept page stale. */

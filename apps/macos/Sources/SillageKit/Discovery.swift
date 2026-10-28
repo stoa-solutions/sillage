@@ -58,10 +58,13 @@ public struct DiscoveryHome: Decodable, Sendable {
   public let basedOn: [String]
   /// The listener's own genres, for the « envies » shortcuts.
   public let ideas: [String]
+  /// The listener's precise genres and starting artists, to explore next.
+  public let scenes: [String]
+  public let artists: [String]
   public let notice: String?
   public let emptyReason: String?
   private enum CodingKeys: String, CodingKey {
-    case sections, suggestions, basedOn, ideas, notice, emptyReason
+    case sections, suggestions, basedOn, ideas, scenes, artists, notice, emptyReason
   }
   public init(from decoder: Decoder) throws {
     let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -78,6 +81,8 @@ public struct DiscoveryHome: Decodable, Sendable {
         ])
     basedOn = try values.decodeIfPresent([String].self, forKey: .basedOn) ?? []
     ideas = try values.decodeIfPresent([String].self, forKey: .ideas) ?? []
+    scenes = try values.decodeIfPresent([String].self, forKey: .scenes) ?? []
+    artists = try values.decodeIfPresent([String].self, forKey: .artists) ?? []
     notice = try values.decodeIfPresent(String.self, forKey: .notice)
     emptyReason = try values.decodeIfPresent(String.self, forKey: .emptyReason)
   }
@@ -94,6 +99,22 @@ extension HTTPClient {
   {
     let object = try await server(
       connection, path: refresh ? "discover/home?refresh=true" : "discover/home")
+    return try JSONDecoder().decode(
+      DiscoveryHome.self, from: JSONSerialization.data(withJSONObject: object))
+  }
+  /// A scene (`genre`) or the world around an artist (`name`), shaped like « Pour toi ».
+  public func discoveryPage(
+    _ connection: Connection, scene: String? = nil, artist: String? = nil, refresh: Bool = false
+  ) async throws -> DiscoveryHome {
+    var query = URLComponents()
+    query.queryItems =
+      (scene.map { [URLQueryItem(name: "genre", value: $0)] } ?? [])
+      + (artist.map { [URLQueryItem(name: "name", value: $0)] } ?? [])
+      + (refresh ? [URLQueryItem(name: "refresh", value: "true")] : [])
+    // « + » and « & » stay part of a name such as « Florence + the Machine ».
+    let encoded = (query.percentEncodedQuery ?? "").replacingOccurrences(of: "+", with: "%2B")
+    let object = try await server(
+      connection, path: (scene != nil ? "discover/scene?" : "discover/artist?") + encoded)
     return try JSONDecoder().decode(
       DiscoveryHome.self, from: JSONSerialization.data(withJSONObject: object))
   }

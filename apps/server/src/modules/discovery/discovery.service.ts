@@ -8,6 +8,8 @@ import {
   YouTube,
   YouTubeError,
 } from "../../integrations/youtube/index.ts";
+import { youTubeMusic, type MusicSong } from "../../integrations/youtube-music/index.ts";
+import { normalizeMusic } from "../search/index.ts";
 import { discoveryInput } from "./discovery.schemas.ts";
 import { searchFailureMessage, type SearchFailureReason } from "./search-feedback.ts";
 import { ownedAmong, saveDiscovery } from "./discovery.repository.ts";
@@ -46,7 +48,59 @@ export class Discovery {
       user,
       ids,
     ) => ownedAmong(db.orm, user, ids),
+    private music: { songs(query: string): Promise<MusicSong[]> } = youTubeMusic,
   ) {}
+  private songPages = new Map<string, { until: number; videos: Awaited<ReturnType<YouTube["videos"]>> }>();
+  /** Whether an artist's songs are kept, so asking costs nothing. */
+  songsCached(artist: string) {
+    const hit = this.songPages.get(normalizeMusic(artist));
+    return !!hit && hit.until >= Date.now();
+  }
+  /**
+   * An artist's songs, from YouTube Music's catalog (credited to this artist, no mixes or
+   * covers), checked and described by the YouTube API. Kept a day: a catalog barely moves.
+   */
+  async songs(user: string, artist: string) {
+    const key = normalizeMusic(artist);
+    let page = this.songPages.get(key);
+    if (!page || page.until < Date.now()) {
+      let found: MusicSong[];
+      try {
+        found = await this.music.songs(artist);
+      } catch (error) {
+        throw providerError(error);
+      }
+      const credited = found
+        .filter((song) => song.artists.some((name) => normalizeMusic(name) === key))
+        .slice(0, 20);
+      let videos: Awaited<ReturnType<YouTube["videos"]>>;
+      try {
+        videos = await this.source.videos(credited.map((song) => song.videoId), true);
+      } catch (error) {
+        throw providerError(error);
+      }
+      // Songs keep YouTube Music's order and credits; a Topic channel names their artist.
+      const byId = new Map(videos.map((video) => [video.id, video]));
+      page = {
+        until: Date.now() + 24 * 60 * 60 * 1000,
+        videos: credited.flatMap((song) => {
+          const video = byId.get(song.videoId);
+          return video
+            ? [{ ...video, title: `${song.artists.join(", ")} - ${song.title}` }]
+            : [];
+        }),
+      };
+      if (page.videos.length) {
+        if (this.songPages.size >= 1000) this.songPages.delete(this.songPages.keys().next().value!);
+        this.songPages.set(key, page);
+      }
+    }
+    const owned = await this.owned(user, page.videos.map((video) => video.id));
+    return {
+      results: page.videos.map((video) => ({ video, inLibrary: owned.has(video.id) })),
+      nextPageToken: null,
+    };
+  }
   /** Whether this first page is kept, so a search would cost nothing. */
   cached(query: string) {
     const hit = this.cache.get(JSON.stringify([query.trim().toLowerCase(), ""]));

@@ -64,12 +64,13 @@ export interface HomeSources {
   collaborators(mbid: string): Promise<SimilarArtist[]>;
   /** Artists MusicBrainz files under this genre. */
   tagged(genre: string): Promise<SimilarArtist[]>;
-  search: Discovery["search"];
-  /** Whether a search page is already kept, so free. */
-  cached(query: string): boolean;
+  /** An artist's songs (YouTube Music, checked by YouTube). */
+  search: Discovery["songs"];
+  /** Whether an artist's songs are already kept, so free. */
+  cached(artist: string): boolean;
 }
 
-type SearchItem = Awaited<ReturnType<Discovery["search"]>>["results"][number];
+type SearchItem = Awaited<ReturnType<Discovery["songs"]>>["results"][number];
 export interface HomeItem extends SearchItem {
   reason: string;
   artist?: string | undefined;
@@ -512,7 +513,7 @@ export async function discoveryHome(
   const sections = await page.fill(plans);
 
   const ownArtists = recentArtists.slice(0, 2);
-  const ownPages = await page.run(ownArtists.map((seed) => () => page.find(seed.query + " official music")));
+  const ownPages = await page.run(ownArtists.map((seed) => () => page.find(seed.query)));
   const own = ownArtists.flatMap((seed, index) =>
     page.tracksOf(seed.query, ownPages[index]?.results).map((item) => page.take(item, seed.reason, seed.query)),
   );
