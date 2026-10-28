@@ -4,8 +4,18 @@ import SwiftUI
 /// One search for everything (⌘F): artists, the library, and what is new on YouTube. Each
 /// part answers on its own; typing again cancels what was asked before.
 @MainActor final class GlobalSearchModel: ObservableObject {
+  /// An artist to suggest: one of the listener's first, then YouTube Music's.
+  struct Suggestion: Identifiable, Equatable {
+    let name: String
+    let picture: URL?
+    let detail: String?
+    var id: String { name.lowercased() }
+  }
   @Published var query = ""
-  @Published private(set) var artists: [ArtistHit] = []
+  @Published private(set) var artists: [Suggestion] = []
+  /// The library's artists, asked once per account, to match while typing.
+  private var mine: [LibraryArtist] = []
+  private var mineAccount: String?
   @Published private(set) var library: [Track] = []
   @Published private(set) var discover: [DiscoveryItem] = []
   @Published private(set) var loading: Set<String> = []
@@ -25,12 +35,25 @@ import SwiftUI
     task = Task {
       try? await Task.sleep(for: .milliseconds(280))
       guard !Task.isCancelled else { return }
-      async let hits = try? HTTPClient().searchArtists(connection, query: text)
+      if mineAccount != connection.token {
+        mine = (try? await HTTPClient().libraryArtists(connection)) ?? []
+        mineAccount = connection.token
+      }
+      let own = Self.matching(mine, text)
+      artists = own
+      // A word cut short brings namesakes: YouTube Music is asked from three letters.
+      let asksCatalog = text.count >= 3
+      async let hits: [ArtistHit]? =
+        asksCatalog ? try? HTTPClient().searchArtists(connection, query: text) : nil
       async let owned = try? HTTPClient().searchPage(connection, query: text, limit: 6)
       async let fresh = try? HTTPClient().discover(connection, query: text)
-      let found = await hits
+      let found: [ArtistHit] = await hits ?? []
       guard !Task.isCancelled else { return }
-      artists = found ?? []
+      let known = Set(own.map(\.id))
+      let others: [Suggestion] = found.map {
+        Suggestion(name: $0.name, picture: $0.portrait, detail: $0.audience)
+      }
+      artists = Array((own + others.filter { !known.contains($0.id) }).prefix(10))
       loading.remove("artists")
       let page = await owned
       guard !Task.isCancelled else { return }
@@ -42,6 +65,34 @@ import SwiftUI
       loading.remove("discover")
     }
   }
+  /// The listener's artists whose name, or one of its words, starts with what is typed; then
+  /// those that merely contain it. Most played first.
+  static func matching(_ artists: [LibraryArtist], _ text: String) -> [Suggestion] {
+    let fold = { (value: String) in
+      value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+    }
+    let wanted = fold(text)
+    func rank(_ artist: LibraryArtist) -> Int? {
+      let name = fold(artist.name)
+      if name.hasPrefix(wanted) { return 0 }
+      if name.split(separator: " ").contains(where: { $0.hasPrefix(wanted) }) { return 1 }
+      return name.contains(wanted) ? 2 : nil
+    }
+    var ranked: [(artist: LibraryArtist, rank: Int)] = []
+    for artist in artists {
+      if let value = rank(artist) { ranked.append((artist, value)) }
+    }
+    ranked.sort { $0.rank != $1.rank ? $0.rank < $1.rank : $0.artist.plays > $1.artist.plays }
+    return ranked.prefix(5).map { entry in
+      let artist = entry.artist
+      let songs = artist.tracks == 1 ? "1 titre" : "\(artist.tracks) titres"
+      return Suggestion(
+        name: artist.name,
+        picture: URL(string: "https://i.ytimg.com/vi/" + artist.coverVideoId + "/mqdefault.jpg"),
+        detail: "Chez toi · " + songs)
+    }
+  }
+
   func clear() {
     task?.cancel()
     query = ""
@@ -122,10 +173,10 @@ struct GlobalSearchPanel: View {
               close()
             } label: {
               VStack(spacing: 6) {
-                RemotePicture(url: hit.portrait).frame(width: 64, height: 64).clipShape(Circle())
+                RemotePicture(url: hit.picture).frame(width: 64, height: 64).clipShape(Circle())
                 Text(hit.name).font(.system(size: 12, weight: .medium)).lineLimit(1)
-                if let audience = hit.audience {
-                  Text(audience).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+                if let detail = hit.detail {
+                  Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
                 }
               }.frame(width: 92)
             }.buttonStyle(.plain).help("Voir la page de \(hit.name)")

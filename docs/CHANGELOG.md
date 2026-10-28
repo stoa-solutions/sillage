@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage 1.13.1 (88) : la recherche (⌘F) propose d’abord tes propres artistes (« acid co » trouve Acid Coco), puis ceux de YouTube Music à partir de trois lettres, pour éviter les homonymes obscurs d’un mot coupé.
+
 - Sillage 1.13.0 (87) : une page album dans l’app (pochette, artiste en lien, année, description, titres jouables avec leurs lectures, « Tout lire », titres déjà chez toi marqués), ouverte depuis la discographie d’un artiste. Bibliothèque → « Mes artistes » : tous les artistes de ta bibliothèque, les plus écoutés d’abord, filtrables, chacun ouvrant sa page ; « Tes artistes » quitte Découvrir. Recherche unique (⌘F ou la loupe) par-dessus n’importe quelle page : artistes, titres de ta bibliothèque et titres à découvrir ; Entrée ouvre le premier résultat. Serveur : `GET /v1/insights/album/{browseId}` (gardé 30 jours), `GET /v1/insights/artists?query=` (1 jour), `GET /v1/discover/artists`.
 
 - Sillage 1.12.0 (86) : la page d’un artiste s’ouvre par-dessus l’onglet où tu es (DJ, Bibliothèque ou Découvrir), sans en changer ; « Retour » (⌘[) ramène exactement où tu étais, ou à l’artiste vu avant, et chaque onglet garde sa propre pile. Page unique, dans l’ordre : bannière et bio, « Chez toi » (ses titres de ta bibliothèque, les plus écoutés d’abord, avec tes écoutes), « À découvrir » (ses titres que tu n’as pas), discographie, « Avec lui » (collaborations), artistes proches avec portrait, puis ses voisins d’écoute. « Lancer l’artiste » demande au DJ un set autour de lui. Plus d’apparitions progressives sur cette page. Découvrir garde Pour toi et Tes scènes. Serveur : `GET /v1/discover/artist/library?name=`.
