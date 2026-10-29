@@ -1,8 +1,8 @@
-export { libraryRoutes } from "./library.controller.ts";
+export { libraryRoutes } from "./controllers/library.controller.ts";
 export { libraryJobHandlers, scheduleSync, YOUTUBE_JOB_KINDS } from "./library.jobs.ts";
-export { syncPlaylist } from "./playlist-sync.service.ts";
-export { enrichVideos } from "./video-metadata.service.ts";
-export { importLibrary } from "./library.service.ts";
+export { syncPlaylist } from "./services/playlist-sync.service.ts";
+export { enrichVideos } from "./services/video-metadata.service.ts";
+export { importLibrary } from "./services/library.service.ts";
 export {
   discoveriesId,
   followedBy,
@@ -11,5 +11,5 @@ export {
   upsertVideo,
   videoFromRecord,
   videoFromRow,
-} from "./library.repository.ts";
-export { musicMetadataBody, trackBody, videoBody } from "./library.schemas.ts";
+} from "./repositories/library.repository.ts";
+export { musicMetadataBody, trackBody, videoBody } from "./types/library.schemas.ts";

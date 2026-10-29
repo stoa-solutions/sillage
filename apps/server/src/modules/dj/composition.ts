@@ -1,4 +1,4 @@
-import type { DjInput, Selection } from "./dj.contracts.ts";
+import type { DjInput, Selection } from "./types/dj.contracts.ts";
 import type { TurnPlan } from "./plan.ts";
 import { compactVideo, type DiscoveryEvidence } from "./evidence.ts";
 import { DJ_SELECTION_LIMIT } from "@sillage/core/dj";

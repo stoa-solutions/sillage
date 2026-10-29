@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { djInput } from "../src/modules/dj/dj.contracts.ts";
+import { djInput } from "../src/modules/dj/types/dj.contracts.ts";
 import { initialMessages } from "../src/modules/dj/messages.ts";
 import { Composition } from "../src/modules/dj/composition.ts";
 import { planTurn } from "../src/modules/dj/plan.ts";

@@ -1,1 +1,1 @@
-export { releaseRoutes } from "./releases.controller.ts";
+export { releaseRoutes } from "./controllers/releases.controller.ts";

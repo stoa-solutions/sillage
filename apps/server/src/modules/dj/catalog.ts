@@ -1,6 +1,6 @@
 import type { Database } from "../../db/index.ts";
 import { musicTracks, requestedTracks } from "../mcp/index.ts";
-import type { DjInput } from "./dj.contracts.ts";
+import type { DjInput } from "./types/dj.contracts.ts";
 import type { TurnPlan } from "./plan.ts";
 
 /** Resolve explicit titles without spending a model request; preserve order and ownership. */

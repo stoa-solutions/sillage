@@ -1,6 +1,6 @@
 import { it, expect, vi, afterEach } from "vitest";
 import { Script } from "node:vm";
-import { pcmToWav } from "../src/modules/dj/dj-voice.service.ts";
+import { pcmToWav } from "../src/modules/dj/services/dj-voice.service.ts";
 import { djInput, djDailyBudget } from "../src/modules/dj/index.ts";
 import { djPlayerJs } from "../src/modules/player/player.assets.ts";
 afterEach(() => vi.unstubAllEnvs());

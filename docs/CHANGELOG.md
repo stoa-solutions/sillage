@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Serveur : dans chaque module, les fichiers sont rangés par rôle, comme dans NestJS : `controllers/`, `services/`, `repositories/` et `types/` (contrats Zod). Aucun changement d’API.
+
 - Serveur : le DJ n’utilise plus que la clé personnelle du compte, Gemini ou Claude, par l’AI SDK. La clé IA du serveur (`DJ_PROVIDER`, `DJ_API_KEY`, `DJ_BASE_URL`, `DJ_MODEL`), le transport compatible OpenAI et l’ancienne table `account_dj_settings` disparaissent (migration `0009`, qui recopie d’abord toute clé Google absente de `account_ai_credentials`).
 
 - Serveur : seule la connexion Google reste. Le compte historique d’avant les comptes Google disparaît (migration `0008`), avec la reprise de bibliothèque (`/v1/account/claim-library`) et les routes de maintenance qui lui étaient réservées (`/v1/import`, `/v1/jobs/retry`, désormais `jobs.cli.js retry`). `token.cli.js create` demande l’email du compte.

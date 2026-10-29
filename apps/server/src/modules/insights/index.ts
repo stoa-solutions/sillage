@@ -1,4 +1,4 @@
-export { insightsRoutes } from "./insights.controller.ts";
+export { insightsRoutes } from "./controllers/insights.controller.ts";
 export {
   artistProfile,
   albumPage,
@@ -7,5 +7,5 @@ export {
   INSIGHT_RULES,
   type InsightsSources,
   type CatalogArtist,
-} from "./insights.service.ts";
+} from "./services/insights.service.ts";
 export { defaultInsightsSources, catalogArtists } from "./insights.sources.ts";

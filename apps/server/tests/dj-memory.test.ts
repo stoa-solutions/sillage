@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { summarizeMemory, type JournalTurn } from "../src/modules/dj/memory.ts";
 import { initialMessages } from "../src/modules/dj/messages.ts";
 import { planTurn } from "../src/modules/dj/plan.ts";
-import { djInput } from "../src/modules/dj/dj.contracts.ts";
+import { djInput } from "../src/modules/dj/types/dj.contracts.ts";
 import { required } from "./support/required.ts";
 
 const completed = (message: string, titles: string[]): JournalTurn => ({

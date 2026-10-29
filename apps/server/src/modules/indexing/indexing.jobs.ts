@@ -1,6 +1,6 @@
 import type { Database } from "../../db/index.ts";
 import type { JobHandler } from "../jobs/index.ts";
-import { indexImage, indexText } from "./indexing.service.ts";
+import { indexImage, indexText } from "./services/indexing.service.ts";
 
 const videoId = (payload: Record<string, string>) => {
   const id = payload["videoId"];

@@ -7,7 +7,7 @@ import {
 import type { Composition } from "./composition.ts";
 import { DjUnavailable } from "./errors.ts";
 import { readToolEvidence } from "./evidence.ts";
-import type { TraceObserver } from "./journal/journal.contracts.ts";
+import type { TraceObserver } from "./journal/types/journal.contracts.ts";
 import type { ChatMessage, ChatTool, ToolCall } from "./provider.ts";
 
 const SEARCH_TOOLS = new Set([

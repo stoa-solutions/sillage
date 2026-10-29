@@ -31,7 +31,7 @@ compte demandeur ; aucun abonnement d’un autre compte n’est exposé.
 Code : `apps/server/src/modules/auth/` (connexion Google, échange PKCE,
 `session.guard.ts` monté sur `/v1/*`, `token.cli.ts`) et
 `apps/server/src/modules/accounts/` (profil, déconnexion). Filtres de bibliothèque : `followedBy` et
-`inLibraryOf` dans `modules/library/library.repository.ts`. Tables dans
+`inLibraryOf` dans `modules/library/repositories/library.repository.ts`. Tables dans
 `apps/server/src/db/schema.ts` (section Accounts).
 
 Les clés Gemini sont chiffrées AES-256-GCM avec l’ID du compte comme AAD.

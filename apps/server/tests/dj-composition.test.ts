@@ -5,7 +5,7 @@ import {
   isMusicCandidate,
 } from "../src/modules/mcp/mcp.retrieval.ts";
 import { planTurn } from "../src/modules/dj/plan.ts";
-import { djInput, selection } from "../src/modules/dj/dj.contracts.ts";
+import { djInput, selection } from "../src/modules/dj/types/dj.contracts.ts";
 import { required } from "./support/required.ts";
 const items = Array.from({ length: 6 }, (_, i) => ({
   inLibrary: true,

@@ -1,11 +1,11 @@
-export { lyricsRoutes } from "./lyrics.controller.ts";
+export { lyricsRoutes } from "./controllers/lyrics.controller.ts";
 export {
   lyricsFor,
   prefetchLyrics,
   setLyricsOffset,
   type LyricsSources,
   type VideoFacts,
-} from "./lyrics.service.ts";
+} from "./services/lyrics.service.ts";
 export { defaultLyricsSources } from "./lyrics.sources.ts";
 export {
   chooseRecord,

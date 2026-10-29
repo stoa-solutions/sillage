@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { planTurn } from "../src/modules/dj/plan.ts";
 import { initialMessages } from "../src/modules/dj/messages.ts";
-import type { DjInput } from "../src/modules/dj/dj.contracts.ts";
+import type { DjInput } from "../src/modules/dj/types/dj.contracts.ts";
 import { required } from "./support/required.ts";
 
 function request(message: string): DjInput {

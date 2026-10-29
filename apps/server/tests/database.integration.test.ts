@@ -595,7 +595,7 @@ it("stores a personal DJ key encrypted, scopes it to its account and never retur
     model: "gemini-4-argon",
   });
   expect(JSON.stringify(body)).not.toContain(secret);
-  const { personalDjConfig } = await import("../src/modules/dj/dj-settings.service.ts");
+  const { personalDjConfig } = await import("../src/modules/dj/services/dj-settings.service.ts");
   const owner = (
     await db.query("SELECT user_id AS id FROM tokens WHERE hash=$1", [
       hash(token),

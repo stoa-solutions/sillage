@@ -15,7 +15,7 @@ src/
 │   ├── schema.ts        # toute la base, une section par domaine
 │   ├── client.ts        # pool et instance Drizzle
 │   └── migrate.ts       # applique drizzle/*.sql
-├── modules/<module>/    # une fonctionnalité : controller → service → repository
+├── modules/<module>/    # une fonctionnalité : controllers/ → services/ → repositories/, types/
 ├── integrations/        # clients des services externes, sans règle métier
 ├── shared/              # configuration, empreintes, conventions OpenAPI
 └── api-docs/            # génération et service de la doc OpenAPI
@@ -27,13 +27,14 @@ Les fichiers à la racine de `src/` sont les points d’entrée des processus : 
 
 ## Un module
 
-| Fichier | Rôle |
+| Dossier ou fichier | Rôle |
 | --- | --- |
-| `<module>.controller.ts` | Routes HTTP, validation Zod, documentation OpenAPI. |
-| `<module>.service.ts` | Règles métier, sans HTTP. |
-| `<module>.repository.ts` | Requêtes Drizzle, toujours filtrées par le compte. |
-| `<module>.schemas.ts` | Contrats Zod de l’API, indépendants des tables. |
+| `controllers/` | Routes HTTP, validation Zod, documentation OpenAPI. |
+| `services/` | Règles métier, sans HTTP. |
+| `repositories/` | Requêtes Drizzle, toujours filtrées par le compte. |
+| `types/` | Contrats Zod de l’API (`*.schemas.ts`, `*.contracts.ts`), indépendants des tables. |
 | `index.ts` | Seule entrée publique du module (`check:architecture`). |
+| autres fichiers à la racine | Logique propre au module : `dj/plan.ts`, `*.matching.ts`, `*.jobs.ts`, `*.cli.ts`… |
 
 ## Commandes
 

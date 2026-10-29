@@ -9,7 +9,7 @@ import {
   djAgentsService,
   syncBaseAgents,
 } from "../src/modules/dj-agents/index.ts";
-import { writeBaseAgents } from "../src/modules/dj-agents/dj-agents.repository.ts";
+import { writeBaseAgents } from "../src/modules/dj-agents/repositories/dj-agents.repository.ts";
 const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test"))
   throw new Error("Disposable _test database required");

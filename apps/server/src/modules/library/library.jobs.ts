@@ -1,9 +1,9 @@
 import type { Database, Executor } from "../../db/index.ts";
 import type { YouTube } from "../../integrations/youtube/index.ts";
 import { enqueue, type JobHandler, type JobKind } from "../jobs/index.ts";
-import { enrichVideos } from "./video-metadata.service.ts";
-import { playlistsDueForSync, postponeSync } from "./library.repository.ts";
-import { syncPlaylist } from "./playlist-sync.service.ts";
+import { enrichVideos } from "./services/video-metadata.service.ts";
+import { playlistsDueForSync, postponeSync } from "./repositories/library.repository.ts";
+import { syncPlaylist } from "./services/playlist-sync.service.ts";
 
 /** Kinds that call the YouTube Data API: skipped by a worker without a key. */
 export const YOUTUBE_JOB_KINDS: JobKind[] = ["sync", "enrich"];

@@ -13,13 +13,13 @@ Le serveur peut accueillir plusieurs comptes ; cela ne prouve pas une capacité 
 | Module | Responsabilité |
 | --- | --- |
 | `packages/core` | Formats de bibliothèque, recherche pure et contrats du DJ. Aucun accès réseau ni secret. |
-| `apps/server/src/modules/dj/dj.controller.ts` | Frontière HTTP du DJ, validation et bail par compte. |
+| `apps/server/src/modules/dj/controllers/dj.controller.ts` | Frontière HTTP du DJ, validation et bail par compte. |
 | `apps/server/src/modules/dj/dj.config.ts` | Configuration par défaut du déploiement. |
-| `apps/server/src/modules/dj/dj-settings.service.ts` (+ `.repository.ts`) | Configuration personnelle, chiffrement et persistance. |
+| `apps/server/src/modules/dj/services/dj-settings.service.ts` (+ `.repository.ts`) | Configuration personnelle, chiffrement et persistance. |
 | `apps/server/src/modules/dj/prompt.ts` | Règles de sélection et de dialogue, indépendantes du transport fournisseur. |
 | `apps/server/src/modules/dj/index.ts` | Entrée publique du DJ ; détails dans `modules/dj/`. |
 | `apps/server/src/modules/mcp/` | Outils MCP de recherche dans la bibliothèque, lecture seule. |
-| `apps/server/src/modules/dj/dj-voice.service.ts` | Adaptateur de synthèse vocale Gemini. |
+| `apps/server/src/modules/dj/services/dj-voice.service.ts` | Adaptateur de synthèse vocale Gemini. |
 | `apps/server/src/modules/search/` | Classement lexical/vectoriel et pagination SQL. |
 | API / worker / inference | Processus indépendants : requêtes, tâches durables, calcul des vecteurs. |
 
@@ -72,10 +72,10 @@ Les migrations sont dans `apps/server/drizzle/` : `0000_baseline` (ancien schém
 
 Le code serveur se range par module dans `src/modules/<module>/` : `auth`, `accounts`, `jobs`, `library`, `history`, `lyrics`, `insights`, `enrichment`, `discovery`, `search`, `indexing`, `mcp`, `dj` (avec le sous-module `dj/journal/`), `player`, `releases`, `system`. Chaque module suit la même anatomie :
 
-- `<module>.controller.ts` : HTTP uniquement, routes déclarées avec `createRoute` (`@hono/zod-openapi`) ; la requête est validée et la documentation OpenAPI générée depuis la même déclaration ;
-- `<module>.service.ts` : règles et orchestration ;
-- `<module>.repository.ts` : accès à la base avec Drizzle, filtré par compte ;
-- `<module>.schemas.ts` : contrats Zod de l’API, écrits indépendamment des tables ;
+- `controllers/<module>.controller.ts` : HTTP uniquement, routes déclarées avec `createRoute` (`@hono/zod-openapi`) ; la requête est validée et la documentation OpenAPI générée depuis la même déclaration ;
+- `services/<module>.service.ts` : règles et orchestration ;
+- `repositories/<module>.repository.ts` : accès à la base avec Drizzle, filtré par compte ;
+- `types/<module>.schemas.ts` : contrats Zod de l’API, écrits indépendamment des tables ;
 - fichiers nommés par responsabilité si besoin (`session.guard.ts`, `google.provider.ts`, `library.jobs.ts`, `lyrics.matching.ts`…) ;
 - `index.ts` : seule entrée publique. Un module n’importe un autre module que par son `index.ts` ; `check:architecture` le vérifie.
 
@@ -90,13 +90,21 @@ Le serveur est un monolithe modulaire en trois processus (API, worker, inférenc
 ```text
 apps/server/src/modules/dj/
 ├── index.ts                 # entrée publique (routes, tour, réglages, clôture au démarrage)
-├── dj.controller.ts         # HTTP : bail, journal, mémoire, codes d'erreur
-├── dj.schemas.ts            # contrats OpenAPI des routes
+├── controllers/
+│   └── dj.controller.ts     # HTTP : bail, journal, mémoire, codes d'erreur
+├── services/
+│   ├── dj-turn.service.ts   # orchestration : plan → catalogue → recherche → décision
+│   ├── dj-quota.service.ts  # budget quotidien par compte
+│   ├── dj-settings.service.ts # clés personnelles chiffrées
+│   ├── dj-voice.service.ts  # synthèse vocale ; ne charge pas la composition
+│   └── dj-check.service.ts  # test d'une clé et d'un modèle
+├── repositories/            # dj-quota, dj-settings
+├── types/
+│   ├── dj.schemas.ts        # contrats OpenAPI des routes
+│   └── dj.contracts.ts      # schémas Zod d'entrée et de sortie du modèle (règle pure)
 ├── dj-lease.ts              # un Tour par compte, plafond sur l'instance, échéance
-├── dj-turn.service.ts       # orchestration : plan → catalogue → recherche → décision
 │
 │   # règles pures (vérifiées par check:architecture)
-├── dj.contracts.ts          # schémas Zod d'entrée et de sortie du modèle
 ├── plan.ts                  # politique du Tour, suite structurée comprise
 ├── messages.ts              # messages envoyés au modèle, mémoire comprise
 ├── memory.ts                # résumé borné du journal de la conversation
@@ -109,14 +117,10 @@ apps/server/src/modules/dj/
 │
 │   # adaptateurs
 ├── research.ts              # exécution des outils, preuves accumulées
-├── provider.ts, ai-model.ts # AI SDK : Gemini, Claude, transport compatible
+├── provider.ts, ai-model.ts # AI SDK : Gemini, Claude
 ├── catalog.ts               # titres précis, ordre et propriété
-├── dj-quota.service.ts      # budget quotidien par compte (+ .repository.ts)
-├── dj-settings.service.ts   # clés personnelles chiffrées (+ .repository.ts)
-├── dj-voice.service.ts      # synthèse vocale ; ne charge pas la composition
-├── dj-check.service.ts      # test d'une clé et d'un modèle
-├── dj.config.ts             # configuration du déploiement
-└── journal/                 # traces, mémoire, clôture des tours au redémarrage
+├── dj.config.ts             # configuration IA d'un compte
+└── journal/                 # traces, mémoire, clôture des tours au redémarrage (même rangement)
 ```
 
 L’intention d’une phrase tapée est lue par `@sillage/core/intent` (pur, partagé). Les outils MCP sont dans `modules/mcp/` (`mcp.service.ts`, indices de recherche indépendants dans `mcp.retrieval.ts`) et la correspondance des titres dans `modules/search/music-matching.ts`.

@@ -1,5 +1,5 @@
 import { djSystemPrompt } from "./prompt.ts";
-import type { DjInput } from "./dj.contracts.ts";
+import type { DjInput } from "./types/dj.contracts.ts";
 import type { compactVideo } from "./evidence.ts";
 import {
   EMPTY_MEMORY,

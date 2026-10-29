@@ -3,7 +3,7 @@ import { Lrclib, type LyricsSource } from "../../integrations/lrclib/index.ts";
 import { lyricsOvh } from "../../integrations/lyrics-ovh/index.ts";
 import { YouTube } from "../../integrations/youtube/index.ts";
 import { youTubeMusic } from "../../integrations/youtube-music/index.ts";
-import type { LyricsSources } from "./lyrics.service.ts";
+import type { LyricsSources } from "./services/lyrics.service.ts";
 
 /**
  * The sources in production: LRCLIB, YouTube Music, lyrics.ovh, and the YouTube API to name a

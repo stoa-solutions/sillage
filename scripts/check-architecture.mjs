@@ -17,10 +17,6 @@ const pureDj = new Set([
   "evidence.ts",
   "composition.ts",
 ]);
-const pureDjImports = new Set([
-  "zod",
-  ...[...pureDj].map((file) => `./${file}`),
-]);
 
 /** Inspect syntax, not text matches: comments and type-only dependencies are harmless. */
 export function violations(file, source) {
@@ -68,7 +64,12 @@ export function violations(file, source) {
       dj &&
       pure &&
       !typeOnly &&
-      !pureDjImports.has(specifier) &&
+      specifier !== "zod" &&
+      !(
+        specifier.startsWith(".") &&
+        target.startsWith("apps/server/src/modules/dj/") &&
+        pureDj.has(path.basename(target))
+      ) &&
       !specifier.startsWith("@sillage/core/")
     )
       report(node, "pure DJ policy must not import an effect adapter");

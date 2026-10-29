@@ -1,10 +1,10 @@
-export { discoveryRoutes } from "./discovery.controller.ts";
+export { discoveryRoutes } from "./controllers/discovery.controller.ts";
 export {
   Discovery,
   DiscoveryError,
   discoveryFor,
   type DiscoverySource,
-} from "./discovery.service.ts";
+} from "./services/discovery.service.ts";
 export {
   discoveryArtist,
   discoveryHome,
@@ -14,12 +14,12 @@ export {
   HOME_RULES,
   sceneOf,
   listenerProfile,
-} from "./discovery-home.service.ts";
+} from "./services/discovery-home.service.ts";
 export {
   discoveryAddInput,
   discoveryInput,
   discoveryItemBody,
-} from "./discovery.schemas.ts";
+} from "./types/discovery.schemas.ts";
 export {
   searchFailureMessage,
   searchFailureSummary,

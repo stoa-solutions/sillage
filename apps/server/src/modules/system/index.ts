@@ -1,1 +1,1 @@
-export { systemRoutes } from "./system.controller.ts";
+export { systemRoutes } from "./controllers/system.controller.ts";

@@ -70,8 +70,8 @@ Ces évolutions doivent conserver l’isolation des comptes et le design actuel.
 | --- | --- |
 | `apps/macos/Sources/SillageMac/DiscoverView.swift` | Écran, barre latérale, rayons « Pour toi » et résultats. |
 | `apps/macos/Sources/SillageMac/DiscoveryModel.swift` | Requêtes, annulation, pagination YouTube et cache d’accueil. |
-| `apps/server/src/modules/discovery/discovery.controller.ts` | Routes, cache public de recherche, cache « Pour toi », vérification et ajout par compte. |
-| `apps/server/src/modules/discovery/discovery-home.service.ts` | Profil d’écoute, voisins, rayons et exclusions de « Pour toi ». |
+| `apps/server/src/modules/discovery/controllers/discovery.controller.ts` | Routes, cache public de recherche, cache « Pour toi », vérification et ajout par compte. |
+| `apps/server/src/modules/discovery/services/discovery-home.service.ts` | Profil d’écoute, voisins, rayons et exclusions de « Pour toi ». |
 | `apps/server/src/integrations/listenbrainz/client.ts` | Artistes voisins ListenBrainz, avec cache d’une journée. |
 | `apps/server/src/searxng.ts` | Recherche externe ; fichiers associés pour la vérification des vidéos. |
 | `apps/server/src/musicbrainz/rollout.ts` | Activation progressive de l’enrichissement et compteurs. |

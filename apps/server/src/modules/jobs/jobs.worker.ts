@@ -4,8 +4,8 @@ import {
   jobPayloads,
   type ClaimedJob,
   type JobKind,
-} from "./jobs.schemas.ts";
-import { claim, extendLease, finish } from "./jobs.repository.ts";
+} from "./types/jobs.schemas.ts";
+import { claim, extendLease, finish } from "./repositories/jobs.repository.ts";
 
 export type JobHandler = (job: ClaimedJob) => Promise<void>;
 

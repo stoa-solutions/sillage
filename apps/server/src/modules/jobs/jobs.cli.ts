@@ -1,5 +1,5 @@
 import { pool } from "../../db/index.ts";
-import { retryFailed } from "./jobs.repository.ts";
+import { retryFailed } from "./repositories/jobs.repository.ts";
 
 /** Queue maintenance from inside the worker or API container: `retry` requeues the last failures. */
 const [action] = process.argv.slice(2);

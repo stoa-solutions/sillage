@@ -7,7 +7,7 @@ vi.mock("../src/modules/mcp/index.ts", () => ({
 }));
 import { catalogSelection } from "../src/modules/dj/catalog.ts";
 import { planTurn } from "../src/modules/dj/plan.ts";
-import { djInput } from "../src/modules/dj/dj.contracts.ts";
+import { djInput } from "../src/modules/dj/types/dj.contracts.ts";
 import type { Database } from "../src/db/index.ts";
 
 const db = {} as Database;

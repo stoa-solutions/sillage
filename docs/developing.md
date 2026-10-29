@@ -20,11 +20,11 @@ Pour les tests SQL, créer un PostgreSQL jetable avec pgvector, définir `TEST_D
 
 | Besoin | Point d’entrée | Logique / validation |
 | --- | --- | --- |
-| Connexion et clé | `Session`, `GoogleSignIn`, `SettingsView` | `modules/auth`, `modules/accounts`, `modules/dj/dj-settings.service.ts`, tests comptes |
+| Connexion et clé | `Session`, `GoogleSignIn`, `SettingsView` | `modules/auth`, `modules/accounts`, `modules/dj/services/dj-settings.service.ts`, tests comptes |
 | Chercher une musique | `DiscoveryModel`, `LibraryModel` | `modules/search`, `modules/mcp`, `modules/discovery` ; filtrage propriétaire obligatoire |
 | Comprendre une demande | `DJModel.send` | commandes locales puis `packages/core/src/intent.ts`, `modules/dj/plan.ts`, `decision.ts` et `dj-turn.service.ts` |
 | Ordre et suite | `DJModel` | `PlaybackQueue`, `DJComposition`, tests session/composition |
-| Voix | `VoiceOutput` | `PreparedSpeech`, `modules/dj/dj-voice.service.ts` ; annuler l’annonce d’un titre sauté |
+| Voix | `VoiceOutput` | `PreparedSpeech`, `modules/dj/services/dj-voice.service.ts` ; annuler l’annonce d’un titre sauté |
 | Vidéo et paroles | `Player`, `LyricsPanel` | `PlaybackClock`, `Lyrics`, `LyricsModel`, `modules/player`, `modules/lyrics` |
 | Apparence | vues de feature | `DesignSystem`, `Surfaces`, composants communs ; garder les paroles latérales |
 
@@ -44,7 +44,7 @@ Les noms Swift correspondent aux fichiers de `apps/macos/Sources/SillageKit` (r�
 - Modifier une table dans la section du domaine dans `apps/server/src/db/schema.ts`, puis générer la migration : `npm run db:generate -w @sillage/server -- --name <sujet>`. Pas besoin de base : drizzle-kit compare le schéma au dernier instantané de `apps/server/drizzle/meta/`. Relire le SQL produit et le committer avec l’instantané.
 - Ce que Drizzle ne décrit pas (déclencheur `sillage_music_revision`, configuration `sillage_simple`) s’écrit à la main dans une migration créée par `npm run db:generate -w @sillage/server -- --custom --name <sujet>`.
 - Le serveur applique les migrations au démarrage ; `npm run migrate -w @sillage/server` le fait à la main. Les suites d’intégration migrent leur propre schéma PostgreSQL de la même façon.
-- Un module passe par `db.orm` dans son `<module>.repository.ts`, avec le constructeur SQL de Drizzle ; jamais de SQL concaténé. Le gabarit `sql\`…\`` sert uniquement aux expressions PostgreSQL que le constructeur n’exprime pas (`now()`, intervalles, `FILTER`, `CASE`, `->>`), avec des colonnes typées et des valeurs passées en paramètres.
+- Un module passe par `db.orm` dans son `repositories/<module>.repository.ts`, avec le constructeur SQL de Drizzle ; jamais de SQL concaténé. Le gabarit `sql\`…\`` sert uniquement aux expressions PostgreSQL que le constructeur n’exprime pas (`now()`, intervalles, `FILTER`, `CASE`, `->>`), avec des colonnes typées et des valeurs passées en paramètres.
 - Les valeurs fixes sont des enums PostgreSQL (`pgEnum` dans le schéma). Relire chaque migration générée : drizzle-kit qualifie les types enum par `"public"` (à retirer, car les suites de test ont chacune leur schéma), ne reconstruit ni les valeurs par défaut ni les index partiels lors d’un changement de type, et les suppressions gardent `IF EXISTS`. Vérifier ensuite l’équivalence : une base créée par toutes les migrations et une base créée par `drizzle-kit generate` depuis le schéma seul doivent avoir le même `pg_dump --schema-only`, au déclencheur `sillage_music_revision` près.
 - `npm run build` produit le bundle de production dans `apps/server/dist/` (esbuild, `apps/server/build.mjs`) ; `npm run verify:node` le construit. Le développement reste en TypeScript direct (`tsx`).
 - Le serveur compile en TypeScript très strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, accès `process.env["X"]`, etc.) : traiter le cas absent plutôt que forcer le type.
@@ -57,7 +57,7 @@ Garder API, worker et inférence séparés. Mesurer latence p50/p95, pertinence 
 ## Lire le projet et contribuer
 
 1. Lire `GLOSSARY.md` pour distinguer catalogue, playlist, file d'écoute et historique.
-2. Lire `docs/architecture.md`, puis suivre un seul parcours de bout en bout. Pour le chat : `modules/dj/dj.controller.ts` → `dj-turn.service.ts` → `research.ts` (MCP) / `provider.ts` → `decision.ts` → `reply.ts` → `ListeningSession` sur Mac. Côté serveur, [server-tour.md](server-tour.md) donne l’ordre de lecture.
+2. Lire `docs/architecture.md`, puis suivre un seul parcours de bout en bout. Pour le chat : `modules/dj/controllers/dj.controller.ts` → `dj-turn.service.ts` → `research.ts` (MCP) / `provider.ts` → `decision.ts` → `reply.ts` → `ListeningSession` sur Mac. Côté serveur, [server-tour.md](server-tour.md) donne l’ordre de lecture.
 3. Trouver un test du même comportement avant d'ajouter une fonctionnalité. `dj-retrieval.test.ts` simule les recherches et les décisions ; `dj-provider.test.ts` vérifie la frontière Gemini ; `accounts.integration.test.ts` utilise PostgreSQL pour prouver la séparation des comptes.
 4. Garder l’entrée publique (`index.ts`) stable. Un module porte un nom de responsabilité (contrat, contexte, catalogue, fournisseur), pas un nom générique comme `helpers`.
 

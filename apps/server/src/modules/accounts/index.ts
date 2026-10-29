@@ -1,2 +1,2 @@
-export { accountRoutes } from "./accounts.controller.ts";
-export { accountProfile, type AccountProfile } from "./accounts.repository.ts";
+export { accountRoutes } from "./controllers/accounts.controller.ts";
+export { accountProfile, type AccountProfile } from "./repositories/accounts.repository.ts";

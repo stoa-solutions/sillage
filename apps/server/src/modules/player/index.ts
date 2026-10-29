@@ -1,2 +1,2 @@
-export { playerRoutes } from "./player.controller.ts";
+export { playerRoutes } from "./controllers/player.controller.ts";
 export { djPlayerJs } from "./player.assets.ts";

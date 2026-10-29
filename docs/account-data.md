@@ -67,7 +67,7 @@ L’extension progressive est activable par compte après validation du pilote. 
 Chemins relatifs à `apps/server/src/`.
 
 - `modules/auth` (dont `session.guard.ts`, monté sur `/v1/*` dans `app.ts`) et `modules/accounts` : identité et autorisation ; jamais déléguées au modèle.
-- `modules/dj/dj-settings.service.ts` + `.repository.ts` : chiffrement et accès par compte ; aucun déchiffrement dans une vue ou un export.
+- `modules/dj/services/dj-settings.service.ts` + `.repository.ts` : chiffrement et accès par compte ; aucun déchiffrement dans une vue ou un export.
 - `modules/library`, `modules/jobs`, `worker.ts` : import et travail différé ; reprise des erreurs sans bloquer l'app.
 - `integrations/musicbrainz` et `modules/enrichment` : adaptateur fournisseur, correspondances pures (`enrichment.matching.ts`) et orchestration séparés.
 - `modules/search` et `modules/mcp` : lecture des index existants, toujours bornée au compte.

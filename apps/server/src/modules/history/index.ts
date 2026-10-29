@@ -1,8 +1,8 @@
-export { historyRoutes } from "./history.controller.ts";
+export { historyRoutes } from "./controllers/history.controller.ts";
 export {
   historyEvent,
   historyPage,
   historyUpload,
   listeningOutcomes,
-} from "./history.schemas.ts";
-export { recentlyHeard } from "./history.repository.ts";
+} from "./types/history.schemas.ts";
+export { recentlyHeard } from "./repositories/history.repository.ts";

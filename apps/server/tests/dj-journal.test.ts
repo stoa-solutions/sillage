@@ -3,12 +3,12 @@ import { journalPayload } from "../src/modules/dj/journal/journal.payload.ts";
 import {
   journalUpload,
   journalEventPage,
-} from "../src/modules/dj/journal/journal.contracts.ts";
+} from "../src/modules/dj/journal/types/journal.contracts.ts";
 import {
   beginJournal,
   publicJournalError,
-} from "../src/modules/dj/journal/journal.service.ts";
-import { djInput } from "../src/modules/dj/dj.contracts.ts";
+} from "../src/modules/dj/journal/services/journal.service.ts";
+import { djInput } from "../src/modules/dj/types/dj.contracts.ts";
 import type { Database } from "../src/db/index.ts";
 
 afterEach(() => vi.restoreAllMocks());

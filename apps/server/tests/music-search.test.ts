@@ -6,13 +6,13 @@ const mocks = vi.hoisted(() => ({
   ownedTracks: vi.fn(),
   ownedPlaylists: vi.fn(),
 }));
-vi.mock("../src/modules/mcp/mcp.repository.ts", () => ({
+vi.mock("../src/modules/mcp/repositories/mcp.repository.ts", () => ({
   ownedTracks: mocks.ownedTracks,
   ownedPlaylists: mocks.ownedPlaylists,
   playableTitles: async () => [],
   browseOwnedTracks: async () => [],
 }));
-vi.mock("../src/modules/search/search.service.ts", () => ({ search: mocks.search }));
+vi.mock("../src/modules/search/services/search.service.ts", () => ({ search: mocks.search }));
 vi.mock("../src/modules/discovery/index.ts", async (importOriginal) => ({
   ...await importOriginal<typeof import("../src/modules/discovery/index.ts")>(),
   discoveryFor: () => ({ search: mocks.youtube }),

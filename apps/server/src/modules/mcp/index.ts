@@ -1,4 +1,4 @@
-export { mcpRoutes } from "./mcp.controller.ts";
+export { mcpRoutes } from "./controllers/mcp.controller.ts";
 export {
   connectMusicMcp,
   handleMusicMcp,
@@ -8,4 +8,4 @@ export {
   requestedTracks,
   type CandidateRanking,
   type DjTrack,
-} from "./mcp.service.ts";
+} from "./services/mcp.service.ts";

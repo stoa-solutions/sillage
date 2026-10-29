@@ -4,7 +4,7 @@ import { MusicBrainzClient } from "../../integrations/musicbrainz/index.ts";
 import { wikipedia } from "../../integrations/wikipedia/index.ts";
 import { YouTube } from "../../integrations/youtube/index.ts";
 import { artistKey, youTubeMusic } from "../../integrations/youtube-music/index.ts";
-import type { CatalogArtist, InsightsSources } from "./insights.service.ts";
+import type { CatalogArtist, InsightsSources } from "./services/insights.service.ts";
 
 type Found = { artists?: { id: string; name: string; score?: number }[] };
 type Detail = {

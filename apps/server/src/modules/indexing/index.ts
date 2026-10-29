@@ -1,4 +1,4 @@
-export { enqueueMissing, indexImage, indexText } from "./indexing.service.ts";
+export { enqueueMissing, indexImage, indexText } from "./services/indexing.service.ts";
 export { indexingJobHandlers } from "./indexing.jobs.ts";
 export {
   TEXT_KEY,

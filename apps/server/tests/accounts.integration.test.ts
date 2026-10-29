@@ -6,7 +6,7 @@ import { required } from "./support/required.ts";
 import { hash } from "../src/shared/content.ts";
 import { createApp } from "../src/app.ts";
 import { pkceChallenge, type IdentityProvider } from "../src/modules/auth/index.ts";
-import { personalDjConfig, openSecret } from "../src/modules/dj/dj-settings.service.ts";
+import { personalDjConfig, openSecret } from "../src/modules/dj/services/dj-settings.service.ts";
 import { musicTracks, connectMusicMcp } from "../src/modules/mcp/index.ts";
 import { TEXT_KEY, VISION_KEY } from "../src/modules/indexing/index.ts";
 import { reserveDj } from "../src/modules/dj/index.ts";

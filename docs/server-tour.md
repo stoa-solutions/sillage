@@ -25,22 +25,33 @@ Ouvrir dans cet ordre :
 2. `src/main.ts` : serveur HTTP Node sur `createApp(pool)` ; `SIGTERM` ferme le serveur puis le pool.
 3. `src/app.ts` : la racine de composition, sans règle métier. CORS, limite de corps (30 Mio), routes publiques (`/auth`, `/health`, lecteur `/dj/player`, `/macos`), puis `app.use("/v1/*", sessionGuard(db))` : tout ce qui est monté ensuite exige une session. Le `onError` final traduit JSON invalide et erreurs de validation en 400, le reste en 500 sans détail.
 4. `src/modules/auth/session.guard.ts` : jeton Bearer → session active → `c.set("userId")` et `installationId` ; 180 requêtes/minute par jeton, en mémoire du processus ; réponses `no-store`.
-5. Le contrôleur du module (`<module>.controller.ts`) : déclare les routes, valide, appelle le service, met en forme la réponse HTTP.
-6. Le service (`<module>.service.ts`) : règles et orchestration.
-7. Le dépôt (`<module>.repository.ts`) : requêtes Drizzle, toujours filtrées par le compte.
+5. Le contrôleur du module (`controllers/<module>.controller.ts`) : déclare les routes, valide, appelle le service, met en forme la réponse HTTP.
+6. Le service (`services/<module>.service.ts`) : règles et orchestration.
+7. Le dépôt (`repositories/<module>.repository.ts`) : requêtes Drizzle, toujours filtrées par le compte.
 
 Les autres processus partagent `src/db/` et les modules : `src/worker.ts` (file de tâches), `src/inference.ts` + `src/model-process.ts` (vecteurs E5 et SigLIP dans un processus enfant), `src/migrate.ts` (migrations seules).
 
 ## 2. Anatomie d’un module : `src/modules/<module>/`
 
+Chaque module range ses fichiers par rôle, comme un module NestJS lu dans l’arborescence :
+
+```text
+modules/history/
+├── index.ts                         # seule entrée publique
+├── controllers/history.controller.ts
+├── services/history.service.ts
+├── repositories/history.repository.ts
+└── types/history.schemas.ts
+```
+
 | Fichier | Rôle |
 | --- | --- |
-| `<module>.controller.ts` | HTTP uniquement. Chaque `createRoute(...)` (`@hono/zod-openapi`) déclare méthode, chemin, schémas d’entrée et de réponse, erreurs. Hono valide avant le handler ; la doc OpenAPI vient de la même déclaration. |
-| `<module>.service.ts` | Règles et orchestration, sans HTTP. |
-| `<module>.repository.ts` | Toutes les lectures/écritures en base du module, avec Drizzle. Aucune règle HTTP. |
-| `<module>.schemas.ts` | Contrats de l’API en Zod. Ils ne dérivent pas des tables : renommer une colonne ne change pas le contrat public. |
+| `controllers/<module>.controller.ts` | HTTP uniquement. Chaque `createRoute(...)` (`@hono/zod-openapi`) déclare méthode, chemin, schémas d’entrée et de réponse, erreurs. Hono valide avant le handler ; la doc OpenAPI vient de la même déclaration. |
+| `services/<module>.service.ts` | Règles et orchestration, sans HTTP. |
+| `repositories/<module>.repository.ts` | Toutes les lectures/écritures en base du module, avec Drizzle. Aucune règle HTTP. |
+| `types/<module>.schemas.ts` (et `*.contracts.ts`) | Contrats de l’API en Zod. Ils ne dérivent pas des tables : renommer une colonne ne change pas le contrat public. |
 | `index.ts` | Seule entrée publique. Un autre module n’importe que ce fichier (`check:architecture`). |
-| autres | Une responsabilité par fichier, nommée par suffixe : `*.guard.ts`, `*.provider.ts`, `*.jobs.ts` (traitements du worker), `*.matching.ts` (correspondances pures), `*.config.ts`, `*.cli.ts`. |
+| autres, à la racine du module | La logique propre au module, une responsabilité par fichier, nommée par suffixe : `*.guard.ts`, `*.provider.ts`, `*.jobs.ts` (traitements du worker), `*.matching.ts` (correspondances pures), `*.config.ts`, `*.cli.ts`. |
 
 Un module n’a que les fichiers dont il a besoin : `system`, `releases` et `player` n’ont qu’un contrôleur.
 
@@ -50,7 +61,7 @@ Les clients de services externes sont dans `src/integrations/` (sans règle mét
 
 ## 3. Connexion et compte : `auth`, `accounts`
 
-Ouvrir `modules/auth/auth.controller.ts`, puis `auth.service.ts` et `auth.repository.ts`. Parcours de la connexion Google :
+Ouvrir `modules/auth/controllers/auth.controller.ts`, puis `auth.service.ts` et `auth.repository.ts`. Parcours de la connexion Google :
 
 1. Le Mac ouvre `GET /auth/google/start?challenge=…&app_state=…`. La query est validée par `authStartInput` (`auth.schemas.ts`). Le service enregistre l’empreinte du `state` et du cookie ; le navigateur part chez Google.
 2. Google revient sur `/auth/google/callback`. Le flux est supprimé **et** renvoyé en une requête (`DELETE … RETURNING`) : deux retours simultanés ne peuvent pas l’utiliser deux fois. Le compte est créé ou mis à jour (`INSERT … ON CONFLICT (google_sub) DO UPDATE`) avec un code de 90 secondes.
@@ -62,7 +73,7 @@ Autres fichiers : `google.provider.ts` (fournisseur d’identité, remplacé par
 
 ## 4. File de tâches : `jobs` et le worker
 
-La file vit dans PostgreSQL (table `jobs`) et ne connaît aucune tâche en particulier. Ouvrir `modules/jobs/jobs.repository.ts` :
+La file vit dans PostgreSQL (table `jobs`) et ne connaît aucune tâche en particulier. Ouvrir `modules/jobs/repositories/jobs.repository.ts` :
 
 - `enqueue` : une tâche par clé (`dedupe_key`). Tant qu’une tâche de même clé attend ou tourne, `INSERT … ON CONFLICT` la renvoie. L’index unique partiel `jobs_active_key` porte cette règle.
 - `claim` : prend la prochaine tâche due avec `FOR UPDATE SKIP LOCKED` et lui donne un nouveau `leaseId`. Une tâche dont le bail a expiré est reprise ; le résultat tardif de l’ancien worker est refusé.
