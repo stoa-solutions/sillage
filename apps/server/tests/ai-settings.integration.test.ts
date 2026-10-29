@@ -2,7 +2,6 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
-import { replayBaseline } from "./support/database.ts";
 import { createApp } from "../src/app.ts";
 import { hash } from "../src/shared/content.ts";
 
@@ -173,107 +172,5 @@ it.runIf(Boolean(process.env["AI_SIMULATION_URL"]))(
       expect(limited.status).toBe(429);
       expect(await limited.text()).not.toMatch(/private-fixture|fixture-.*key/);
     }
-  },
-);
-
-it.runIf(Boolean(process.env["AI_SIMULATION_URL"]))(
-  "migrates an existing Google key and selected model without re-entry or reset on a second migration",
-  async () => {
-    vi.stubEnv(
-      "AI_GOOGLE_BASE_URL",
-      `${process.env["AI_SIMULATION_URL"]}/google/v1beta`,
-    );
-    await request("settings", {
-      model: "gemini-3.8-flash",
-      apiKey: "fixture-google-key-never-real",
-    });
-    // Recreate the pre-upgrade storage state using the legacy client's saved credential.
-    await db.query("DELETE FROM account_ai_credentials");
-    await db.query("DELETE FROM schema_migrations WHERE version=3");
-    await replayBaseline(db);
-    await replayBaseline(db);
-    expect(await (await request("status")).json()).toMatchObject({
-      provider: "google",
-      model: "gemini-3.8-flash",
-      configured: true,
-    });
-    expect(
-      await (await request("check", { model: "gemini-3.8-flash" })).json(),
-    ).toMatchObject({ ok: true });
-    expect(
-      (
-        await request("settings", {
-          provider: "anthropic",
-          model: "claude-sonnet-5-5",
-        })
-      ).status,
-    ).toBe(400);
-    expect(
-      (
-        await request("settings", {
-          provider: "anthropic",
-          model: "gemini-3.8-flash",
-          apiKey: "fixture-anthropic-key-never-real",
-        })
-      ).status,
-    ).toBe(400);
-    expect(await (await request("status")).json()).toMatchObject({
-      provider: "google",
-      configured: true,
-    });
-  },
-);
-
-it.runIf(Boolean(process.env["AI_SIMULATION_URL"])).each(["google", "compatible"])(
-  "keeps the initial %s legacy server check working but never reactivates its global key after personal configuration",
-  async (transport) => {
-    const legacy = "00000000-0000-4000-8000-000000000001";
-    vi.stubEnv("DJ_PROVIDER", transport === "compatible" ? "" : "google");
-    vi.stubEnv("DJ_BASE_URL", `${process.env["AI_SIMULATION_URL"]}/google/v1`);
-    vi.stubEnv("DJ_MODEL", "gemini-3.8-flash");
-    vi.stubEnv("DJ_API_KEY", "fixture-google-key-never-real");
-    vi.stubEnv(
-      "AI_GOOGLE_BASE_URL",
-      `${process.env["AI_SIMULATION_URL"]}/google/v1beta`,
-    );
-    vi.stubEnv(
-      "AI_ANTHROPIC_BASE_URL",
-      `${process.env["AI_SIMULATION_URL"]}/anthropic/v1`,
-    );
-    await db.query("INSERT INTO users(id) VALUES($1)", [legacy]);
-    await db.query(
-      "INSERT INTO tokens(id,name,hash,user_id) VALUES($1,'legacy',$2,$3)",
-      [randomUUID(), hash("legacy-ai-settings-token"), legacy],
-    );
-    await db.query("DELETE FROM schema_migrations WHERE version=3");
-    await replayBaseline(db);
-    const send = (path: string, body?: unknown) =>
-      request(path, body, "legacy-ai-settings-token");
-    expect(await (await send("status")).json()).toMatchObject({
-      configured: true,
-      personal: false,
-    });
-    expect(
-      await (await send("check", { model: "gemini-3.8-flash" })).json(),
-    ).toMatchObject({ ok: true });
-    await send("settings", {
-      provider: "anthropic",
-      model: "claude-sonnet-5-5",
-      apiKey: "fixture-anthropic-key-never-real",
-    });
-    await send("settings/reset", { provider: "anthropic" });
-    expect(await (await send("status")).json()).toMatchObject({
-      configured: false,
-      provider: "anthropic",
-    });
-    await replayBaseline(db);
-    expect(await (await send("status")).json()).toMatchObject({
-      configured: false,
-      provider: "anthropic",
-    });
-    await send("settings/reset", {});
-    expect(await (await send("status")).json()).toMatchObject({
-      configured: false,
-    });
   },
 );

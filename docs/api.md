@@ -129,14 +129,13 @@ Le catalogue MCP est exposé sur `/v1/mcp` en Streamable HTTP stateless avec le 
 
 - **400** : entrée invalide, format d’identifiant ou curseur incorrect.
 - **401** : session absente, expirée ou révoquée ; reprendre la connexion.
-- **403** : opération de maintenance non permise ou transfert historique refusé.
 - **404** : ressource absente du compte. Cela ne révèle pas les ressources des autres comptes.
 - **413** : corps trop gros (30 Mio pour l’API ; 8 Kio pour le sous-ensemble `/auth`).
 - **429** : lire le détail ; peut signifier débit Sillage, DJ déjà occupé, budget ou quota d’un fournisseur. Ce n’est pas automatiquement une clé Gemini épuisée.
 - **502/503** : source/configuration indisponible. Conserver la lecture et la file lorsque la recherche échoue.
 - **200 avec état négatif** : courant pour le test Gemini ou les paroles absentes/indisponibles. Vérifier le contenu métier, pas seulement le code HTTP.
 
-L’API `/v1/*` limite le débit à 180 requêtes/minute/jeton. Les demandes de chat/test DJ sont limitées à une simultanée par compte et deux sur l’instance. Les opérations de maintenance historique ne sont pas des droits d’administrateur attribués à tous les comptes Google.
+L’API `/v1/*` limite le débit à 180 requêtes/minute/jeton. Les demandes de chat/test DJ sont limitées à une simultanée par compte et deux sur l’instance.
 
 ## Maintenir le contrat
 

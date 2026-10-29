@@ -1,9 +1,8 @@
-import { hash } from "../../shared/content.ts";
-import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
-import { holdsLiveToken, revokeSession } from "../auth/index.ts";
-import { accountProfile, claimLegacyLibrary } from "./accounts.repository.ts";
+import type { Database } from "../../db/index.ts";
+import { revokeSession } from "../auth/index.ts";
+import { accountProfile } from "./accounts.repository.ts";
 
-/** The signed-in account: profile, sign-out of this installation, historical library claim. */
+/** The signed-in account: profile and sign-out of this installation. */
 export function accountsService(db: Database) {
   return {
     async profile(userId: string) {
@@ -14,12 +13,6 @@ export function accountsService(db: Database) {
     },
     async logout(installationId: string) {
       await revokeSession(db.orm, installationId);
-    },
-    /** The proof is a live token of the historical account; one claim ever. */
-    claimLibrary(userId: string, legacyToken: string) {
-      return claimLegacyLibrary(db.orm, userId, (tx) =>
-        holdsLiveToken(tx, LEGACY_USER_ID, hash(legacyToken)),
-      );
     },
   };
 }

@@ -19,7 +19,7 @@ const speechResponse = z.object({
     }),
   ),
 });
-import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
+import type { Database } from "../../db/index.ts";
 export function djVoiceConfigured(config: DjConfig = djConfig()) {
   return (
     config.configured &&
@@ -45,9 +45,9 @@ export function pcmToWav(pcm: Buffer, rate = 24000): Buffer {
 export async function djSpeech(
   db: Database,
   text: string,
-  signal?: AbortSignal,
+  signal: AbortSignal | undefined,
   config: DjConfig = djConfig(),
-  userId = LEGACY_USER_ID,
+  userId: string,
 ) {
   if (!djVoiceConfigured(config))
     throw new DjUnavailable("La voix du DJ n’est pas configurée.");

@@ -12,7 +12,7 @@ Plafonds : API 192 Mio/0,5 CPU, worker 192 Mio/0,5 CPU, inférence 1 408 Mio/1,5
 
 `DATABASE_URL`, `YOUTUBE_API_KEY`, `SYNC_ENABLED`, `VISION_ENABLED`, `RELEASE_SHA` sont définis dans Dokploy. Ne pas les ajouter au dépôt ni aux paquets clients. Restreindre la clé Google à YouTube Data API v3 et à l’IP sortante du VPS. Budget local : 8 000 unités/jour, comptées selon la journée YouTube America/Los_Angeles.
 
-Créer un jeton avec `node dist/modules/auth/token.cli.js create /tmp/connexion.json` depuis le conteneur API. Transférer son contenu vers un fichier privé via la sortie redirigée de `docker exec` puis le retirer du conteneur (`docker cp` ne lit pas ce montage tmpfs sur ce serveur). Ne jamais afficher son contenu dans les journaux. `node dist/modules/auth/token.cli.js revoke UUID` révoque un jeton. Ces jetons servent aux scripts et au point d’entrée MCP. Seul un hash du jeton est enregistré en base.
+Créer un jeton avec `node dist/modules/auth/token.cli.js create <email du compte> /tmp/connexion.json` depuis le conteneur API ; le compte doit s’être connecté une fois avec Google. Transférer son contenu vers un fichier privé via la sortie redirigée de `docker exec` puis le retirer du conteneur (`docker cp` ne lit pas ce montage tmpfs sur ce serveur). Ne jamais afficher son contenu dans les journaux. `node dist/modules/auth/token.cli.js revoke UUID` révoque un jeton. Ces jetons servent aux scripts et au point d’entrée MCP. Seul un hash du jeton est enregistré en base.
 
 ## Comptes utilisateurs
 
@@ -27,7 +27,7 @@ Voir [accounts.md](accounts.md) pour la configuration Google, les clés Gemini p
 5. Importer la sauvegarde existante, lancer une synchronisation manuelle et vérifier les comptes et résultats. Activer `SYNC_ENABLED=true` après réussite, puis constater une exécution créée par le planificateur.
 6. Surveiller erreurs, file, CPU, mémoire et services Stoa pendant le remplissage initial.
 
-Les tâches sont persistantes, dédupliquées, réessayées cinq fois avec temporisation. Un bail expiré reprend automatiquement. Le bouton **Réessayer** remet les derniers échecs en attente. Une collecte échouée conserve le dernier instantané ; les suppressions demandent deux collectes complètes. Les passages textuels sont remplacés dans une transaction et rejetés si la source a changé entre-temps.
+Les tâches sont persistantes, dédupliquées, réessayées cinq fois avec temporisation. Un bail expiré reprend automatiquement. `node dist/modules/jobs/jobs.cli.js retry`, depuis le conteneur API ou worker, remet les derniers échecs en attente. Une collecte échouée conserve le dernier instantané ; les suppressions demandent deux collectes complètes. Les passages textuels sont remplacés dans une transaction et rejetés si la source a changé entre-temps.
 
 Pour un retour arrière, arrêter le worker via Dokploy, redéployer le commit précédent et conserver la base. Utiliser une sauvegarde dans une ressource isolée si une migration incompatible devait être introduite.
 

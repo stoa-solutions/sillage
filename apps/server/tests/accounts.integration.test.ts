@@ -2,12 +2,10 @@ import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID, randomBytes } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
-import { replayBaseline } from "./support/database.ts";
 import { required } from "./support/required.ts";
 import { hash } from "../src/shared/content.ts";
 import { createApp } from "../src/app.ts";
 import { pkceChallenge, type IdentityProvider } from "../src/modules/auth/index.ts";
-import { LEGACY_USER_ID } from "../src/db/index.ts";
 import { personalDjConfig, openSecret } from "../src/modules/dj/dj-settings.service.ts";
 import { musicTracks, connectMusicMcp } from "../src/modules/mcp/index.ts";
 import { TEXT_KEY, VISION_KEY } from "../src/modules/indexing/index.ts";
@@ -40,7 +38,7 @@ const provider: IdentityProvider = {
       : { sub: "google-alice", email: "alice@example.test", name: "Alice" };
   },
 };
-const app = createApp(db, provider);
+const app = createApp(db, { identity: provider });
 const req = (path: string, token = tokenA, body?: unknown) =>
   app.request(path, {
     method: body === undefined ? "GET" : "POST",
@@ -61,8 +59,8 @@ beforeEach(async () => {
     "TRUNCATE users,tokens,playlists,videos,jobs,oauth_flows,oauth_grants CASCADE",
   );
   await db.query(
-    `INSERT INTO users(id,google_sub,email) VALUES($1,'google-alice','alice@example.test'),($2,'google-bob','bob@example.test'),($3,NULL,NULL)`,
-    [alice, bob, LEGACY_USER_ID],
+    `INSERT INTO users(id,google_sub,email) VALUES($1,'google-alice','alice@example.test'),($2,'google-bob','bob@example.test')`,
+    [alice, bob],
   );
   await db.query(
     `INSERT INTO tokens(id,name,hash,user_id) VALUES($1,'A',$2,$3),($4,'B',$5,$6)`,
@@ -126,8 +124,8 @@ it("isolates browsing, text search, pagination, counts, exports and shared-video
     expect(
       (await req("/v1/playlists/" + other + "/sync", token, {})).status,
     ).toBe(404);
-    expect((await req("/v1/import", token, {})).status).toBe(403);
-    expect((await req("/v1/jobs/retry", token, {})).status).toBe(403);
+    expect((await req("/v1/import", token, {})).status).toBe(404);
+    expect((await req("/v1/jobs/retry", token, {})).status).toBe(404);
   }
 });
 it("isolates MCP browsing/search and final DJ candidate validation", async () => {
@@ -462,29 +460,7 @@ it("rejects expired/invalid Google flows and expired grants", async () => {
     (await req("/auth/exchange", "", { code, verifier: flow.verifier })).status,
   ).toBe(401);
 });
-it("requires proof to claim the historical library and permits only one claim", async () => {
-  const legacyToken = "legacy-private-connection-token";
-  await db.query(
-    `INSERT INTO tokens(id,name,hash,user_id) VALUES($1,'legacy',$2,$3)`,
-    [randomUUID(), hash(legacyToken), LEGACY_USER_ID],
-  );
-  await db.query(
-    `INSERT INTO user_playlists(user_id,playlist_id) VALUES($1,'PLbob1234567')`,
-    [LEGACY_USER_ID],
-  );
-  expect(
-    (await req("/v1/account/claim-library", tokenA, { legacyToken: tokenB }))
-      .status,
-  ).toBe(403);
-  expect(
-    (await req("/v1/account/claim-library", tokenA, { legacyToken })).status,
-  ).toBe(200);
-  expect(
-    (await req("/v1/account/claim-library", tokenB, { legacyToken })).status,
-  ).toBe(403);
-  expect((await (await req("/v1/me", legacyToken)).json()).id).toBe(alice);
-});
-it("new imports belong only to the importing account, even on migration reruns", async () => {
+it("new imports belong only to the importing account", async () => {
   expect(
     (
       await req("/v1/playlists", tokenA, {
@@ -495,15 +471,6 @@ it("new imports belong only to the importing account, even on migration reruns",
   expect(
     JSON.stringify(await (await req("/v1/playlists", tokenB)).json()),
   ).not.toContain("PLnew123456789");
-  await replayBaseline(db);
-  expect(
-    (
-      await db.query(
-        "SELECT 1 FROM user_playlists WHERE user_id=$1 AND playlist_id=$2",
-        [LEGACY_USER_ID, "PLnew123456789"],
-      )
-    ).rowCount,
-  ).toBe(0);
 });
 
 it("scopes semantic text and image hits before ranking, including explanations", async () => {

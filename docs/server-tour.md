@@ -13,7 +13,7 @@ curl http://127.0.0.1:3001/health
 
 `npm run dev:server` applique les migrations en attente au démarrage : pas d’étape séparée. `npm run migrate -w @sillage/server` fait la même chose sans démarrer l’API. Le worker et l’inférence se lancent avec `npm run dev:worker -w @sillage/server` et `npm run dev:inference -w @sillage/server`.
 
-La connexion Google demande `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` et `PUBLIC_URL` ; sans eux, `/auth/status` répond `{"google":false}`. Pour appeler `/v1/*` sans Google, créer un jeton personnel : `npx tsx apps/server/src/modules/auth/token.cli.ts create /tmp/connexion.json` (le fichier contient le jeton, ne pas le committer). `npm run docs:serve` ouvre la documentation OpenAPI locale.
+La connexion Google demande `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` et `PUBLIC_URL` ; sans eux, `/auth/status` répond `{"google":false}`. Pour appeler `/v1/*` sans Google, créer un jeton personnel : `npx tsx apps/server/src/modules/auth/token.cli.ts create <email> /tmp/connexion.json`, pour un compte qui s’est déjà connecté avec Google (le fichier contient le jeton, ne pas le committer). `npm run docs:serve` ouvre la documentation OpenAPI locale.
 
 Une variable invalide arrête le processus au démarrage, avec le nom de la variable (`src/shared/config.ts`).
 
@@ -58,7 +58,7 @@ Ouvrir `modules/auth/auth.controller.ts`, puis `auth.service.ts` et `auth.reposi
 
 Autres fichiers : `google.provider.ts` (fournisseur d’identité, remplacé par un faux en test), `session.guard.ts` (section 1), `return-page.ts` (page de retour), `token.cli.ts` (jetons personnels en ligne de commande).
 
-`modules/accounts/` : `/v1/me`, `/v1/logout`, `/v1/account/claim-library`. À lire : la reprise de la bibliothèque historique dans `accounts.repository.ts`. La transaction verrouille la ligne du compte historique (`SELECT … FOR UPDATE`) : si deux comptes tentent la reprise en même temps, le second voit la bibliothèque déjà prise. La preuve (un jeton historique valide) vient de `auth` par son `index.ts`.
+`modules/accounts/` : `/v1/me` et `/v1/logout`.
 
 ## 4. File de tâches : `jobs` et le worker
 
@@ -72,7 +72,7 @@ Puis `jobs.worker.ts` (boucle, registre `{ type → traitement }`, battement qui
 
 ## 5. Bibliothèque : `library`
 
-- `library.controller.ts` : `/v1/status`, `/v1/playlists` (liste, ajout, retrait, actualisation), `/v1/export`, `/v1/import`.
+- `library.controller.ts` : `/v1/status`, `/v1/playlists` (liste, ajout, retrait, actualisation), `/v1/export`. L’import d’une sauvegarde (`importLibrary`) n’est pas exposé en HTTP : le catalogue de vidéos est partagé entre comptes.
 - `library.repository.ts` : `followedBy` et `inLibraryOf`, les deux filtres qui isolent les comptes. Une vidéo appartient à la bibliothèque d’un compte seulement si elle est active dans une playlist que ce compte suit. Toute lecture de la bibliothèque passe par eux.
 - `playlist-sync.service.ts` + `playlist-sync.repository.ts` : lit toute la playlist YouTube, puis dans une seule transaction (et seulement si le bail est toujours détenu) crée la génération suivante. Une entrée absente de deux synchronisations consécutives devient inactive.
 - `video-metadata.service.ts` : métadonnées complètes par lots de 50 vidéos, photos de chaînes, puis index.
@@ -137,7 +137,7 @@ Ces trois modules servent des fichiers tels quels : leurs routes sont documenté
 
 ## 10. La base de données : `src/db/` et `drizzle/`
 
-- `src/db/schema.ts` : toute la base dans un seul fichier, lu de haut en bas comme un `schema.prisma`, avec une section par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`, `taste`, `legacy`) précédée des types de colonnes communs. Une table = un `pgTable(...)`, noms snake_case en base, camelCase en TypeScript, contraintes avec leur nom réel. Les valeurs fixes sont des enums PostgreSQL (`pgEnum`) : `job_kind`, `job_status`, `playlist_status`, `sync_run_status`, `listening_outcome`, `lyrics_status`, `ai_provider`, `user_dj_provider`, `discovery_scope`, `turn_trigger`, `turn_status`, `journal_origin`.
+- `src/db/schema.ts` : toute la base dans un seul fichier, lu de haut en bas comme un `schema.prisma`, avec une section par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`, `taste`, `legacy`, qui ne garde que la table des migrations d’avant Drizzle) précédée des types de colonnes communs. Une table = un `pgTable(...)`, noms snake_case en base, camelCase en TypeScript, contraintes avec leur nom réel. Les valeurs fixes sont des enums PostgreSQL (`pgEnum`) : `job_kind`, `job_status`, `playlist_status`, `sync_run_status`, `listening_outcome`, `lyrics_status`, `ai_provider`, `user_dj_provider`, `discovery_scope`, `turn_trigger`, `turn_status`, `journal_origin`.
 - `src/db/client.ts` : `openDatabase()` crée le pool et l’objet Drizzle `orm` ; `pool` est l’instance du processus. Les dépôts reçoivent `db.orm` ou une transaction (`Executor`).
 - `src/db/migrate.ts` : prend un verrou consultatif de session (740071) sur une connexion dédiée **avant** que Drizzle lise son journal, puis applique les migrations en attente dans une transaction. Deux processus qui démarrent ensemble s’attendent.
 - `drizzle/` : `0000_baseline` (ancien schéma idempotent : une base existante l’applique sans changement), `0001` enums des tâches et playlists, `0002` enums d’écoute et de paroles, `0003` enums du DJ, `0004` table `dj_agents` (structure seule ; les agents de base sont écrits au démarrage), `0005` goût : `track_feedback`, `taste_settings` et `listening_history.listened_ms`. Seuls le déclencheur `sillage_music_revision` et la configuration de recherche `sillage_simple` restent en SQL écrit à la main.
@@ -172,7 +172,7 @@ Elle est générée entièrement depuis les routes. `src/api-docs/openapi.ts` co
 
 ## 13. En production
 
-- `build.mjs` produit avec esbuild un bundle JavaScript dans `dist/` (`boot`, `main`, `worker`, `inference`, `model-process`, `migrate`, `modules/auth/token.cli`). Le Dockerfile multi-étapes ne garde que ce bundle, les dépendances de production et `drizzle/`. L’API démarre avec `node dist/boot.js` ; worker et inférence avec `dist/worker.js` et `dist/inference.js`.
+- `build.mjs` produit avec esbuild un bundle JavaScript dans `dist/` (`boot`, `main`, `worker`, `inference`, `model-process`, `migrate`, `modules/auth/token.cli`, `modules/jobs/jobs.cli`). Le Dockerfile multi-étapes ne garde que ce bundle, les dépendances de production et `drizzle/`. L’API démarre avec `node dist/boot.js` ; worker et inférence avec `dist/worker.js` et `dist/inference.js`.
 - La CI (job `image`) construit cette image et lance `scripts/smoke-server-image.sh` sur une base vide : migrations au démarrage (deux fois), `/health` avec le SHA, `/v1/me` en 401, worker, inférence et fichiers du bundle.
 - **Une seule API** : baux des Tours DJ et limite de débit sont en mémoire, et le démarrage marque les Tours en cours comme interrompus. Arrêter l’ancienne API avant de démarrer la nouvelle. Le worker peut avoir plusieurs exemplaires.
 

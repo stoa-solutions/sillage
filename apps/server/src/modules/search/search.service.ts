@@ -1,6 +1,6 @@
 import { parseQuery, tokenize } from "@sillage/core/search";
 import type { MusicMetadata, SearchResult } from "@sillage/core/types";
-import { LEGACY_USER_ID, type Database, type videos } from "../../db/index.ts";
+import type { Database, videos } from "../../db/index.ts";
 import { infer } from "../../integrations/inference/index.ts";
 import { TEXT_KEY, VISION_KEY } from "../indexing/index.ts";
 import { videoFromRecord } from "../library/index.ts";
@@ -88,7 +88,7 @@ const cache = new Map<string, number[]>();
 export async function search(
   db: Database,
   input: SearchInput,
-  userId = LEGACY_USER_ID,
+  userId: string,
 ) {
   const orm = db.orm;
   const parsed = parseQuery(input.query);

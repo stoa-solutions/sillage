@@ -1,4 +1,4 @@
-import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
+import type { Database } from "../../db/index.ts";
 import { DjUnavailable } from "./errors.ts";
 import { takeDailyUnit } from "./dj-quota.repository.ts";
 
@@ -30,7 +30,7 @@ export function djDailyBudget(userId: string, now = Date.now()): number | null {
   return Math.floor(Math.max(1, Math.min(1000, configured)));
 }
 /** Takes one unit of the account's daily DJ budget, or refuses with a 429. */
-export async function reserveDj(db: Database, userId = LEGACY_USER_ID) {
+export async function reserveDj(db: Database, userId: string) {
   const budget = djDailyBudget(userId);
   if (!(await takeDailyUnit(db.orm, userId, budget)))
     throw new DjUnavailable(

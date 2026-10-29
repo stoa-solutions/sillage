@@ -18,6 +18,7 @@ await build({
     "src/model-process.ts",
     "src/migrate.ts",
     "src/modules/auth/token.cli.ts",
+    "src/modules/jobs/jobs.cli.ts",
   ],
   outdir: "dist",
   outbase: "src",

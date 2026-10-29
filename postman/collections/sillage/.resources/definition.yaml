@@ -15,7 +15,6 @@ variables:
   app_state: ""
   auth_code: ""
   pkce_verifier: ""
-  legacy_token: ""
 auth:
   - id: 00000000-0000-4000-8000-000000000001
     type: bearer

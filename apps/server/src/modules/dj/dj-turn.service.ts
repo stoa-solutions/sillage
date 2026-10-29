@@ -1,5 +1,5 @@
 import { djConfig, type DjConfig } from "./dj.config.ts";
-import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
+import type { Database } from "../../db/index.ts";
 import { recentlyHeard } from "../history/index.ts";
 import { connectMusicMcp, musicTracks } from "../mcp/index.ts";
 import type { DjTrack } from "@sillage/core/dj";
@@ -62,7 +62,7 @@ export async function djTurn(
   input: DjInput,
   signal: AbortSignal = AbortSignal.timeout(TURN_DEADLINE_MS),
   config: DjConfig = djConfig(),
-  userId = LEGACY_USER_ID,
+  userId: string,
   observe?: TraceObserver,
   memory: ConversationMemory = EMPTY_MEMORY,
   profile?: DjProfile,

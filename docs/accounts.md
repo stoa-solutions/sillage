@@ -30,14 +30,13 @@ compte demandeur ; aucun abonnement d’un autre compte n’est exposé.
 
 Code : `apps/server/src/modules/auth/` (connexion Google, échange PKCE,
 `session.guard.ts` monté sur `/v1/*`, `token.cli.ts`) et
-`apps/server/src/modules/accounts/` (profil, déconnexion, reprise de la
-bibliothèque historique). Filtres de bibliothèque : `followedBy` et
+`apps/server/src/modules/accounts/` (profil, déconnexion). Filtres de bibliothèque : `followedBy` et
 `inLibraryOf` dans `modules/library/library.repository.ts`. Tables dans
 `apps/server/src/db/schema.ts` (section Accounts).
 
 Les clés Gemini sont chiffrées AES-256-GCM avec l’ID du compte comme AAD.
 Deux sessions du même compte retrouvent ses réglages. Aucun compte Google
-sans clé ne bénéficie de la clé globale historique. Chat et voix utilisent la
+sans clé ne bénéficie de la clé du serveur. Chat et voix utilisent la
 clé de l’utilisateur ; le budget journalier est également par utilisateur.
 Les clés ne sont jamais retournées par l’API. Retrait d’une clé et déconnexion
 sont explicites. Les sessions opaques sont hachées côté DB, révoquées au logout,
@@ -53,13 +52,12 @@ Google ni les secrets.
 
 ## Migration et retour arrière
 
-La migration 2 rattache une seule fois les anciennes playlists et les anciens
-jetons à un compte historique. Aucun premier utilisateur Google ne reçoit ce
-compte automatiquement. Le rattachement explicite demande à la fois une
-session Google et la preuve de possession d’un ancien jeton actif. Il est
-transactionnel, verrouillé et utilisable une seule fois. Les anciens jetons
-sont alors rattachés au compte cible. La clé Gemini doit être saisie par son
-propriétaire ; la clé globale historique n’est jamais copiée vers un compte.
+Chaque compte est un compte Google. Le compte « historique » d’avant la
+connexion Google, dont la bibliothèque avait été reprise par un compte Google,
+est supprimé par la migration `0008_remove_legacy_account`, avec ses jetons
+restants et les tables `dj_settings` et `dj_usage` qui ne servaient plus. Cette
+migration refuse de s’exécuter si ce compte possède encore des playlists ou un
+historique non repris.
 
 Sauvegarder PostgreSQL avant déploiement. Ne pas revenir à une ancienne API
 sans filtrage après ouverture des comptes : elle exposerait le catalogue global

@@ -69,11 +69,6 @@
       "key": "pkce_verifier",
       "value": "",
       "type": "string"
-    },
-    {
-      "key": "legacy_token",
-      "value": "",
-      "type": "string"
     }
   ],
   "item": [
@@ -608,57 +603,6 @@
               "variable": []
             },
             "description": "Révoque le jeton utilisé pour cet appel. Les autres sessions du compte restent actives.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "claimLegacyLibrary",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/account/claim-library",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "account",
-                "claim-library"
-              ],
-              "query": [],
-              "variable": []
-            },
-            "description": "Transfert à usage unique vers un compte Google, avec preuve du jeton historique. Transfère aussi l’historique et les jetons concernés. Ne sert pas à partager des bibliothèques entre comptes ordinaires.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"legacyToken\": \"{{legacy_token}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
           },
           "response": [],
           "event": [
@@ -2664,99 +2608,6 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "Maintenance",
-      "item": [
-        {
-          "name": "importLegacyBackup",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/import",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "import"
-              ],
-              "query": [],
-              "variable": []
-            },
-            "description": "Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les exports Sillage, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"format\": \"sillage\",\n  \"version\": 1,\n  \"collections\": [\n    {\n      \"playlist\": {\n        \"id\": \"playlist_example\",\n        \"title\": \"Exemple\"\n      },\n      \"videos\": []\n    }\n  ]\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([200]); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "retryFailedJobs",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/v1/jobs/retry",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "jobs",
-                "retry"
-              ],
-              "query": [],
-              "variable": []
-            },
-            "description": "Réservé au compte historique de maintenance. Relance les dernières tâches en échec sans dupliquer une tâche active. Opération globale de maintenance, pas une action de playlist ordinaire.\n\nEffet : write. Les opérations d’écriture et les appels fournisseur sont volontaires ; ne pas lancer toute la collection sur son compte."
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Réponse réussie\", function () { pm.expect(pm.response.code).to.be.oneOf([202]); });"
                 ]
               }
             }

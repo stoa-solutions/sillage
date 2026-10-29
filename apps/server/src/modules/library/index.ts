@@ -6,7 +6,7 @@ export { importLibrary } from "./library.service.ts";
 export {
   discoveriesId,
   followedBy,
-  importIntoLegacyLibrary,
+  importIntoLibrary,
   inLibraryOf,
   upsertVideo,
   videoFromRecord,

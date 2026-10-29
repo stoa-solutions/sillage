@@ -19,7 +19,6 @@ import {
 import type { LibraryImport, Video } from "@sillage/core/types";
 import { documentText, hash } from "../../shared/content.ts";
 import {
-  LEGACY_USER_ID,
   channels,
   images,
   jobs,
@@ -319,11 +318,13 @@ export async function upsertVideo(
 }
 
 /**
- * Historical maintenance import into the legacy account: playlists, videos not yet enriched by
- * YouTube, and memberships of playlists never synchronised. All or nothing.
+ * Imports a backup into an account: playlists, videos not yet enriched by YouTube, and
+ * memberships of playlists never synchronised. All or nothing. Not exposed over HTTP: the
+ * video catalogue is shared between accounts.
  */
-export async function importIntoLegacyLibrary(
+export async function importIntoLibrary(
   db: Executor,
+  userId: string,
   library: LibraryImport,
 ) {
   await db.transaction(async (tx) => {
@@ -334,7 +335,7 @@ export async function importIntoLegacyLibrary(
         .onConflictDoNothing({ target: playlists.id });
       await tx
         .insert(userPlaylists)
-        .values({ userId: LEGACY_USER_ID, playlistId: p.id })
+        .values({ userId, playlistId: p.id })
         .onConflictDoNothing();
     }
     for (const v of library.videos) {

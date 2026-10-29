@@ -36,20 +36,12 @@ const tsvector = customType<{ data: string }>({
   dataType: () => "tsvector",
 });
 
-/** The account of the library from before accounts existed. */
-export const LEGACY_USER_ID = "00000000-0000-4000-8000-000000000001";
-
 // ─── Accounts: users, sessions, OAuth, AI keys and DJ usage ────────────────────────────────
 
 export const aiProvider = pgEnum("ai_provider", ["google", "anthropic"]);
-/** "legacy": the untouched historical account still uses the server's own key. */
-export const userDjProvider = pgEnum("user_dj_provider", [
-  "google",
-  "anthropic",
-  "legacy",
-]);
+export const userDjProvider = pgEnum("user_dj_provider", ["google", "anthropic"]);
 
-/** A Google account, or the historical library (LEGACY_USER_ID). */
+/** A Google account. */
 export const users = pgTable(
   "users",
   {
@@ -58,17 +50,8 @@ export const users = pgTable(
     email: text("email"),
     name: text("name"),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
-    /** On the historical user only: the Google account that took its library over. */
-    legacyClaimedBy: uuid("legacy_claimed_by"),
     djProvider: userDjProvider("dj_provider").notNull().default("google"),
   },
-  (t) => [
-    foreignKey({
-      name: "users_legacy_claimed_by_fkey",
-      columns: [t.legacyClaimedBy],
-      foreignColumns: [t.id],
-    }),
-  ],
 );
 
 /** One signed-in installation. Only the SHA-256 of its bearer token is stored. */
@@ -80,9 +63,7 @@ export const tokens = pgTable(
     hash: text("hash").notNull().unique("tokens_hash_key"),
     revokedAt: timestamptz("revoked_at"),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
-    userId: uuid("user_id")
-      .notNull()
-      .default(sql`'${sql.raw(LEGACY_USER_ID)}'::uuid`),
+    userId: uuid("user_id").notNull(),
     /** Null for personal tokens made by the CLI: they never expire, they are revoked. */
     expiresAt: timestamptz("expires_at"),
   },
@@ -182,30 +163,6 @@ export const accountDjUsage = pgTable(
     }).onDelete("cascade"),
   ],
 );
-
-/** Pre-account DJ key, attached to a personal token. */
-export const djSettings = pgTable(
-  "dj_settings",
-  {
-    tokenId: uuid("token_id").primaryKey(),
-    encryptedKey: text("encrypted_key").notNull(),
-    model: text("model").notNull(),
-    updatedAt: timestamptz("updated_at").notNull().defaultNow(),
-  },
-  (t) => [
-    foreignKey({
-      name: "dj_settings_token_id_fkey",
-      columns: [t.tokenId],
-      foreignColumns: [tokens.id],
-    }).onDelete("cascade"),
-  ],
-);
-
-/** Server-wide daily DJ budget of the environment key. */
-export const djUsage = pgTable("dj_usage", {
-  day: date("day", { mode: "string" }).primaryKey(),
-  requests: integer("requests").notNull().default(0),
-});
 
 // ─── Library: playlists, videos, memberships, sync runs, caches ────────────────────────────
 

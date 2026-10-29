@@ -109,7 +109,7 @@ const sources: Partial<InsightsSources> = {
     },
   },
 };
-const app = createApp(db, undefined, undefined, sources);
+const app = createApp(db, { insights: sources });
 const token = "alice-insights-token-1234567890";
 let alice = "";
 const get = async (path: string) => {

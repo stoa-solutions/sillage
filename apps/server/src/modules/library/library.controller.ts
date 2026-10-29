@@ -11,9 +11,7 @@ import {
 } from "../../shared/openapi.ts";
 import {
   addPlaylistInput,
-  importedBody,
   libraryExportBody,
-  libraryImportInput,
   libraryStatusBody,
   playlistAcceptedBody,
   playlistIdParam,
@@ -137,34 +135,7 @@ const exportRoute = createRoute({
     200: jsonResponse(libraryExportBody, "Réponse réussie"),
   },
 });
-const importExample = {
-  format: "sillage",
-  version: 1,
-  collections: [
-    { playlist: { id: "playlist_example", title: "Exemple" }, videos: [] },
-  ],
-};
-const importRoute = createRoute({
-  method: "post",
-  path: "/import",
-  ...operation({
-    operationId: "importLegacyBackup",
-    tag: "Maintenance",
-    summary: "Importer une sauvegarde JSON",
-    description:
-      "Réservé au compte de maintenance historique. Un utilisateur Google importe une playlist via /v1/playlists. Accepte les exports Sillage, playlists normalisées et playlists plates yt-dlp ; validations avant la transaction.",
-    effect: "write",
-    example: importExample,
-  }),
-  request: { body: jsonBody(libraryImportInput, importExample) },
-  responses: {
-    ...commonErrors(),
-    200: jsonResponse(importedBody, "Réponse réussie"),
-    403: errorResponse("Maintenance uniquement"),
-  },
-});
-
-/** The account's library: playlists it follows, their status, export and import. Under /v1. */
+/** The account's library: playlists it follows, their status and export. Under /v1. */
 export function libraryRoutes(db: Database) {
   const app = featureRouter<ApiEnvironment>();
   const library = libraryService(db);
@@ -194,14 +165,5 @@ export function libraryRoutes(db: Database) {
   app.openapi(exportRoute, async (c) =>
     c.json(libraryExportBody.parse(await library.export(c.get("userId"))), 200),
   );
-  app.openapi(importRoute, async (c) => {
-    const imported = await library.import(c.get("userId"), c.req.valid("json"));
-    if (!imported)
-      return c.json(
-        { error: "Ajoute une playlist avec son lien YouTube." },
-        403,
-      );
-    return c.json(imported, 200);
-  });
   return app;
 }

@@ -143,7 +143,6 @@ export function postmanCollection() {
         "app_state",
         "auth_code",
         "pkce_verifier",
-        "legacy_token",
       ].map((key) => ({ key, value: "", type: "string" })),
     ],
     item: [...groups].map(([name, item]) => ({ name, item })),

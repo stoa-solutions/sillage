@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Serveur : seule la connexion Google reste. Le compte historique d’avant les comptes Google disparaît (migration `0008`), avec la reprise de bibliothèque (`/v1/account/claim-library`) et les routes de maintenance qui lui étaient réservées (`/v1/import`, `/v1/jobs/retry`, désormais `jobs.cli.js retry`). `token.cli.js create` demande l’email du compte.
+
 - Sillage 1.13.1 (88) : la recherche (⌘F) propose d’abord tes propres artistes (« acid co » trouve Acid Coco), puis ceux de YouTube Music à partir de trois lettres, pour éviter les homonymes obscurs d’un mot coupé.
 
 - Sillage 1.13.0 (87) : une page album dans l’app (pochette, artiste en lien, année, description, titres jouables avec leurs lectures, « Tout lire », titres déjà chez toi marqués), ouverte depuis la discographie d’un artiste. Bibliothèque → « Mes artistes » : tous les artistes de ta bibliothèque, les plus écoutés d’abord, filtrables, chacun ouvrant sa page ; « Tes artistes » quitte Découvrir. Recherche unique (⌘F ou la loupe) par-dessus n’importe quelle page : artistes, titres de ta bibliothèque et titres à découvrir ; Entrée ouvre le premier résultat. Serveur : `GET /v1/insights/album/{browseId}` (gardé 30 jours), `GET /v1/insights/artists?query=` (1 jour), `GET /v1/discover/artists`.

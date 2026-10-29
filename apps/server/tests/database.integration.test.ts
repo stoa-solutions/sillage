@@ -1,11 +1,10 @@
-import { LEGACY_USER_ID } from "../src/db/index.ts";
 import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
 import { hash } from "../src/shared/content.ts";
 import { createApp } from "../src/app.ts";
-import { enqueue, claim, finish } from "../src/modules/jobs/index.ts";
+import { enqueue, claim, finish, retryFailed } from "../src/modules/jobs/index.ts";
 import { infer } from "../src/integrations/inference/index.ts";
 import { enqueueMissing, indexText, indexImage } from "../src/modules/indexing/index.ts";
 import {
@@ -23,6 +22,8 @@ if (!url || !new URL(url).pathname.endsWith("_test"))
 const db = openDatabase({ url });
 const app = createApp(db);
 const token = "integration-test-token";
+/** The signed-in account every request of this suite runs as. */
+const OWNER = "00000000-0000-4000-8000-0000000000aa";
 const fixture: LibraryImport = {
   playlists: [
     {
@@ -54,24 +55,30 @@ const fixture: LibraryImport = {
     },
   ],
 };
-beforeAll(() => migrate(db));
+beforeAll(async () => {
+  await migrate(db);
+  await db.query(
+    "INSERT INTO users(id,google_sub,email) VALUES($1,'google-owner','owner@example.com') ON CONFLICT DO NOTHING",
+    [OWNER],
+  );
+});
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
   await db.query(
-    "TRUNCATE tokens,playlists,videos,channels,jobs,quota_usage,dj_usage,account_dj_usage,account_dj_settings,account_ai_credentials CASCADE",
+    "TRUNCATE tokens,playlists,videos,channels,jobs,quota_usage,account_dj_usage,account_dj_settings,account_ai_credentials CASCADE",
   );
-  await db.query("UPDATE users SET dj_provider='legacy' WHERE id=$1", [LEGACY_USER_ID]);
-  await db.query("INSERT INTO tokens(id,name,hash) VALUES($1,$2,$3)", [
+  await db.query("INSERT INTO tokens(id,name,hash,user_id) VALUES($1,$2,$3,$4)", [
     randomUUID(),
     "test",
     hash(token),
+    OWNER,
   ]);
 });
 afterAll(() => db.end());
 it("requires authentication and applies numerical search filters through HTTP", async () => {
   expect((await app.request("/v1/status")).status).toBe(401);
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   const request = (minDuration: number) =>
     app.request("/v1/search", {
       method: "POST",
@@ -112,7 +119,7 @@ it("deduplicates active tasks and rejects completion from an expired lease", asy
   ).toBe("done");
 });
 it("does not replace active memberships when remote pagination fails", async () => {
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   await db.query("DELETE FROM jobs");
   await enqueue(db.orm, "sync", "PL1234567890", { playlistId: "PL1234567890" });
   const job = await claim(db.orm);
@@ -131,7 +138,7 @@ it("does not replace active memberships when remote pagination fails", async () 
   ).toBe("0");
 });
 it("requires two successful snapshots before removing missing entries", async () => {
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   await db.query("DELETE FROM jobs");
   const youtube = {
     playlist: async () => ({ title: "Music", entries: [] }),
@@ -148,16 +155,16 @@ it("requires two successful snapshots before removing missing entries", async ()
   }
 });
 it("does not let an old import overwrite enriched video metadata", async () => {
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   await db.query(`UPDATE videos SET description='Enriched',enriched_at=now()`);
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   expect(
     (await db.query("SELECT description FROM videos")).rows[0].description,
   ).toBe("Enriched");
 });
 
 it("ignores a stale text result and commits all current passages atomically", async () => {
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   const vector = Array.from({ length: 384 }, (_, i) => (i === 0 ? 1 : 0));
   vi.mocked(infer).mockImplementationOnce(async () => {
     await db.query(
@@ -193,7 +200,7 @@ it("ignores a stale text result and commits all current passages atomically", as
   ).toEqual(["First", "Last"]);
 });
 it("reindexes a changed thumbnail even when its URL stays the same", async () => {
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   process.env["VISION_ENABLED"] = "true";
   const vector = Array.from({ length: 768 }, (_, i) => (i === 0 ? 1 : 0));
   vi.mocked(infer).mockResolvedValue({ vector });
@@ -223,7 +230,7 @@ it("reindexes a changed thumbnail even when its URL stays the same", async () =>
   vi.unstubAllGlobals();
 });
 it("matches unaccented words against accented metadata", async () => {
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   await db.query("UPDATE videos SET title='Vidéo préférée'");
   const result = await db.query(
     "SELECT id FROM videos WHERE search_document @@ websearch_to_tsquery('sillage_simple','video preferee')",
@@ -240,11 +247,7 @@ it("requeues failed work once and permits successful recovery", async () => {
     (await db.query("SELECT status FROM jobs WHERE id=$1", [first.id])).rows[0]
       .status,
   ).toBe("failed");
-  const response = await app.request("/v1/jobs/retry", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  expect((await response.json()).retried).toBe(1);
+  expect(await retryFailed(db.orm)).toBe(1);
   const retry = await claim(db.orm);
   await finish(db.orm, retry!);
   expect(
@@ -254,7 +257,7 @@ it("requeues failed work once and permits successful recovery", async () => {
 });
 
 it("returns the channel photo with search results and reuses it for a month", async () => {
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   const request = vi.fn(async (input: unknown) =>
     String(input).includes("/channels")
       ? Response.json({
@@ -304,7 +307,7 @@ it("returns the channel photo with search results and reuses it for a month", as
 });
 
 it("finds partial lexical matches in a natural-language query when inference is unavailable", async () => {
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   vi.mocked(infer).mockRejectedValueOnce(new Error("Unavailable"));
   const response = await app.request("/v1/search", {
     method: "POST",
@@ -320,7 +323,7 @@ it("finds partial lexical matches in a natural-language query when inference is 
 });
 
 it("excludes queued videos and caps results inside the search", async () => {
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   vi.mocked(infer).mockRejectedValueOnce(new Error("Unavailable"));
   const response = await app.request("/v1/search", {
     method: "POST",
@@ -358,7 +361,7 @@ it("hides historical failures after a newer successful attempt", async () => {
 });
 
 it("migrates moved duplicate entries by occurrence without duplicating the first live snapshot", async () => {
-  await importLibrary(db, {
+  await importLibrary(db, OWNER, {
     ...fixture,
     memberships: [
       ...fixture.memberships,
@@ -404,7 +407,7 @@ it("migrates moved duplicate entries by occurrence without duplicating the first
   ]);
 });
 it("queues a due playlist once and advances its six-hour schedule", async () => {
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   await db.query("DELETE FROM jobs");
   process.env["SYNC_ENABLED"] = "true";
   try {
@@ -443,7 +446,7 @@ it("keeps YouTube work pending without consuming retries when the key is absent"
 });
 it("records unavailable thumbnails without failing and checks them again after a day", async () => {
   process.env["VISION_ENABLED"] = "true";
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   await db.query("DELETE FROM jobs");
   vi.stubGlobal(
     "fetch",
@@ -473,7 +476,7 @@ it("records unavailable thumbnails without failing and checks them again after a
 });
 it("still retries temporary thumbnail service failures", async () => {
   process.env["VISION_ENABLED"] = "true";
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => new Response(null, { status: 503 })),
@@ -510,9 +513,9 @@ it("exposes authenticated MCP tools with a real protocol handshake", async () =>
 });
 it("searches available music through an MCP client and respects exclusions", async () => {
   const { connectMusicMcp } = await import("../src/modules/mcp/index.ts");
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   await db.query("UPDATE videos SET title='Jazz du soir',duration_seconds=180");
-  const mcp = await connectMusicMcp(db);
+  const mcp = await connectMusicMcp(db, [], OWNER);
   try {
     expect((await mcp.client.listTools()).tools.map((t) => t.name)).toEqual([
       "seekInformation",
@@ -529,7 +532,7 @@ it("searches available music through an MCP client and respects exclusions", asy
   } finally {
     await mcp.close();
   }
-  const excluded = await connectMusicMcp(db, ["abcdefghijk"]);
+  const excluded = await connectMusicMcp(db, ["abcdefghijk"], OWNER);
   try {
     const result = await excluded.client.callTool({
       name: "library_search",
@@ -548,9 +551,9 @@ it("searches available music through an MCP client and respects exclusions", asy
   }
 });
 it("finds long music without an implicit duration cap", async () => {
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   const { connectMusicMcp } = await import("../src/modules/mcp/index.ts");
-  const mcp = await connectMusicMcp(db);
+  const mcp = await connectMusicMcp(db, [], OWNER);
   try {
     const result = await mcp.client.callTool({
       name: "library_search",
@@ -571,7 +574,7 @@ it("finds long music without an implicit duration cap", async () => {
 it.skipIf(!process.env["DJ_SIMULATION_URL"])(
   "runs the DJ over HTTP against a simulated model and rejects fabricated selections",
   async () => {
-    await importLibrary(db, fixture);
+    await importLibrary(db, OWNER, fixture);
     await db.query(
       "UPDATE videos SET title='Jazz du soir',duration_seconds=180",
     );
@@ -657,10 +660,11 @@ it("stores a personal DJ key encrypted, scopes it to its account and never retur
   ).rows[0].id;
   expect((await personalDjConfig(db, owner)).key).toBe(secret);
   const otherId = randomUUID();
-  await db.query("INSERT INTO tokens(id,name,hash) VALUES($1,$2,$3)", [
+  await db.query("INSERT INTO tokens(id,name,hash,user_id) VALUES($1,$2,$3,$4)", [
     otherId,
     "other",
     hash("other-installation-token"),
+    OWNER,
   ]);
   expect((await personalDjConfig(db, otherId)).personal).toBe(false);
   const update = await app.request("/v1/dj/settings", {
@@ -702,7 +706,7 @@ it("refuses credential storage without a valid encryption key", async () => {
 });
 
 it("resolves a complete metadata lookup without inference and rejects invented songs", async () => {
-  await importLibrary(db, fixture);
+  await importLibrary(db, OWNER, fixture);
   const request = (query: string) => app.request("/v1/search", {
     method: "POST", headers: {Authorization: `Bearer ${token}`, "Content-Type":"application/json"}, body: JSON.stringify({query})
   });

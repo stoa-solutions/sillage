@@ -5,14 +5,14 @@ import {
   AI_PROVIDER_IDS,
   type AiProvider,
 } from "@sillage/core/dj";
-import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
+import type { Database } from "../../db/index.ts";
 import {
   deleteCredentials,
   preferredProvider,
   saveCredential,
   storedCredentials,
 } from "./dj-settings.repository.ts";
-import { djConfig, providerBaseUrl, type DjConfig } from "./dj.config.ts";
+import { providerBaseUrl, type DjConfig } from "./dj.config.ts";
 
 export const djSettingsInput = z
   .object({
@@ -91,15 +91,7 @@ export async function personalDjConfig(
   const saved = (await storedCredentials(db.orm, owner)).find(
     (row) => row.provider === provider,
   );
-  if (!saved) {
-    // The untouched historical account keeps the server's own key.
-    if (owner === LEGACY_USER_ID && preference === "legacy") {
-      const legacy = djConfig();
-      const legacyProvider =
-        legacy.provider === "anthropic" ? "anthropic" : "google";
-      if (!requested || requested === legacyProvider)
-        return { ...legacy, personal: false };
-    }
+  if (!saved)
     return {
       provider,
       baseUrl: providerBaseUrl(provider),
@@ -108,7 +100,6 @@ export async function personalDjConfig(
       configured: false,
       personal: false,
     };
-  }
   const encryption = settingsKey();
   if (!encryption) throw new Error("DJ settings encryption key unavailable");
   return {

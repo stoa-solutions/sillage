@@ -20,21 +20,23 @@ import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import type { Database } from "./db/index.ts";
-import { jobRoutes } from "./modules/jobs/index.ts";
 import { libraryRoutes } from "./modules/library/index.ts";
 import { searchRoutes } from "./modules/search/index.ts";
 import { defaultLyricsSources, lyricsRoutes, type LyricsSources } from "./modules/lyrics/index.ts";
 import type { LyricsSource } from "./integrations/lrclib/index.ts";
 import { mcpRoutes } from "./modules/mcp/index.ts";
 import { defaultInsightsSources, insightsRoutes, type InsightsSources } from "./modules/insights/index.ts";
-export function createApp(
-  db: Database,
-  identityProvider?: IdentityProvider,
-  /** LRCLIB alone (tests) or every source; production builds them all. */
-  lyricsSource?: LyricsSource | LyricsSources,
-  /** Production builds every source; tests replace some. */
-  insightsSources?: Partial<InsightsSources>,
-) {
+/** The services the API reaches over the network. Production leaves them out; tests fake them. */
+export interface AppOptions {
+  /** Google sign-in. */
+  identity?: IdentityProvider;
+  /** LRCLIB alone, or every lyrics source. */
+  lyrics?: LyricsSource | LyricsSources;
+  /** Any of the artist and album sources. */
+  insights?: Partial<InsightsSources>;
+}
+
+export function createApp(db: Database, options: AppOptions = {}) {
   // OpenAPIHono collects the documented routes of the features mounted below.
   const app = new OpenAPIHono<ApiEnvironment>();
   app.use(
@@ -58,7 +60,7 @@ export function createApp(
       onError: (c) => c.json({ error: "Fichier trop volumineux." }, 413),
     }),
   );
-  app.route("/auth", authRoutes(db, identityProvider));
+  app.route("/auth", authRoutes(db, options.identity));
   app.route("/", systemRoutes(db));
   app.route("/", playerRoutes());
   app.route("/macos", releaseRoutes());
@@ -72,10 +74,9 @@ export function createApp(
   app.route("/v1", mcpRoutes(db));
   app.route("/v1", enrichmentRoutes(db));
   app.route("/v1", libraryRoutes(db));
-  app.route("/v1", jobRoutes(db));
   app.route("/v1", searchRoutes(db));
-  app.route("/v1/lyrics", lyricsRoutes(db, defaultLyricsSources(db, lyricsSource)));
-  app.route("/v1/insights", insightsRoutes(db, defaultInsightsSources(db, insightsSources)));
+  app.route("/v1/lyrics", lyricsRoutes(db, defaultLyricsSources(db, options.lyrics)));
+  app.route("/v1/insights", insightsRoutes(db, defaultInsightsSources(db, options.insights)));
   app.onError((error, c) => {
     // Malformed JSON or a body without its JSON content type, rejected by the route validator.
     if (

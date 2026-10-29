@@ -85,49 +85,6 @@ export const libraryExportBody = z
       "Export Sillage normalisé ; aucune clé ni session n’est exportée.",
   });
 
-/** Validated by parseImport from the shared core, which accepts three historical formats. */
-export const libraryImportInput = z.unknown().openapi("LibraryImport", {
-  description:
-    "Export Sillage, playlist normalisée ou playlist plate yt-dlp. Au plus 100 playlists et 50 000 entrées au total ; max. 30 Mio. Réservé à la maintenance historique.",
-  anyOf: [
-    {
-      type: "object",
-      properties: {
-        collections: {
-          type: "array",
-          items: { $ref: "#/components/schemas/ExportCollection" },
-        },
-      },
-      required: ["collections"],
-    },
-    { $ref: "#/components/schemas/ExportCollection" },
-    {
-      type: "object",
-      properties: {
-        id: { type: "string" },
-        title: { type: "string" },
-        entries: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              id: { type: "string", pattern: "^[A-Za-z0-9_-]{11}$" },
-              duration: { anyOf: [{ type: "number" }, { type: "null" }] },
-              title: { anyOf: [{ type: "string" }, { type: "null" }] },
-            },
-            required: ["id"],
-          },
-        },
-      },
-      required: ["entries"],
-    },
-  ],
-});
-export const importedBody = z.object({
-  playlists: z.number().int(),
-  videos: z.number().int(),
-});
-
 /** MusicBrainz decision attached to a video; artist genres are not the song's genres. */
 export const musicMetadataBody = z
   .object({

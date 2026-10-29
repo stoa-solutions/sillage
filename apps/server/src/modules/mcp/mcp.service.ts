@@ -6,7 +6,7 @@ import {
 import { informationSearch } from "../../integrations/searxng/index.ts";
 import type { SearchFailureReason } from "../discovery/index.ts";
 import { DiscoveryError, discoveryFor } from "../discovery/index.ts";
-import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
+import type { Database } from "../../db/index.ts";
 import { musicMatchRank, resolveExactRequest, search } from "../search/index.ts";
 import { tasteService } from "../taste/index.ts";
 import {
@@ -37,7 +37,7 @@ export async function requestedTracks(
 export function musicTracks(
   db: Database,
   ids: string[],
-  userId = LEGACY_USER_ID,
+  userId: string,
 ): Promise<DjTrack[]> {
   return ownedTracks(db.orm, ids, userId);
 }
@@ -53,7 +53,7 @@ export type CandidateRanking = "taste" | "search";
 export function musicMcp(
   db: Database,
   excludeIds: string[] = [],
-  userId = LEGACY_USER_ID,
+  userId: string,
   discover = false,
   scope?: "library" | "youtube" | "all",
   rejectedIds: string[] = [],
@@ -583,7 +583,7 @@ export function matchPlaylist<T extends { id: string; title: string }>(
 export async function connectMusicMcp(
   db: Database,
   excludeIds: string[] = [],
-  userId = LEGACY_USER_ID,
+  userId: string,
   discover = false,
   scope?: "library" | "youtube" | "all",
   rejectedIds: string[] = [],
@@ -608,7 +608,7 @@ export async function connectMusicMcp(
 export async function handleMusicMcp(
   db: Database,
   request: Request,
-  userId = LEGACY_USER_ID,
+  userId: string,
 ) {
   const server = musicMcp(db, [], userId);
   const transport = new WebStandardStreamableHTTPServerTransport({

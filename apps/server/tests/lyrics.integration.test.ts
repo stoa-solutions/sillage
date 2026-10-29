@@ -45,7 +45,7 @@ const source: LyricsSource = {
     );
   },
 };
-const app = createApp(db, undefined, source);
+const app = createApp(db, { lyrics: source });
 const alice = randomUUID(),
   bob = randomUUID();
 const tokenA = "alice-lyrics-token-1234567890",
@@ -195,7 +195,7 @@ it("serves the public lyrics of any known video, but keeps corrections to the li
 const music = { lyrics: vi.fn() };
 const ovh = { lyrics: vi.fn() };
 const describe = vi.fn();
-const everySource = createApp(db, undefined, { lrclib: source, music, ovh, describe });
+const everySource = createApp(db, { lyrics: { lrclib: source, music, ovh, describe } });
 const lyricsFrom = async (id: string) => {
   const response = await everySource.request(`/v1/lyrics/${id}`, {
     headers: { Authorization: "Bearer " + tokenA },

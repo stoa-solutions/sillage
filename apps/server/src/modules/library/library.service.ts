@@ -1,29 +1,30 @@
-import {
-  exportLibrary as exportFormat,
-  parseImport,
-} from "@sillage/core/import";
+import { exportLibrary as exportFormat } from "@sillage/core/import";
 import type { LibraryImport } from "@sillage/core/types";
 import { parsePlaylistId } from "../../shared/content.ts";
-import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
+import type { Database } from "../../db/index.ts";
 import { enqueueMissing } from "../indexing/index.ts";
 import { enqueue } from "../jobs/index.ts";
 import {
   followPlaylist,
   followsPlaylist,
-  importIntoLegacyLibrary,
+  importIntoLibrary,
   libraryOf,
   libraryStatus,
   listPlaylists,
   unfollowPlaylist,
 } from "./library.repository.ts";
 
-/** Maintenance import of a backup into the historical account, then its missing indexes. */
-export async function importLibrary(db: Database, library: LibraryImport) {
-  await importIntoLegacyLibrary(db.orm, library);
+/** Imports a backup into the account, then queues its missing indexes. */
+export async function importLibrary(
+  db: Database,
+  userId: string,
+  library: LibraryImport,
+) {
+  await importIntoLibrary(db.orm, userId, library);
   await enqueueMissing(db);
 }
 
-/** The account's library: playlists it follows, their state, export and import. */
+/** The account's library: playlists it follows, their state and export. */
 export function libraryService(db: Database) {
   return {
     async status(userId: string) {
@@ -70,13 +71,6 @@ export function libraryService(db: Database) {
     },
     async export(userId: string) {
       return exportFormat(await libraryOf(db.orm, userId));
-    },
-    /** null when the account is not the maintenance account. */
-    async import(userId: string, body: unknown) {
-      if (userId !== LEGACY_USER_ID) return null;
-      const data = parseImport(body);
-      await importLibrary(db, data);
-      return { playlists: data.playlists.length, videos: data.videos.length };
     },
   };
 }

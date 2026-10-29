@@ -3,13 +3,12 @@ import type { Database } from "../../db/index.ts";
 import type { ApiEnvironment } from "../../shared/api-environment.ts";
 import {
   commonErrors,
-  errorResponse,
   featureRouter,
   jsonResponse,
   operation,
   savedBody,
 } from "../../shared/openapi.ts";
-import { accountBody, claimLibraryInput } from "./accounts.schemas.ts";
+import { accountBody } from "./accounts.schemas.ts";
 import { accountsService } from "./accounts.service.ts";
 
 const TAG = "Compte";
@@ -42,36 +41,6 @@ const logoutRoute = createRoute({
     ...commonErrors(),
     200: jsonResponse(savedBody, "Réponse réussie") },
 });
-const claimRoute = createRoute({
-  method: "post",
-  path: "/account/claim-library",
-  ...operation({
-    operationId: "claimLegacyLibrary",
-    tag: TAG,
-    summary: "Récupérer la bibliothèque historique",
-    effect: "write",
-    description:
-      "Transfert à usage unique vers un compte Google, avec preuve du jeton historique. Transfère aussi l’historique et les jetons concernés. Ne sert pas à partager des bibliothèques entre comptes ordinaires.",
-    example: { legacyToken: "{{legacy_token}}" },
-  }),
-  request: {
-    body: {
-      required: true,
-      content: {
-        "application/json": {
-          schema: claimLibraryInput,
-          example: { legacyToken: "{{legacy_token}}" },
-        },
-      },
-    },
-  },
-  responses: {
-    ...commonErrors(),
-    200: jsonResponse(savedBody, "Réponse réussie"),
-    403: errorResponse("Transfert déjà effectué ou preuve invalide"),
-  },
-});
-
 /** The signed-in account, mounted under /v1 behind the session guard. */
 export function accountRoutes(db: Database) {
   const app = featureRouter<ApiEnvironment>();
@@ -82,15 +51,6 @@ export function accountRoutes(db: Database) {
   app.openapi(logoutRoute, async (c) => {
     await accounts.logout(c.get("installationId"));
     return c.json({ saved: true as const }, 200);
-  });
-  app.openapi(claimRoute, async (c) => {
-    const { legacyToken } = c.req.valid("json");
-    return (await accounts.claimLibrary(c.get("userId"), legacyToken))
-      ? c.json({ saved: true as const }, 200)
-      : c.json(
-          { error: "Bibliothèque déjà transférée ou preuve invalide." },
-          403,
-        );
   });
   return app;
 }
