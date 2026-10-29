@@ -1,5 +1,5 @@
 import { djSystemPrompt } from "./prompt.ts";
-import type { DjInput } from "./types/dj.contracts.ts";
+import type { DjInput } from "../types/dj.contracts.ts";
 import type { compactVideo } from "./evidence.ts";
 import {
   EMPTY_MEMORY,
@@ -7,7 +7,7 @@ import {
   type ConversationMemory,
 } from "./memory.ts";
 import type { TurnPlan } from "./plan.ts";
-import type { ChatMessage } from "./provider.ts";
+import type { ChatMessage } from "../ai/provider.ts";
 
 /** The server owns a refill's wording; clients only ask for a count. */
 export function continuationRequest(count: number, broaden: boolean) {

@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
-import { summarizeMemory, type JournalTurn } from "../src/modules/dj/memory.ts";
-import { initialMessages } from "../src/modules/dj/messages.ts";
-import { planTurn } from "../src/modules/dj/plan.ts";
+import { summarizeMemory, type JournalTurn } from "../src/modules/dj/turn/memory.ts";
+import { initialMessages } from "../src/modules/dj/turn/messages.ts";
+import { planTurn } from "../src/modules/dj/turn/plan.ts";
 import { djInput } from "../src/modules/dj/types/dj.contracts.ts";
 import { required } from "./support/required.ts";
 

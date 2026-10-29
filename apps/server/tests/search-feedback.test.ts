@@ -6,8 +6,8 @@ import {
 import { Discovery, discoveryRoutes } from "../src/modules/discovery/index.ts";
 import { SearxngError } from "../src/integrations/searxng/index.ts";
 import { YouTubeError, youtubeError } from "../src/integrations/youtube/index.ts";
-import { readToolEvidence } from "../src/modules/dj/evidence.ts";
-import { noSelectionReply } from "../src/modules/dj/reply.ts";
+import { readToolEvidence } from "../src/modules/dj/turn/evidence.ts";
+import { noSelectionReply } from "../src/modules/dj/turn/reply.ts";
 import type { Database } from "../src/db/index.ts";
 
 const now = Date.parse("2026-10-25T20:00:00Z");

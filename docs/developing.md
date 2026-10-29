@@ -22,7 +22,7 @@ Pour les tests SQL, créer un PostgreSQL jetable avec pgvector, définir `TEST_D
 | --- | --- | --- |
 | Connexion et clé | `Session`, `GoogleSignIn`, `SettingsView` | `modules/auth`, `modules/accounts`, `modules/dj/services/dj-settings.service.ts`, tests comptes |
 | Chercher une musique | `DiscoveryModel`, `LibraryModel` | `modules/search`, `modules/mcp`, `modules/discovery` ; filtrage propriétaire obligatoire |
-| Comprendre une demande | `DJModel.send` | commandes locales puis `packages/core/src/intent.ts`, `modules/dj/plan.ts`, `decision.ts` et `dj-turn.service.ts` |
+| Comprendre une demande | `DJModel.send` | commandes locales puis `packages/core/src/intent.ts`, `modules/dj/turn/plan.ts`, `decision.ts` et `dj-turn.service.ts` |
 | Ordre et suite | `DJModel` | `PlaybackQueue`, `DJComposition`, tests session/composition |
 | Voix | `VoiceOutput` | `PreparedSpeech`, `modules/dj/services/dj-voice.service.ts` ; annuler l’annonce d’un titre sauté |
 | Vidéo et paroles | `Player`, `LyricsPanel` | `PlaybackClock`, `Lyrics`, `LyricsModel`, `modules/player`, `modules/lyrics` |

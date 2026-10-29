@@ -1,10 +1,10 @@
 import { it, expect } from "vitest";
-import { Composition } from "../src/modules/dj/composition.ts";
+import { Composition } from "../src/modules/dj/turn/composition.ts";
 import {
   musicQueries,
   isMusicCandidate,
 } from "../src/modules/mcp/mcp.retrieval.ts";
-import { planTurn } from "../src/modules/dj/plan.ts";
+import { planTurn } from "../src/modules/dj/turn/plan.ts";
 import { djInput, selection } from "../src/modules/dj/types/dj.contracts.ts";
 import { required } from "./support/required.ts";
 const items = Array.from({ length: 6 }, (_, i) => ({

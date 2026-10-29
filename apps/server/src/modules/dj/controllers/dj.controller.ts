@@ -48,9 +48,9 @@ import {
   TurnRefused,
   TurnSuperseded,
 } from "../dj-lease.ts";
-import { planTurn } from "../plan.ts";
-import { djSystemPrompt } from "../prompt.ts";
-import { profileRules } from "../messages.ts";
+import { planTurn } from "../turn/plan.ts";
+import { djSystemPrompt } from "../turn/prompt.ts";
+import { profileRules } from "../turn/messages.ts";
 import { djTurn } from "../services/dj-turn.service.ts";
 import { djAgentsService } from "../../dj-agents/index.ts";
 

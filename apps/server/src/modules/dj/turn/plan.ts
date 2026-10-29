@@ -4,7 +4,7 @@ import {
   recentlyHeardExclusion,
   type DJIntent,
 } from "@sillage/core/intent";
-import type { DjInput } from "./types/dj.contracts.ts";
+import type { DjInput } from "../types/dj.contracts.ts";
 
 export interface TurnPlan {
   intent: DJIntent;

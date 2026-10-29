@@ -10,8 +10,8 @@ import {
   toolEvents,
 } from "../repositories/journal.repository.ts";
 import type { ResolvedAgent } from "../../../dj-agents/index.ts";
-import { djSystemPrompt } from "../../prompt.ts";
-import { planTurn } from "../../plan.ts";
+import { djSystemPrompt } from "../../turn/prompt.ts";
+import { planTurn } from "../../turn/plan.ts";
 import type { DjInput } from "../../types/dj.contracts.ts";
 import { DjUnavailable } from "../../errors.ts";
 import { journalPayload } from "../journal.payload.ts";
@@ -22,7 +22,7 @@ import {
   summarizeMemory,
   type ConversationMemory,
   type JournalTurn,
-} from "../../memory.ts";
+} from "../../turn/memory.ts";
 
 /**
  * `superseded`: the listener forced a newer message. `busy`: a refill gave way

@@ -1,9 +1,9 @@
 import { expect, it } from "vitest";
 import { djInput } from "../src/modules/dj/types/dj.contracts.ts";
-import { initialMessages } from "../src/modules/dj/messages.ts";
-import { Composition } from "../src/modules/dj/composition.ts";
-import { planTurn } from "../src/modules/dj/plan.ts";
-import { djSystemPrompt } from "../src/modules/dj/prompt.ts";
+import { initialMessages } from "../src/modules/dj/turn/messages.ts";
+import { Composition } from "../src/modules/dj/turn/composition.ts";
+import { planTurn } from "../src/modules/dj/turn/plan.ts";
+import { djSystemPrompt } from "../src/modules/dj/turn/prompt.ts";
 import { BASE_AGENTS, DEFAULT_AGENT } from "../src/modules/dj-agents/index.ts";
 
 const system = (input: ReturnType<typeof djInput.parse>, profile?: { name: string; instructions: string }) =>
@@ -51,7 +51,7 @@ it("ships base agents, the default one first, each with its own voice, within th
 });
 
 it("announces titles as a person says them, in the agent's register", async () => {
-  const { ownVoice, playReply, spokenTitle } = await import("../src/modules/dj/reply.ts");
+  const { ownVoice, playReply, spokenTitle } = await import("../src/modules/dj/turn/reply.ts");
   expect(spokenTitle("KiD CuDi - Mr. Rager (Music Video HD)")).toBe("KiD CuDi - Mr. Rager");
   expect(spokenTitle("OrelSan - Jour meilleur [CLIP OFFICIEL]")).toBe("OrelSan - Jour meilleur");
   expect(spokenTitle("Deep House, Bass Mix #1 2015 |HD|")).toBe("Deep House, Bass Mix #1 2015");

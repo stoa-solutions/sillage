@@ -1,13 +1,13 @@
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { InformationSource } from "../../integrations/searxng/index.ts";
+import type { InformationSource } from "../../../integrations/searxng/index.ts";
 import {
   searchFailureSummary,
   type SearchFailure,
-} from "../discovery/index.ts";
-import type { Composition } from "./composition.ts";
-import { DjUnavailable } from "./errors.ts";
-import { readToolEvidence } from "./evidence.ts";
-import type { TraceObserver } from "./journal/types/journal.contracts.ts";
+} from "../../discovery/index.ts";
+import type { Composition } from "../turn/composition.ts";
+import { DjUnavailable } from "../errors.ts";
+import { readToolEvidence } from "../turn/evidence.ts";
+import type { TraceObserver } from "../journal/types/journal.contracts.ts";
 import type { ChatMessage, ChatTool, ToolCall } from "./provider.ts";
 
 const SEARCH_TOOLS = new Set([

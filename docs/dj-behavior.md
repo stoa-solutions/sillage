@@ -16,13 +16,13 @@ Ce document décrit les frontières à conserver lorsqu’on ajoute une commande
 | Sujet | Propriétaire | Ne doit pas faire |
 | --- | --- | --- |
 | Intention musicale | `packages/core/src/intent.ts` | Rechercher, appeler un fournisseur, changer une file |
-| Plan et taille de sélection | `modules/dj/plan.ts` | Réinterpréter une référence déjà décidée |
-| Issue d’une réponse | `modules/dj/decision.ts` | Transformer une question en échec de lecture |
+| Plan et taille de sélection | `modules/dj/turn/plan.ts` | Réinterpréter une référence déjà décidée |
+| Issue d’une réponse | `modules/dj/turn/decision.ts` | Transformer une question en échec de lecture |
 | Un Tour à la fois | `modules/dj/dj-lease.ts` | Refuser une demande tapée parce qu’une suite tourne |
-| Résolution des titres | `modules/search/music-matching.ts`, `modules/dj/catalog.ts` | Décider une seconde fois quand lancer la lecture |
+| Résolution des titres | `modules/search/music-matching.ts`, `modules/dj/ai/catalog.ts` | Décider une seconde fois quand lancer la lecture |
 | Outils et candidats | `modules/mcp/`, orchestration `modules/dj/` | Accepter un ID inventé, écrire dans la bibliothèque |
-| Dialogue | `modules/dj/prompt.ts` | Remplacer une garantie exécutable par une consigne |
-| Fournisseur | `modules/dj/provider.ts` | Transformer quota/panne en absence de morceau |
+| Dialogue | `modules/dj/turn/prompt.ts` | Remplacer une garantie exécutable par une consigne |
+| Fournisseur | `modules/dj/ai/provider.ts` | Transformer quota/panne en absence de morceau |
 | File et concurrence | `SillageKit/ListeningSession.swift` | Faire du réseau, accéder à Gemini, gérer WebKit |
 | Chargement et transport | `SillageKit/PlaybackEngine.swift`, adaptateurs | Laisser une tâche ancienne annuler Pause ou Reset |
 | Affichage | `SillageMac` | Réimplémenter la politique musicale |
@@ -85,10 +85,10 @@ Le tour utilise ces modules aux responsabilités distinctes :
 
 | Module | Responsabilité |
 | --- | --- |
-| `core/intent.ts` + `modules/dj/plan.ts` | Lire l’intention une fois, fixer la source, la référence et la taille. « Sans le lancer » retire l’opération interdite avant de chercher une action affirmative. |
+| `core/intent.ts` + `modules/dj/turn/plan.ts` | Lire l’intention une fois, fixer la source, la référence et la taille. « Sans le lancer » retire l’opération interdite avant de chercher une action affirmative. |
 | `modules/mcp/mcp.retrieval.ts` + `mcp.service.ts` | Transformer les indices structurés en recherches indépendantes, conserver compte et exclusions, entrelacer les résultats et transmettre les erreurs partielles. |
-| `modules/dj/composition.ts` | Accumuler les candidats du tour, valider le choix, conserver la meilleure sélection partielle et construire le contexte final. Aucun réseau ni SQL. |
-| `modules/dj/decision.ts` | Seul endroit où la réponse du modèle devient une issue : réponse, cartes, lecture, rien, relance unique ou échec. Une question reste une réponse quelle que soit l’intention prévue ; chaque issue a une raison écrite au journal (événement `decision`). |
+| `modules/dj/turn/composition.ts` | Accumuler les candidats du tour, valider le choix, conserver la meilleure sélection partielle et construire le contexte final. Aucun réseau ni SQL. |
+| `modules/dj/turn/decision.ts` | Seul endroit où la réponse du modèle devient une issue : réponse, cartes, lecture, rien, relance unique ou échec. Une question reste une réponse quelle que soit l’intention prévue ; chaque issue a une raison écrite au journal (événement `decision`). |
 | `modules/dj/services/dj-turn.service.ts` + `reply.ts` | Orchestrer les appels, relire l’appartenance avant lecture et annoncer l’action réellement renvoyée. Les cartes proposées sont toutes nommées ; une identification sourcée garde les mots du DJ. |
 
 `music_search` reste compatible avec `query` seul. Deux champs optionnels rendent les indices moins ambigus : `artist` porte une identité connue, distincte des mots de style dans `query` ; `alternatives` contient au plus deux autres indices courts. Exemple : `{query:"sean rap français", artist:"sean"}` effectue un lookup sur `sean`, puis classe les résultats selon la requête complète. Les autres indices sont exécutés indépendamment, en parallèle, et non comme une liste de mots tous obligatoires. La recherche reste limitée aux mêmes sources et au même compte. `mode=image` garde sa requête visuelle unique ; ces indices ne sont pas des filtres visuels. Les formats manifestement non musicaux sont écartés des suggestions d’ambiance, sans exclure un morceau parce que ses métadonnées sont inconnues ; une demande explicite de tutoriel reste possible.

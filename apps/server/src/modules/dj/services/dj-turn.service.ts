@@ -3,17 +3,17 @@ import type { Database } from "../../../db/index.ts";
 import { recentlyHeard } from "../../history/index.ts";
 import { connectMusicMcp, musicTracks } from "../../mcp/index.ts";
 import type { DjTrack } from "@sillage/core/dj";
-import { catalogSelection } from "../catalog.ts";
-import { Composition, type ComposedSelection } from "../composition.ts";
+import { catalogSelection } from "../ai/catalog.ts";
+import { Composition, type ComposedSelection } from "../turn/composition.ts";
 import { selection, type DjInput, type Selection } from "../types/dj.contracts.ts";
-import { decide, type Decision, type Retry } from "../decision.ts";
+import { decide, type Decision, type Retry } from "../turn/decision.ts";
 import { DjUnavailable } from "../errors.ts";
-import { compactVideo } from "../evidence.ts";
+import { compactVideo } from "../turn/evidence.ts";
 import type { TraceObserver } from "../journal/types/journal.contracts.ts";
-import { EMPTY_MEMORY, type ConversationMemory } from "../memory.ts";
-import { initialMessages, type DjProfile } from "../messages.ts";
-import { planTurn, type TurnPlan } from "../plan.ts";
-import { completeTurn, MAX_ROUNDS } from "../provider.ts";
+import { EMPTY_MEMORY, type ConversationMemory } from "../turn/memory.ts";
+import { initialMessages, type DjProfile } from "../turn/messages.ts";
+import { planTurn, type TurnPlan } from "../turn/plan.ts";
+import { completeTurn, MAX_ROUNDS } from "../ai/provider.ts";
 import { reserveDj } from "./dj-quota.service.ts";
 import {
   emptyReply,
@@ -22,8 +22,8 @@ import {
   playReply,
   proposalReply,
   withSourceNote,
-} from "../reply.ts";
-import { Research, TURN_TOOL_LIMIT } from "../research.ts";
+} from "../turn/reply.ts";
+import { Research, TURN_TOOL_LIMIT } from "../ai/research.ts";
 
 /** Used when a caller provides no lease: routes always pass the lease's signal. */
 export const TURN_DEADLINE_MS = 180_000;

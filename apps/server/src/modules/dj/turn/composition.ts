@@ -1,11 +1,11 @@
-import type { DjInput, Selection } from "./types/dj.contracts.ts";
+import type { DjInput, Selection } from "../types/dj.contracts.ts";
 import type { TurnPlan } from "./plan.ts";
 import { compactVideo, type DiscoveryEvidence } from "./evidence.ts";
 import { DJ_SELECTION_LIMIT } from "@sillage/core/dj";
 import { asksForMusic, playbackAction } from "@sillage/core/intent";
-import { DjUnavailable } from "./errors.ts";
-import type { InformationSource } from "../../integrations/searxng/index.ts";
-import type { ChatMessage } from "./provider.ts";
+import { DjUnavailable } from "../errors.ts";
+import type { InformationSource } from "../../../integrations/searxng/index.ts";
+import type { ChatMessage } from "../ai/provider.ts";
 import { profileReminder, type DjProfile } from "./messages.ts";
 
 export interface ComposedSelection {

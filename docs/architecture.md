@@ -53,7 +53,7 @@ Sources : https://sparkle-project.org/documentation/ et https://developer.apple.
 
 ## Ajouter une fonctionnalité sans mêler les couches
 
-- **Règle pure** : `SillageKit` sur Mac, `packages/core` pour les contrats partagés, ou un module serveur pur (`modules/dj/decision.ts`, `modules/search/search.relevance.ts`). Tests sans réseau.
+- **Règle pure** : `SillageKit` sur Mac, `packages/core` pour les contrats partagés, ou un module serveur pur (`modules/dj/turn/decision.ts`, `modules/search/search.relevance.ts`). Tests sans réseau.
 - **Effet externe** : un adaptateur ciblé (HTTPClient, outils MCP, voix, lecteur). Les secrets et autorisations restent aux frontières.
 - **État de session** : `PlaybackQueue` gère ordre/historique, `DJComposition` les suites bornées et exclusions, `LyricsModel` le cache/calage par compte. L’UI affiche ces états ; elle ne refait pas leurs règles.
 - **Temps de lecture** : `Player` possède l’horloge `PlaybackClock`. Les panneaux lisent la même position, même après fermeture/réouverture. Les déplacements natifs sont précis ; YouTube reste soumis aux limites de son lecteur et de son tampon.
@@ -102,23 +102,21 @@ apps/server/src/modules/dj/
 ├── types/
 │   ├── dj.schemas.ts        # contrats OpenAPI des routes
 │   └── dj.contracts.ts      # schémas Zod d'entrée et de sortie du modèle (règle pure)
+├── turn/                    # le cerveau d'un Tour : règles pures (vérifiées par check:architecture)
+│   ├── plan.ts              # politique du Tour, suite structurée comprise
+│   ├── messages.ts          # messages envoyés au modèle, mémoire comprise
+│   ├── memory.ts            # résumé borné du journal de la conversation
+│   ├── decision.ts          # sortie du modèle → une seule décision motivée
+│   ├── reply.ts             # texte visible, annoncé depuis l'action exécutée
+│   ├── composition.ts       # candidats du Tour, choix validé, reprise
+│   ├── evidence.ts          # lecture bornée des résultats d'outils
+│   └── prompt.ts            # règles de dialogue
+├── ai/                      # parler aux IA : adaptateurs
+│   ├── research.ts          # exécution des outils, preuves accumulées
+│   ├── provider.ts, ai-model.ts # AI SDK : Gemini, Claude
+│   └── catalog.ts           # titres précis, ordre et propriété
 ├── dj-lease.ts              # un Tour par compte, plafond sur l'instance, échéance
-│
-│   # règles pures (vérifiées par check:architecture)
-├── plan.ts                  # politique du Tour, suite structurée comprise
-├── messages.ts              # messages envoyés au modèle, mémoire comprise
-├── memory.ts                # résumé borné du journal de la conversation
-├── decision.ts              # sortie du modèle → une seule décision motivée
-├── reply.ts                 # texte visible, annoncé depuis l'action exécutée
-├── composition.ts           # candidats du Tour, choix validé, reprise
-├── evidence.ts              # lecture bornée des résultats d'outils
-├── prompt.ts                # règles de dialogue
-├── errors.ts                # erreurs publiques sans détail fournisseur
-│
-│   # adaptateurs
-├── research.ts              # exécution des outils, preuves accumulées
-├── provider.ts, ai-model.ts # AI SDK : Gemini, Claude
-├── catalog.ts               # titres précis, ordre et propriété
+├── errors.ts                # erreurs publiques sans détail fournisseur (règle pure)
 ├── dj.config.ts             # configuration IA d'un compte
 └── journal/                 # traces, mémoire, clôture des tours au redémarrage (même rangement)
 ```

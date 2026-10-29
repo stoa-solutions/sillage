@@ -1,7 +1,7 @@
-import type { Database } from "../../db/index.ts";
-import { musicTracks, requestedTracks } from "../mcp/index.ts";
-import type { DjInput } from "./types/dj.contracts.ts";
-import type { TurnPlan } from "./plan.ts";
+import type { Database } from "../../../db/index.ts";
+import { musicTracks, requestedTracks } from "../../mcp/index.ts";
+import type { DjInput } from "../types/dj.contracts.ts";
+import type { TurnPlan } from "../turn/plan.ts";
 
 /** Resolve explicit titles without spending a model request; preserve order and ownership. */
 export async function catalogSelection(
