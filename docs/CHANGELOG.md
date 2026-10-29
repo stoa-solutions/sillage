@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sécurité des dépendances : correctifs Vitest/Vite, source-map-js et esbuild dans l’outillage de développement ; Zod du pilote AI SDK aligné sur la version corrigée du serveur. Aucun changement des données ou de l’API.
+
 - Serveur : journaux structurés en JSON (pino), une ligne par requête sans en-têtes ni jeton, seuil réglable par `LOG_LEVEL`. Une saisie invalide est reconnue par son type (`InvalidInput`) et non plus par les mots de son message.
 
 - Serveur : dans chaque module, les fichiers sont rangés par rôle, comme dans NestJS : `controllers/`, `services/`, `repositories/` et `types/` (contrats Zod). Aucun changement d’API.

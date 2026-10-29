@@ -48,6 +48,15 @@ jobs:
           cache: npm
       - run: npm ci --legacy-peer-deps
       - run: npm run verify:node
+      - name: Audit locked dependencies
+        run: |
+          npm audit --package-lock-only --audit-level=low
+          npm audit --prefix docs/research/pilots/ai-sdk-provider --package-lock-only --audit-level=low
+      - name: Verify the AI SDK pilot
+        working-directory: docs/research/pilots/ai-sdk-provider
+        run: |
+          npm ci --ignore-scripts
+          npm test
   image:
     # The image Dokploy builds, started on an empty database exactly as in production.
     runs-on: ubuntu-latest

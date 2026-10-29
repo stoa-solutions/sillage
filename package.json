@@ -10,6 +10,14 @@
   "engines": {
     "node": ">=24"
   },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "0.25.12"
+    }
+  },
+  "devDependencies": {
+    "drizzle-kit": "0.31.11"
+  },
   "scripts": {
     "docs:generate": "tsx apps/server/src/api-docs/generate.ts",
     "docs:check": "tsx apps/server/src/api-docs/generate.ts --check",
