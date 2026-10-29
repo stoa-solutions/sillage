@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/boot.ts",
-    "dev:worker": "tsx src/worker.ts",
-    "dev:inference": "tsx src/inference.ts",
+    "dev": "tsx watch src/boot.ts | pino-pretty",
+    "dev:worker": "tsx src/worker.ts | pino-pretty",
+    "dev:inference": "tsx src/inference.ts | pino-pretty",
     "build": "node build.mjs",
     "start": "node --enable-source-maps dist/boot.js",
     "start:worker": "node --enable-source-maps dist/worker.js",
@@ -30,7 +30,9 @@
     "drizzle-orm": "0.45.4",
     "google-auth-library": "11.3.1",
     "hono": "4.13.13",
+    "hono-pino": "0.10.3",
     "pg": "8.23.1",
+    "pino": "10.4.0",
     "zod": "4.6.7"
   },
   "devDependencies": {
@@ -38,6 +40,7 @@
     "@types/pg": "8.23.1",
     "drizzle-kit": "0.31.11",
     "esbuild": "0.28.2",
+    "pino-pretty": "13.2.0",
     "swagger-ui-dist": "5.34.0",
     "tsx": "4.23.15",
     "typescript": "5.9.3",

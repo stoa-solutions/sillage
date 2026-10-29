@@ -21,8 +21,12 @@ const uuids = z
   );
 const positive = z.coerce.number().int().positive();
 
+/** Read by every process's logger (shared/logger.ts). */
+const logLevel = z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]);
+
 const shared = z.object({
   DATABASE_URL: url,
+  LOG_LEVEL: logLevel.optional(),
   RELEASE_SHA: z.string().optional(),
   INFERENCE_URL: url.optional(),
   VISION_ENABLED: flag.optional(),
@@ -76,13 +80,14 @@ const worker = shared.extend({
 });
 
 const inference = z.object({
+  LOG_LEVEL: logLevel.optional(),
   PORT: positive.optional(),
   MODEL_PATH: z.string().optional(),
   MODEL_THREADS: positive.optional(),
   VISION_ENABLED: flag.optional(),
 });
 
-const schemas = { api, worker, inference, migrate: shared.pick({ DATABASE_URL: true }) };
+const schemas = { api, worker, inference, migrate: shared.pick({ DATABASE_URL: true, LOG_LEVEL: true }) };
 
 /** Throws with every invalid variable name when the process cannot start correctly. */
 export function checkEnvironment(

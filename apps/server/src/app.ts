@@ -16,6 +16,9 @@ import { createDjRoutes } from "./modules/dj/index.ts";
 import { djAgentRoutes } from "./modules/dj-agents/index.ts";
 import { tasteRoutes } from "./modules/taste/index.ts";
 import { cors } from "hono/cors";
+import { pinoLogger } from "hono-pino";
+import { errorFields, logger } from "./shared/logger.ts";
+import { InvalidInput } from "./shared/errors.ts";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -39,6 +42,23 @@ export interface AppOptions {
 export function createApp(db: Database, options: AppOptions = {}) {
   // OpenAPIHono collects the documented routes of the features mounted below.
   const app = new OpenAPIHono<ApiEnvironment>();
+  // One line per request: method, path without its query, status, account. Never headers.
+  app.use(
+    "*",
+    pinoLogger({
+      pino: logger,
+      http: {
+        onReqMessage: false,
+        onReqBindings: (c) => ({ req: { method: c.req.method, path: c.req.path } }),
+        onResBindings: (c) => ({
+          res: { status: c.res.status },
+          ...(c.get("userId") ? { userId: c.get("userId") } : {}),
+        }),
+        onResLevel: (c) =>
+          c.res.status >= 500 ? "error" : c.req.path === "/health" ? "debug" : "info",
+      },
+    }),
+  );
   app.use(
     "*",
     cors({
@@ -84,13 +104,9 @@ export function createApp(db: Database, options: AppOptions = {}) {
       (error instanceof HTTPException && [400, 415].includes(error.status))
     )
       return c.json({ error: "Données invalides." }, 400);
-    if (
-      /Identifiant|Utilisez un lien|fichier|playlist JSON|entrée|durée|Durée|Position|sauvegarde|import/i.test(
-        error.message,
-      )
-    )
+    if (error instanceof InvalidInput)
       return c.json({ error: error.message }, 400);
-    console.error("API request failed", error.name);
+    c.var.logger.error(errorFields(error), "API request failed");
     return c.json(
       { error: "Le serveur ne peut pas traiter cette demande." },
       500,

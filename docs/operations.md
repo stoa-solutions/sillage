@@ -31,6 +31,10 @@ Les tâches sont persistantes, dédupliquées, réessayées cinq fois avec tempo
 
 Pour un retour arrière, arrêter le worker via Dokploy, redéployer le commit précédent et conserver la base. Utiliser une sauvegarde dans une ressource isolée si une migration incompatible devait être introduite.
 
+## Journaux
+
+Chaque processus écrit une ligne JSON par événement (pino, `apps/server/src/shared/logger.ts`) dans la sortie du conteneur. L’API en écrit une par requête : méthode, chemin sans paramètres, statut, durée et compte ; jamais les en-têtes ni le jeton. `/health` n’apparaît qu’au niveau `debug`. `LOG_LEVEL` règle le seuil (`info` par défaut ; `debug`, `warn`, `error`…). Une erreur inattendue d’une route est journalisée avec son nom, son message et sa pile ; une erreur de saisie (`InvalidInput`, `apps/server/src/shared/errors.ts`) répond 400 avec son message, sans être journalisée comme une panne. En local, `npm run dev:server` affiche ces lignes lisibles avec `pino-pretty`.
+
 ## Première installation
 
 1. Copier `.env.example` dans l’environnement privé de Dokploy et compléter au minimum `DATABASE_URL` et `PUBLIC_URL`, ajouter `SEARXNG_SECRET` (exigé par le Compose, absent de `.env.example` ; voir « Recherche SearXNG privée ») et, selon les fonctions voulues, `YOUTUBE_API_KEY`, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (les deux ou aucun) et `DJ_SETTINGS_ENCRYPTION_KEY`. Garder `SYNC_ENABLED=false` au départ.

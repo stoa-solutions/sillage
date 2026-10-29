@@ -18,6 +18,7 @@ import {
   tasteOf,
   type TasteValue,
 } from "../taste.rules.ts";
+import { errorFields, logger } from "../../../shared/logger.ts";
 
 interface Candidate {
   video: { id: string };
@@ -80,8 +81,8 @@ export function tasteService(db: Database) {
           const label = tastes.get(item.video.id)?.label;
           return label ? { ...item, video: { ...item.video, taste: label } } : item;
         });
-      } catch {
-        console.warn("Taste unavailable, search order kept");
+      } catch (error) {
+        logger.warn(errorFields(error), "Taste unavailable, search order kept");
         return items;
       }
     },

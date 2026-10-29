@@ -10,6 +10,7 @@ import {
 } from "../src/modules/dj/journal/services/journal.service.ts";
 import { djInput } from "../src/modules/dj/types/dj.contracts.ts";
 import type { Database } from "../src/db/index.ts";
+import { logger } from "../src/shared/logger.ts";
 
 afterEach(() => vi.restoreAllMocks());
 it("preserves every message, name and tool argument verbatim without anonymization", () => {
@@ -50,7 +51,7 @@ it("rejects malformed client events and out-of-range sequence cursors", () => {
   );
 });
 it("does not break a DJ request when journal storage is unavailable", async () => {
-  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const warn = vi.spyOn(logger, "warn");
   const db = {
     connect: vi.fn().mockRejectedValue(new Error("private database address")),
   } as unknown as Database;
@@ -68,7 +69,5 @@ it("does not break a DJ request when journal storage is unavailable", async () =
     error: "Erreur interne du DJ.",
     status: 500,
   });
-  expect(console.warn).toHaveBeenCalledWith("DJ journal unavailable", {
-    traceId: journal.id,
-  });
+  expect(warn).toHaveBeenCalledWith({ traceId: journal.id }, "DJ journal unavailable");
 });

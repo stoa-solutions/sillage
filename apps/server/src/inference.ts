@@ -4,6 +4,7 @@ import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import { fork, type ChildProcess } from "node:child_process";
 import { checkEnvironment } from "./shared/config.ts";
+import { errorFields, logger } from "./shared/logger.ts";
 
 checkEnvironment("inference");
 let child: ChildProcess | undefined;
@@ -152,10 +153,7 @@ app.post("/:task", async (c) => {
     });
     return c.json(result);
   } catch (error) {
-    console.error(
-      "Inference:",
-      error instanceof Error ? error.message : "failed",
-    );
+    logger.error(errorFields(error), "Inference failed");
     return c.json({ error: "Model unavailable" }, 503);
   }
 });

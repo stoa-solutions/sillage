@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Video } from "@sillage/core/types";
+import { InvalidInput } from "./errors.ts";
 export const hash = (text: string | Uint8Array) =>
   createHash("sha256").update(text).digest("hex");
 export function documentText(
@@ -38,11 +39,11 @@ export function parsePlaylistId(value: string) {
         url.hostname,
       )
     )
-      throw new Error("Utilisez un lien de playlist YouTube.");
+      throw new InvalidInput("Utilisez un lien de playlist YouTube.");
     id = url.searchParams.get("list") ?? "";
   }
   if (!/^[a-zA-Z0-9_-]{10,160}$/.test(id))
-    throw new Error("Identifiant de playlist invalide.");
+    throw new InvalidInput("Identifiant de playlist invalide.");
   return id;
 }
 export function isoDuration(value?: string): number | null {

@@ -6,6 +6,7 @@ import {
   type JobKind,
 } from "./types/jobs.schemas.ts";
 import { claim, extendLease, finish } from "./repositories/jobs.repository.ts";
+import { errorFields, logger } from "../../shared/logger.ts";
 
 export type JobHandler = (job: ClaimedJob) => Promise<void>;
 
@@ -56,18 +57,15 @@ export async function runWorker({
           error instanceof Error ? error.message : "Task failed",
         );
         await finish(db.orm, job, safeError);
-        console.error(
-          JSON.stringify({
-            job: job.id,
-            kind: job.kind,
-            error: safeError.message,
-          }),
+        logger.error(
+          { job: job.id, kind: job.kind, error: safeError.message },
+          "Job failed",
         );
       } finally {
         clearInterval(heartbeat);
       }
-    } catch {
-      console.error("Worker database or scheduler unavailable");
+    } catch (error) {
+      logger.error(errorFields(error), "Worker database or scheduler unavailable");
       await delay(5000);
     }
   }

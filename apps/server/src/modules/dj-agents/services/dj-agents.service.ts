@@ -11,6 +11,7 @@ import {
   writeBaseAgents,
   type AgentRow,
 } from "../repositories/dj-agents.repository.ts";
+import { errorFields, logger } from "../../../shared/logger.ts";
 
 /** Enough for a few moods; keeps a runaway client from filling the table. */
 export const MAX_CUSTOM_AGENTS = 20;
@@ -99,8 +100,8 @@ export function djAgentsService(db: Database) {
           fallback = true;
           row = await find(DEFAULT_AGENT);
         }
-      } catch {
-        console.warn("DJ agent unavailable, default rules used");
+      } catch (error) {
+        logger.warn(errorFields(error), "DJ agent unavailable, default rules used");
       }
       if (!row) return { trace: { id: key, ...(key === DEFAULT_AGENT ? {} : { fallback: true as const }) } };
       const trace = fallback

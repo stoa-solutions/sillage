@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Serveur : journaux structurés en JSON (pino), une ligne par requête sans en-têtes ni jeton, seuil réglable par `LOG_LEVEL`. Une saisie invalide est reconnue par son type (`InvalidInput`) et non plus par les mots de son message.
+
 - Serveur : dans chaque module, les fichiers sont rangés par rôle, comme dans NestJS : `controllers/`, `services/`, `repositories/` et `types/` (contrats Zod). Aucun changement d’API.
 
 - Serveur : le DJ n’utilise plus que la clé personnelle du compte, Gemini ou Claude, par l’AI SDK. La clé IA du serveur (`DJ_PROVIDER`, `DJ_API_KEY`, `DJ_BASE_URL`, `DJ_MODEL`), le transport compatible OpenAI et l’ancienne table `account_dj_settings` disparaissent (migration `0009`, qui recopie d’abord toute clé Google absente de `account_ai_credentials`).

@@ -23,6 +23,7 @@ import {
   type ConversationMemory,
   type JournalTurn,
 } from "../../turn/memory.ts";
+import { logger } from "../../../../shared/logger.ts";
 
 /**
  * `superseded`: the listener forced a newer message. `busy`: a refill gave way
@@ -36,7 +37,7 @@ export type TurnStatus =
   | "superseded";
 const promptHash = createHash("sha256").update(djSystemPrompt).digest("hex");
 const unavailable = (id: string) =>
-  console.warn("DJ journal unavailable", { traceId: id });
+  logger.warn({ traceId: id }, "DJ journal unavailable");
 
 /** Owns persistence and failure isolation; the agent sees only an in-memory observer. */
 export async function beginJournal(
