@@ -128,7 +128,7 @@ import SwiftUI
       }
     }
     session.showOnboarding =
-      !session.hasServer || (session.googleAccount && (!session.hasKey || session.canClaimLibrary))
+      !session.hasServer || (session.googleAccount && !session.hasKey)
     if session.hasServer { library.sync() }
   }
   var body: some Scene {

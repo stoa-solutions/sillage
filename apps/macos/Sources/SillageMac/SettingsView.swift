@@ -187,11 +187,6 @@ struct SettingsView: View {
           Button("Annuler la connexion") { session.cancelGoogleSignIn() }
         }
       }
-      if session.canClaimLibrary {
-        Button("Rattacher mes playlists existantes à \(session.accountEmail)") {
-          Task { await session.claimLibrary() }
-        }
-      }
     }
   }
   @ViewBuilder private var djSettings: some View {

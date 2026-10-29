@@ -30,7 +30,7 @@ struct OnboardingView: View {
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
       Button(session.hasServer ? "Plus tard" : "Fermer") { session.showOnboarding = false }
         .buttonStyle(.plain).font(.callout).foregroundStyle(Stoa.stone)
-        .disabled(busy || session.claimingLibrary).padding(.top, 28)
+        .disabled(busy).padding(.top, 28)
     }
     .padding(40)
     .frame(width: 640, height: 520)
@@ -130,36 +130,25 @@ struct OnboardingView: View {
 
   private var playlists: some View {
     StepPage(
-      title: session.canClaimLibrary ? "Retrouve tes playlists" : "Ajoute une playlist",
-      message: session.canClaimLibrary
-        ? "Des playlists existent déjà sur ce serveur. Rattache-les à ton compte."
-        : library.libraryCount > 0
-          ? "Ta bibliothèque compte \(library.libraryCount) vidéos. Tu peux en ajouter d’autres."
-          : "Colle le lien d’une playlist YouTube publique ou non répertoriée."
+      title: "Ajoute une playlist",
+      message: library.libraryCount > 0
+        ? "Ta bibliothèque compte \(library.libraryCount) vidéos. Tu peux en ajouter d’autres."
+        : "Colle le lien d’une playlist YouTube publique ou non répertoriée."
     ) {
-      if session.canClaimLibrary {
-        Button(session.claimingLibrary ? "Récupération…" : "Récupérer mes playlists") {
-          Task { await session.claimLibrary() }
-        }
-        .buttonStyle(ChalkButtonStyle())
-        .keyboardShortcut(.defaultAction).disabled(session.claimingLibrary)
-        errorLine
-      } else {
-        TextField("youtube.com/playlist?list=…", text: $library.playlistLink)
-          .textFieldStyle(.plain).focused($fieldFocused).onSubmit(importAndFinish)
-          .padding(.horizontal, 12).frame(width: 340, height: 40)
-          .background(Stoa.ink.opacity(0.7), in: RoundedRectangle(cornerRadius: 8))
-          .overlay(
-            RoundedRectangle(cornerRadius: 8).strokeBorder(
-              fieldFocused ? Stoa.orange : Stoa.chalk.opacity(0.16)))
-        errorLine
-        HStack(spacing: 20) {
-          Button("Importer", action: importAndFinish).buttonStyle(ChalkButtonStyle())
-            .disabled(library.playlistLink.trimmingCharacters(in: .whitespaces).isEmpty)
-          if library.libraryCount > 0 {
-            Button("C’est parti") { session.showOnboarding = false }.buttonStyle(.plain)
-              .font(.callout).foregroundStyle(Stoa.chalk.opacity(0.8))
-          }
+      TextField("youtube.com/playlist?list=…", text: $library.playlistLink)
+        .textFieldStyle(.plain).focused($fieldFocused).onSubmit(importAndFinish)
+        .padding(.horizontal, 12).frame(width: 340, height: 40)
+        .background(Stoa.ink.opacity(0.7), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+          RoundedRectangle(cornerRadius: 8).strokeBorder(
+            fieldFocused ? Stoa.orange : Stoa.chalk.opacity(0.16)))
+      errorLine
+      HStack(spacing: 20) {
+        Button("Importer", action: importAndFinish).buttonStyle(ChalkButtonStyle())
+          .disabled(library.playlistLink.trimmingCharacters(in: .whitespaces).isEmpty)
+        if library.libraryCount > 0 {
+          Button("C’est parti") { session.showOnboarding = false }.buttonStyle(.plain)
+            .font(.callout).foregroundStyle(Stoa.chalk.opacity(0.8))
         }
       }
     }

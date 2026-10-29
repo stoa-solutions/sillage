@@ -8,9 +8,6 @@ final class Session: ObservableObject {
   @Published private(set) var accountEmail = ""
   @Published private(set) var googleAccount = false
   @Published private(set) var signingIn = false
-  @Published private(set) var canClaimLibrary = false
-  @Published private(set) var claimingLibrary = false
-  private var legacyConnection: Connection?
   private let signIn = GoogleSignIn()
   @Published var showOnboarding = false
   @Published var error = ""
@@ -60,25 +57,15 @@ final class Session: ObservableObject {
     loadingCredentials = true
     defer { if refreshAttempt == attempt { loadingCredentials = false } }
     do {
-      let credentials = try await Task.detached { () -> (Connection?, Connection?) in
-        (
-          try SessionStore.connection(),
-          try SessionStore.read("legacy-server").map {
-            try JSONDecoder().decode(Connection.self, from: $0)
-          }
-        )
-      }.value
+      let stored = try await Task.detached { try SessionStore.connection() }.value
       guard refreshAttempt == attempt else { return }
-      let changed =
-        connection?.url != credentials.0?.url || connection?.token != credentials.0?.token
-      connection = credentials.0
+      let changed = connection?.url != stored?.url || connection?.token != stored?.token
+      connection = stored
       hasKey = false
       cloudVoiceAvailable = false
       providerSettings = []
       accountEmail = ""
       googleAccount = false
-      legacyConnection = credentials.1
-      canClaimLibrary = legacyConnection != nil
       hasServer = connection != nil
       if changed {
         notice = ""
@@ -143,7 +130,7 @@ final class Session: ObservableObject {
         "La clé a été envoyée, mais sa confirmation a échoué. Vérifie ta connexion et réessaie.")
     }
     notice = "Ton DJ est activé. Ta clé est enregistrée sur ton compte."
-    if finishOnboarding && hasKey && hasServer && !canClaimLibrary { showOnboarding = false }
+    if finishOnboarding && hasKey && hasServer { showOnboarding = false }
   }
   func importConnection(_ url: URL) async throws {
     let connection = try await Task.detached {
@@ -164,38 +151,12 @@ final class Session: ObservableObject {
     signingIn = true
     defer { signingIn = false }
     do {
-      let previous = connection
-      let wasLegacy = !googleAccount
       let value = try await signIn.connect(server: SillageService.origin)
       try await Task.detached {
-        if wasLegacy, let previous {
-          try SessionStore.save(JSONEncoder().encode(previous), account: "legacy-server")
-        }
         try SessionStore.save(JSONEncoder().encode(value), account: "server")
       }.value
-      if wasLegacy, let previous {
-        legacyConnection = previous
-        canClaimLibrary = true
-      }
       await refreshCredentials()
-      showOnboarding = !hasKey || canClaimLibrary
-    } catch { self.error = error.localizedDescription }
-  }
-  func claimLibrary() async {
-    guard !claimingLibrary, let connection, let legacyConnection, googleAccount else { return }
-    claimingLibrary = true
-    error = ""
-    defer { claimingLibrary = false }
-    do {
-      _ = try await HTTPClient().server(
-        connection, path: "account/claim-library", body: ["legacyToken": legacyConnection.token])
-      try await Task.detached { try SessionStore.remove("legacy-server") }.value
-      self.legacyConnection = nil
-      canClaimLibrary = false
-      generation = UUID()
-      onConnectionChange?()
-      notice = "Tes playlists existantes sont maintenant rattachées à " + accountEmail
-      if hasKey { showOnboarding = false }
+      showOnboarding = !hasKey
     } catch { self.error = error.localizedDescription }
   }
   func testAIKey(_ value: String, voice: Bool = true) async throws -> AICheck {
@@ -250,21 +211,13 @@ final class Session: ObservableObject {
     accountEmail = ""
     notice = ""
     error = ""
-    legacyConnection = nil
-    canClaimLibrary = false
     onConnectionChange?()
     do {
       if let previous { _ = try await HTTPClient().server(previous, path: "logout", body: [:]) }
-      try await Task.detached {
-        try SessionStore.remove("server")
-        try SessionStore.remove("legacy-server")
-      }.value
+      try await Task.detached { try SessionStore.remove("server") }.value
       showOnboarding = true
     } catch {
-      try? await Task.detached {
-        try SessionStore.remove("server")
-        try SessionStore.remove("legacy-server")
-      }.value
+      try? await Task.detached { try SessionStore.remove("server") }.value
       self.error = "Déconnecté de ce Mac. La révocation serveur n’a pas pu être confirmée."
     }
   }

@@ -129,8 +129,15 @@ do {
     (directoryPermissions[.posixPermissions] as? NSNumber)?.intValue == 0o700,
     "Session directory is not private")
   try expectFailure { try sessions.save(token, account: "gemini") }
-  try sessions.install(["legacy-server": token])
-  try expect(try sessions.read("server") == token, "Import overwrote existing session")
+  try expectFailure { try sessions.install(["legacy-server": token]) }
+  try expect(try sessions.read("server") == token, "Rejected import changed the session")
+  try JSONEncoder().encode(["server": token, "legacy-server": token]).write(to: file)
+  try expect(try sessions.read("server") == token, "Older session file became unreadable")
+  try expect(try sessions.read("legacy-server") == nil, "Retired session entry was returned")
+  try sessions.save(token, account: "server")
+  try expect(
+    try JSONDecoder().decode([String: Data].self, from: Data(contentsOf: file)).keys.sorted()
+      == ["server"], "Retired session entry survived a write")
   try sessions.save(nil, account: "server")
   try expect(
     try CredentialFile(directory: sessionDirectory).read("server") == nil,

@@ -6,7 +6,10 @@ import Foundation
 public final class CredentialFile: @unchecked Sendable {
   private let directory: URL
   private let lock = NSLock()
-  private let allowed: Set<String> = ["server", "legacy-server"]
+  private let allowed: Set<String> = ["server"]
+  /// Entries older versions wrote. Still accepted in an existing file so it stays readable,
+  /// never returned, and dropped by the next write.
+  private let retired: Set<String> = ["legacy-server"]
 
   public init(directory: URL) { self.directory = directory }
 
@@ -57,7 +60,10 @@ public final class CredentialFile: @unchecked Sendable {
       else { throw failure() }
       let data = FileHandle(fileDescriptor: fd, closeOnDealloc: false).readDataToEndOfFile()
       values = try JSONDecoder().decode([String: Data].self, from: data)
-      guard values.keys.allSatisfy({ allowed.contains($0) }) else { throw failure() }
+      guard values.keys.allSatisfy({ allowed.contains($0) || retired.contains($0) }) else {
+        throw failure()
+      }
+      values = values.filter { allowed.contains($0.key) }
     } else if errno != ENOENT {
       throw failure()
     }
