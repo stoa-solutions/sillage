@@ -539,6 +539,10 @@ export const djConversations = pgTable(
   ],
 );
 
+
+
+// a voir si vraiment utile on dirait une fonction de secour parce que une ia à capté que je fesais de deploy quand jetait en train de fair eddes raquete 
+
 export const djTurns = pgTable(
   "dj_turns",
   {
