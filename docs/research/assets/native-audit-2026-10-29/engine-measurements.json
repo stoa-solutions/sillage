@@ -1,0 +1,14 @@
+{
+  "nativeAdvancedPosition" : 1.900572792,
+  "nativeLoadSeconds" : 0.10291241700000001,
+  "nativeSeekPosition" : 2.375,
+  "nativeSeekTarget" : 2.375,
+  "nativeStartPosition" : 1.25,
+  "nativeStopped" : true,
+  "pausedDeliveredSignals" : 40,
+  "pausedIdenticalSamples" : 40,
+  "pausedPublications" : 40,
+  "playingDeliveredSignals" : 100,
+  "playingPublications" : 33,
+  "playingSamples" : 100
+}

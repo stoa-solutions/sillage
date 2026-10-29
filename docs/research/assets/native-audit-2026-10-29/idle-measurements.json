@@ -1,0 +1,9 @@
+{
+  "state": "Studio idle, lyrics empty panel open, local synthetic account, debug build; other applications running",
+  "seconds": 10.188388374997885,
+  "cpuSeconds": 0.030000000000000027,
+  "oneCoreCPUPercent": 0.2944528505962677,
+  "rssStartMiB": 181.28125,
+  "rssEndMiB": 181.375,
+  "rssPeakMiB": 181.375
+}
