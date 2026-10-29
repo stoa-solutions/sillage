@@ -14,7 +14,7 @@ Chaque appel authentifié résout le jeton en `user_id`. Le serveur ne prend pas
 
 1. La clé saisie dans le champ sécurisé est envoyée via HTTPS à l'API authentifiée. L'app peut la tester, puis efface le champ après enregistrement ; elle ne la met pas dans ses préférences ni dans le Trousseau.
 2. Le serveur chiffre en **AES-256-GCM**, avec un nonce aléatoire de 12 octets et le UUID du compte comme données authentifiées (AAD). Copier le chiffré sur un autre compte ne suffit pas à le rendre utilisable.
-3. `account_dj_settings` contient le chiffré et le modèle. La clé maître `DJ_SETTINGS_ENCRYPTION_KEY` reste dans l'environnement privé du serveur, séparée de la base et du paquet Mac.
+3. `account_ai_credentials` contient le chiffré et le modèle, une ligne par fournisseur (Gemini, Claude). La clé maître `DJ_SETTINGS_ENCRYPTION_KEY` reste dans l'environnement privé du serveur, séparée de la base et du paquet Mac.
 4. Le serveur déchiffre uniquement pour appeler Google avec la clé du compte. Le statut envoyé à l'app indique si elle est configurée, sans renvoyer la clé. Retirer la clé supprime la ligne de configuration.
 
 Ce n'est **pas du chiffrement de bout en bout** : le serveur peut lire la clé, et Google reçoit le chat, les titres/candidats nécessaires et les textes à prononcer. Un accès simultané à la base et à la clé maître permettrait de déchiffrer. Sauvegarde et rotation de cette clé maître doivent donc être gérées séparément avant une ouverture large du service.
@@ -36,7 +36,7 @@ Sur le Mac, seul le **jeton révocable Sillage** est conservé dans `session.jso
 | `channels` | Photos de chaînes ; jointure logique sur videos.channel_id, sans contrainte FK SQL. |
 | `passages` | (video_id, ordinal), texte indexé et vecteur 384 dimensions. |
 | `images` | Une représentation vectorielle 768 dimensions par vidéo et révision de miniature. |
-| `account_dj_settings` | Une configuration chiffrée + modèle par utilisateur. |
+| `account_ai_credentials` | Une clé chiffrée + modèle par utilisateur et par fournisseur. |
 | `account_dj_usage` | Compteur par utilisateur/jour ; distinct du quota Google de sa clé. |
 | `listening_history` | (user_id, event_id) : vidéo, titre et chaîne copiés, issue (terminé, passé, indisponible, remplacé), date de lecture. Sans lien vers `videos`, car un titre YouTube écouté n'est pas forcément dans la bibliothèque. |
 | `lyrics` | Paroles publiques, lignes, source et écart de durée, par vidéo. |

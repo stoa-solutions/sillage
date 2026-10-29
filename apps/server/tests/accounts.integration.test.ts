@@ -54,7 +54,6 @@ beforeAll(async () => {
 });
 beforeEach(async () => {
   vi.stubEnv("DJ_SETTINGS_ENCRYPTION_KEY", "42".repeat(32));
-  vi.stubEnv("DJ_API_KEY", "owner-server-secret-must-not-be-shared");
   await db.query(
     "TRUNCATE users,tokens,playlists,videos,jobs,oauth_flows,oauth_grants CASCADE",
   );
@@ -214,7 +213,7 @@ it("encrypts personal keys per account, shares settings only across own sessions
   );
   const row = (
     await db.query(
-      "SELECT encrypted_key FROM account_dj_settings WHERE user_id=$1",
+      "SELECT encrypted_key FROM account_ai_credentials WHERE user_id=$1",
       [alice],
     )
   ).rows[0];

@@ -3,7 +3,7 @@ export { djInput, type DjInput } from "./dj.contracts.ts";
 export { djTurn } from "./dj-turn.service.ts";
 export { djDailyBudget, reserveDj } from "./dj-quota.service.ts";
 export { DjUnavailable } from "./errors.ts";
-export { djConfig, type DjConfig } from "./dj.config.ts";
+export type { DjConfig } from "./dj.config.ts";
 export {
   djSettingsInput,
   openSecret,

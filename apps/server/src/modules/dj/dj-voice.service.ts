@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { djConfig, type DjConfig } from "./dj.config.ts";
+import type { DjConfig } from "./dj.config.ts";
 import { DjUnavailable } from "./errors.ts";
 import { reserveDj } from "./dj-quota.service.ts";
 
@@ -20,11 +20,9 @@ const speechResponse = z.object({
   ),
 });
 import type { Database } from "../../db/index.ts";
-export function djVoiceConfigured(config: DjConfig = djConfig()) {
-  return (
-    config.configured &&
-    (config.provider === "google" || config.baseUrl === "https://generativelanguage.googleapis.com/v1beta/openai")
-  );
+/** Speech uses Gemini's TTS model: only an account with a Google key has a voice. */
+export function djVoiceConfigured(config: DjConfig) {
+  return config.configured && config.provider === "google";
 }
 export function pcmToWav(pcm: Buffer, rate = 24000): Buffer {
   const header = Buffer.alloc(44);
@@ -46,7 +44,7 @@ export async function djSpeech(
   db: Database,
   text: string,
   signal: AbortSignal | undefined,
-  config: DjConfig = djConfig(),
+  config: DjConfig,
   userId: string,
 ) {
   if (!djVoiceConfigured(config))

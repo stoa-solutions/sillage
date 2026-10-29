@@ -66,7 +66,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
   await db.query(
-    "TRUNCATE tokens,playlists,videos,channels,jobs,quota_usage,account_dj_usage,account_dj_settings,account_ai_credentials CASCADE",
+    "TRUNCATE tokens,playlists,videos,channels,jobs,quota_usage,account_dj_usage,account_ai_credentials CASCADE",
   );
   await db.query("INSERT INTO tokens(id,name,hash,user_id) VALUES($1,$2,$3,$4)", [
     randomUUID(),
@@ -571,63 +571,6 @@ it("finds long music without an implicit duration cap", async () => {
     await mcp.close();
   }
 });
-it.skipIf(!process.env["DJ_SIMULATION_URL"])(
-  "runs the DJ over HTTP against a simulated model and rejects fabricated selections",
-  async () => {
-    await importLibrary(db, OWNER, fixture);
-    await db.query(
-      "UPDATE videos SET title='Jazz du soir',duration_seconds=180",
-    );
-    const saved = {
-      DJ_API_KEY: process.env["DJ_API_KEY"],
-      DJ_MODEL: process.env["DJ_MODEL"],
-      DJ_BASE_URL: process.env["DJ_BASE_URL"],
-    };
-    Object.assign(process.env, {
-      DJ_API_KEY: "simulation-only",
-      DJ_MODEL: "fixture",
-      DJ_BASE_URL: process.env["DJ_SIMULATION_URL"],
-    });
-    try {
-      const send = (message: string) =>
-        app.request("/v1/dj/chat", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ message }),
-        });
-      const response = await send("Du jazz pour ce soir");
-      expect(response.status).toBe(200);
-      expect(await response.json()).toMatchObject({
-        action: "replace",
-        source: "mcp",
-        tracks: [{ id: "abcdefghijk", title: "Jazz du soir" }],
-      });
-      const composed = await send("SIMULATE_COMPOSITION de l’énergie pour avancer");
-      expect(composed.status).toBe(200);
-      expect(await composed.json()).toMatchObject({action:"replace",tracks:[{id:"abcdefghijk"}],reply:expect.stringContaining("candidats déjà trouvés")});
-      const confirmation = await send("SIMULATE_CONFIRMATION voilà c’est ça");
-      expect(confirmation.status).toBe(200);
-      expect(await confirmation.json()).toMatchObject({
-        action: "keep", tracks: [], reply: "Oui, c’est bien ce morceau.",
-      });
-      const hallucination = await send("SIMULATE_HALLUCINATION");
-      expect(hallucination.status).toBe(502);
-      expect((await hallucination.json()).error).toContain("non vérifié");
-      const unavailable = await send("SIMULATE_503");
-      expect(unavailable.status).toBe(502);
-      expect((await unavailable.json()).error).not.toContain("simulation-only");
-    } finally {
-      for (const [key, value] of Object.entries(saved)) {
-        if (value === undefined) delete process.env[key];
-        else process.env[key] = value;
-      }
-    }
-  },
-);
-
 it("stores a personal DJ key encrypted, scopes it to its account and never returns it", async () => {
   vi.stubEnv("DJ_SETTINGS_ENCRYPTION_KEY", "42".repeat(32));
   const headers = {
@@ -641,7 +584,7 @@ it("stores a personal DJ key encrypted, scopes it to its account and never retur
     body: JSON.stringify({ apiKey: secret, model: "gemini-4-argon" }),
   });
   expect(save.status).toBe(200);
-  const row = (await db.query("SELECT encrypted_key FROM account_dj_settings"))
+  const row = (await db.query("SELECT encrypted_key FROM account_ai_credentials"))
     .rows[0];
   expect(row.encrypted_key).not.toContain(secret);
   const status = await app.request("/v1/dj/status", { headers });
@@ -700,7 +643,7 @@ it("refuses credential storage without a valid encryption key", async () => {
   });
   expect(response.status).toBe(503);
   expect(
-    (await db.query("SELECT count(*)::int n FROM account_dj_settings")).rows[0]
+    (await db.query("SELECT count(*)::int n FROM account_ai_credentials")).rows[0]
       .n,
   ).toBe(0);
 });

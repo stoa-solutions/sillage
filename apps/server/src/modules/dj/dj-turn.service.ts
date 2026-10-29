@@ -1,4 +1,4 @@
-import { djConfig, type DjConfig } from "./dj.config.ts";
+import type { DjConfig } from "./dj.config.ts";
 import type { Database } from "../../db/index.ts";
 import { recentlyHeard } from "../history/index.ts";
 import { connectMusicMcp, musicTracks } from "../mcp/index.ts";
@@ -61,7 +61,7 @@ export async function djTurn(
   db: Database,
   input: DjInput,
   signal: AbortSignal = AbortSignal.timeout(TURN_DEADLINE_MS),
-  config: DjConfig = djConfig(),
+  config: DjConfig,
   userId: string,
   observe?: TraceObserver,
   memory: ConversationMemory = EMPTY_MEMORY,

@@ -1,6 +1,5 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { APICallError, generateText } from "ai";
 import type { DjConfig } from "./dj.config.ts";
 
@@ -8,27 +7,20 @@ import type { DjConfig } from "./dj.config.ts";
 export function aiModel(config: DjConfig) {
   const settings = { apiKey: config.key ?? "", baseURL: config.baseUrl };
   const model = config.model ?? "";
-  switch (config.provider) {
-    case "google":
-      return createGoogleGenerativeAI(settings)(model);
-    case "anthropic":
-      return createAnthropic(settings)(model);
-    default:
-      return createOpenAICompatible({
-        ...settings,
-        name: "compatible",
-      }).chatModel(model);
-  }
+  return config.provider === "google"
+    ? createGoogleGenerativeAI(settings)(model)
+    : createAnthropic(settings)(model);
 }
 
 export function thinkingOptions(
   config: DjConfig,
 ): Parameters<typeof generateText>[0]["providerOptions"] {
-  if (!["gemini-4-argon", "gemini-3.8-flash"].includes(config.model ?? ""))
+  if (
+    config.provider !== "google" ||
+    !["gemini-4-argon", "gemini-3.8-flash"].includes(config.model ?? "")
+  )
     return undefined;
-  return config.provider === "google"
-    ? { google: { thinkingConfig: { thinkingLevel: "low" } } }
-    : { compatible: { reasoningEffort: "low" } };
+  return { google: { thinkingConfig: { thinkingLevel: "low" } } };
 }
 
 export function providerHttpStatus(error: unknown): number | undefined {

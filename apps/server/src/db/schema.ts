@@ -129,24 +129,6 @@ export const accountAiCredentials = pgTable(
   ],
 );
 
-/** Google mirror of accountAiCredentials, kept so an older server can still run. */
-export const accountDjSettings = pgTable(
-  "account_dj_settings",
-  {
-    userId: uuid("user_id").primaryKey(),
-    encryptedKey: text("encrypted_key").notNull(),
-    model: text("model").notNull(),
-    updatedAt: timestamptz("updated_at").notNull().defaultNow(),
-  },
-  (t) => [
-    foreignKey({
-      name: "account_dj_settings_user_id_fkey",
-      columns: [t.userId],
-      foreignColumns: [users.id],
-    }).onDelete("cascade"),
-  ],
-);
-
 export const accountDjUsage = pgTable(
   "account_dj_usage",
   {

@@ -8,9 +8,7 @@ import {
   beginJournal,
   publicJournalError,
 } from "../src/modules/dj/journal/journal.service.ts";
-import { completeTurn } from "../src/modules/dj/provider.ts";
 import { djInput } from "../src/modules/dj/dj.contracts.ts";
-import type { TraceEvent } from "../src/modules/dj/journal/journal.contracts.ts";
 import type { Database } from "../src/db/index.ts";
 
 afterEach(() => vi.restoreAllMocks());
@@ -73,72 +71,4 @@ it("does not break a DJ request when journal storage is unavailable", async () =
   expect(console.warn).toHaveBeenCalledWith("DJ journal unavailable", {
     traceId: journal.id,
   });
-});
-it("captures visible provider calls and usage without storing thought signatures or API keys", async () => {
-  const events: TraceEvent[] = [];
-  const call = {
-    id: "search-1",
-    type: "function",
-    function: { name: "music_search", arguments: '{"query":"Acid Coco"}' },
-    extra_content: { google: { thought_signature: "opaque-private" } },
-  };
-  const fetcher = vi
-    .spyOn(globalThis, "fetch")
-    .mockResolvedValue(
-      Response.json({
-        choices: [
-          {
-            message: {
-              content: null,
-              tool_calls: [call],
-              extra_content: { hidden: "opaque-private" },
-            },
-          },
-        ],
-        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
-      }),
-    );
-  const result = await completeTurn(
-    {
-      configured: true,
-      baseUrl: "https://provider.test",
-      model: "test-model",
-      key: "private-key",
-    },
-    [{ role: "user", content: "du jazz" }],
-    [],
-    0,
-    new AbortController().signal,
-    (event) => events.push(event),
-  );
-  expect(result.tool_calls?.[0]).toMatchObject({id:call.id,function:call.function});
-  expect(JSON.stringify(result.providerContent)).toContain("opaque-private");
-  expect(journalPayload(events)).toMatchObject([
-    {
-      kind: "provider",
-      status: "ok",
-      output: { usage: { total_tokens: 30 }, tool_calls: [{ id: "search-1" }] },
-    },
-  ]);
-  expect(JSON.stringify(journalPayload(events))).not.toMatch(
-    /opaque-private|private-key|extra_content/,
-  );
-  fetcher.mockResolvedValueOnce(
-    Response.json({ choices: [{ message: { content: "{}" } }] }),
-  );
-  await expect(
-    completeTurn(
-      {
-        configured: true,
-        baseUrl: "https://provider.test",
-        model: "test",
-        key: undefined,
-      },
-      [{role:"user",content:"ok"}],
-      [],
-      0,
-      new AbortController().signal,
-      (event) => events.push(event),
-    ),
-  ).resolves.toMatchObject({ content: "{}" });
 });

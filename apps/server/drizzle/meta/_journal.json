@@ -64,6 +64,13 @@
       "when": 1793240606335,
       "tag": "0008_remove_legacy_account",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793241068765,
+      "tag": "0009_drop_google_key_mirror",
+      "breakpoints": true
     }
   ]
 }

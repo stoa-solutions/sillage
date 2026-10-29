@@ -257,7 +257,6 @@ it("pages events and turns without gaps and deletes only the owner's journal", a
   ).toBe(2);
 });
 it("records an actual HTTP DJ error without changing its response contract or exposing private details", async () => {
-  vi.stubEnv("DJ_API_KEY", "");
   try {
     const id = randomUUID();
     const response = await req("POST", "/chat", tokenA, {

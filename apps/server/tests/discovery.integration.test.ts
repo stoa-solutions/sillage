@@ -254,7 +254,7 @@ it("tests draft Gemini keys without persisting them and reports invalid/quota fa
   expect((await (await req("/v1/dj/check", tokenA, input)).json()).ok).toBe(
     true,
   );
-  expect((await db.query("SELECT * FROM account_dj_settings")).rowCount).toBe(
+  expect((await db.query("SELECT * FROM account_ai_credentials")).rowCount).toBe(
     0,
   );
   status = 400;
@@ -307,7 +307,7 @@ it("keeps the existing encrypted key after a rejected draft check", async () => 
     model: "gemini-3.5-flash-lite",
   });
   const before = (
-    await db.query("SELECT * FROM account_dj_settings WHERE user_id=$1", [
+    await db.query("SELECT * FROM account_ai_credentials WHERE user_id=$1", [
       alice,
     ])
   ).rows;
@@ -324,7 +324,7 @@ it("keeps the existing encrypted key after a rejected draft check", async () => 
   ).toBe(false);
   expect(
     (
-      await db.query("SELECT * FROM account_dj_settings WHERE user_id=$1", [
+      await db.query("SELECT * FROM account_ai_credentials WHERE user_id=$1", [
         alice,
       ])
     ).rows,

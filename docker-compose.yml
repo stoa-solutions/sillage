@@ -33,12 +33,8 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       DJ_SETTINGS_ENCRYPTION_KEY: ${DJ_SETTINGS_ENCRYPTION_KEY:-}
-      DJ_PROVIDER: ${DJ_PROVIDER:-}
       AI_GOOGLE_BASE_URL: ${AI_GOOGLE_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
       AI_ANTHROPIC_BASE_URL: ${AI_ANTHROPIC_BASE_URL:-https://api.anthropic.com/v1}
-      DJ_API_KEY: ${DJ_API_KEY:-}
-      DJ_BASE_URL: ${DJ_BASE_URL:-https://api.openai.com/v1}
-      DJ_MODEL: ${DJ_MODEL:-}
       DJ_DAILY_REQUEST_LIMIT: ${DJ_DAILY_REQUEST_LIMIT:-100}
       DJ_ACCOUNT_DAILY_LIMITS: ${DJ_ACCOUNT_DAILY_LIMITS:-}
       MAC_RELEASES_DIR: /releases

@@ -79,7 +79,7 @@ reste une validation distincte après configuration des identifiants.
 
 Le compte de connexion Google est indépendant du fournisseur du DJ. L’accueil et Réglages proposent Gemini ou Claude et le modèle. Ajouter sa propre clé API puis **Vérifier et enregistrer** ; une session Claude Pro n’est pas une clé de la Console Anthropic et ne garantit pas de crédits API.
 
-Le serveur utilise AI SDK et ses adaptateurs natifs. Les clés sont chiffrées AES-256-GCM avec le contexte du compte dans `account_ai_credentials` ; la table historique est conservée comme miroir Google. La migration conserve le modèle et la clé existants. Chaque fournisseur garde ses réglages lorsque l’autre est activé. Une clé de compte n’utilise jamais la clé de l’administrateur en secours.
+Le serveur utilise l’AI SDK et ses adaptateurs natifs (Gemini, Claude). Les clés sont chiffrées AES-256-GCM avec le contexte du compte dans `account_ai_credentials`, une ligne par fournisseur. Chaque fournisseur garde ses réglages lorsque l’autre est activé. Le serveur n’a pas de clé IA à lui : un compte sans clé n’a pas de DJ.
 
 `GET /v1/dj/status` renvoie le fournisseur actif et les modèles proposés/configurations disponibles, sans secret. `POST /v1/dj/settings` accepte `provider`, `model` et une `apiKey` facultative après la première saisie. `provider` omis signifie Google pour les anciens clients. `/check` teste seulement le fournisseur demandé et ne sauvegarde rien. `/settings/reset` avec `provider` retire sa clé ; `{}` retire toutes les clés. Supprimer la clé active ne bascule pas sur une autre clé.
 

@@ -38,8 +38,6 @@ const api = shared.extend({
     .string()
     .regex(/^([a-f0-9]{64})?$/i, "64 caractères hexadécimaux")
     .optional(),
-  DJ_PROVIDER: z.string().optional(),
-  DJ_BASE_URL: url.optional(),
   DJ_DAILY_REQUEST_LIMIT: positive.optional(),
   DJ_ACCOUNT_DAILY_LIMITS: z
     .string()
