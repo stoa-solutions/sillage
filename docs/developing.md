@@ -14,6 +14,20 @@ Serveur local : un PostgreSQL jetable avec pgvector, `DATABASE_URL` vers lui, pu
 
 `verify:macos` compile et lance les contrôles sans capture micro réelle. Les tests ne prouvent pas le fonctionnement audio ou Google dans l’app. Pour une app de développement, définir `SILLAGE_DATA_DIR` vers un dossier temporaire avant `swift run --package-path apps/macos SillageMac` ; ne pas ouvrir un deuxième client sur les données personnelles par défaut.
 
+### Copie locale de la production
+
+Pour travailler l’app et l’API sur de vraies données, sans rien inventer : `scripts/dev.py` monte une copie privée de la production sur le Mac.
+
+```sh
+python3 scripts/dev.py db pull   # copie la production dans le PostgreSQL local (la remplace)
+python3 scripts/dev.py all       # API locale rechargée à chaque enregistrement + « Sillage Dev »
+```
+
+- Tout ce qui est privé reste hors du dépôt, dans `../sillage-dev` à côté du clone principal (`SILLAGE_DEV_DIR` pour un autre dossier), en mode 600 : les copies (`dumps/`, les trois plus récentes), `server.env` (`DATABASE_URL` du PostgreSQL local, `PORT=3101`, `PUBLIC_URL`), `dev.env` (`SILLAGE_PROD_SSH`, `SILLAGE_DEV_ACCOUNT`) et les données de l’app de développement. La copie contient les données de tous les comptes : elle ne quitte pas ce Mac.
+- `api` lance `npm run dev:server` sur la copie : `tsx watch` redémarre l’API à chaque enregistrement. Le worker n’est pas lancé, pour ne pas rejouer la file de production. Les clés absentes de `server.env` (YouTube, Google, chiffrement des réglages du DJ) désactivent les fonctions qui en dépendent.
+- `app` compile `SillageMac` en debug, l’assemble dans `.output/macos-dev/Sillage Dev.app` (identifiant `solutions.stoa.sillage.dev`, mises à jour coupées) et le relance à chaque enregistrement d’un fichier Swift ; un échec de compilation laisse la version précédente ouverte. Son `SILLAGE_DATA_DIR` est `../sillage-dev/app-data` : l’app installée et ses données ne sont jamais touchées. Au premier lancement, un jeton « Sillage Dev (local) » est créé dans la base locale seulement ; `db pull` le remplace.
+- La compilation garde `-Xlinker -interposable`, pour qu’InjectionNext puisse remplacer des fonctions dans l’app en cours d’exécution.
+
 Pour les tests SQL, créer un PostgreSQL jetable avec pgvector, définir `TEST_DATABASE_URL` vers une base terminant par `_test`, puis `npm run test:integration` : chaque suite `*.integration.test.ts` migre et utilise son propre schéma PostgreSQL. Les tests sans base (`*.test.ts`) passent par `npm test`. Ne jamais utiliser la base de production. Voir `.env.example` pour les variables serveur disponibles ; les modèles d’inférence ne sont pas requis par les tests simulés.
 
 ## Où faire le changement

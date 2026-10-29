@@ -27,6 +27,7 @@
     "check": "npm run docs:check && npm run check:architecture && npm run check --workspaces --if-present",
     "test": "node --test scripts/dj-eval/*.test.mjs && npm run test --workspaces --if-present",
     "dev:server": "npm run dev -w @sillage/server",
+    "dev": "python3 scripts/dev.py all",
     "test:integration": "npm run test:integration -w @sillage/server",
     "build:macos": "python3 scripts/build-macos.py --universal",
     "test:macos": "swift build --build-system native --package-path apps/macos && swift run --build-system native --skip-build --package-path apps/macos SillageCoreTests && swift run --build-system native --skip-build --package-path apps/macos SillageAudioTests && swift run --build-system native --skip-build --package-path apps/macos SillageServerTests",
