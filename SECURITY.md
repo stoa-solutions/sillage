@@ -5,4 +5,5 @@ Ne publiez pas de vulnérabilité contenant des secrets dans une issue publique.
 
 N’incluez jamais de clé API, jeton de connexion, cookie navigateur ou export utilisateur.
 L’auto-hébergement implique notamment HTTPS, origines autorisées, clé de chiffrement des réglages,
-isolement des comptes et sauvegardes. Le dépôt reste privé pendant la préparation du lancement.
+isolement des comptes et sauvegardes. Le code est public sous licence MIT ; les clés, les données
+utilisateur et les configurations privées d’exploitation doivent rester hors du dépôt.

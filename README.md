@@ -2,6 +2,8 @@
 
 Serveur personnel et app Mac pour retrouver une vidéo à partir d'un souvenir, de mots-clés ou de sa durée, et écouter sa bibliothèque avec un DJ conversationnel. Interface en français. Le serveur assure la synchronisation YouTube, les descriptions complètes, une recherche hybride PostgreSQL/pgvector et une recherche visuelle des miniatures.
 
+Le code est ouvert sous [licence MIT](LICENSE). Pour compiler Sillage, proposer une amélioration ou signaler un problème, consultez le [guide développeur](docs/developing.md) et les [règles de contribution](CONTRIBUTING.md). L’ouverture du code est distincte de la disponibilité de l’installateur Mac public, encore en préparation.
+
 ## App Mac
 
 Une app native SwiftUI est disponible dans `apps/macos` : chat DJ, micro Apple, voix Gemini, lecture YouTube et connexion Google persistante. Depuis la version 1.3, sa bibliothèque réside uniquement sur ton serveur privé : import YouTube par lien, recherche et pagination à distance, sans base musicale locale. Le paquet universel est généré par `npm run build:macos` ; il ne contient aucune connexion personnelle.
