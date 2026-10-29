@@ -1,4 +1,4 @@
-import { checkEnvironment } from "./config.ts";
+import { checkEnvironment } from "./shared/config.ts";
 import { migrate, pool } from "./db/index.ts";
 import { closeInterruptedTurns } from "./modules/dj/index.ts";
 import { syncBaseAgents } from "./modules/dj-agents/index.ts";

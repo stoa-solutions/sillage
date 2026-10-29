@@ -5,8 +5,8 @@ import { migrate, openDatabase } from "../src/db/index.ts";
 import { upsertVideo, videoFromRow } from "../src/modules/library/index.ts";
 import { enrichmentProgressFor } from "../src/modules/enrichment/index.ts";
 import { createApp } from "../src/app.ts";
-import { hash } from "../src/content.ts";
-import { documentText } from "../src/content.ts";
+import { hash } from "../src/shared/content.ts";
+import { documentText } from "../src/shared/content.ts";
 import {
   scheduleMusicEnrichment,
   enrichMusic,

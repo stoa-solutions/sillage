@@ -17,7 +17,7 @@ import {
   type SQLWrapper,
 } from "drizzle-orm";
 import type { LibraryImport, Video } from "@sillage/core/types";
-import { documentText, hash } from "../../content.ts";
+import { documentText, hash } from "../../shared/content.ts";
 import {
   LEGACY_USER_ID,
   channels,

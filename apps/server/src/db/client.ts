@@ -6,7 +6,7 @@ import {
   type NodePgQueryResultHKT,
 } from "drizzle-orm/node-postgres";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import * as tables from "./schema/index.ts";
+import * as tables from "./schema.ts";
 
 export type Orm = NodePgDatabase<typeof tables>;
 /** The database or an open transaction: store functions accept both. */

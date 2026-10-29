@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { hash } from "../../content.ts";
+import { hash } from "../../shared/content.ts";
 import type { Database } from "../../db/index.ts";
 import {
   consumeFlow,

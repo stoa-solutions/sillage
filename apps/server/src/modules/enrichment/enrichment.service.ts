@@ -1,5 +1,5 @@
 import type { MusicMetadata } from "@sillage/core/types";
-import { hash } from "../../content.ts";
+import { hash } from "../../shared/content.ts";
 import type { Database, videos } from "../../db/index.ts";
 import { MusicBrainzClient } from "../../integrations/musicbrainz/index.ts";
 import { enqueue, type ClaimedJob } from "../jobs/index.ts";

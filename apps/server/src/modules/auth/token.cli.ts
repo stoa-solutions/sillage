@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { eq } from "drizzle-orm";
 import { pool, tokens } from "../../db/index.ts";
-import { hash } from "../../content.ts";
+import { hash } from "../../shared/content.ts";
 
 /**
  * Personal tokens for scripts and the MCP endpoint, from inside the API container:

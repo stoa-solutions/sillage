@@ -41,7 +41,7 @@ Les noms Swift correspondent aux fichiers de `apps/macos/Sources/SillageKit` (r�
 
 ## Base de données (Drizzle)
 
-- Modifier une table dans `apps/server/src/db/schema/<domaine>.ts`, puis générer la migration : `npm run db:generate -w @sillage/server -- --name <sujet>`. Pas besoin de base : drizzle-kit compare le schéma au dernier instantané de `apps/server/drizzle/meta/`. Relire le SQL produit et le committer avec l’instantané.
+- Modifier une table dans la section du domaine dans `apps/server/src/db/schema.ts`, puis générer la migration : `npm run db:generate -w @sillage/server -- --name <sujet>`. Pas besoin de base : drizzle-kit compare le schéma au dernier instantané de `apps/server/drizzle/meta/`. Relire le SQL produit et le committer avec l’instantané.
 - Ce que Drizzle ne décrit pas (déclencheur `sillage_music_revision`, configuration `sillage_simple`) s’écrit à la main dans une migration créée par `npm run db:generate -w @sillage/server -- --custom --name <sujet>`.
 - Le serveur applique les migrations au démarrage ; `npm run migrate -w @sillage/server` le fait à la main. Les suites d’intégration migrent leur propre schéma PostgreSQL de la même façon.
 - Un module passe par `db.orm` dans son `<module>.repository.ts`, avec le constructeur SQL de Drizzle ; jamais de SQL concaténé. Le gabarit `sql\`…\`` sert uniquement aux expressions PostgreSQL que le constructeur n’exprime pas (`now()`, intervalles, `FILTER`, `CASE`, `->>`), avec des colonnes typées et des valeurs passées en paramètres.

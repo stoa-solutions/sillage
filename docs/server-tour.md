@@ -15,7 +15,7 @@ curl http://127.0.0.1:3001/health
 
 La connexion Google demande `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` et `PUBLIC_URL` ; sans eux, `/auth/status` répond `{"google":false}`. Pour appeler `/v1/*` sans Google, créer un jeton personnel : `npx tsx apps/server/src/modules/auth/token.cli.ts create /tmp/connexion.json` (le fichier contient le jeton, ne pas le committer). `npm run docs:serve` ouvre la documentation OpenAPI locale.
 
-Une variable invalide arrête le processus au démarrage, avec le nom de la variable (`src/config.ts`).
+Une variable invalide arrête le processus au démarrage, avec le nom de la variable (`src/shared/config.ts`).
 
 ## 1. Le trajet d’une requête
 
@@ -46,7 +46,7 @@ Un module n’a que les fichiers dont il a besoin : `system`, `releases` et `pla
 
 Les clients de services externes sont dans `src/integrations/` (sans règle métier) : `youtube/` (client, erreurs, miniatures ; chaque appel compté dans `quota_usage`), `lrclib/`, `musicbrainz/` (cache partagé, une requête par seconde pour tous les workers sous verrou PostgreSQL), `searxng/` (`discovery.ts` pour Découvrir, `information.ts` pour les sources du DJ), `inference/` (client HTTP du processus d’inférence).
 
-`src/shared/` contient ce qui n’appartient à aucun module : `api-environment.ts` (variables de requête posées par l’authentification) et `openapi.ts` (`featureRouter`, `operation()`, `commonErrors`, `jsonBody`…).
+`src/shared/` contient ce qui n’appartient à aucun module : `config.ts` (validation de l’environnement), `content.ts` (empreintes SHA-256, texte indexé d’une vidéo), `api-environment.ts` (variables de requête posées par l’authentification) et `openapi.ts` (`featureRouter`, `operation()`, `commonErrors`, `jsonBody`…).
 
 ## 3. Connexion et compte : `auth`, `accounts`
 
@@ -137,7 +137,7 @@ Ces trois modules servent des fichiers tels quels : leurs routes sont documenté
 
 ## 10. La base de données : `src/db/` et `drizzle/`
 
-- `src/db/schema/` : un fichier par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`, plus `columns.ts` et `legacy.ts`). Une table = un `pgTable(...)`, noms snake_case en base, camelCase en TypeScript, contraintes avec leur nom réel. Les valeurs fixes sont des enums PostgreSQL (`pgEnum`) : `job_kind`, `job_status`, `playlist_status`, `sync_run_status`, `listening_outcome`, `lyrics_status`, `ai_provider`, `user_dj_provider`, `discovery_scope`, `turn_trigger`, `turn_status`, `journal_origin`.
+- `src/db/schema.ts` : toute la base dans un seul fichier, lu de haut en bas comme un `schema.prisma`, avec une section par domaine (`accounts`, `library`, `search`, `jobs`, `listening`, `dj`, `taste`, `legacy`) précédée des types de colonnes communs. Une table = un `pgTable(...)`, noms snake_case en base, camelCase en TypeScript, contraintes avec leur nom réel. Les valeurs fixes sont des enums PostgreSQL (`pgEnum`) : `job_kind`, `job_status`, `playlist_status`, `sync_run_status`, `listening_outcome`, `lyrics_status`, `ai_provider`, `user_dj_provider`, `discovery_scope`, `turn_trigger`, `turn_status`, `journal_origin`.
 - `src/db/client.ts` : `openDatabase()` crée le pool et l’objet Drizzle `orm` ; `pool` est l’instance du processus. Les dépôts reçoivent `db.orm` ou une transaction (`Executor`).
 - `src/db/migrate.ts` : prend un verrou consultatif de session (740071) sur une connexion dédiée **avant** que Drizzle lise son journal, puis applique les migrations en attente dans une transaction. Deux processus qui démarrent ensemble s’attendent.
 - `drizzle/` : `0000_baseline` (ancien schéma idempotent : une base existante l’applique sans changement), `0001` enums des tâches et playlists, `0002` enums d’écoute et de paroles, `0003` enums du DJ, `0004` table `dj_agents` (structure seule ; les agents de base sont écrits au démarrage), `0005` goût : `track_feedback`, `taste_settings` et `listening_history.listened_ms`. Seuls le déclencheur `sillage_music_revision` et la configuration de recherche `sillage_simple` restent en SQL écrit à la main.
@@ -154,7 +154,7 @@ const [session] = await orm
 
 Ajouter une migration :
 
-1. Modifier `src/db/schema/<domaine>.ts`.
+1. Modifier la section du domaine dans `src/db/schema.ts`.
 2. `npm run db:generate -w @sillage/server -- --name <sujet>` (aucune base nécessaire : drizzle-kit compare au dernier instantané de `drizzle/meta/`).
 3. Relire le SQL : retirer la qualification `"public"` des types enum (chaque suite de test a son schéma), recréer valeurs par défaut et index partiels autour d’un changement de type, garder `IF EXISTS` sur les suppressions.
 4. Vérifier l’équivalence : le `pg_dump --schema-only` d’une base créée par toutes les migrations et celui d’une base créée par drizzle-kit depuis le schéma seul ne diffèrent que par le déclencheur `sillage_music_revision`.

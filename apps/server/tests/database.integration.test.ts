@@ -3,7 +3,7 @@ import { beforeAll, beforeEach, afterAll, it, expect, vi } from "vitest";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
-import { hash } from "../src/content.ts";
+import { hash } from "../src/shared/content.ts";
 import { createApp } from "../src/app.ts";
 import { enqueue, claim, finish } from "../src/modules/jobs/index.ts";
 import { infer } from "../src/integrations/inference/index.ts";

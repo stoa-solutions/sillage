@@ -1,4 +1,4 @@
-import { hash } from "../../content.ts";
+import { hash } from "../../shared/content.ts";
 import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
 import { holdsLiveToken, revokeSession } from "../auth/index.ts";
 import { accountProfile, claimLegacyLibrary } from "./accounts.repository.ts";

@@ -4,7 +4,7 @@ import {
   parsePlaylistId,
   isoDuration,
   vectorSql,
-} from "../src/content.ts";
+} from "../src/shared/content.ts";
 import { YouTube } from "../src/integrations/youtube/index.ts";
 import { fetchThumbnail } from "../src/integrations/youtube/index.ts";
 import { required } from "./support/required.ts";

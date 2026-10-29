@@ -1,6 +1,6 @@
 import { and, count, desc, eq, inArray, max, sql } from "drizzle-orm";
 import type { MusicMetadata, Video } from "@sillage/core/types";
-import { documentText, hash } from "../../content.ts";
+import { documentText, hash } from "../../shared/content.ts";
 import {
   listeningHistory,
   memberships,

@@ -3,7 +3,7 @@ import { serve } from "@hono/node-server";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import { fork, type ChildProcess } from "node:child_process";
-import { checkEnvironment } from "./config.ts";
+import { checkEnvironment } from "./shared/config.ts";
 
 checkEnvironment("inference");
 let child: ChildProcess | undefined;

@@ -3,7 +3,7 @@ import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
 import { replayBaseline } from "./support/database.ts";
-import { hash } from "../src/content.ts";
+import { hash } from "../src/shared/content.ts";
 import { createApp } from "../src/app.ts";
 import {
   beginJournal,

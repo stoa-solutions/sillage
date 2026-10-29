@@ -3,7 +3,7 @@ import {
   parseImport,
 } from "@sillage/core/import";
 import type { LibraryImport } from "@sillage/core/types";
-import { parsePlaylistId } from "../../content.ts";
+import { parsePlaylistId } from "../../shared/content.ts";
 import { LEGACY_USER_ID, type Database } from "../../db/index.ts";
 import { enqueueMissing } from "../indexing/index.ts";
 import { enqueue } from "../jobs/index.ts";

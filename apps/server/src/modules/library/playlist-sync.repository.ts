@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, like, ne, sql } from "drizzle-orm";
 import type { Video } from "@sillage/core/types";
-import { documentText, hash } from "../../content.ts";
+import { documentText, hash } from "../../shared/content.ts";
 import {
   memberships,
   playlists,

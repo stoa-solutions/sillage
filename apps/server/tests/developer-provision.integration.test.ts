@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { migrate, openDatabase } from "../src/db/index.ts";
 import { createApp } from "../src/app.ts";
-import { hash } from "../src/content.ts";
+import { hash } from "../src/shared/content.ts";
 import { provisionDeveloperToken } from "../src/api-docs/developer-provision.ts";
 
 const url = process.env["TEST_DATABASE_URL"];

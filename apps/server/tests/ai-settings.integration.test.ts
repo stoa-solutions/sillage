@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { migrate, openDatabase } from "../src/db/index.ts";
 import { replayBaseline } from "./support/database.ts";
 import { createApp } from "../src/app.ts";
-import { hash } from "../src/content.ts";
+import { hash } from "../src/shared/content.ts";
 
 const url = process.env["TEST_DATABASE_URL"];
 if (!url || !new URL(url).pathname.endsWith("_test")) {

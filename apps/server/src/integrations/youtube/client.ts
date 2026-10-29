@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { quotaUsage, type Database } from "../../db/index.ts";
-import { isoDuration } from "../../content.ts";
+import { isoDuration } from "../../shared/content.ts";
 import type { Video } from "@sillage/core/types";
 export interface PlaylistEntry {
   key: string;

@@ -1,4 +1,4 @@
-import { documentText, hash } from "../../content.ts";
+import { documentText, hash } from "../../shared/content.ts";
 import type { Database } from "../../db/index.ts";
 import { infer } from "../../integrations/inference/index.ts";
 import {

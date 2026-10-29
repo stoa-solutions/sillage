@@ -1,5 +1,5 @@
 import { and, eq, exists, sql } from "drizzle-orm";
-import { vectorSql } from "../../content.ts";
+import { vectorSql } from "../../shared/content.ts";
 import {
   images,
   memberships,

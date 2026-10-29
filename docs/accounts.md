@@ -33,7 +33,7 @@ Code : `apps/server/src/modules/auth/` (connexion Google, échange PKCE,
 `apps/server/src/modules/accounts/` (profil, déconnexion, reprise de la
 bibliothèque historique). Filtres de bibliothèque : `followedBy` et
 `inLibraryOf` dans `modules/library/library.repository.ts`. Tables dans
-`apps/server/src/db/schema/accounts.ts`.
+`apps/server/src/db/schema.ts` (section Accounts).
 
 Les clés Gemini sont chiffrées AES-256-GCM avec l’ID du compte comme AAD.
 Deux sessions du même compte retrouvent ses réglages. Aucun compte Google

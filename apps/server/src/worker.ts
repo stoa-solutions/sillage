@@ -1,4 +1,4 @@
-import { checkEnvironment } from "./config.ts";
+import { checkEnvironment } from "./shared/config.ts";
 import { pool } from "./db/index.ts";
 import { runWorker } from "./modules/jobs/index.ts";
 import {

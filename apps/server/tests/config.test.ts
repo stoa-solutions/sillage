@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { checkEnvironment } from "../src/config.ts";
+import { checkEnvironment } from "../src/shared/config.ts";
 
 const base = { DATABASE_URL: "postgres://user:secret@db:5432/sillage" };
 

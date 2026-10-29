@@ -27,7 +27,7 @@ erDiagram
 
 Les conversations et réponses sont du JSON/texte lisible en PostgreSQL, protégés par les accès à la base et au compte. **Ce n’est pas le chiffrement spécifique des clés Gemini** : celles-ci restent dans `account_dj_settings`, avec leur chiffrement existant. Les sauvegardes de la base contiennent aussi le journal et doivent rester privées. Il n’existe pas de jeton développeur global donnant accès aux échanges de tous les comptes ; l’opérateur DB conserve ses accès habituels.
 
-Code : `apps/server/src/modules/dj/journal/` (contrôleur, service, dépôt, schémas), tables `dj_conversations`, `dj_turns` et `dj_journal_events` dans `apps/server/src/db/schema/dj.ts`. Statut du tour, déclencheur, origine des événements et source sont des enums PostgreSQL (migration `0003_dj_enums`). Au démarrage, l’API marque `interrupted` les tours restés `running` (`closeInterruptedTurns`, appelé par `src/boot.ts`).
+Code : `apps/server/src/modules/dj/journal/` (contrôleur, service, dépôt, schémas), tables `dj_conversations`, `dj_turns` et `dj_journal_events` dans la section DJ de `apps/server/src/db/schema.ts`. Statut du tour, déclencheur, origine des événements et source sont des enums PostgreSQL (migration `0003_dj_enums`). Au démarrage, l’API marque `interrupted` les tours restés `running` (`closeInterruptedTurns`, appelé par `src/boot.ts`).
 
 ## Parcours développeur
 
