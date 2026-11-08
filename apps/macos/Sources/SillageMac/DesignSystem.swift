@@ -336,7 +336,8 @@ struct VolumeControl: View {
       .accessibilityLabel(player.volume == 0 ? "Remettre le son" : "Couper le son")
   }
   private var slider: some View {
-    SillageSlider(value: $player.volume)
+    // Heard while it moves, saved once it is released.
+    SillageSlider(value: $player.volume, continuous: true) { player.adjustingVolume($0) }
       .accessibilityLabel("Volume de la musique")
       .accessibilityValue("\(Int((player.volume * 100).rounded())) %")
   }

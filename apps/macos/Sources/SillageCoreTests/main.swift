@@ -13,6 +13,7 @@ do {
   try djJournalChecks()
   try sillageLayoutChecks()
   try pageStacksChecks()
+  try sliderTrackChecks()
   try studioPresentationChecks()
   try studioRuntimeChecks()
   let information = try JSONDecoder().decode(

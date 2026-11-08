@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- App Mac : le curseur de position ne cherche dans le morceau qu’au relâchement (le bouton suit le pointeur pendant le glissement, sans envoyer une commande par pixel au lecteur YouTube) ; le volume s’entend pendant le glissement mais n’est enregistré qu’une fois relâché.
+
 - App Mac : sur une page d’artiste ou d’album, « Retour » est dans la barre d’outils de la fenêtre, à gauche, et reste visible quel que soit le défilement.
 
 - App Mac : Échap revient en arrière comme ⌘[ (page d’artiste ou d’album, scène de Découvrir), sans toucher à l’Échap des champs de recherche ni à celui de la recherche ⌘F. Le « Retour » d’une scène de Découvrir a le même raccourci (⌘[) et la même place que celui des pages.

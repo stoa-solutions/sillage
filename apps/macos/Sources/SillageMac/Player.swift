@@ -56,9 +56,16 @@ final class Player: ObservableObject {
     get { engine.volume }
     set {
       engine.volume = newValue
-      UserDefaults.standard.set(newValue, forKey: "musicVolume")
+      if !volumeDragged { saveVolume() }
     }
   }
+  /// While the slider is held the level follows the pointer; it is saved once, on release.
+  private var volumeDragged = false
+  func adjustingVolume(_ editing: Bool) {
+    volumeDragged = editing
+    if !editing { saveVolume() }
+  }
+  private func saveVolume() { UserDefaults.standard.set(engine.volume, forKey: "musicVolume") }
   func position(at date: Date) -> Double { engine.position(at: date) }
   func seek(_ seconds: Double) { engine.seek(seconds) }
 

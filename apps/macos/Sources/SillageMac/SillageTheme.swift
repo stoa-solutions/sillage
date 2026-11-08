@@ -184,23 +184,30 @@ struct SillageChipStyle: ButtonStyle {
 /// The Sillage slider (planche): an orange filled track and a white knob, the focus ring in
 /// the palette's focus colour instead of AppKit's blue. Arrow keys adjust it; VoiceOver sees a
 /// native slider through its accessibility representation.
+///
+/// A drag moves the knob locally and writes `value` once, when the pointer is released, so a
+/// seek never reaches the player for every pixel; `continuous` writes it along the way instead
+/// (the volume, which must be heard while it moves). `onEditingChanged` brackets the drag.
 struct SillageSlider: View {
   @Binding var value: Double
   var range: ClosedRange<Double> = 0...1
   /// Arrow-key step; seeking defaults to five seconds.
   var step: Double = 0.05
   var height: CGFloat = 16
+  var continuous = false
+  var onEditingChanged: (Bool) -> Void = { _ in }
   @FocusState private var focused: Bool
-  @State private var dragging = false
+  /// The knob's value while the pointer holds it; nil otherwise.
+  @State private var dragged: Double?
+  private var dragging: Bool { dragged != nil }
   /// Re-read when the app comes back to the front, where the setting is usually changed.
   @State private var keyboardAccess = NSApp.isFullKeyboardAccessEnabled
   @Environment(\.isEnabled) private var isEnabled
   var body: some View {
     GeometryReader { geometry in
-      let span = max(range.upperBound - range.lowerBound, .ulpOfOne)
-      let fraction = min(max((value - range.lowerBound) / span, 0), 1)
+      let fraction = SliderTrack.fraction(of: dragged ?? value, in: range)
       let knob = height * 0.82
-      let x = knob / 2 + (geometry.size.width - knob) * fraction
+      let x = SliderTrack.knobCenter(fraction: fraction, width: geometry.size.width, knob: knob)
       ZStack(alignment: .leading) {
         Capsule().fill(Color.primary.opacity(0.14)).frame(height: 4)
         Capsule().fill(Color.sillage(.primaryFill).opacity(isEnabled ? 1 : 0.4))
@@ -217,12 +224,17 @@ struct SillageSlider: View {
       .gesture(
         DragGesture(minimumDistance: 0)
           .onChanged { gesture in
-            dragging = true
-            let position = min(
-              max((gesture.location.x - knob / 2) / max(geometry.size.width - knob, 1), 0), 1)
-            value = range.lowerBound + position * span
+            if dragged == nil { onEditingChanged(true) }
+            let next = SliderTrack.value(
+              atX: gesture.location.x, width: geometry.size.width, knob: knob, in: range)
+            dragged = next
+            if continuous { value = next }
           }
-          .onEnded { _ in dragging = false })
+          .onEnded { _ in
+            if let final = dragged { value = final }
+            dragged = nil
+            onEditingChanged(false)
+          })
     }
     .frame(height: height)
     .padding(.horizontal, 3).padding(.vertical, 2)
@@ -240,8 +252,8 @@ struct SillageSlider: View {
     .focusEffectDisabled()
     .onMoveCommand { direction in
       switch direction {
-      case .left, .down: value = max(range.lowerBound, value - step)
-      case .right, .up: value = min(range.upperBound, value + step)
+      case .left, .down: value = SliderTrack.stepped(value, by: step, forward: false, in: range)
+      case .right, .up: value = SliderTrack.stepped(value, by: step, forward: true, in: range)
       default: break
       }
     }
