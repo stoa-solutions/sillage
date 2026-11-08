@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- Sillage 1.13.2 (89) : les boutons des découvertes conservent l’environnement SwiftUI de leurs libellés, en mode compact comme en mode normal ; suppression des avertissements répétés à chaque affichage de ligne.
+
 - App Mac : la fenêtre ne suit plus le lecteur entier (dont la position, quatre fois par seconde) mais seulement l’état Studio ; les contrôles qui affichent le temps observent le lecteur pour eux-mêmes.
 
 - App Mac : le curseur de position ne cherche dans le morceau qu’au relâchement (le bouton suit le pointeur pendant le glissement, sans envoyer une commande par pixel au lecteur YouTube) ; le volume s’entend pendant le glissement mais n’est enregistré qu’une fois relâché.

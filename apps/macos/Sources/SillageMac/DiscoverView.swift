@@ -497,10 +497,10 @@ struct DiscoveryTrackRow: View {
   }
 }
 
-/// Lets a row pick its label style at runtime.
+/// Lets a row pick its label style while SwiftUI installs the underlying environment.
 struct AnyLabelStyle: LabelStyle {
   private let make: (Configuration) -> AnyView
-  init<S: LabelStyle>(_ style: S) { make = { AnyView(style.makeBody(configuration: $0)) } }
+  init<S: LabelStyle>(_ style: S) { make = { AnyView(Label($0).labelStyle(style)) } }
   func makeBody(configuration: Configuration) -> some View { make(configuration) }
 }
 

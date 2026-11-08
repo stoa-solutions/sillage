@@ -33,12 +33,13 @@
     "test:macos": "swift build --build-system native --package-path apps/macos && swift run --build-system native --skip-build --package-path apps/macos SillageCoreTests && swift run --build-system native --skip-build --package-path apps/macos SillageAudioTests && swift run --build-system native --skip-build --package-path apps/macos SillageServerTests",
     "verify": "npm run verify:node && npm run verify:macos",
     "verify:node": "npm run check && npm test && npm run build",
-    "verify:macos": "npm run test:packaging && npm run test:macos && npm run test:macos:agents",
+    "verify:macos": "npm run test:packaging && npm run test:macos && npm run test:macos:agents && npm run test:macos:label-styles",
     "board": "sh scripts/board.sh",
     "check:architecture": "node --test scripts/check-architecture.test.mjs && node scripts/check-architecture.mjs",
     "test:dj": "node --test scripts/dj-eval/*.test.mjs && npm run test:dj -w @sillage/server",
     "eval:dj": "node scripts/dj-eval/run.mjs",
     "test:packaging": "python3 -m unittest discover -s scripts -p 'test_macos_release.py'",
-    "test:macos:agents": "python3 scripts/test-macos-agent-isolation.py"
+    "test:macos:agents": "python3 scripts/test-macos-agent-isolation.py",
+    "test:macos:label-styles": "python3 scripts/test-macos-label-styles.py"
   }
 }
