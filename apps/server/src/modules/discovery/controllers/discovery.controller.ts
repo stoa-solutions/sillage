@@ -22,7 +22,7 @@ import {
   discoverySavedBody,
 } from "../types/discovery.schemas.ts";
 import { listenBrainz, type ListenBrainz } from "../../../integrations/listenbrainz/index.ts";
-import { tasteService } from "../../taste/index.ts";
+import { tasteService, tasteStamp } from "../../taste/index.ts";
 import {
   discoveryArtist,
   discoveryHome,
@@ -281,7 +281,7 @@ export function discoveryRoutes(
 ) {
   const app = featureRouter<ApiEnvironment>("Recherche ou vidéo invalide.");
   // One page per account and place, kept briefly: a page costs a few dozen catalog searches.
-  const pages = new Map<string, { until: number; plays: number; body: unknown }>();
+  const pages = new Map<string, { until: number; plays: number; stamp: string; body: unknown }>();
   const sources = {
     history: (owner: string) => recentListening(db.orm, owner),
     profile: async (owner: string) =>
@@ -292,7 +292,7 @@ export function discoveryRoutes(
     cached: (artist: string) => service.songsCached(artist),
   };
   const track = <T extends { video: Video }>(item: T) => ({ ...item, video: asTrack(item.video) });
-  /** Serves a kept page, or builds it; a deleted history makes a kept page stale. */
+  /** Serves a kept page, or builds it; a deleted history, a new opinion or a changed playlist makes it stale. */
   const kept = async (
     user: string,
     place: string,
@@ -300,9 +300,10 @@ export function discoveryRoutes(
     build: (given: HomeSources) => Promise<Awaited<ReturnType<typeof discoveryHome>>>,
   ) => {
     const key = `${user}\n${place}`;
-    const plays = await historySize(db.orm, user);
+    const [plays, stamp] = await Promise.all([historySize(db.orm, user), tasteStamp(db.orm, user)]);
     const page = pages.get(key);
-    if (!refresh && page && page.until > Date.now() && plays >= page.plays) return page.body as never;
+    if (!refresh && page && page.until > Date.now() && plays >= page.plays && stamp === page.stamp)
+      return page.body as never;
     const result = await build({ ...sources, ...musicBrainzLinks(musicBrainz) });
     const body = {
       ...result,
@@ -310,7 +311,7 @@ export function discoveryRoutes(
       suggestions: result.suggestions.map(track),
     };
     if (pages.size >= 500) pages.delete(pages.keys().next().value!);
-    pages.set(key, { until: Date.now() + HOME_TTL, plays, body });
+    pages.set(key, { until: Date.now() + HOME_TTL, plays, stamp, body });
     return body;
   };
   app.openapi(homeRoute, async (c) => {

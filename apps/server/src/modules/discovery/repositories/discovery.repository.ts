@@ -11,6 +11,7 @@ import {
 } from "../../../db/index.ts";
 import { enqueue } from "../../jobs/index.ts";
 import { discoveriesId, followedBy, upsertVideo } from "../../library/index.ts";
+import { isListen } from "../../taste/index.ts";
 
 /** Which of these videos the account already has in an active playlist. */
 export async function ownedAmong(db: Executor, userId: string, ids: string[]) {
@@ -134,7 +135,8 @@ export async function knownVideos(db: Executor, userId: string): Promise<KnownVi
   const plays = db
     .select({ videoId: listeningHistory.videoId, plays: count().as("plays") })
     .from(listeningHistory)
-    .where(eq(listeningHistory.userId, userId))
+    // Real listens only: a track skipped at once was not « played ».
+    .where(and(eq(listeningHistory.userId, userId), isListen()))
     .groupBy(listeningHistory.videoId)
     .as("plays");
   const rows = await db
@@ -171,7 +173,8 @@ export async function libraryWithPlays(db: Executor, userId: string) {
   const plays = db
     .select({ videoId: listeningHistory.videoId, plays: count().as("plays") })
     .from(listeningHistory)
-    .where(eq(listeningHistory.userId, userId))
+    // Real listens only: a track skipped at once was not « played ».
+    .where(and(eq(listeningHistory.userId, userId), isListen()))
     .groupBy(listeningHistory.videoId)
     .as("plays");
   return db
