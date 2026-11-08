@@ -5,16 +5,34 @@
  */
 export const TASTE_RULES = {
   weights: {
-    /** « J’aime »: an explicit like outweighs a dozen plays. */
+    /** « J’aime »: an explicit like outweighs a dozen plays, then fades to `likeFloor`. */
     like: 4,
-    /** Listened to at least once. */
+    /** What an old like still weighs: a like never fully disappears. */
+    likeFloor: 1,
+    /** Saved to one of the listener's playlists: a clear intent, below a handful of listens. */
+    added: 2,
+    /** Listened to at least once (recently: a lone old listen weighs less). */
     listened: 1,
-    /** Per doubling of listens: 2 listens +1, 4 listens +2, 13 listens about +3.7. */
+    /** Per doubling of recent listens: 2 listens +1, 4 listens +2, 13 listens about +3.7. */
     replayDoubling: 1,
-    /** Per skip within the first seconds, up to `maxEarlySkips`. */
+    /** Per recent skip within the first seconds, up to `maxEarlySkips`. */
     earlySkip: -2,
     /** « Je n’aime pas », before it fades. */
     dislike: -5,
+  },
+  /**
+   * Half-lives in days: how long until a signal weighs half. Taste is read from recent plays
+   * rather than from a lifetime of counts, so it moves with the listener.
+   */
+  halfLifeDays: {
+    /** Each listen counts 0.5^(age / listen); 30 listens over a year weigh about as much as 4 this month. */
+    listen: 30,
+    /** A skip is forgotten fast: what bored you in spring may please you now. */
+    earlySkip: 14,
+    /** A like fades slowly toward `likeFloor`. */
+    like: 90,
+    /** Having added a track fades toward nothing. */
+    added: 60,
   },
   /** A play counts as a listen when finished, or stopped after this long. */
   listenMs: 60_000,
@@ -45,6 +63,12 @@ export interface TrackSignals {
   /** Finished plays, plus plays stopped after `listenMs`. Old plays without a time only count when finished. */
   listens: number;
   earlySkips: number;
+  /** The same listens, each weighed by its age (Σ 0.5^(age / halfLifeDays.listen)); the raw count when absent. */
+  recentListens?: number | undefined;
+  /** Early skips weighed by their age; the raw count when absent. */
+  recentEarlySkips?: number | undefined;
+  /** When the listener first added the track to one of their playlists, if known. */
+  addedAt?: Date | undefined;
 }
 
 export type TasteCategory =
@@ -94,38 +118,51 @@ export function dislikeWeight(at: Date, now: Date, days: number) {
   };
 }
 
+/** 0.5^(age / halfLife): 1 today, a half after `halfLifeDays`, a quarter after twice that. */
+export function decay(at: Date, now: Date, halfLifeDays: number) {
+  const age = Math.max(0, now.getTime() - at.getTime()) / DAY_MS;
+  return 0.5 ** (age / halfLifeDays);
+}
+
 export function tasteOf(signals: TrackSignals, now: Date, dislikeDays: number): Taste {
-  const { weights } = TASTE_RULES;
+  const { weights, halfLifeDays, maxEarlySkips } = TASTE_RULES;
   let score = 0;
   let hidden = false;
   let daysLeft: number | undefined;
-  if (signals.feedback?.value === "like") score += weights.like;
+  if (signals.feedback?.value === "like")
+    score += Math.max(weights.likeFloor, weights.like * decay(signals.feedback.at, now, halfLifeDays.like));
   if (signals.feedback?.value === "dislike") {
     const dislike = dislikeWeight(signals.feedback.at, now, dislikeDays);
     score += dislike.weight;
     hidden = dislike.hidden;
     daysLeft = dislike.daysLeft;
   }
-  if (signals.listens > 0) score += weights.listened;
-  if (signals.listens > 1) score += weights.replayDoubling * Math.log2(signals.listens);
-  score += weights.earlySkip * Math.min(signals.earlySkips, TASTE_RULES.maxEarlySkips);
+  if (signals.addedAt) score += weights.added * decay(signals.addedAt, now, halfLifeDays.added);
+  const listens = signals.recentListens ?? signals.listens;
+  const earlySkips = signals.recentEarlySkips ?? signals.earlySkips;
+  // A single listen weighs fully today and fades; replays add per doubling of recent listens.
+  if (listens > 0) score += weights.listened * Math.min(listens, 1);
+  if (listens > 1) score += weights.replayDoubling * Math.log2(listens);
+  score += weights.earlySkip * Math.min(earlySkips, maxEarlySkips);
   score = Math.round(score * 10) / 10;
   const label = tasteLabel(signals, hidden);
   return {
     score,
     hidden,
     ...(daysLeft === undefined ? {} : { daysLeft }),
-    category: categoryOf(score, hidden, signals.feedback?.value === "like"),
+    category: categoryOf(score, hidden, signals.feedback?.value === "like", signals.listens),
     affinity: affinityOf(score),
     ...(label ? { label } : {}),
   };
 }
 
-function categoryOf(score: number, hidden: boolean, liked: boolean): TasteCategory {
+function categoryOf(score: number, hidden: boolean, liked: boolean, listens: number): TasteCategory {
   const { favourite, frequent } = TASTE_RULES.categories;
   if (hidden) return "hidden";
-  if (liked || score >= favourite) return "favourite";
-  if (score >= frequent) return "frequent";
+  // Beyond a like, the two upper categories take replays: a track just saved to a playlist
+  // and heard once or twice is not yet a favourite.
+  if (liked || (score >= favourite && listens > 2)) return "favourite";
+  if (score >= frequent && listens > 1) return "frequent";
   if (score > 0) return "heard";
   if (score < 0) return "unconvinced";
   return "unknown";
@@ -140,6 +177,7 @@ function tasteLabel(signals: TrackSignals, hidden: boolean) {
   if (signals.feedback?.value === "like") parts.push("aimé");
   if (signals.feedback?.value === "dislike")
     parts.push(hidden ? "écarté récemment" : "écarté il y a un moment");
+  if (signals.addedAt && !signals.listens) parts.push("dans vos playlists");
   if (signals.listens > 1) parts.push(`écouté ${signals.listens} fois`);
   else if (signals.listens === 1) parts.push("déjà écouté");
   if (

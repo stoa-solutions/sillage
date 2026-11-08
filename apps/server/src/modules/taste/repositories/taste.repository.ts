@@ -1,37 +1,86 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   listeningHistory,
+  memberships,
   tasteSettings,
   trackFeedback,
+  userPlaylists,
   videos,
   type Orm,
 } from "../../../db/index.ts";
-import type { TasteValue, TrackSignals } from "../taste.rules.ts";
+import { TASTE_RULES, type TasteValue, type TrackSignals } from "../taste.rules.ts";
 
-/** Everything known about these tracks for one listener, in two queries. */
+export interface SignalThresholds {
+  listenMs: number;
+  earlySkipMs: number;
+  /** Half-lives in days for listens and early skips (see TASTE_RULES.halfLifeDays). */
+  listenHalfLifeDays: number;
+  earlySkipHalfLifeDays: number;
+}
+
+/** A play that counts as a listen: finished, or stopped after `listenMs`. Old plays without a time only count when finished. */
+export const isListen = (listenMs: number = TASTE_RULES.listenMs) =>
+  sql`${listeningHistory.outcome} = 'finished' OR (${listeningHistory.outcome} IN ('skipped', 'replaced') AND ${listeningHistory.listenedMs} >= ${listenMs})`;
+
+/** A play given up before `earlySkipMs`, whether skipped or replaced by another request. */
+const isEarlySkip = (earlySkipMs: number) =>
+  sql`${listeningHistory.outcome} IN ('skipped', 'replaced') AND ${listeningHistory.listenedMs} < ${earlySkipMs}`;
+
+/** Everything known about these tracks for one listener, in three queries, as of `now`. */
 export async function signalsFor(
   orm: Orm,
   owner: string,
   videoIds: readonly string[],
-  thresholds: { listenMs: number; earlySkipMs: number },
+  thresholds: SignalThresholds,
+  now: Date = new Date(),
 ): Promise<Map<string, TrackSignals>> {
   const signals = new Map<string, TrackSignals>();
   if (!videoIds.length) return signals;
   const ids = [...new Set(videoIds)];
-  const { outcome, listenedMs } = listeningHistory;
+  const at = sql`${now.toISOString()}::timestamptz`;
+  // 0.5 ^ (age in days / half-life): each play weighs less as it ages.
+  const aged = (halfLifeDays: number) =>
+    sql`0.5 ^ (greatest(extract(epoch FROM (${at} - ${listeningHistory.playedAt})), 0) / 86400.0 / ${halfLifeDays})`;
+  const listen = isListen(thresholds.listenMs);
+  const earlySkip = isEarlySkip(thresholds.earlySkipMs);
   const plays = await orm
     .select({
       videoId: listeningHistory.videoId,
-      // Old plays have no listening time: they count only when finished.
-      listens: sql<number>`count(*) FILTER (WHERE ${outcome} = 'finished' OR (${outcome} IN ('skipped', 'replaced') AND ${listenedMs} >= ${thresholds.listenMs}))::int`,
-      earlySkips: sql<number>`count(*) FILTER (WHERE ${outcome} = 'skipped' AND ${listenedMs} < ${thresholds.earlySkipMs})::int`,
+      listens: sql<number>`count(*) FILTER (WHERE ${listen})::int`,
+      earlySkips: sql<number>`count(*) FILTER (WHERE ${earlySkip})::int`,
+      recentListens: sql<number>`coalesce(sum(${aged(thresholds.listenHalfLifeDays)}) FILTER (WHERE ${listen}), 0)::float8`,
+      recentEarlySkips: sql<number>`coalesce(sum(${aged(thresholds.earlySkipHalfLifeDays)}) FILTER (WHERE ${earlySkip}), 0)::float8`,
     })
     .from(listeningHistory)
     .where(and(eq(listeningHistory.userId, owner), inArray(listeningHistory.videoId, ids)))
     .groupBy(listeningHistory.videoId);
   for (const row of plays)
     if (row.listens || row.earlySkips)
-      signals.set(row.videoId, { listens: row.listens, earlySkips: row.earlySkips });
+      signals.set(row.videoId, {
+        listens: row.listens,
+        earlySkips: row.earlySkips,
+        recentListens: Number(row.recentListens),
+        recentEarlySkips: Number(row.recentEarlySkips),
+      });
+  // When the listener first added the track to one of their playlists (YouTube's date).
+  const added = await orm
+    .select({ videoId: memberships.videoId, addedAt: sql<Date | null>`min(${memberships.addedAt})` })
+    .from(memberships)
+    .innerJoin(userPlaylists, eq(userPlaylists.playlistId, memberships.playlistId))
+    .where(
+      and(
+        eq(userPlaylists.userId, owner),
+        eq(memberships.active, true),
+        inArray(memberships.videoId, ids),
+      ),
+    )
+    .groupBy(memberships.videoId);
+  for (const row of added)
+    if (row.addedAt)
+      signals.set(row.videoId, {
+        ...(signals.get(row.videoId) ?? { listens: 0, earlySkips: 0 }),
+        addedAt: new Date(row.addedAt),
+      });
   const opinions = await orm
     .select({
       videoId: trackFeedback.videoId,
@@ -106,6 +155,26 @@ export async function saveFeedback(
       target: [trackFeedback.userId, trackFeedback.videoId],
       set: { value, updatedAt: sql`now()` },
     });
+}
+
+/**
+ * What a Discover page depends on besides plays: opinions and playlist contents. A changed
+ * stamp means the page's taste is stale.
+ */
+export async function tasteStamp(orm: Orm, owner: string) {
+  const [opinions] = await orm
+    .select({
+      count: sql<number>`count(*)::int`,
+      latest: sql<string | null>`max(${trackFeedback.updatedAt})::text`,
+    })
+    .from(trackFeedback)
+    .where(eq(trackFeedback.userId, owner));
+  const [saved] = await orm
+    .select({ count: sql<number>`count(*)::int` })
+    .from(memberships)
+    .innerJoin(userPlaylists, eq(userPlaylists.playlistId, memberships.playlistId))
+    .where(and(eq(userPlaylists.userId, owner), eq(memberships.active, true)));
+  return `${opinions?.count ?? 0}:${opinions?.latest ?? ""}:${saved?.count ?? 0}`;
 }
 
 export async function storedDislikeDays(orm: Orm, owner: string) {

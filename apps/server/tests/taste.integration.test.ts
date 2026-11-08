@@ -22,12 +22,15 @@ const req = (method: string, path: string, token = tokenA, body?: unknown) =>
     headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-const play = (videoId: string, outcome: string, listenedMs?: number) => ({
+// Plays are dated against this clock, so aged weights stay the same whenever the tests run.
+const now = new Date("2026-10-28T12:00:00.000Z");
+const daysAgo = (days: number) => new Date(now.getTime() - days * 86_400_000);
+const play = (videoId: string, outcome: string, listenedMs?: number, at: Date = daysAgo(0.5)) => ({
   id: randomUUID(),
   videoId,
   title: "Titre " + videoId,
   outcome,
-  playedAt: "2026-10-28T10:00:00.000Z",
+  playedAt: at.toISOString(),
   ...(listenedMs === undefined ? {} : { listenedMs }),
 });
 const candidate = (id: string) => ({ video: { id, title: id }, inLibrary: true });
@@ -93,7 +96,7 @@ it("ranks an open search from real listens and opinions, never another account's
   await req("PUT", "/taste/feedback/liked000001", tokenA, { value: "like" });
 
   const ids = ["unknown0001", "skipped0001", "oldskip0001", "disliked001", "lateskip001", "favorite001", "liked000001"];
-  const ranked = await tasteService(db).rank(alice, ids.map(candidate));
+  const ranked = await tasteService(db).rank(alice, ids.map(candidate), { now });
   expect(ranked.map((item) => item.video.id)).toEqual([
     "liked000001",
     "favorite001",
@@ -113,7 +116,7 @@ it("ranks an open search from real listens and opinions, never another account's
   });
   expect(labels["oldskip0001"]).toBeUndefined();
   // A named artist keeps the search's order and the hidden track.
-  const targeted = await tasteService(db).rank(alice, ids.map(candidate), { targeted: true });
+  const targeted = await tasteService(db).rank(alice, ids.map(candidate), { targeted: true, now });
   expect(targeted.map((item) => item.video.id)).toEqual(ids);
 });
 
@@ -144,7 +147,7 @@ it("summarises the account's taste: totals, artists and categorised tracks", asy
   await req("PUT", "/taste/feedback/gone0000001", tokenA, { value: "dislike" });
   await req("POST", "/history", tokenB, { events: [play("cudi0000001", "finished")] });
 
-  const overview = await (await req("GET", "/taste/overview")).json();
+  const overview = await tasteService(db).overview(alice, now);
   expect(overview.summary).toEqual({ tracks: 2, listens: 9, liked: 1, hidden: 1 });
   expect(overview.artists[0]).toMatchObject({ name: "Kid Cudi", tracks: 2, listens: 9 });
   expect(overview.tracks.map((track: { id: string }) => track.id)).toEqual([
@@ -168,6 +171,54 @@ it("summarises the account's taste: totals, artists and categorised tracks", asy
   expect(overview.tracks[3]).toMatchObject({ category: "hidden", daysLeft: 5, opinion: "dislike" });
   const bobs = await (await req("GET", "/taste/overview", tokenB)).json();
   expect(bobs.summary).toEqual({ tracks: 1, listens: 1, liked: 0, hidden: 0 });
+});
+
+it("prefers this month's listens to last year's, and weighs a track the listener saved", async () => {
+  const list = "PLalice000000000000000000000000000";
+  await db.query(
+    "INSERT INTO playlists(id,title,source_url) VALUES($1,'Mes titres','https://youtube.com/playlist?list=' || $1)",
+    [list],
+  );
+  await db.query("INSERT INTO user_playlists(user_id,playlist_id) VALUES($1,$2)", [alice, list]);
+  await db.query(
+    "INSERT INTO videos(id,title,channel,thumbnail_url,content_hash) VALUES('saved000001','Enregistré','Chaîne','https://i.ytimg.com/vi/saved000001/hqdefault.jpg','h3')",
+  );
+  await db.query(
+    "INSERT INTO memberships(key,playlist_id,video_id,position,added_at,seen_generation) VALUES('k1',$1,'saved000001',0,$2,1)",
+    [list, daysAgo(2).toISOString()],
+  );
+  const events = [
+    ...Array.from({ length: 4 }, () => play("thismonth01", "finished", undefined, daysAgo(3))),
+    ...Array.from({ length: 30 }, (_, i) => play("lastyear001", "finished", undefined, daysAgo(150 + i * 5))),
+    // An early skip from months ago no longer counts against the track.
+    play("oldskip0002", "skipped", 2_000, daysAgo(120)),
+    play("oldskip0002", "skipped", 2_000, daysAgo(120)),
+    // Giving up on a track by asking for another one is a skip too.
+    play("replaced001", "replaced", 3_000),
+    play("replaced001", "replaced", 3_000),
+  ];
+  expect((await req("POST", "/history", tokenA, { events })).status).toBe(200);
+  const ids = ["oldskip0002", "replaced001", "lastyear001", "saved000001", "thismonth01"];
+  const ranked = await tasteService(db).rank(alice, ids.map(candidate), { now });
+  expect(ranked.map((item) => item.video.id)).toEqual([
+    "thismonth01",
+    "saved000001",
+    "lastyear001",
+    "oldskip0002",
+    "replaced001",
+  ]);
+  const labels = Object.fromEntries(
+    ranked.map((item) => [item.video.id, (item.video as { taste?: string }).taste]),
+  );
+  expect(labels).toMatchObject({
+    lastyear001: "écouté 30 fois",
+    saved000001: "dans vos playlists",
+    replaced001: "souvent passé vite",
+  });
+  // Two years on, the saved track has faded but is still remembered as heard.
+  const later = new Date(now.getTime() + 730 * 86_400_000);
+  const faded = await tasteService(db).rank(alice, [candidate("saved000001"), candidate("thismonth01")], { now: later });
+  expect(faded.map((item) => item.video.id)).toEqual(["saved000001", "thismonth01"]);
 });
 
 it("lists the listener's favourites best first for « ce que j'aime »", async () => {

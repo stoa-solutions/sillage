@@ -4,6 +4,7 @@ import {
   artistName,
   artistTastes,
   clampDislikeDays,
+  decay,
   dislikeWeight,
   NO_SIGNALS,
   rankByTaste,
@@ -27,6 +28,38 @@ it("hides a dislike for the account's delay, then halves its weight at the same 
   expect(dislikeWeight(daysAgo(10), now, 5).weight).toBeCloseTo(-2.5);
   expect(dislikeWeight(daysAgo(15), now, 5).weight).toBeCloseTo(-1.25);
   expect(dislikeWeight(daysAgo(10), now, 30).hidden).toBe(true);
+});
+
+it("weighs every signal by its age, so taste follows the listener", () => {
+  expect(decay(now, now, 30)).toBe(1);
+  expect(decay(daysAgo(30), now, 30)).toBeCloseTo(0.5);
+  expect(decay(daysAgo(60), now, 30)).toBeCloseTo(0.25);
+  // Four listens this month beat thirty spread over a year.
+  const thisMonth = tasteOf({ listens: 4, earlySkips: 0, recentListens: 3.6, recentEarlySkips: 0 }, now, 5);
+  const lastYear = tasteOf({ listens: 30, earlySkips: 0, recentListens: 2.1, recentEarlySkips: 0 }, now, 5);
+  expect(thisMonth.score).toBeGreaterThan(lastYear.score);
+  expect(lastYear.label).toBe("écouté 30 fois");
+  // A lone listen from long ago has nearly faded; an early skip is forgotten even faster.
+  expect(tasteOf({ listens: 1, earlySkips: 0, recentListens: 0.1, recentEarlySkips: 0 }, now, 5).score).toBe(0.1);
+  expect(tasteOf({ listens: 0, earlySkips: 2, recentListens: 0, recentEarlySkips: 0.2 }, now, 5).score).toBe(-0.4);
+  // Without aged counts, the raw counts stand.
+  expect(tasteOf({ listens: 4, earlySkips: 0 }, now, 5).score).toBe(3);
+});
+
+it("fades a like toward a floor and an added track toward nothing", () => {
+  const fresh = tasteOf({ ...NO_SIGNALS, feedback: { value: "like", at: now } }, now, 5);
+  const old = tasteOf({ ...NO_SIGNALS, feedback: { value: "like", at: daysAgo(90) } }, now, 5);
+  const ancient = tasteOf({ ...NO_SIGNALS, feedback: { value: "like", at: daysAgo(900) } }, now, 5);
+  expect(fresh.score).toBe(TASTE_RULES.weights.like);
+  expect(old.score).toBe(TASTE_RULES.weights.like / 2);
+  expect(ancient.score).toBe(TASTE_RULES.weights.likeFloor);
+  expect(ancient.category).toBe("favourite");
+  const added = tasteOf({ ...NO_SIGNALS, addedAt: daysAgo(60) }, now, 5);
+  expect(added).toMatchObject({ score: 1, category: "heard", label: "dans vos playlists" });
+  // Just added and heard once is not yet « Souvent écouté », and the label says what was heard.
+  const addedAndHeard = tasteOf({ listens: 1, earlySkips: 0, addedAt: now }, now, 5);
+  expect(addedAndHeard).toMatchObject({ score: 3, category: "heard", label: "déjà écouté" });
+  expect(tasteOf({ listens: 2, earlySkips: 0, addedAt: now }, now, 5).category).toBe("frequent");
 });
 
 it("lets an explicit like outweigh a dozen listens", () => {

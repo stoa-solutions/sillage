@@ -27,6 +27,8 @@ interface Candidate {
 const thresholds = {
   listenMs: TASTE_RULES.listenMs,
   earlySkipMs: TASTE_RULES.earlySkipMs,
+  listenHalfLifeDays: TASTE_RULES.halfLifeDays.listen,
+  earlySkipHalfLifeDays: TASTE_RULES.halfLifeDays.earlySkip,
 };
 
 export function tasteService(db: Database) {
@@ -66,6 +68,7 @@ export function tasteService(db: Database) {
             owner,
             items.map((item) => item.video.id),
             thresholds,
+            now,
           ),
           dislikeDays(owner),
         ]);
@@ -107,6 +110,7 @@ export function tasteService(db: Database) {
         owner,
         tracks.map((track) => track.id),
         thresholds,
+        now,
       );
       const scored = tracks.map((track) => {
         const trackSignals = signals.get(track.id) ?? NO_SIGNALS;
