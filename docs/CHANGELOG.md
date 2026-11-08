@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- App Mac : la fenêtre ne suit plus le lecteur entier (dont la position, quatre fois par seconde) mais seulement l’état Studio ; les contrôles qui affichent le temps observent le lecteur pour eux-mêmes.
+
 - App Mac : le curseur de position ne cherche dans le morceau qu’au relâchement (le bouton suit le pointeur pendant le glissement, sans envoyer une commande par pixel au lecteur YouTube) ; le volume s’entend pendant le glissement mais n’est enregistré qu’une fois relâché.
 
 - App Mac : sur une page d’artiste ou d’album, « Retour » est dans la barre d’outils de la fenêtre, à gauche, et reste visible quel que soit le défilement.

@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SillageKit
 import SwiftUI
 
@@ -41,18 +42,24 @@ struct MainView: View {
   @AppStorage("djPanelCollapsed") private var panelCollapsed = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.openSettings) private var openSettings
+  /// Studio on or off, mirrored from the player: the one thing the window layout depends on.
+  /// Nil until the first change arrives, so the first body reads the player directly.
+  @State private var studioMirror: Bool?
+  private var studio: Bool { studioMirror ?? dj.player.studio }
   /// Compact's narrow toolbar: smaller tabs and an icon-only Studio toggle, nothing hidden.
-  private var pocket: Bool { section == .dj && !dj.player.studio && route == nil }
+  private var pocket: Bool { section == .dj && !studio && route == nil }
   /// The Studio clip fills the window only on the DJ page; lists keep the Stoa backdrop.
-  private var stage: Bool { section == .dj && dj.player.studio && route == nil }
+  private var stage: Bool { section == .dj && studio && route == nil }
   private var presentation: WindowPresentation {
     pocket
       ? .compact(restHeight: compactRestHeight, panelOpen: !panelCollapsed) : .reading
   }
-  /// The window depends on the player (Studio on or off), which MainView does not observe
-  /// by itself: the scene is rebuilt whenever the player changes.
+  /// The window depends on the player for Studio on or off, which MainView does not observe
+  /// by itself: it follows that one value, not the whole player, whose elapsed time changes
+  /// four times a second (the controls that show it observe the player on their own).
   var body: some View {
-    ObservingPlayer(player: dj.player) { scene }
+    scene
+      .onReceive(dj.player.$studio.removeDuplicates()) { studioMirror = $0 }
       // Recette: a test build opens Réglages on a page (SILLAGE_QA_SETTINGS=taste), no click.
       .task { if SettingsPage.qaPage != nil { openSettings() } }
   }
@@ -204,8 +211,7 @@ struct MainView: View {
 
   private var minimumWidth: CGFloat {
     CGFloat(
-      SillageWindowLayout.minimumWidth(
-        studio: dj.player.studio, reading: section != .dj || route != nil))
+      SillageWindowLayout.minimumWidth(studio: studio, reading: section != .dj || route != nil))
   }
   private var minimumHeight: CGFloat {
     if case .compact(let rest, let open) = presentation {
@@ -213,8 +219,7 @@ struct MainView: View {
         SillageWindowLayout.compactMinimumHeight(restHeight: Double(rest), panelOpen: open))
     }
     return CGFloat(
-      SillageWindowLayout.minimumHeight(
-        studio: dj.player.studio, reading: section != .dj || route != nil))
+      SillageWindowLayout.minimumHeight(studio: studio, reading: section != .dj || route != nil))
   }
 
   /// Banners on top, then the page; pages fade into each other.
@@ -265,12 +270,6 @@ struct MainView: View {
       }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
   }
-}
-
-private struct ObservingPlayer<Content: View>: View {
-  @ObservedObject var player: Player
-  @ViewBuilder var content: () -> Content
-  var body: some View { content() }
 }
 
 /// Every page sits under a transparent toolbar: the Studio clip behind the DJ page, the
