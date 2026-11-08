@@ -12,6 +12,7 @@ func expectFailure(_ work: () throws -> Void) throws {
 do {
   try djJournalChecks()
   try sillageLayoutChecks()
+  try pageStacksChecks()
   try studioPresentationChecks()
   try studioRuntimeChecks()
   let information = try JSONDecoder().decode(

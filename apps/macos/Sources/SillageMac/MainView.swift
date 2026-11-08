@@ -36,8 +36,8 @@ struct MainView: View {
     ?? .dj
   @State private var compactRestHeight: CGFloat = 0
   /// Pages opened over each tab (an artist, then another…); each tab keeps its own.
-  @State private var routes: [Destination: [AppRoute]] = [:]
-  private var route: AppRoute? { routes[section]?.last }
+  @State private var pages = PageStacks<Destination, AppRoute>()
+  private var route: AppRoute? { pages.current(in: section) }
   @AppStorage("djPanelCollapsed") private var panelCollapsed = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.openSettings) private var openSettings
@@ -127,6 +127,12 @@ struct MainView: View {
         Button("DJ") { section = .dj }.keyboardShortcut("1")
         Button("Bibliothèque") { section = .library }.keyboardShortcut("2")
         Button("Découvrir") { section = .discover }.keyboardShortcut("3")
+        // Escape goes back like ⌘[. A key equivalent, not onExitCommand: that one only reaches
+        // a focused view, and a page opened by a click has none. It exists only while there is
+        // somewhere to go back to and ⌘F is closed, so the search fields keep their Escape.
+        if canGoBack && !searching {
+          Button("Retour", action: back).keyboardShortcut(.cancelAction)
+        }
       }.opacity(0).frame(width: 0, height: 0).accessibilityHidden(true)
     }
     .background(WindowSizer(presentation: presentation, animate: !reduceMotion))
@@ -134,7 +140,7 @@ struct MainView: View {
     // A name or an album clicked anywhere opens its page over the current tab.
     .environment(\.openRoute, open)
     .environment(\.openArtist) { open(.artist($0)) }
-    .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: routes)
+    .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: pages)
     .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: section)
     .sheet(isPresented: $session.showOnboarding) {
       OnboardingView().environmentObject(session).environmentObject(library)
@@ -157,20 +163,30 @@ struct MainView: View {
     search.clear()
   }
 
-  private func open(_ next: AppRoute) {
-    guard routes[section]?.last != next else { return }
-    routes[section, default: []].append(next)
+  private func open(_ next: AppRoute) { pages.open(next, in: section) }
+  /// One « Retour » (⌘[, Escape): the page over the tab first, then a Découvrir scene.
+  private var canGoBack: Bool { route != nil || sceneOpen }
+  private var sceneOpen: Bool {
+    section == .discover && !discovery.searched && !discovery.trail.isEmpty
   }
-  private func back() { _ = routes[section]?.popLast() }
+  private func back() {
+    if pages.back(in: section) { return }
+    if sceneOpen { discovery.back() }
+  }
   private func openDJ() {
-    routes[.dj] = []
+    pages.clear(.dj)
     section = .dj
   }
 
-  /// « Retour » names where it leads: the page seen before, or the tab.
+  /// « Retour » names where it leads: the page seen before, the scene seen before, or the tab.
   private var backTitle: String {
-    let stack = routes[section] ?? []
-    if stack.count > 1 { return stack[stack.count - 2].title }
+    if let previous = pages.previous(in: section) { return previous.title }
+    if route == nil, let place = discovery.trail.last {
+      return switch place {
+      case .forYou: "Pour toi"
+      case .scene(let genre): capitalized(genre)
+      }
+    }
     return switch section {
     case .dj: "DJ"
     case .library: "Bibliothèque"

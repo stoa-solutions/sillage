@@ -2,9 +2,9 @@ import SillageKit
 import SwiftUI
 
 /// Découvrir, only what is new to the listener: « Pour toi » and their scenes, made of artists
-/// they have never heard. An artist opens its own page over the tab (ArtistPage), with
-/// « Retour » to step back. The search looks only outside the library. The DJ and the queue
-/// stay one click away.
+/// they have never heard. An artist opens its own page over the tab (ArtistPage). A scene
+/// opened from « Pour toi » goes back with the window's « Retour » (⌘[, Escape), the same as a
+/// page. The search looks only outside the library. The DJ and the queue stay one click away.
 struct DiscoverView: View {
   let openDJ: () -> Void
   @EnvironmentObject var discovery: DiscoveryModel
@@ -125,6 +125,11 @@ struct DiscoverView: View {
   private func main(wide: Bool) -> some View {
     let rows = self.rows
     return VStack(alignment: .leading, spacing: 0) {
+      // A scene opened from « Pour toi »: « Retour » where the pages put theirs, same shortcut.
+      if !discovery.searched && !discovery.trail.isEmpty {
+        LibraryLinkButton(title: "Retour", symbol: "chevron.left") { discovery.back() }
+          .keyboardShortcut("[", modifiers: .command).help("Retour (⌘[)").padding(.bottom, 20)
+      }
       head(rows).padding(.bottom, 20)
       HStack(spacing: 8) {
         SearchField(
@@ -177,9 +182,6 @@ struct DiscoverView: View {
             discovery.clearResults()
           }
         } else {
-          if !discovery.trail.isEmpty {
-            LibraryLinkButton(title: "Retour", symbol: "chevron.left") { discovery.back() }
-          }
           if loading { ProgressView().controlSize(.small) }
           LibraryLinkButton(title: "D’autres propositions", symbol: "arrow.clockwise") {
             if discovery.place == .forYou {
