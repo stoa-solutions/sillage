@@ -1,7 +1,8 @@
 import SillageKit
 import SwiftUI
 
-/// A page opened over the current tab; « Retour » (⌘[) goes back to where it came from.
+/// A page opened over the current tab; the window's « Retour » (⌘[, Escape) goes back to where
+/// it came from.
 enum AppRoute: Hashable {
   case artist(String)
   case album(id: String, title: String)
@@ -52,12 +53,10 @@ enum AppRoute: Hashable {
 }
 
 /// One artist, from anywhere: banner, « Chez toi », « À découvrir », discography,
-/// collaborations and related artists. Still: nothing moves in on its own.
+/// collaborations and related artists. Still: nothing moves in on its own. « Retour » is the
+/// window's, in the toolbar.
 struct ArtistPage: View {
   let name: String
-  /// Where « Retour » leads: the tab, or the artist seen before.
-  let backTitle: String
-  let back: () -> Void
   let openDJ: () -> Void
   @EnvironmentObject var insights: InsightsModel
   @EnvironmentObject var session: Session
@@ -131,9 +130,6 @@ struct ArtistPage: View {
 
   private var topBar: some View {
     HStack(spacing: 12) {
-      LibraryLinkButton(title: backTitle, symbol: "chevron.left", action: back)
-        .keyboardShortcut("[", modifiers: .command)
-        .help("Retour (⌘[)")
       Spacer(minLength: 0)
       Button {
         dj.send("Lance un set autour de \(name)", source: .all)

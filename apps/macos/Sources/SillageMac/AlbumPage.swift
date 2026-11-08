@@ -2,11 +2,9 @@ import SillageKit
 import SwiftUI
 
 /// An album in the app: cover, artist (a link), what it is, and its tracks, playable at once;
-/// the ones already in the library are marked.
+/// the ones already in the library are marked. « Retour » is the window's, in the toolbar.
 struct AlbumPage: View {
   let browseId: String
-  let backTitle: String
-  let back: () -> Void
   let openDJ: () -> Void
   @EnvironmentObject var session: Session
   @EnvironmentObject var dj: DJModel
@@ -18,11 +16,6 @@ struct AlbumPage: View {
     VStack(spacing: 0) {
       ScrollView {
         VStack(alignment: .leading, spacing: 26) {
-          HStack {
-            LibraryLinkButton(title: backTitle, symbol: "chevron.left", action: back)
-              .keyboardShortcut("[", modifiers: .command).help("Retour (⌘[)")
-            Spacer(minLength: 0)
-          }
           if let album {
             header(album)
             tracks(album)
@@ -157,7 +150,8 @@ private struct AlbumTrackRow: View {
     }
     .padding(.horizontal, 10).frame(height: 44)
     .background(
-      RoundedRectangle(cornerRadius: 4).fill(hovering ? Color.sillageHover : .clear))
+      RoundedRectangle(cornerRadius: 4).fill(hovering ? Color.sillageHover : .clear)
+    )
     .overlay(alignment: .bottom) { SillageRule().opacity(0.5) }
     .contentShape(Rectangle())
     .onHover { hovering = $0 }

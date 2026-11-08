@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- App Mac : sur une page d’artiste ou d’album, « Retour » est dans la barre d’outils de la fenêtre, à gauche, et reste visible quel que soit le défilement.
+
 - App Mac : Échap revient en arrière comme ⌘[ (page d’artiste ou d’album, scène de Découvrir), sans toucher à l’Échap des champs de recherche ni à celui de la recherche ⌘F. Le « Retour » d’une scène de Découvrir a le même raccourci (⌘[) et la même place que celui des pages.
 
 - App Mac : un menu « Lecture » avec ses raccourcis : Espace pour lire ou mettre en pause, ⌘→ pour le morceau suivant, ⇧⌘← et ⇧⌘→ pour reculer ou avancer de dix secondes ; inactif sans morceau, et Espace reste à la frappe quand un champ texte est en cours d’édition.

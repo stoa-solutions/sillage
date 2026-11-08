@@ -82,6 +82,14 @@ struct MainView: View {
     }
     .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: searching)
     .toolbar {
+      // « Retour » (⌘[, Escape) stays in the toolbar, whatever the page's scroll position.
+      ToolbarItem(placement: .navigation) {
+        if canGoBack {
+          LibraryLinkButton(title: backTitle, symbol: "chevron.left", action: back)
+            .keyboardShortcut("[", modifiers: .command).help("Retour (⌘[)")
+            .padding(.leading, 4)
+        }
+      }.withoutSystemBackground()
       ToolbarItem(placement: .principal) {
         // Every page stays one click away, Compact included (⌘1, ⌘2, ⌘3 too); opening
         // Bibliothèque or Découvrir from Compact grows the window to the reading size.
@@ -245,9 +253,9 @@ struct MainView: View {
           Group {
             switch route {
             case .artist(let name):
-              ArtistPage(name: name, backTitle: backTitle, back: back, openDJ: openDJ)
+              ArtistPage(name: name, openDJ: openDJ)
             case .album(let id, _):
-              AlbumPage(browseId: id, backTitle: backTitle, back: back, openDJ: openDJ)
+              AlbumPage(browseId: id, openDJ: openDJ)
             }
           }
           .id(route)
