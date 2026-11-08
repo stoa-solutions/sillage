@@ -2,6 +2,8 @@
 
 ## Non publié
 
+- App Mac : un menu « Lecture » avec ses raccourcis : Espace pour lire ou mettre en pause, ⌘→ pour le morceau suivant, ⇧⌘← et ⇧⌘→ pour reculer ou avancer de dix secondes ; inactif sans morceau, et Espace reste à la frappe quand un champ texte est en cours d’édition.
+
 - Goût : les signaux vieillissent. Chaque écoute compte 0,5^(âge / 30 jours), un passage rapide est oublié en quelques semaines (demi-vie 14 jours) et vaut aussi quand on remplace le titre par une autre demande, un « J’aime » glisse lentement de 4 vers 1 (demi-vie 90 jours) et un titre ajouté à ses playlists pèse 2 avant de s’estomper (demi-vie 60 jours). « Coup de cœur » et « Souvent écouté » demandent de vraies réécoutes ; le libellé « dans vos playlists » dit au DJ qu’un titre enregistré n’a pas encore été écouté. Découvrir ne compte plus un titre passé aussitôt comme « joué » et sa page se reconstruit après un avis ou un changement de playlist.
 
 - Sécurité des dépendances : correctifs Vitest/Vite, source-map-js et esbuild dans l’outillage de développement ; Zod du pilote AI SDK aligné sur la version corrigée du serveur. Aucun changement des données ou de l’API.

@@ -33,6 +33,7 @@ import SwiftUI
   @StateObject private var listened: ListeningHistoryModel
   @StateObject private var desk: DeskIntegration
   @StateObject private var insights = InsightsModel()
+  @StateObject private var textEditing = TextEditingWatcher()
   @AppStorage("showsMenuBarExtra") private var showsMenuBar = true
   private let nowPlaying: DeskNowPlaying
   @State private var didBootstrap = false
@@ -166,6 +167,7 @@ import SwiftUI
       CommandGroup(replacing: .newItem) {
         Button("Actualiser la bibliothèque") { library.sync() }.keyboardShortcut("r")
       }
+      PlaybackCommands(dj: dj, editing: textEditing)
     }
     MenuBarExtra(isInserted: $showsMenuBar) {
       DeskMenu(desk: desk, dj: dj, player: dj.player, microphone: dj.microphone)
